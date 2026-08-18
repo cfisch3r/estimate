@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/nocturne-a669f585-f3fe-40ab-a191-bf5c3b3d887c/styles.css">
+<link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+<script src="_ds/nocturne-a669f585-f3fe-40ab-a191-bf5c3b3d887c/_ds_bundle.js"></script>
+<style>
+body{margin:0;background:var(--color-bg)}
+.step-dot{width:8px;height:8px;border-radius:50%;background:var(--color-neutral-700);cursor:pointer}
+.step-dot-active{background:var(--color-accent)}
+</style>
+</helmet>
+
+<div style="min-height:100vh;display:flex;flex-direction:column">
+
+  <div style="display:flex;justify-content:center;gap:var(--space-2);padding:var(--space-4) 0;border-bottom:1px solid var(--color-neutral-800)">
+    <sc-for list="{{ stepLabels }}" as="label" hint-placeholder-count="7">
+      <div class="{{ label.dotClass }}" style="{{ label.dotStyle }}" onClick="{{ label.onClick }}" title="{{ label.title }}"></div>
+    </sc-for>
+  </div>
+
+  <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:var(--space-8) var(--space-6)">
+
+    <sc-if value="{{ isScreen0 }}" hint-placeholder-val="{{ true }}">
+    <div style="max-width:560px;width:100%">
+      <span class="tag tag-outline">1. Create Session</span>
+      <h1 style="font-family:var(--font-heading);font-weight:500;font-size:28px;margin:var(--space-3) 0 var(--space-6)">New estimation session</h1>
+      <div class="card elev-sm" style="margin-bottom:var(--space-4)">
+        <div class="field">
+          <label>Session name</label>
+          <input class="input" value="{{ sessionName }}" onChange="{{ onSessionNameChange }}" placeholder="e.g. Sprint 12 Estimation">
+        </div>
+      </div>
+      <div class="card elev-sm" style="margin-bottom:var(--space-4)">
+        <div class="card-kicker">Items to estimate</div>
+        <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-top:var(--space-3)">
+          <sc-for list="{{ items }}" as="item" hint-placeholder-count="2">
+            <sc-if value="{{ item.isEditing }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3);border:1px solid var(--color-accent-600);border-radius:var(--radius-md)">
+                <div class="field"><label>Title</label><input class="input" value="{{ item.editTitle }}" onChange="{{ item.onEditTitleChange }}"></div>
+                <div class="field"><label>Description (optional, Markdown supported)</label><textarea class="input" rows="6" style="resize:vertical;font-family:var(--font-body);line-height:1.5" value="{{ item.editDesc }}" onChange="{{ item.onEditDescChange }}" placeholder="Add detail&hellip;"></textarea></div>
+                <div style="display:flex;gap:var(--space-2);justify-content:flex-end">
+                  <button class="btn btn-secondary" onClick="{{ item.onCancelEdit }}">Cancel</button>
+                  <button class="btn btn-primary" onClick="{{ item.onSaveEdit }}">Save</button>
+                </div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ item.isNotEditing }}" hint-placeholder-val="{{ true }}">
+              <div draggable="true" onDragStart="{{ item.onDragStart }}" onDragOver="{{ item.onDragOver }}" onDrop="{{ item.onDrop }}" onDragEnd="{{ item.onDragEnd }}" style="{{ item.rowStyle }}display:flex;align-items:center;gap:var(--space-3);padding:var(--space-3);border:1px solid var(--color-neutral-700);border-radius:var(--radius-md)">
+                <i class="ph ph-dots-six-vertical" style="color:var(--color-neutral-300);cursor:grab"></i>
+                <span style="flex:1">
+                  <div>{{ item.title }}</div>
+                  <sc-if value="{{ item.hasDesc }}" hint-placeholder-val="{{ false }}"><div style="color:var(--color-neutral-300);font-size:13px">{{ item.desc }}</div></sc-if>
+                </span>
+                <button class="btn btn-icon" aria-label="Edit item" onClick="{{ item.onStartEdit }}"><i class="ph ph-pencil-simple"></i></button>
+                <button class="btn btn-icon" aria-label="Remove item" onClick="{{ item.onRemove }}"><i class="ph ph-x"></i></button>
+              </div>
+            </sc-if>
+          </sc-for>
+          <div style="display:flex;gap:var(--space-2)">
+            <input class="input" style="flex:1" value="{{ newItemTitle }}" onChange="{{ onNewItemChange }}" onKeyDown="{{ onNewItemKeyDown }}" placeholder="New item title&hellip;">
+            <button class="btn btn-secondary" onClick="{{ addItem }}"><i class="ph ph-plus"></i> Add</button>
+          </div>
+        </div>
+      </div>
+      <div class="card elev-sm" style="margin-bottom:var(--space-6)">
+        <div class="card-kicker" style="margin-bottom:var(--space-3)">Mode</div>
+        <div style="display:flex;gap:var(--space-3)">
+          <label class="radio" style="flex:1;align-items:flex-start;gap:var(--space-3);border:1px solid {{ liveModeBorder }};border-radius:var(--radius-md);padding:var(--space-3);cursor:pointer" onClick="{{ selectLiveMode }}">
+            <span class="dot" style="{{ liveModeDotStyle }}"></span>
+            <span>
+              <div style="font-weight:500">Live Collaborative</div>
+              <div style="color:var(--color-neutral-300);font-size:13px">Team joins and submits estimates live</div>
+            </span>
+          </label>
+          <label class="radio" style="flex:1;align-items:flex-start;gap:var(--space-3);border:1px solid {{ manualModeBorder }};border-radius:var(--radius-md);padding:var(--space-3);cursor:pointer" onClick="{{ selectManualMode }}">
+            <span class="dot" style="{{ manualModeDotStyle }}"></span>
+            <span>
+              <div style="font-weight:500">Manual Entry</div>
+              <div style="color:var(--color-neutral-300);font-size:13px">Facilitator types values in directly</div>
+            </span>
+          </label>
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" onClick="{{ goToJoin }}">Create session</button>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isScreen1 }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:420px;width:100%">
+      <span class="tag tag-outline">2. Join Session</span>
+      <h1 style="font-family:var(--font-heading);font-weight:500;font-size:28px;margin:var(--space-3) 0 var(--space-6)">Join EstiMate session</h1>
+      <div class="card elev-sm" style="margin-bottom:var(--space-4)">
+        <div class="field" style="margin-bottom:var(--space-4)">
+          <label>Session code</label>
+          <input class="input" placeholder="e.g. 8K4-QJ2">
+        </div>
+        <div class="field">
+          <label>Your name</label>
+          <input class="input" value="{{ participantName }}" onChange="{{ onParticipantNameChange }}" placeholder="e.g. Sam Rivera">
+        </div>
+      </div>
+      <button class="btn btn-primary btn-block" style="margin-bottom:var(--space-4)" onClick="{{ joinSession }}">Join</button>
+      <sc-if value="{{ isJoining }}" hint-placeholder-val="{{ false }}">
+      <div class="card-meta" style="display:flex;align-items:center;gap:var(--space-2)">
+        <i class="ph ph-circle-notch"></i> Connecting to peers&hellip;
+      </div>
+      </sc-if>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isScreen2 }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:820px;width:100%">
+      <span class="tag tag-outline">3. {{ screen2Label }}</span>
+      <h1 style="font-family:var(--font-heading);font-weight:500;font-size:28px;margin:var(--space-3) 0 var(--space-6)">{{ sessionNameOrDefault }}</h1>
+      <div style="display:flex;gap:var(--space-4)">
+        <div style="width:220px;flex:none">
+          <div class="card-kicker" style="margin-bottom:var(--space-3)">Items</div>
+          <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+            <sc-for list="{{ queueItems }}" as="qi" hint-placeholder-count="3">
+              <div class="{{ qi.cardClass }}" style="{{ qi.cardStyle }}" onClick="{{ qi.onClick }}">
+                <sc-if value="{{ qi.active }}" hint-placeholder-val="{{ false }}"><i class="ph ph-play" style="color:var(--color-accent);margin-right:var(--space-2)"></i></sc-if>
+                {{ qi.title }}
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="flex:1">
+          <div class="card elev-sm">
+            <div class="card-title">{{ activeItemTitle }}</div>
+            <div class="field" style="margin-bottom:var(--space-4)">
+              <label>Notes (captured during discussion, Markdown supported)</label>
+              <textarea class="input" rows="8" style="resize:vertical;font-family:var(--font-body);line-height:1.5" value="{{ activeItemDesc }}" onChange="{{ onActiveItemDescChange }}" placeholder="Add detail as the team discusses&hellip;"></textarea>
+            </div>
+            <sc-if value="{{ isManualMode }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-4)">
+                <div class="field" style="flex:1"><label>Best case</label><input class="input" value="{{ estBest }}" onChange="{{ onEstBestChange }}" placeholder="weeks"></div>
+                <div class="field" style="flex:1"><label>Most likely</label><input class="input" value="{{ estLikely }}" onChange="{{ onEstLikelyChange }}" placeholder="weeks"></div>
+                <div class="field" style="flex:1"><label>Worst case</label><input class="input" value="{{ estWorst }}" onChange="{{ onEstWorstChange }}" placeholder="weeks"></div>
+              </div>
+              <button class="btn btn-primary btn-block" onClick="{{ finalizeItem }}">Finalize item</button>
+            </sc-if>
+            <sc-if value="{{ isLiveMode }}" hint-placeholder-val="{{ true }}">
+              <div class="card-meta" style="margin-bottom:var(--space-2)">Submissions ({{ submittedCount }} / 5)</div>
+              <div style="display:flex;gap:var(--space-2);margin-bottom:var(--space-5)">
+                <span class="tag tag-accent">P &#10003;</span>
+                <span class="tag tag-accent">J &#10003;</span>
+                <span class="{{ meiTagClass }}">M{{ meiCheck }}</span>
+                <span class="tag tag-outline">S</span>
+                <span class="tag tag-outline">T</span>
+              </div>
+              <button class="btn btn-secondary btn-block" style="margin-bottom:var(--space-2)" onClick="{{ simulateSubmit }}">Simulate participant submit</button>
+              <button class="btn btn-primary btn-block" onClick="{{ goToReveal }}">Reveal</button>
+            </sc-if>
+          </div>
+        </div>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isScreen3 }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:560px;width:100%">
+      <span class="tag tag-outline">4. Participant Estimate View</span>
+      <h1 style="font-family:var(--font-heading);font-weight:500;font-size:28px;margin:var(--space-3) 0 var(--space-6)">{{ activeItemTitle }}</h1>
+      <div class="card elev-sm" style="margin-bottom:var(--space-4)">
+        <div class="card-body" style="margin-bottom:var(--space-4)">{{ activeItemDesc }}</div>
+        <div style="display:flex;gap:var(--space-3);margin-bottom:var(--space-3)">
+          <div class="field" style="flex:1"><label>Best case</label><input class="input" value="{{ estBest }}" onChange="{{ onEstBestChange }}" placeholder="weeks"></div>
+          <div class="field" style="flex:1"><label>Most likely</label><input class="input" value="{{ estLikely }}" onChange="{{ onEstLikelyChange }}" placeholder="weeks"></div>
+          <div class="field" style="flex:1"><label>Worst case</label><input class="input" value="{{ estWorst }}" onChange="{{ onEstWorstChange }}" placeholder="weeks"></div>
+        </div>
+        <div class="card-meta">Would you stake your job this won't be exceeded?</div>
+      </div>
+      <button class="btn btn-primary btn-block" onClick="{{ submitEstimate }}">Submit</button>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isScreen4 }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:700px;width:100%">
+      <span class="tag tag-outline">5. Reveal View</span>
+      <h1 style="font-family:var(--font-heading);font-weight:500;font-size:28px;margin:var(--space-3) 0 var(--space-6)">{{ activeItemTitle }} &mdash; reveal</h1>
+      <div style="display:flex;flex-direction:column;gap:var(--space-3);margin-bottom:var(--space-5)">
+        <div style="display:flex;align-items:center;gap:var(--space-3)"><span style="width:60px;font-size:14px">Priya</span><div style="flex:1;height:8px;background:var(--color-neutral-800);border-radius:4px;position:relative"><div style="position:absolute;left:20%;width:30%;height:8px;background:var(--color-accent-500);border-radius:4px"></div></div></div>
+        <div style="display:flex;align-items:center;gap:var(--space-3)"><span style="width:60px;font-size:14px">Jon</span><div style="flex:1;height:8px;background:var(--color-neutral-800);border-radius:4px;position:relative"><div style="position:absolute;left:30%;width:30%;height:8px;background:var(--color-accent-500);border-radius:4px"></div></div></div>
+        <div style="display:flex;align-items:center;gap:var(--space-3)"><span style="width:60px;font-size:14px;color:var(--color-accent-300)">You {{ youMark }}</span><div style="flex:1;height:8px;background:var(--color-neutral-800);border-radius:4px;position:relative"><div style="position:absolute;left:{{ youLeft }}%;width:{{ youWidth }}%;height:8px;background:var(--color-accent);border-radius:4px"></div></div></div>
+      </div>
+      <div class="card elev-sm" style="margin-bottom:var(--space-5)">
+        <div class="card-meta">Group range <b style="color:var(--color-text)">{{ groupRange }}</b> &middot; Expected <b style="color:var(--color-text)">{{ groupExpected }}</b> &middot; CI90 <b style="color:var(--color-text)">{{ groupCI }}</b></div>
+      </div>
+      <div style="display:flex;gap:var(--space-3)">
+        <button class="btn btn-secondary" style="flex:1" onClick="{{ reEstimate }}">Re-estimate</button>
+        <button class="btn btn-primary" style="flex:1" onClick="{{ finalizeItem }}">Finalize</button>
+      </div>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isScreen5 }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:760px;width:100%">
+      <span class="tag tag-outline">6. Session Summary / Report</span>
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin:var(--space-3) 0 var(--space-6)">
+        <h1 style="font-family:var(--font-heading);font-weight:500;font-size:28px;margin:0">{{ sessionNameOrDefault }} &mdash; Summary</h1>
+        <button class="btn btn-secondary" onClick="{{ exportAlert }}">Export</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-bottom:var(--space-6)">
+        <sc-if value="{{ hasFinalizedItems }}" hint-placeholder-val="{{ false }}">
+        <sc-for list="{{ finalizedItems }}" as="fi" hint-placeholder-count="1">
+          <div class="card" style="display:flex;align-items:center;gap:var(--space-4);padding:var(--space-3) var(--space-4)">
+            <span style="width:140px">{{ fi.title }}</span>
+            <div style="flex:1;height:8px;background:var(--color-neutral-800);border-radius:4px;position:relative"><div style="position:absolute;left:10%;width:80%;height:8px;background:var(--color-accent-500);border-radius:4px"></div></div>
+            <span class="card-meta">{{ fi.range }}</span>
+          </div>
+        </sc-for>
+        </sc-if>
+        <sc-if value="{{ noFinalizedItems }}" hint-placeholder-val="{{ true }}">
+          <div class="card-meta">No items finalized yet.</div>
+        </sc-if>
+      </div>
+      <button class="btn btn-secondary btn-block" onClick="{{ goToHistory }}">View session history</button>
+    </div>
+    </sc-if>
+
+    <sc-if value="{{ isScreen6 }}" hint-placeholder-val="{{ false }}">
+    <div style="max-width:640px;width:100%">
+      <span class="tag tag-outline">7. Session History</span>
+      <h1 style="font-family:var(--font-heading);font-weight:500;font-size:28px;margin:var(--space-3) 0 var(--space-6)">Past sessions</h1>
+      <div class="field" style="margin-bottom:var(--space-4)">
+        <input class="input" value="{{ historySearch }}" onChange="{{ onHistorySearchChange }}" placeholder="Search sessions&hellip;">
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-2)">
+        <sc-for list="{{ visibleHistory }}" as="h" hint-placeholder-count="2">
+          <div class="card" style="display:flex;justify-content:space-between;padding:var(--space-3) var(--space-4)"><span>{{ h.name }}</span><span class="card-meta">{{ h.meta }}</span></div>
+        </sc-for>
+      </div>
+    </div>
+    </sc-if>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = {
+    screen: 0,
+    sessionName: '',
+    items: [
+      { title: 'Login flow redesign', desc: 'Supports SSO + password reset' },
+      { title: 'CSV export endpoint', desc: 'Streams large exports without timeout' }
+    ],
+    newItemTitle: '',
+    editingIndex: -1,
+    editTitle: '',
+    editDesc: '',
+    dragIndex: -1,
+    dragOverIndex: -1,
+    mode: 'live',
+    participantName: '',
+    isJoining: false,
+    activeItemIndex: 0,
+    submittedCount: 3,
+    meiSubmitted: false,
+    estBest: '', estLikely: '', estWorst: '',
+    finalized: [],
+    historySearch: ''
+  };
+
+  goTo = (n) => this.setState({ screen: n });
+
+  onSessionNameChange = (e) => this.setState({ sessionName: e.target.value });
+  onNewItemChange = (e) => this.setState({ newItemTitle: e.target.value });
+  onNewItemKeyDown = (e) => { if (e.key === 'Enter') this.addItem(); };
+  addItem = () => {
+    const t = this.state.newItemTitle.trim();
+    if (!t) return;
+    this.setState(s => ({ items: [...s.items, { title: t, desc: '' }], newItemTitle: '' }));
+  };
+  removeItem = (idx) => this.setState(s => ({ items: s.items.filter((_, i) => i !== idx) }));
+  startEdit = (idx) => this.setState(s => ({ editingIndex: idx, editTitle: s.items[idx].title, editDesc: s.items[idx].desc || '' }));
+  cancelEdit = () => this.setState({ editingIndex: -1 });
+  onEditTitleChange = (e) => this.setState({ editTitle: e.target.value });
+  onEditDescChange = (e) => this.setState({ editDesc: e.target.value });
+  saveEdit = () => this.setState(s => ({
+    items: s.items.map((it, i) => i === s.editingIndex ? { title: s.editTitle.trim() || it.title, desc: s.editDesc } : it),
+    editingIndex: -1
+  }));
+
+  onDragStart = (idx) => this.setState({ dragIndex: idx });
+  onDragOver = (idx, e) => { e.preventDefault(); if (this.state.dragOverIndex !== idx) this.setState({ dragOverIndex: idx }); };
+  onDrop = (idx) => this.setState(s => {
+    if (s.dragIndex === -1 || s.dragIndex === idx) return { dragIndex: -1, dragOverIndex: -1 };
+    const items = [...s.items];
+    const [moved] = items.splice(s.dragIndex, 1);
+    items.splice(idx, 0, moved);
+    return { items, dragIndex: -1, dragOverIndex: -1 };
+  });
+  onDragEnd = () => this.setState({ dragIndex: -1, dragOverIndex: -1 });
+
+  selectLiveMode = () => this.setState({ mode: 'live' });
+  selectManualMode = () => this.setState({ mode: 'manual' });
+
+  onParticipantNameChange = (e) => this.setState({ participantName: e.target.value });
+  joinSession = () => {
+    this.setState({ isJoining: true });
+    setTimeout(() => this.setState({ screen: 3, isJoining: false }), 900);
+  };
+
+  onEstBestChange = (e) => this.setState({ estBest: e.target.value });
+  onEstLikelyChange = (e) => this.setState({ estLikely: e.target.value });
+  onEstWorstChange = (e) => this.setState({ estWorst: e.target.value });
+  submitEstimate = () => this.setState({ screen: 2 });
+
+  simulateSubmit = () => this.setState(s => ({
+    submittedCount: Math.min(5, s.submittedCount + 1),
+    meiSubmitted: s.submittedCount + 1 >= 4 ? true : s.meiSubmitted
+  }));
+  goToReveal = () => this.setState({ screen: 4 });
+  reEstimate = () => this.setState({ screen: 3 });
+  finalizeItem = () => {
+    const item = this.state.items[this.state.activeItemIndex];
+    const s0 = this.state;
+    const range = (s0.estBest || s0.estLikely || s0.estWorst)
+      ? `${s0.estBest || '?'}\u2013${s0.estWorst || '?'}wk (exp ${s0.estLikely || '?'})`
+      : '1\u201310wk (exp 4)';
+    this.setState(s => ({
+      finalized: [...s.finalized, { title: item.title, range }],
+      screen: 2,
+      submittedCount: 3,
+      meiSubmitted: false,
+      estBest: '', estLikely: '', estWorst: ''
+    }));
+  };
+  goToHistory = () => this.setState({ screen: 6 });
+  goToJoin = () => this.setState({ screen: this.state.mode === 'manual' ? 2 : 1 });
+
+  onHistorySearchChange = (e) => this.setState({ historySearch: e.target.value });
+  exportAlert = () => window.alert('Export: CSV / PDF / shareable link');
+
+  setActiveItem = (idx) => this.setState({ activeItemIndex: idx, screen: 2 });
+  onActiveItemDescChange = (e) => {
+    const val = e.target.value;
+    this.setState(s => ({ items: s.items.map((it, i) => i === s.activeItemIndex ? { ...it, desc: val } : it) }));
+  };
+
+  renderVals() {
+    const s = this.state;
+    const item = s.items[s.activeItemIndex] || { title: 'Item', desc: '' };
+    const baseHistory = [
+      { name: 'Sprint 12 Estimation', meta: 'Live \u00b7 7 items \u00b7 Aug 10' },
+      { name: 'Q3 Backlog Refinement', meta: 'Manual \u00b7 12 items \u00b7 Jul 22' },
+      { name: 'Auth migration kickoff', meta: 'Live \u00b7 4 items \u00b7 Jun 30' }
+    ];
+    if (s.finalized.length > 0) {
+      baseHistory.unshift({
+        name: (s.sessionName || 'Sprint 12 Estimation') + ' (current)',
+        meta: (s.mode === 'manual' ? 'Manual' : 'Live') + ' \u00b7 ' + s.finalized.length + ' item' + (s.finalized.length === 1 ? '' : 's') + ' \u00b7 today'
+      });
+    }
+    const visibleHistory = baseHistory.filter(h => h.name.toLowerCase().includes(s.historySearch.toLowerCase()));
+
+    const revealDisabled = s.mode === 'manual';
+    const stepLabels = ['Create', 'Join', 'Facilitate', 'Estimate', 'Reveal', 'Summary', 'History'].map((title, i) => ({
+      title: title + (i === 4 && revealDisabled ? ' (n/a in Manual Entry)' : ''),
+      dotClass: 'step-dot' + (s.screen === i ? ' step-dot-active' : ''),
+      dotStyle: i === 4 && revealDisabled ? 'opacity:0.3;cursor:not-allowed' : '',
+      onClick: (i === 4 && revealDisabled) ? () => {} : () => this.goTo(i)
+    }));
+
+    const queueItems = s.items.map((it, i) => ({
+      title: it.title,
+      active: i === s.activeItemIndex,
+      cardClass: i === s.activeItemIndex ? 'card elev-sm' : 'card',
+      cardStyle: (i === s.activeItemIndex ? 'border:1px solid var(--color-accent-600);' : 'color:var(--color-neutral-400);') + 'padding:8.4px;cursor:pointer;display:flex;align-items:center',
+      onClick: () => this.setActiveItem(i)
+    }));
+
+    return {
+      stepLabels,
+      isScreen0: s.screen === 0, isScreen1: s.screen === 1, isScreen2: s.screen === 2,
+      isScreen3: s.screen === 3, isScreen4: s.screen === 4, isScreen5: s.screen === 5, isScreen6: s.screen === 6,
+      sessionName: s.sessionName, onSessionNameChange: this.onSessionNameChange,
+      items: s.items.map((it, i) => ({
+        title: it.title, desc: it.desc, hasDesc: !!it.desc,
+        isEditing: s.editingIndex === i, isNotEditing: s.editingIndex !== i,
+        editTitle: s.editTitle, editDesc: s.editDesc,
+        onEditTitleChange: this.onEditTitleChange, onEditDescChange: this.onEditDescChange,
+        onStartEdit: () => this.startEdit(i), onCancelEdit: this.cancelEdit, onSaveEdit: this.saveEdit,
+        onRemove: () => this.removeItem(i),
+        rowStyle: s.dragOverIndex === i && s.dragIndex !== i ? 'box-shadow:0 0 0 2px var(--color-accent);' : (s.dragIndex === i ? 'opacity:0.4;' : ''),
+        onDragStart: () => this.onDragStart(i),
+        onDragOver: (e) => this.onDragOver(i, e),
+        onDrop: () => this.onDrop(i),
+        onDragEnd: this.onDragEnd
+      })),
+      newItemTitle: s.newItemTitle, onNewItemChange: this.onNewItemChange, onNewItemKeyDown: this.onNewItemKeyDown, addItem: this.addItem,
+      liveModeBorder: s.mode === 'live' ? 'var(--color-accent-600)' : 'var(--color-neutral-700)',
+      manualModeBorder: s.mode === 'manual' ? 'var(--color-accent-600)' : 'var(--color-neutral-700)',
+      liveModeDotStyle: s.mode === 'live' ? 'background:var(--color-accent);border-color:var(--color-accent)' : '',
+      manualModeDotStyle: s.mode === 'manual' ? 'background:var(--color-accent);border-color:var(--color-accent)' : '',
+      selectLiveMode: this.selectLiveMode, selectManualMode: this.selectManualMode,
+      goToJoin: this.goToJoin,
+      participantName: s.participantName, onParticipantNameChange: this.onParticipantNameChange,
+      joinSession: this.joinSession, isJoining: s.isJoining,
+      sessionNameOrDefault: s.sessionName || 'Sprint 12 Estimation',
+      queueItems,
+      activeItemTitle: item.title, activeItemDesc: item.desc, onActiveItemDescChange: this.onActiveItemDescChange,
+      isManualMode: s.mode === 'manual', isLiveMode: s.mode === 'live',
+      screen2Label: s.mode === 'manual' ? 'Session View \u2014 Manual Entry' : 'Facilitator Session View',
+      submittedCount: s.submittedCount,
+      meiTagClass: s.meiSubmitted ? 'tag tag-accent' : 'tag tag-outline',
+      meiCheck: s.meiSubmitted ? ' \u2713' : '',
+      simulateSubmit: this.simulateSubmit, goToReveal: this.goToReveal,
+      estBest: s.estBest, estLikely: s.estLikely, estWorst: s.estWorst,
+      onEstBestChange: this.onEstBestChange, onEstLikelyChange: this.onEstLikelyChange, onEstWorstChange: this.onEstWorstChange,
+      submitEstimate: this.submitEstimate,
+      youMark: s.meiSubmitted ? '\u26a0' : '', youLeft: s.meiSubmitted ? 10 : 20, youWidth: s.meiSubmitted ? 90 : 30,
+      groupRange: '1\u201310wk', groupExpected: '4wk', groupCI: '\u00b13.8wk',
+      reEstimate: this.reEstimate, finalizeItem: this.finalizeItem,
+      finalizedItems: s.finalized,
+      hasFinalizedItems: s.finalized.length > 0,
+      noFinalizedItems: s.finalized.length === 0,
+      goToHistory: this.goToHistory, exportAlert: this.exportAlert,
+      historySearch: s.historySearch, onHistorySearchChange: this.onHistorySearchChange, visibleHistory
+    };
+  }
+}
+
+</script>
+</body>
+</html>
