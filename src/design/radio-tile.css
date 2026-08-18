@@ -1,0 +1,29 @@
+/* Composed from Nocturne primitives (.card framing + .radio/.dot indicator) for the
+   selectable-tile pattern used by Create Session's mode picker. Not part of Nocturne's
+   own styles.css — kept separate so that file stays a verbatim, unmodified port. */
+.radio-tile {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-3);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+.radio-tile:hover {
+  border-color: color-mix(in srgb, var(--color-accent) 45%, var(--color-divider));
+}
+.radio-tile:has(input:checked) {
+  border-color: var(--color-accent);
+}
+.radio-tile input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.radio-tile .dot {
+  margin-top: 2px;
+}
