@@ -1,10 +1,3 @@
-export interface Estimate {
-  participantId: string
-  best: number
-  likely: number
-  worst: number
-}
-
 export interface AggregateStrategy {
   best: 'min' | 'median' | 'mean'
   likely: 'median' | 'mean'

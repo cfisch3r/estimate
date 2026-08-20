@@ -1,16 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { checkSymmetricRange, checkFalsePrecision, checkOutlier } from './guards'
 import { UNIT_GRANULARITY } from './types'
-import type { Estimate } from './types'
-
-function est(
-  participantId: string,
-  best: number,
-  likely: number,
-  worst: number,
-): Estimate {
-  return { participantId, best, likely, worst }
-}
+import { est } from './testHelpers'
 
 describe('checkSymmetricRange', () => {
   it('fires when Best-to-Likely and Likely-to-Worst spans are equal', () => {

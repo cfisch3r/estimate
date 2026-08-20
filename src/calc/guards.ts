@@ -1,4 +1,5 @@
-import type { Estimate, GuardResult } from './types'
+import type { GuardResult } from './types'
+import type { Estimate } from './estimate'
 import { median } from './aggregate'
 
 /** PRD §6 "symmetric range" nudge: fires when (Likely-Best) and (Worst-Likely) are

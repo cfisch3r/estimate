@@ -1,15 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { aggregateEstimates, median } from './aggregate'
-import type { Estimate } from './types'
-
-function est(
-  participantId: string,
-  best: number,
-  likely: number,
-  worst: number,
-): Estimate {
-  return { participantId, best, likely, worst }
-}
+import { est } from './testHelpers'
 
 describe('aggregateEstimates', () => {
   it('degenerates to the raw values for a single estimate (Mode B path)', () => {

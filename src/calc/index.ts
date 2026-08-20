@@ -1,11 +1,12 @@
 export type {
-  Estimate,
   AggregateStrategy,
   AggregateResult,
   GuardResult,
   EstimationUnit,
 } from './types'
 export { DEFAULT_STRATEGY, UNIT_GRANULARITY } from './types'
+export type { Estimate, RawEstimateInput, Result } from './estimate'
+export { createEstimate } from './estimate'
 export { aggregateEstimates } from './aggregate'
 export { computeCI90 } from './ci90'
 export { checkSymmetricRange, checkFalsePrecision, checkOutlier } from './guards'

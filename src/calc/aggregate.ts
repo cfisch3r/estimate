@@ -1,5 +1,6 @@
-import type { AggregateResult, AggregateStrategy, Estimate } from './types'
+import type { AggregateResult, AggregateStrategy } from './types'
 import { DEFAULT_STRATEGY } from './types'
+import type { Estimate } from './estimate'
 import { computeCI90 } from './ci90'
 
 export function median(values: number[]): number {
