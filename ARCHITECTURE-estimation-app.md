@@ -62,8 +62,6 @@ The `/calc` layer's isolation as pure, framework-free functions is the single mo
 **One aggregation function serves both modes.** `aggregateEstimates()` takes an array of `{best, likely, worst}` estimates and a strategy, and returns the group range. Fed a Live session's N participant submissions or a Manual Entry session's single facilitator-entered set, it's the same call — a single-element array degenerates correctly (min/median/max of one value = that value), so Mode B isn't a special case, it's a consequence of the design (satisfies PRD §4.2 / ADR-001's shared-engine requirement).
 
 ```ts
-interface Estimate { participantId: string; best: number; likely: number; worst: number }
-
 interface AggregateStrategy {
   best: 'min' | 'median' | 'mean'
   likely: 'median' | 'mean'
@@ -78,6 +76,20 @@ function computeCI90(expected: number, best: number, worst: number): number {
   return expected + 1.28 * ((worst - best) / 3)   // McConnell's formula, PRD §5
 }
 ```
+
+**`Estimate` is a self-validating value type, not a bare interface.** `best ≤ likely ≤ worst` is a domain invariant of what an Estimate *is* — not a UI-specific concern — so per hexagonal architecture's port/adapter separation, it's enforced once in the core rather than duplicated across every adapter that constructs one (the M3 form, M5's incoming Trystero messages, a future CSV import). `Estimate` is only producible via `createEstimate(input): Result<Estimate, string>`, which is the single point where the ordering (and finiteness) check happens:
+
+```ts
+interface RawEstimateInput { participantId: string; best: number; likely: number; worst: number }
+type Result<T> = { ok: true; value: T } | { ok: false; error: string }
+
+declare const EstimateBrand: unique symbol
+type Estimate = RawEstimateInput & { readonly [EstimateBrand]: true }
+
+function createEstimate(input: RawEstimateInput): Result<Estimate>
+```
+
+The brand is compile-time only — it adds no runtime property, so `Estimate` stays plain, JSON-transparent data for network transport and IndexedDB storage — but it does make constructing one any other way (e.g. a bare `{best, likely, worst}` object literal) a type error everywhere `Estimate` is expected. This only guards against *accidental* misuse within our own code, though: TypeScript types don't exist at runtime, so they can't protect against a malformed message from an untrusted Trystero peer. M5 still has to call `createEstimate()` on every incoming peer message before it touches state — the difference is it's now calling one shared validation function instead of re-implementing the ordering check per adapter.
 
 **Why `AggregateStrategy` is a per-field interface, not a single toggle:** PRD §5 requires the aggregation logic itself to be configurable, but its philosophy is asymmetric on purpose — `min`/`max` for Best/Worst specifically to *preserve* outliers ("don't average away the outliers... worst case tends to get optimistically averaged down"), `median` for Likely as a robust center. A single `'min-max' | 'average'` switch couldn't express that; three independent knobs can. Currently this is only a code-level configurability point — the PRD data model has no field for *which* strategy a session uses, so it's an engineering default for now, not a facilitator-facing setting (flagged below).
 
