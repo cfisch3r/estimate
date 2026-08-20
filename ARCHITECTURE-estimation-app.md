@@ -22,8 +22,10 @@ What this document covers is everything ADR-001 doesn't: the framework, how P2P 
 
 ## Recommended stack
 
-**Frontend: React 18 + TypeScript + Vite, no meta-framework.**
-Static SPA — no server-side rendering needed, no routes that require backend data at request time. Phosphor's React icon package matches the prototype directly. Nocturne's design system is plain CSS custom properties + global classes (`.btn`, `.card`, `.field`, `.tag`, `.radio`), so it ports as-is via `className` — no CSS-in-JS conversion needed. React + hooks handles the prototype's interaction surface (drag-reorder, inline edit forms, async peer events) without extra tooling.
+**Frontend: React 19 + TypeScript + Vite, no meta-framework.**
+Static SPA — no server-side rendering needed, no routes that require backend data at request time. Phosphor's React icon package matches the prototype directly. Nocturne's design system is plain CSS custom properties + global classes (`.btn`, `.card`, `.field`, `.tag`, `.radio`), so it ports as-is via `className` — no CSS-in-JS conversion needed. React + hooks handles the prototype's interaction surface (drag-reorder, inline edit forms, async peer events) without extra tooling. (Originally scoped as "React 18" during architecture discussion; the M0 scaffold used `create-vite`'s current default, React 19 — a version bump, not a design change, so adopted rather than pinned back.)
+
+**Tooling: oxlint for linting, not ESLint.** `create-vite`'s current default template ships oxlint (a faster, Rust-based linter) rather than ESLint + typescript-eslint. Functionally equivalent for this project's needs — TypeScript/React rule coverage, no custom rule authoring required — so adopted as scaffolded rather than swapped for the originally-assumed ESLint setup. Prettier still handles formatting (oxlint doesn't format).
 
 **State management: a single reducer/store (Zustand)** rather than scattered `useState`, since WebRTC peer events arrive asynchronously and out of order — the network and persistence layers act as adapters that dispatch into the same store, so Mode A (live) and Mode B (manual) differ only in which adapter is active, not in UI logic.
 
