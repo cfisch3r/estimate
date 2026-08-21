@@ -31,3 +31,10 @@ export const UNIT_GRANULARITY: Record<EstimationUnit, number> = {
   days: 0.5,
   weeks: 0.5,
 }
+
+/** Short suffix for compact value labels, e.g. on the range bar. */
+export const UNIT_SUFFIX: Record<EstimationUnit, string> = {
+  hours: 'h',
+  days: 'd',
+  weeks: 'w',
+}

@@ -3,7 +3,6 @@ import { PlayIcon } from '@phosphor-icons/react/dist/csr/Play'
 import {
   Button,
   Card,
-  CardKicker,
   CardTitle,
   CardBody,
   CardMeta,
@@ -11,9 +10,18 @@ import {
   FieldLabel,
   Input,
   Textarea,
+  GuardNote,
+  RangeBar,
 } from '../components'
 import { useSessionStore } from '../state/store'
-import { checkSymmetricRange, checkFalsePrecision, UNIT_GRANULARITY } from '../calc'
+import {
+  checkSymmetricRange,
+  checkFalsePrecision,
+  computeCI90,
+  createEstimate,
+  UNIT_GRANULARITY,
+  UNIT_SUFFIX,
+} from '../calc'
 import type { EstimationUnit } from '../calc'
 import type { Item } from '../state/types'
 
@@ -35,16 +43,28 @@ function ActiveItemPanel({
   onFinalize,
   onNotesChange,
 }: ActiveItemPanelProps) {
-  const [best, setBest] = useState('')
-  const [likely, setLikely] = useState('')
-  const [worst, setWorst] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const isEdit = item.finalResult !== null
+  const [best, setBest] = useState(item.finalResult ? String(item.finalResult.min) : '')
+  const [likely, setLikely] = useState(
+    item.finalResult ? String(item.finalResult.expected) : '',
+  )
+  const [worst, setWorst] = useState(item.finalResult ? String(item.finalResult.max) : '')
 
   const allFilled = best !== '' && likely !== '' && worst !== ''
   const bestNum = Number(best)
   const likelyNum = Number(likely)
   const worstNum = Number(worst)
   const granularity = UNIT_GRANULARITY[unit]
+
+  const validation = allFilled
+    ? createEstimate({
+        participantId: 'facilitator',
+        best: bestNum,
+        likely: likelyNum,
+        worst: worstNum,
+      })
+    : null
+  const validationError = validation && !validation.ok ? validation.error : null
 
   const symmetricGuard = allFilled
     ? checkSymmetricRange(bestNum, likelyNum, worstNum)
@@ -55,8 +75,7 @@ function ActiveItemPanel({
   const worstPrecision = worst !== '' ? checkFalsePrecision(worstNum, granularity) : null
 
   function handleFinalize() {
-    const result = onFinalize(item.id, bestNum, likelyNum, worstNum)
-    setError(result.ok ? null : result.error)
+    onFinalize(item.id, bestNum, likelyNum, worstNum)
   }
 
   return (
@@ -64,17 +83,9 @@ function ActiveItemPanel({
       <CardTitle>{item.title}</CardTitle>
       {item.description && <CardBody>{item.description}</CardBody>}
 
-      <Field>
-        <FieldLabel htmlFor="notes">
-          Notes (captured during discussion, Markdown supported)
-        </FieldLabel>
-        <Textarea
-          id="notes"
-          rows={8}
-          value={item.notes}
-          onChange={(e) => onNotesChange(item.id, e.target.value)}
-        />
-      </Field>
+      <p className="estimate-prompt">
+        Would you stake your job this won&apos;t be exceeded?
+      </p>
 
       <div style={{ display: 'flex', gap: 8 }}>
         <Field style={{ flex: 1 }}>
@@ -82,11 +93,12 @@ function ActiveItemPanel({
           <Input
             id="best"
             type="number"
+            min={0}
             value={best}
             onChange={(e) => setBest(e.target.value)}
           />
           {bestPrecision?.fired && (
-            <CardMeta>Consider rounding to a meaningful value.</CardMeta>
+            <GuardNote>Consider rounding to a meaningful value.</GuardNote>
           )}
         </Field>
         <Field style={{ flex: 1 }}>
@@ -94,11 +106,12 @@ function ActiveItemPanel({
           <Input
             id="likely"
             type="number"
+            min={0}
             value={likely}
             onChange={(e) => setLikely(e.target.value)}
           />
           {likelyPrecision?.fired && (
-            <CardMeta>Consider rounding to a meaningful value.</CardMeta>
+            <GuardNote>Consider rounding to a meaningful value.</GuardNote>
           )}
         </Field>
         <Field style={{ flex: 1 }}>
@@ -106,33 +119,54 @@ function ActiveItemPanel({
           <Input
             id="worst"
             type="number"
+            min={0}
             value={worst}
             onChange={(e) => setWorst(e.target.value)}
           />
           {worstPrecision?.fired && (
-            <CardMeta>Consider rounding to a meaningful value.</CardMeta>
+            <GuardNote>Consider rounding to a meaningful value.</GuardNote>
           )}
         </Field>
       </div>
 
-      <CardMeta>Would you stake your job this won&apos;t be exceeded?</CardMeta>
+      {allFilled && !Number.isNaN(bestNum + likelyNum + worstNum) && (
+        <RangeBar
+          min={bestNum}
+          max={worstNum}
+          expected={likelyNum}
+          ci90={computeCI90(likelyNum, bestNum, worstNum)}
+          unitSuffix={UNIT_SUFFIX[unit]}
+        />
+      )}
+
       {symmetricGuard?.fired && (
-        <CardMeta>
+        <GuardNote>
           Your range looks symmetric — worst case in software usually has more room than
           best case. Double check.
-        </CardMeta>
+        </GuardNote>
       )}
-      {error && <CardMeta>{error}</CardMeta>}
+      {validationError && <GuardNote>{validationError}</GuardNote>}
 
-      <Button variant="primary" disabled={!allFilled} onClick={handleFinalize}>
-        Finalize item
+      <Button variant="primary" disabled={!validation?.ok} onClick={handleFinalize}>
+        {isEdit ? 'Update estimate' : 'Finalize item'}
       </Button>
+
+      <Field>
+        <FieldLabel htmlFor="notes">
+          Notes (captured during discussion, Markdown supported)
+        </FieldLabel>
+        <Textarea
+          id="notes"
+          rows={5}
+          value={item.notes}
+          onChange={(e) => onNotesChange(item.id, e.target.value)}
+        />
+      </Field>
     </Card>
   )
 }
 
 export function SessionView() {
-  const sessionName = useSessionStore((s) => s.sessionName)
   const unit = useSessionStore((s) => s.unit)
   const items = useSessionStore((s) => s.items)
   const activeItemId = useSessionStore((s) => s.activeItemId)
@@ -150,7 +184,7 @@ export function SessionView() {
       style={{ display: 'flex', gap: 16, maxWidth: 960, margin: '0 auto', padding: 24 }}
     >
       <div style={{ width: 220, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <CardKicker>{sessionName || 'Session View — Manual Entry'}</CardKicker>
+        <h2 className="sidebar-heading">Items</h2>
         {items.map((item) => (
           <Card
             key={item.id}

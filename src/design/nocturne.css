@@ -15,6 +15,9 @@
   --color-accent-2: #a7a1db; /* the machine-derived stand-in follows: same
      hue, same L 0.734, chroma at the same 2:3 proportion it held */
   --color-divider: color-mix(in srgb, #e9e9ed 16%, transparent);
+  --color-warning: #e0ac67; /* new: guardrail notes — warm amber, distinct from the
+     accent's blurple family so a "double check this" reads as its own signal rather
+     than another accent-colored UI element. */
 
   /* Tonal ramps — generated in OKLCH on one shared lightness scale, so the
      same step of any role matches the others in visual value. */
@@ -452,6 +455,67 @@ textarea.input {
 .nav a:hover,
 .nav a[aria-current='page'] {
   color: var(--color-accent);
+}
+
+/* — app header — persistent brand chrome, present on every screen — */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  background: color-mix(in srgb, var(--color-bg) 90%, transparent);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--color-divider);
+}
+.app-header-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 20px;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+.app-header-session {
+  font-size: 13px;
+  color: color-mix(in srgb, var(--color-text) 60%, transparent);
+}
+
+/* — sidebar heading — a section label for a nav-like list, quieter than a page h1
+   but with more presence than a card-kicker eyebrow. */
+.sidebar-heading {
+  margin: 0 0 4px;
+  font-size: 15px;
+  color: var(--color-text);
+}
+
+/* — estimate prompt — the one line of copy the whole screen exists to answer;
+   set apart from ordinary body text so it reads as a question, not a caption. */
+.estimate-prompt {
+  margin: 0;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--color-accent-300);
+}
+
+/* — guard note — a guardrail's flagged observation. Warm, not alarming: these are
+   "double-check this," not errors. */
+.guard-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--color-warning);
+}
+.guard-note svg {
+  flex: none;
+  margin-top: 2px;
 }
 
 /* — tables — */

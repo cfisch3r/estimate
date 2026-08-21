@@ -29,6 +29,11 @@ export function createEstimate(input: RawEstimateInput): Result<Estimate> {
   if (!Number.isFinite(best) || !Number.isFinite(likely) || !Number.isFinite(worst)) {
     return { ok: false, error: 'best, likely, and worst must all be finite numbers' }
   }
+  // best is the smallest of the three once the ordering check below passes, so checking
+  // it alone is enough to guarantee likely and worst are positive too.
+  if (best <= 0) {
+    return { ok: false, error: 'best, likely, and worst must all be greater than 0' }
+  }
   if (!(best <= likely && likely <= worst)) {
     return { ok: false, error: 'best must be ≤ likely, and likely must be ≤ worst' }
   }

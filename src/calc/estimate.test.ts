@@ -45,6 +45,19 @@ describe('createEstimate', () => {
     ).toBe(false)
   })
 
+  it('rejects a zero best case', () => {
+    const result = createEstimate({ participantId: 'a', best: 0, likely: 5, worst: 8 })
+    expect(result.ok).toBe(false)
+    if (!result.ok) {
+      expect(result.error).toMatch(/greater than 0/i)
+    }
+  })
+
+  it('rejects a negative best case (the ordering check alone lets -2 ≤ 0 ≤ 3 through)', () => {
+    const result = createEstimate({ participantId: 'a', best: -2, likely: 0, worst: 3 })
+    expect(result.ok).toBe(false)
+  })
+
   it('rejects an empty or whitespace-only participantId', () => {
     expect(createEstimate({ participantId: '', best: 2, likely: 5, worst: 8 }).ok).toBe(
       false,

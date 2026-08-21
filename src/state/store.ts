@@ -90,7 +90,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   createSession: () => {
     const { sessionName, items } = get()
-    if (sessionName.trim().length === 0) return
+    if (sessionName.trim().length === 0 || items.length === 0) return
     set({ currentScreen: 'session', activeItemId: firstPendingItemId(items) })
   },
 
@@ -113,10 +113,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     }
     const finalResult = aggregateEstimates([estimateResult.value])
     set((state) => {
+      const wasAlreadyFinalized =
+        state.items.find((item) => item.id === id)?.finalResult !== null
       const items = state.items.map((item) =>
         item.id === id ? { ...item, finalResult } : item,
       )
-      return { items, activeItemId: firstPendingItemId(items, id) }
+      const activeItemId = wasAlreadyFinalized ? id : firstPendingItemId(items, id)
+      return { items, activeItemId }
     })
     return { ok: true }
   },

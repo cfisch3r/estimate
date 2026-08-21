@@ -56,6 +56,12 @@ describe('createSession', () => {
     expect(useSessionStore.getState().currentScreen).toBe('create')
   })
 
+  it('refuses to advance the screen when there are no items, even with a name set', () => {
+    useSessionStore.getState().setSessionName('Sprint 14')
+    useSessionStore.getState().createSession()
+    expect(useSessionStore.getState().currentScreen).toBe('create')
+  })
+
   it('advances to the session screen and selects the first item once named', () => {
     const { setSessionName, addItem, createSession } = useSessionStore.getState()
     setSessionName('Sprint 14')

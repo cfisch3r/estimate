@@ -1,52 +1,8 @@
-import { Button, Card, CardTitle, CardBody, CardMeta } from '../components'
+import { Button, Card, CardTitle, CardBody, RangeBar } from '../components'
 import { useSessionStore } from '../state/store'
+import { UNIT_SUFFIX } from '../calc'
 import type { AggregateResult } from '../calc'
 import type { Item } from '../state/types'
-
-interface RangeBarProps {
-  min: number
-  max: number
-  expected: number
-  ci90: number
-}
-
-function RangeBar({ min, max, expected, ci90 }: RangeBarProps) {
-  const span = max - min
-  const pct = (value: number) =>
-    span <= 0 ? 50 : Math.min(100, Math.max(0, ((value - min) / span) * 100))
-
-  return (
-    <div
-      style={{
-        position: 'relative',
-        height: 6,
-        background: 'var(--color-accent-800)',
-        borderRadius: 'var(--radius-sm)',
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          left: `${pct(expected)}%`,
-          top: -2,
-          bottom: -2,
-          width: 2,
-          background: 'var(--color-accent)',
-        }}
-      />
-      <div
-        style={{
-          position: 'absolute',
-          left: `${pct(ci90)}%`,
-          top: -2,
-          bottom: -2,
-          width: 2,
-          background: 'var(--color-text)',
-        }}
-      />
-    </div>
-  )
-}
 
 function isFinalized(item: Item): item is Item & { finalResult: AggregateResult } {
   return item.finalResult !== null
@@ -57,17 +13,39 @@ export function SessionSummary() {
   const unit = useSessionStore((s) => s.unit)
   const items = useSessionStore((s) => s.items)
   const goToScreen = useSessionStore((s) => s.goToScreen)
+  const selectItem = useSessionStore((s) => s.selectItem)
 
   const finalizedItems = items.filter(isFinalized)
+
+  function editItem(id: string) {
+    selectItem(id)
+    goToScreen('session')
+  }
 
   return (
     <div
       style={{ maxWidth: 760, margin: '0 auto', padding: 24, display: 'grid', gap: 16 }}
     >
       <div
-        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+        }}
       >
-        <h1>{sessionName}</h1>
+        <div>
+          <h1>{sessionName}</h1>
+          {finalizedItems.length > 0 && (
+            <div className="range-bar-legend">
+              <span>
+                <i className="range-bar-legend-dot" /> Expected
+              </span>
+              <span>
+                <i className="range-bar-legend-dash" /> 90% confidence
+              </span>
+            </div>
+          )}
+        </div>
         <Button variant="secondary" onClick={() => goToScreen('history')}>
           View session history
         </Button>
@@ -80,16 +58,26 @@ export function SessionSummary() {
       ) : (
         finalizedItems.map((item) => (
           <Card key={item.id} elevation="sm">
-            <CardTitle>{item.title}</CardTitle>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: 8,
+              }}
+            >
+              <CardTitle>{item.title}</CardTitle>
+              <Button variant="ghost" onClick={() => editItem(item.id)}>
+                Edit
+              </Button>
+            </div>
             <RangeBar
               min={item.finalResult.min}
               max={item.finalResult.max}
               expected={item.finalResult.expected}
               ci90={item.finalResult.ci90}
+              unitSuffix={UNIT_SUFFIX[unit]}
             />
-            <CardMeta>
-              {`${item.finalResult.min}–${item.finalResult.max} ${unit} · expected ${item.finalResult.expected} · CI90 ${item.finalResult.ci90.toFixed(1)}`}
-            </CardMeta>
           </Card>
         ))
       )}

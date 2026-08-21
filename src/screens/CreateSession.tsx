@@ -28,6 +28,13 @@ export function CreateSession() {
     <div
       style={{ maxWidth: 640, margin: '0 auto', padding: 24, display: 'grid', gap: 16 }}
     >
+      <div>
+        <h1>New session</h1>
+        <p className="text-muted">
+          Name what you&apos;re estimating, list the items, and choose a unit.
+        </p>
+      </div>
+
       <Card elevation="sm">
         <CardKicker>Session</CardKicker>
         <Field>
@@ -83,7 +90,7 @@ export function CreateSession() {
       <Button
         variant="primary"
         block
-        disabled={sessionName.trim().length === 0}
+        disabled={sessionName.trim().length === 0 || items.length === 0}
         onClick={createSession}
       >
         Create session
