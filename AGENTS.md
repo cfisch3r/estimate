@@ -8,6 +8,7 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 
 - `PRD-estimation-app.md` — product requirements
 - `ADR-001-live-collaboration-architecture.md` — accepted decision on the peer-to-peer live-collaboration architecture
+- `ADR-002-testing-strategy.md` — accepted decision on the layered test strategy (unit/component now; Playwright deferred until `/network` or `/persistence` get real implementations — see that ADR before adding e2e tests or building those modules)
 - `ARCHITECTURE-estimation-app.md` — the technical architecture (stack, module structure, `/calc` design) and decisions made building it
 - `design_handoff_estimate_app/` — the design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
 

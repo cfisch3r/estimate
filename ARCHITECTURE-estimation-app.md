@@ -57,6 +57,8 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 
 The `/calc` layer's isolation as pure, framework-free functions is the single most load-bearing structural decision — PRD §4.2 and ADR-001 both require identical calculation/bias-guard behavior across both modes, and this makes it trivially unit-testable against the PRD §5–6 formulas independent of UI or networking.
 
+**Testing note (ADR-002):** implementing `/network` or `/persistence` for real is the trigger to add Playwright — that's when browser-specific behavior (real reload/persistence, real P2P connection handling) first exists to justify an e2e layer. Scope it to a handful of golden-path smoke tests; keep edge cases in `/calc`/`/state`/component tests.
+
 ## `/calc` module — detailed design
 
 **One aggregation function serves both modes.** `aggregateEstimates()` takes an array of `{best, likely, worst}` estimates and a strategy, and returns the group range. Fed a Live session's N participant submissions or a Manual Entry session's single facilitator-entered set, it's the same call — a single-element array degenerates correctly (min/median/max of one value = that value), so Mode B isn't a special case, it's a consequence of the design (satisfies PRD §4.2 / ADR-001's shared-engine requirement).
