@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { checkSymmetricRange, checkFalsePrecision, checkOutlier } from './guards'
+import {
+  checkSymmetricRange,
+  checkFalsePrecision,
+  checkOutlier,
+  checkAscendingOrder,
+} from './guards'
 import { UNIT_GRANULARITY } from './types'
 import { est } from './testHelpers'
 
@@ -96,5 +101,36 @@ describe('checkOutlier', () => {
     const all = [...tightGroup, borderline]
     expect(checkOutlier(borderline, all, 0.3).fired).toBe(true)
     expect(checkOutlier(borderline, all, 0.4).fired).toBe(false)
+  })
+})
+
+describe('checkAscendingOrder', () => {
+  it('fires with only two values filled and out of order (best > worst)', () => {
+    expect(checkAscendingOrder(10, null, 5).fired).toBe(true)
+  })
+
+  it('fires with only two values filled and out of order (best > likely)', () => {
+    expect(checkAscendingOrder(10, 5, null).fired).toBe(true)
+  })
+
+  it('fires with only two values filled and out of order (likely > worst)', () => {
+    expect(checkAscendingOrder(null, 10, 5).fired).toBe(true)
+  })
+
+  it('does not fire with only two values filled and in order', () => {
+    expect(checkAscendingOrder(2, null, 8).fired).toBe(false)
+  })
+
+  it('does not fire when fewer than two values are filled', () => {
+    expect(checkAscendingOrder(5, null, null).fired).toBe(false)
+    expect(checkAscendingOrder(null, null, null).fired).toBe(false)
+  })
+
+  it('fires for a fully out-of-order triple', () => {
+    expect(checkAscendingOrder(8, 5, 2).fired).toBe(true)
+  })
+
+  it('does not fire for a fully ascending triple', () => {
+    expect(checkAscendingOrder(2, 5, 8).fired).toBe(false)
   })
 })
