@@ -39,3 +39,13 @@ Run `pnpm build`, `pnpm lint`, `pnpm format:check`, and `pnpm test` before consi
 
 - Do not add a `Co-Authored-By: Claude` (or similar AI co-author) trailer to commit messages in this repo.
 - Prefer new commits over amending; one milestone/logical change per commit.
+
+## Collaboration workflow (GitHub)
+
+Repo is solo-maintained (Christian + Claude Code, no other human collaborators). As of 2026-08-22:
+
+- **Trivial changes** (typo, doc tweak): direct push to `main`, no branch/PR needed.
+- **Issue-sized work**: one branch per issue (`issue-<n>-<slug>`), PR opened with `Closes #n` in the description, squash-merge into `main`.
+- **Review**: after opening the PR, run the `code-review` skill as an independent pass over the diff (medium effort by default, higher for anything touching `/network` or `/persistence`). Apply confirmed fixes as follow-up commits on the same branch.
+- **Merge gate**: always ask the user whether they want to personally review the PR before merging — even after the automated review comes back clean. Never auto-merge without asking.
+- **Tracking**: GitHub Milestones (M0–M3 closed for history, MVP work + PRD §12 phases open) and a GitHub Project board (`EstiMate Roadmap`, https://github.com/users/cfisch3r/projects/1) with Backlog → In Progress → In Review → Done columns.
