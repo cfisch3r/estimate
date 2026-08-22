@@ -35,6 +35,7 @@ interface ActiveItemPanelProps {
     worst: number,
   ) => { ok: true } | { ok: false; error: string }
   onNotesChange: (id: string, notes: string) => void
+  onDescriptionChange: (id: string, description: string) => void
 }
 
 function ActiveItemPanel({
@@ -42,6 +43,7 @@ function ActiveItemPanel({
   unit,
   onFinalize,
   onNotesChange,
+  onDescriptionChange,
 }: ActiveItemPanelProps) {
   const isEdit = item.finalResult !== null
   const [best, setBest] = useState(item.finalResult ? String(item.finalResult.min) : '')
@@ -81,13 +83,21 @@ function ActiveItemPanel({
   return (
     <Card elevation="sm" style={{ flex: 1 }}>
       <CardTitle>{item.title}</CardTitle>
-      {item.description && <CardBody>{item.description}</CardBody>}
+      <Field>
+        <FieldLabel htmlFor="description">Description (Markdown supported)</FieldLabel>
+        <Textarea
+          id="description"
+          rows={3}
+          value={item.description}
+          onChange={(e) => onDescriptionChange(item.id, e.target.value)}
+        />
+      </Field>
 
       <p className="estimate-prompt">
         Would you stake your job this won&apos;t be exceeded?
       </p>
 
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
         <Field style={{ flex: 1 }}>
           <FieldLabel htmlFor="best">{`Best case (${unit})`}</FieldLabel>
           <Input
@@ -96,6 +106,12 @@ function ActiveItemPanel({
             min={0}
             value={best}
             onChange={(e) => setBest(e.target.value)}
+            style={{
+              height: 48,
+              fontSize: '1.1rem',
+              textAlign: 'center',
+              borderRadius: 'var(--radius-lg)',
+            }}
           />
           {bestPrecision?.fired && (
             <GuardNote>Consider rounding to a meaningful value.</GuardNote>
@@ -109,6 +125,12 @@ function ActiveItemPanel({
             min={0}
             value={likely}
             onChange={(e) => setLikely(e.target.value)}
+            style={{
+              height: 48,
+              fontSize: '1.1rem',
+              textAlign: 'center',
+              borderRadius: 'var(--radius-lg)',
+            }}
           />
           {likelyPrecision?.fired && (
             <GuardNote>Consider rounding to a meaningful value.</GuardNote>
@@ -122,6 +144,12 @@ function ActiveItemPanel({
             min={0}
             value={worst}
             onChange={(e) => setWorst(e.target.value)}
+            style={{
+              height: 48,
+              fontSize: '1.1rem',
+              textAlign: 'center',
+              borderRadius: 'var(--radius-lg)',
+            }}
           />
           {worstPrecision?.fired && (
             <GuardNote>Consider rounding to a meaningful value.</GuardNote>
@@ -151,15 +179,16 @@ function ActiveItemPanel({
         {isEdit ? 'Update estimate' : 'Finalize item'}
       </Button>
 
-      <Field>
+      <Field style={{ flex: 1 }}>
         <FieldLabel htmlFor="notes">
           Notes (captured during discussion, Markdown supported)
         </FieldLabel>
         <Textarea
           id="notes"
-          rows={5}
+          rows={8}
           value={item.notes}
           onChange={(e) => onNotesChange(item.id, e.target.value)}
+          style={{ height: '100%', resize: 'vertical' }}
         />
       </Field>
     </Card>
@@ -172,6 +201,7 @@ export function SessionView() {
   const activeItemId = useSessionStore((s) => s.activeItemId)
   const selectItem = useSessionStore((s) => s.selectItem)
   const setItemNotes = useSessionStore((s) => s.setItemNotes)
+  const setItemDescription = useSessionStore((s) => s.setItemDescription)
   const finalizeItem = useSessionStore((s) => s.finalizeItem)
   const goToScreen = useSessionStore((s) => s.goToScreen)
 
@@ -181,7 +211,7 @@ export function SessionView() {
 
   return (
     <div
-      style={{ display: 'flex', gap: 16, maxWidth: 960, margin: '0 auto', padding: 24 }}
+      style={{ display: 'flex', gap: 16, maxWidth: 1200, margin: '0 auto', padding: 24 }}
     >
       <div style={{ width: 220, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <h2 className="sidebar-heading">Items</h2>
@@ -215,6 +245,7 @@ export function SessionView() {
           unit={unit}
           onFinalize={finalizeItem}
           onNotesChange={setItemNotes}
+          onDescriptionChange={setItemDescription}
         />
       ) : (
         <Card elevation="sm" style={{ flex: 1 }}>

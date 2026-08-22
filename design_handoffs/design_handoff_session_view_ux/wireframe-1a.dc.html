@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics="">
+<meta name="design_doc_mode" content="canvas">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Patrick+Hand&amp;display=swap">
+<style>
+body{margin:0;background:#f0eee9;font-family:'Patrick Hand',cursive}
+.dv-turn{padding:40px 44px 32px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 11px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:20px 'Patrick Hand',cursive;color:#1a1a1a}
+.dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:9px;scroll-margin-top:16px}
+.dv-oid{font:600 11px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:18px 'Patrick Hand',cursive;color:rgba(0,0,0,.65)}
+.dv-card{max-width:100%;background:#fff;border:2px solid #1a1a1a;border-radius:6px;box-shadow:3px 3px 0 rgba(0,0,0,.12);overflow:hidden}
+.dv-opt:target .dv-oid{background:#7b6fc4;color:#fff}
+.dv-next{margin:22px 0 0;font:16px 'Patrick Hand',cursive;color:rgba(0,0,0,.6)}
+.wf-box{border:2px dashed #333}
+.wf-solid{border:2px solid #1a1a1a}
+.wf-label{font:15px 'Patrick Hand',cursive;color:#333}
+.wf-small{font:12px 'Patrick Hand',cursive;color:#777}
+.wf-accent{color:#7b6fc4}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Session view — 4 layout directions (solo flow, editable description)</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1a">
+<div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Bigger cards, inline-edit description</div>
+<div class="dv-card" style="width:640px;padding:20px;display:flex;gap:16px;box-sizing:border-box">
+  <div style="width:200px;display:flex;flex-direction:column;gap:8px;flex:none">
+    <div class="wf-label">Items</div>
+    <div class="wf-box" style="padding:10px;border-color:#7b6fc4">
+      <div class="wf-label">▶ Set up CI pipeline</div>
+    </div>
+    <div class="wf-box" style="padding:10px"><div class="wf-label">Migrate DB schema</div></div>
+    <div class="wf-box" style="padding:10px"><div class="wf-label">Write API docs</div><div class="wf-small">✓ finalized</div></div>
+    <div class="wf-box" style="padding:10px"><div class="wf-label">Add auth flow</div></div>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;gap:12px;min-width:0">
+    <div class="wf-label" style="font-size:20px">Set up CI pipeline</div>
+    <div class="wf-box" style="padding:10px 12px">
+      <div class="wf-small" style="margin-bottom:4px">description [tap to edit]</div>
+      <div class="wf-label">Runs lint + tests on every PR, blocks merge on failure...</div>
+    </div>
+    <div class="wf-label wf-accent" style="font-style:italic">Would you stake your job this won't be exceeded?</div>
+    <div style="display:flex;gap:10px">
+      <div class="wf-box" style="flex:1;padding:14px 8px;text-align:center"><div class="wf-small">Best</div><div class="wf-label" style="font-size:18px">2</div></div>
+      <div class="wf-box" style="flex:1;padding:14px 8px;text-align:center"><div class="wf-small">Likely</div><div class="wf-label" style="font-size:18px">4</div></div>
+      <div class="wf-box" style="flex:1;padding:14px 8px;text-align:center"><div class="wf-small">Worst</div><div class="wf-label" style="font-size:18px">9</div></div>
+    </div>
+    <div class="wf-box" style="padding:10px;height:26px;display:flex;align-items:center"><div class="wf-small">— range bar —</div></div>
+    
+    <div class="wf-box" style="padding:10px;flex:1;min-height:80px"><div class="wf-small">Notes (during discussion)</div></div><div class="wf-solid" style="padding:8px 16px;text-align:center;border-radius:6px;color:#7b6fc4;align-self:flex-start">Finalize item</div>
+  </div>
+</div>
+</div>
+
+<div class="dv-opt" id="1b">
+<div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Description / Notes as tabs</div>
+<div class="dv-card" style="width:620px;padding:20px;display:flex;gap:16px;box-sizing:border-box">
+  <div style="width:190px;display:flex;flex-direction:column;gap:8px;flex:none">
+    <div class="wf-label">Items</div>
+    <div class="wf-box" style="padding:8px;border-color:#7b6fc4"><div class="wf-label">▶ Set up CI pipeline</div></div>
+    <div class="wf-box" style="padding:8px"><div class="wf-label">Migrate DB schema</div></div>
+    <div class="wf-box" style="padding:8px"><div class="wf-label">Write API docs</div></div>
+  </div>
+  <div style="flex:1;display:flex;flex-direction:column;gap:10px;min-width:0">
+    <div class="wf-label" style="font-size:19px">Set up CI pipeline</div>
+    <div style="display:flex;gap:6px">
+      <div class="wf-solid" style="padding:5px 14px;border-radius:5px 5px 0 0;color:#7b6fc4">Description [edit]</div>
+      <div class="wf-box" style="padding:5px 14px;border-radius:5px 5px 0 0;border-bottom:none"><div class="wf-small">Notes</div></div>
+    </div>
+    <div class="wf-box" style="padding:12px;min-height:110px;margin-top:-10px"><div class="wf-label">Runs lint + tests on every PR...</div></div>
+    <div class="wf-label wf-accent" style="font-style:italic;font-size:14px">Stake-your-job check ↓</div>
+    <div style="display:flex;gap:8px">
+      <div class="wf-box" style="flex:1;padding:10px 6px;text-align:center"><div class="wf-small">Best</div></div>
+      <div class="wf-box" style="flex:1;padding:10px 6px;text-align:center"><div class="wf-small">Likely</div></div>
+      <div class="wf-box" style="flex:1;padding:10px 6px;text-align:center"><div class="wf-small">Worst</div></div>
+    </div>
+    <div class="wf-box" style="padding:8px;height:20px"></div>
+    <div class="wf-solid" style="padding:7px 16px;text-align:center;border-radius:6px;color:#7b6fc4;align-self:flex-start">Finalize item</div>
+  </div>
+</div>
+<div class="dv-small wf-small" style="max-width:620px">Notes tab swaps into the same box description sits in — one box instead of two, less vertical scroll.</div>
+</div>
+
+<div class="dv-opt" id="1c">
+<div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Side-by-side: content vs. numbers</div>
+<div class="dv-card" style="width:700px;padding:20px;box-sizing:border-box">
+  <div style="display:flex;gap:16px">
+    <div style="width:170px;display:flex;flex-direction:column;gap:8px;flex:none">
+      <div class="wf-label">Items</div>
+      <div class="wf-box" style="padding:8px;border-color:#7b6fc4"><div class="wf-label">▶ Set up CI</div></div>
+      <div class="wf-box" style="padding:8px"><div class="wf-label">Migrate DB</div></div>
+      <div class="wf-box" style="padding:8px"><div class="wf-label">API docs</div></div>
+    </div>
+    <div style="flex:1.1;display:flex;flex-direction:column;gap:10px;min-width:0">
+      <div class="wf-label" style="font-size:19px">Set up CI pipeline</div>
+      <div class="wf-box" style="padding:10px;flex:1;min-height:100px"><div class="wf-small">description [editable]</div><div class="wf-label">Runs lint + tests...</div></div>
+      <div class="wf-box" style="padding:10px;min-height:90px"><div class="wf-small">Notes</div></div>
+    </div>
+    <div style="flex:1;display:flex;flex-direction:column;gap:10px;min-width:0">
+      <div class="wf-label wf-accent" style="font-style:italic;font-size:14px">Stake your job on it?</div>
+      <div class="wf-box" style="padding:12px 8px;text-align:center"><div class="wf-small">Best</div></div>
+      <div class="wf-box" style="padding:12px 8px;text-align:center"><div class="wf-small">Likely</div></div>
+      <div class="wf-box" style="padding:12px 8px;text-align:center"><div class="wf-small">Worst</div></div>
+      <div class="wf-box" style="padding:8px;height:24px"><div class="wf-small">range bar</div></div>
+      <div class="wf-solid" style="padding:8px 16px;text-align:center;border-radius:6px;color:#7b6fc4">Finalize item</div>
+    </div>
+  </div>
+</div>
+<div class="wf-small" style="max-width:700px;margin-top:6px">Splits by kind of content: writing (desc/notes) on the left, numbers/decision on the right — instead of one long stack.</div>
+</div>
+
+<div class="dv-opt" id="1d">
+<div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Item strip on top, full-width panel</div>
+<div class="dv-card" style="width:700px;padding:20px;box-sizing:border-box;display:flex;flex-direction:column;gap:14px">
+  <div style="display:flex;gap:8px;overflow-x:auto">
+    <div class="wf-solid" style="padding:8px 14px;border-radius:16px;color:#7b6fc4;flex:none">Set up CI pipeline</div>
+    <div class="wf-box" style="padding:8px 14px;border-radius:16px;flex:none"><div class="wf-label">Migrate DB schema</div></div>
+    <div class="wf-box" style="padding:8px 14px;border-radius:16px;flex:none"><div class="wf-label">Write API docs</div></div>
+    <div class="wf-box" style="padding:8px 14px;border-radius:16px;flex:none"><div class="wf-label">Add auth flow</div></div>
+  </div>
+  <div class="wf-label" style="font-size:20px">Set up CI pipeline</div>
+  <div class="wf-box" style="padding:12px"><div class="wf-small">description [tap to edit]</div><div class="wf-label">Runs lint + tests on every PR, blocks merge on failure...</div></div>
+  <div class="wf-label wf-accent" style="font-style:italic">Would you stake your job this won't be exceeded?</div>
+  <div style="display:flex;gap:12px">
+    <div class="wf-box" style="flex:1;padding:16px;text-align:center"><div class="wf-small">Best case</div></div>
+    <div class="wf-box" style="flex:1;padding:16px;text-align:center"><div class="wf-small">Most likely</div></div>
+    <div class="wf-box" style="flex:1;padding:16px;text-align:center"><div class="wf-small">Worst case</div></div>
+  </div>
+  <div class="wf-box" style="padding:10px;height:28px"><div class="wf-small">— range bar —</div></div>
+  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px">
+    <div class="wf-solid" style="padding:8px 18px;text-align:center;border-radius:6px;color:#7b6fc4">Finalize item</div>
+    <div class="wf-box" style="flex:1;padding:10px;min-height:60px"><div class="wf-small">Notes</div></div>
+  </div>
+</div>
+<div class="wf-small" style="max-width:700px;margin-top:6px">Trades the fixed left sidebar for a scrollable top strip — frees full width for the item, biggest change to overall proportions.</div>
+</div>
+
+</div>
+<p class="dv-next">Try next: "make <a class="dv-oid" href="#1c">1c</a>'s columns even" · "combine <a class="dv-oid" href="#1a">1a</a>'s sizing with <a class="dv-oid" href="#1d">1d</a>'s top strip" · "show what finalized/read-only looks like"</p>
+</section>
+
+</x-dc>
+</body>
+</html>

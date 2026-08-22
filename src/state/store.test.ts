@@ -118,6 +118,21 @@ describe('finalizeItem', () => {
   })
 })
 
+describe('setItemDescription', () => {
+  it('updates only the targeted item description', () => {
+    const { addItem, setItemDescription } = useSessionStore.getState()
+    addItem('A')
+    addItem('B')
+    const [first, second] = useSessionStore.getState().items
+
+    setItemDescription(first!.id, 'Runs lint + tests on every PR')
+
+    const state = useSessionStore.getState()
+    expect(state.items[0]).toMatchObject({ description: 'Runs lint + tests on every PR' })
+    expect(state.items[1]).toMatchObject({ description: second!.description })
+  })
+})
+
 describe('removeItem', () => {
   it('clears activeItemId if the removed item was active', () => {
     const { addItem, selectItem, removeItem } = useSessionStore.getState()

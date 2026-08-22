@@ -21,6 +21,7 @@ interface SessionStore {
   createSession: () => void
   selectItem: (id: string) => void
   setItemNotes: (id: string, notes: string) => void
+  setItemDescription: (id: string, description: string) => void
   finalizeItem: (
     id: string,
     best: number,
@@ -99,6 +100,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   setItemNotes: (id, notes) =>
     set((state) => ({
       items: state.items.map((item) => (item.id === id ? { ...item, notes } : item)),
+    })),
+
+  setItemDescription: (id, description) =>
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === id ? { ...item, description } : item,
+      ),
     })),
 
   finalizeItem: (id, best, likely, worst) => {
