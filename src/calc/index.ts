@@ -9,4 +9,9 @@ export type { Estimate, RawEstimateInput, Result } from './estimate'
 export { createEstimate } from './estimate'
 export { aggregateEstimates } from './aggregate'
 export { computeCI90 } from './ci90'
-export { checkSymmetricRange, checkFalsePrecision, checkOutlier } from './guards'
+export {
+  checkSymmetricRange,
+  checkFalsePrecision,
+  checkOutlier,
+  checkAscendingOrder,
+} from './guards'

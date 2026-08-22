@@ -14,6 +14,7 @@ import {
 import { SessionSidebar } from './SessionSidebar'
 import { useSessionStore } from '../state/store'
 import {
+  checkAscendingOrder,
   checkSymmetricRange,
   checkFalsePrecision,
   computeCI90,
@@ -55,6 +56,9 @@ function ActiveItemPanel({
   const bestNum = Number(best)
   const likelyNum = Number(likely)
   const worstNum = Number(worst)
+  const bestOrNull = best === '' ? null : bestNum
+  const likelyOrNull = likely === '' ? null : likelyNum
+  const worstOrNull = worst === '' ? null : worstNum
   const granularity = UNIT_GRANULARITY[unit]
 
   const validation = allFilled
@@ -66,6 +70,10 @@ function ActiveItemPanel({
       })
     : null
   const validationError = validation && !validation.ok ? validation.error : null
+  const ascendingGuard = checkAscendingOrder(bestOrNull, likelyOrNull, worstOrNull)
+  const orderingWarning = !validationError && ascendingGuard.fired
+    ? 'Values should ascend: best ≤ likely ≤ worst.'
+    : null
 
   const symmetricGuard = allFilled
     ? checkSymmetricRange(bestNum, likelyNum, worstNum)
@@ -175,6 +183,7 @@ function ActiveItemPanel({
         </GuardNote>
       )}
       {validationError && <GuardNote>{validationError}</GuardNote>}
+      {orderingWarning && <GuardNote>{orderingWarning}</GuardNote>}
 
       <Button variant="primary" disabled={!validation?.ok} onClick={handleFinalize}>
         {isEdit ? 'Update estimate' : 'Finalize item'}
