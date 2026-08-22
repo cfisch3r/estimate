@@ -13,6 +13,10 @@ dist-ssr
 coverage
 *.local
 
+# Locally-installed Claude Code skills (reproducible from skills-lock.json)
+.agents/
+.claude/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
