@@ -481,6 +481,22 @@ textarea.input {
   letter-spacing: -0.01em;
   color: var(--color-text);
 }
+.app-header-session-block {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.app-header-session-caption {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-neutral-400);
+}
 .app-header-session {
   font-size: 13px;
   color: color-mix(in srgb, var(--color-text) 60%, transparent);

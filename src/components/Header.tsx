@@ -55,7 +55,12 @@ export function Header() {
         <BrandMark />
         EstiMate
       </span>
-      {showSessionContext && <span className="app-header-session">{sessionName}</span>}
+      {showSessionContext && (
+        <span className="app-header-session-block">
+          <span className="app-header-session-caption">Session</span>
+          <span className="app-header-session">{sessionName}</span>
+        </span>
+      )}
     </header>
   )
 }

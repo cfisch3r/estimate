@@ -9,7 +9,7 @@ function item(id: string, title: string, finalResult: Item['finalResult'] = null
   return { id, title, description: '', notes: '', finalResult }
 }
 
-const finalized = { min: 1, expected: 2, max: 3 }
+const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
 
 function resetStore() {
   useSessionStore.setState({

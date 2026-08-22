@@ -42,15 +42,13 @@ describe('Mode B end-to-end flow', () => {
     // no active item remains, so the panel shows the all-finalized state
     expect(screen.getByText('All items finalized')).toBeInTheDocument()
 
-    await user.click(screen.getByRole('button', { name: 'View summary' }))
-    // (the sidebar's persistent link — the redundant one in the empty-state panel was removed)
+    await user.click(screen.getByText('Summary'))
 
-    const summaryCard = screen
-      .getByRole('heading', { name: 'Migrate auth service' })
-      .closest<HTMLElement>('.card')!
-    expect(within(summaryCard).getByText('2d best')).toBeInTheDocument()
-    expect(within(summaryCard).getByText('8d worst')).toBeInTheDocument()
-    expect(within(summaryCard).getByText('5d')).toBeInTheDocument()
+    const table = screen.getByRole('table')
+    const row = within(table).getByRole('row', { name: /Migrate auth service/ })
+    expect(within(row).getByText('2')).toBeInTheDocument()
+    expect(within(row).getByText('5')).toBeInTheDocument()
+    expect(within(row).getByText('8')).toBeInTheDocument()
   })
 
   it('shows the ordering warning live while typing, before Finalize is clicked, and disables Finalize', async () => {

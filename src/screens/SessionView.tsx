@@ -1,11 +1,9 @@
 import { useState } from 'react'
-import { PlayIcon } from '@phosphor-icons/react/dist/csr/Play'
 import {
   Button,
   Card,
   CardTitle,
   CardBody,
-  CardMeta,
   Field,
   FieldLabel,
   Input,
@@ -13,6 +11,7 @@ import {
   GuardNote,
   RangeBar,
 } from '../components'
+import { SessionSidebar } from './SessionSidebar'
 import { useSessionStore } from '../state/store'
 import {
   checkSymmetricRange,
@@ -82,7 +81,9 @@ function ActiveItemPanel({
 
   return (
     <Card elevation="sm" style={{ flex: 1 }}>
-      <CardTitle>{item.title}</CardTitle>
+      <h1 style={{ margin: 0, fontWeight: 500, fontSize: 22, textAlign: 'center' }}>
+        {item.title}
+      </h1>
       <Field>
         <FieldLabel htmlFor="description">Description (Markdown supported)</FieldLabel>
         <Textarea
@@ -179,7 +180,7 @@ function ActiveItemPanel({
         {isEdit ? 'Update estimate' : 'Finalize item'}
       </Button>
 
-      <Field style={{ flex: 1 }}>
+      <Field style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
         <FieldLabel htmlFor="notes">
           Notes (captured during discussion, Markdown supported)
         </FieldLabel>
@@ -188,7 +189,7 @@ function ActiveItemPanel({
           rows={8}
           value={item.notes}
           onChange={(e) => onNotesChange(item.id, e.target.value)}
-          style={{ height: '100%', resize: 'vertical' }}
+          style={{ flex: 1, minHeight: 0, resize: 'vertical' }}
         />
       </Field>
     </Card>
@@ -199,7 +200,9 @@ export function SessionView() {
   const unit = useSessionStore((s) => s.unit)
   const items = useSessionStore((s) => s.items)
   const activeItemId = useSessionStore((s) => s.activeItemId)
+  const currentScreen = useSessionStore((s) => s.currentScreen)
   const selectItem = useSessionStore((s) => s.selectItem)
+  const reorderItems = useSessionStore((s) => s.reorderItems)
   const setItemNotes = useSessionStore((s) => s.setItemNotes)
   const setItemDescription = useSessionStore((s) => s.setItemDescription)
   const finalizeItem = useSessionStore((s) => s.finalizeItem)
@@ -211,32 +214,23 @@ export function SessionView() {
 
   return (
     <div
-      style={{ display: 'flex', gap: 16, maxWidth: 1200, margin: '0 auto', padding: 24 }}
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '260px 1fr',
+        gap: 'var(--space-6)',
+        maxWidth: 1280,
+        margin: '0 auto',
+        padding: 'var(--space-6) var(--space-4)',
+      }}
     >
-      <div style={{ width: 220, display: 'flex', flexDirection: 'column', gap: 4 }}>
-        <h2 className="sidebar-heading">Items</h2>
-        {items.map((item) => (
-          <Card
-            key={item.id}
-            elevation={item.id === activeItemId ? 'sm' : undefined}
-            style={{
-              cursor: 'pointer',
-              borderLeft:
-                item.id === activeItemId ? '2px solid var(--color-accent)' : undefined,
-            }}
-            onClick={() => selectItem(item.id)}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              {item.id === activeItemId && <PlayIcon size={12} />}
-              <span>{item.title}</span>
-            </div>
-            {item.finalResult && <CardMeta>Finalized</CardMeta>}
-          </Card>
-        ))}
-        <Button variant="ghost" onClick={() => goToScreen('summary')}>
-          View summary
-        </Button>
-      </div>
+      <SessionSidebar
+        items={items}
+        activeItemId={activeItemId}
+        currentScreen={currentScreen}
+        onSelect={selectItem}
+        onReorder={reorderItems}
+        onGoSummary={() => goToScreen('summary')}
+      />
 
       {activeItem ? (
         <ActiveItemPanel
