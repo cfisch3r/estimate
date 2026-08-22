@@ -24,6 +24,17 @@ describe('Input', () => {
     expect(input).toHaveValue(12.5)
   })
 
+  it('strips blocked characters pasted into a type="number" input', async () => {
+    const user = userEvent.setup()
+    render(<Input type="number" aria-label="value" />)
+
+    const input = screen.getByLabelText('value')
+    await user.click(input)
+    await user.paste('1e5')
+
+    expect(input).toHaveValue(15)
+  })
+
   it('does not block "e" on non-number inputs', async () => {
     const user = userEvent.setup()
     render(<Input type="text" aria-label="text-value" />)
