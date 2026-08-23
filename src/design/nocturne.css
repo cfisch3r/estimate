@@ -510,15 +510,6 @@ textarea.input {
   color: var(--color-text);
 }
 
-/* — estimate prompt — the one line of copy the whole screen exists to answer;
-   set apart from ordinary body text so it reads as a question, not a caption. */
-.estimate-prompt {
-  margin: 0;
-  font-size: 15px;
-  font-style: italic;
-  color: var(--color-accent-300);
-}
-
 /* — guard note — a guardrail's flagged observation. Warm, not alarming: these are
    "double-check this," not errors. */
 .guard-note {

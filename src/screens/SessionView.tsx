@@ -102,10 +102,6 @@ function ActiveItemPanel({
         />
       </Field>
 
-      <p className="estimate-prompt">
-        Would you stake your job this won&apos;t be exceeded?
-      </p>
-
       <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
         <Field style={{ flex: 1 }}>
           <FieldLabel htmlFor="best">{`Best case (${unit})`}</FieldLabel>
