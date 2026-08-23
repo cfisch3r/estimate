@@ -95,7 +95,7 @@ The brand is compile-time only — it adds no runtime property, so `Estimate` st
 
 **Why `AggregateStrategy` is a per-field interface, not a single toggle:** PRD §5 requires the aggregation logic itself to be configurable, but its philosophy is asymmetric on purpose — `min`/`max` for Best/Worst specifically to *preserve* outliers ("don't average away the outliers... worst case tends to get optimistically averaged down"), `median` for Likely as a robust center. A single `'min-max' | 'average'` switch couldn't express that; three independent knobs can. Currently this is only a code-level configurability point — the PRD data model has no field for *which* strategy a session uses, so it's an engineering default for now, not a facilitator-facing setting (flagged below).
 
-**Bias guards return structured signals, not copy.** Three of PRD §6's four guards are real `/calc` functions; the exact warning text belongs in the screens layer so product/design can iterate on wording without touching tested logic:
+**Bias guards return structured signals, not copy.** PRD §6's guards are real `/calc` functions; the exact warning text belongs in the screens layer so product/design can iterate on wording without touching tested logic:
 
 ```ts
 interface GuardResult { fired: boolean; deviationPct?: number }
@@ -104,7 +104,7 @@ function checkFalsePrecision(value: number, granularity: number): GuardResult
 function checkOutlier(estimate: Estimate, allEstimates: Estimate[], thresholdPct = 0.4): GuardResult
 ```
 
-The fourth guard, **"would you quit your job?"**, is not a computed guard at all — it's static helper text always shown next to the Worst Case field, lives in the screens layer, not `/calc`.
+A fourth guard, the PRD §6.1 uncertainty-range check, is planned (see Post-MVP Phase 5 milestone) but not yet implemented.
 
 **Tunable constants, not settled numbers:** the symmetric-range tolerance (proposed 15%) and outlier threshold (proposed: no range overlap, or `likely` deviates >40% of group spread) are UX-tuning parameters PRD leaves vague ("within a tolerance," "far from the group median") — ship as named constants, expect to retune after real sessions rather than treating these as final.
 
@@ -113,12 +113,11 @@ The fourth guard, **"would you quit your job?"**, is not a computed guard at all
 The clickable prototype predates the `/calc` module and unit decisions above, so it doesn't show where bias-guard output or unit selection actually render. Checked against Nocturne's stylesheet directly (`_ds/nocturne-.../styles.css`) rather than assumed:
 
 **Already covered by the prototype, no gap:**
-- "Would you quit your job?" — already marked up as `<div class="card-meta">` under the Worst Case field; static copy, no computation, nothing to add.
 - Outlier flag at Reveal — the warning icon on an outlier's row already exists in the design; it just needs to switch from hardcoded/simulated to driven by `checkOutlier()`'s real output.
 - Unit-aware labels (Participant Estimate View, Manual Entry fields, Reveal bars, Summary rows currently hardcode "weeks") — mechanical copy interpolation of `session.unit`, not a new visual pattern.
 
 **Genuine gaps, resolved for MVP:**
-- Symmetric-range and false-precision nudges have no distinct visual pattern in Nocturne (only plain `.card-meta` caption styling exists, same as the job-stakes hint). **Decision: ship with the plain caption treatment, log a fast-follow design task** for a more distinct "live nudge" treatment rather than blocking MVP on a design pass.
+- Symmetric-range and false-precision nudges have no distinct visual pattern in Nocturne (only plain `.card-meta` caption styling exists). **Decision: ship with the plain caption treatment, log a fast-follow design task** for a more distinct "live nudge" treatment rather than blocking MVP on a design pass.
 - The unit selector is a genuinely new form control (Create Session has none today). **Decision: native `<select class="input">`**, reusing Nocturne's generic input styling — no new component or design mock required.
 
 ## Open items still worth flagging (not blocking, but real)

@@ -51,7 +51,7 @@ The facilitator ran the estimation discussion elsewhere (in person, on a call, o
 
 1. **Create session** — facilitator names the session, adds items, picks "Manual Entry"
 2. **Enter values per item** — for each item, the facilitator types in the group's agreed Best Case / Most Likely / Worst Case directly (single set of values, no per-participant breakdown)
-3. **Bias guards still apply** — symmetric-range warning, "would you quit your job" prompt, false-precision guard all fire the same way as in live mode (§6)
+3. **Bias guards still apply** — symmetric-range warning, false-precision guard all fire the same way as in live mode (§6)
 4. **Finalize item** — same as Mode A, values are locked and the app calculates min/expected/CI90/max
 5. **Session summary** — same report format as Mode A, so history and exports are consistent regardless of mode used
 
@@ -83,11 +83,30 @@ These come directly from Tips #4–9 and are what make this more than a poker cl
 | Guard | Trigger | Behavior |
 |---|---|---|
 | **Symmetric range warning** | `(Likely − Best) ≈ (Worst − Likely)` within a tolerance | Gentle nudge: "Your range looks symmetric — worst case in software usually has more room than best case. Double check." |
-| **"Would you quit your job?" prompt** | Shown when a participant submits Worst Case | Inline helper text reminding them the worst case should be a value they'd stake their job on not being exceeded |
 | **False precision guard** | Non-round input in a context where rounding is expected (e.g., "3.7 days") | Soft suggestion to round to meaningful granularity |
 | **Outlier flag at reveal** | A participant's value is far from the group median | Highlight (not hide) the outlier to prompt discussion, not silently average it out |
+| **Uncertainty-range guard** | Facilitator has selected an uncertainty level for the item and entered best/worst | If the entered range is narrower than the guidance range for that level, nudge: "Your range looks narrow for [level] — teams at this stage typically see a wider spread. Double check." (see §6.1) |
 
 These are nudges, not hard blocks — never prevent submission.
+
+### 6.1 Cone-of-uncertainty guidance
+
+Per item, the facilitator optionally selects an **uncertainty level** from 5 phases (based on the classic Cone of Uncertainty), each with its Agile-equivalent subtext:
+
+| Level | Agile equivalent | Low mult. | High mult. | Range ratio |
+|---|---|---|---|---|
+| Initial Concept | Product Vision | 0.25x | 4x | 16x |
+| Approved Product Definition | Backlog w/ Epics | 0.5x | 2x | 4x |
+| Requirements Complete | Refined Stories | 0.67x | 1.5x | 2.25x |
+| UI Complete | Sprint Planning I | 0.8x | 1.25x | 1.6x |
+| Detailed Design Complete | Sprint Planning II | 0.9x | 1.10x | 1.2x |
+
+Each level's multipliers are relative to Most Likely (e.g., at "Initial Concept," Best Case is expected to land around 0.25× Most Likely and Worst Case around 4× Most Likely). The **Range ratio** column is shown for readability (rounded to the source article's published values) but is not itself a stored threshold — implementations must derive the guidance ratio as `High mult. / Low mult.` from the two multiplier columns, since rounding makes a couple of the displayed Range ratio values (e.g. UI Complete's 1.6x vs. the exact 1.25/0.8 = 1.5625x) diverge slightly from that division.
+
+When best/worst are both entered, compute the actual ratio = Worst / Best and compare it to the selected level's guidance ratio (`High mult. / Low mult.`, computed from the table above). If the actual ratio is smaller than the guidance ratio, the guard fires — the declared range is suspiciously narrow for how early/uncertain the item is.
+
+- Level is optional and set **per item**, not per session — a backlog mixes items of different maturity.
+- Soft nudge only — never blocks Finalize, consistent with every other §6 guard.
 
 ## 7. Screens (MVP)
 
@@ -135,7 +154,7 @@ These are nudges, not hard blocks — never prevent submission.
 - **Phase 2**: Story Point + velocity tracking (Method 1) — teams with stable history skip live three-point sessions and use velocity-derived ranges instead
 - **Phase 3**: T-shirt sizing for epics with bridge-to-three-point workflow (Method 3)
 - **Phase 4**: Backlog tool import (Jira, Linear, etc.)
-- **Phase 5**: Cone-of-uncertainty guidance — suggest expected range width based on declared project phase
+- **Phase 5**: Cone-of-uncertainty guidance — suggest expected range width based on declared project phase (see §6.1)
 
 ## 13. Related decisions
 
