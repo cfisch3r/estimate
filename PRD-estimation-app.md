@@ -101,9 +101,9 @@ Per item, the facilitator optionally selects an **uncertainty level** from 5 pha
 | UI Complete | Sprint Planning I | 0.8x | 1.25x | 1.6x |
 | Detailed Design Complete | Sprint Planning II | 0.9x | 1.10x | 1.2x |
 
-Each level's multipliers are relative to Most Likely (e.g., at "Initial Concept," Best Case is expected to land around 0.25× Most Likely and Worst Case around 4× Most Likely).
+Each level's multipliers are relative to Most Likely (e.g., at "Initial Concept," Best Case is expected to land around 0.25× Most Likely and Worst Case around 4× Most Likely). The **Range ratio** column is shown for readability (rounded to the source article's published values) but is not itself a stored threshold — implementations must derive the guidance ratio as `High mult. / Low mult.` from the two multiplier columns, since rounding makes a couple of the displayed Range ratio values (e.g. UI Complete's 1.6x vs. the exact 1.25/0.8 = 1.5625x) diverge slightly from that division.
 
-When best/worst are both entered, compute the actual ratio = Worst / Best and compare it to the selected level's range ratio. If the actual ratio is smaller than the guidance ratio, the guard fires — the declared range is suspiciously narrow for how early/uncertain the item is.
+When best/worst are both entered, compute the actual ratio = Worst / Best and compare it to the selected level's guidance ratio (`High mult. / Low mult.`, computed from the table above). If the actual ratio is smaller than the guidance ratio, the guard fires — the declared range is suspiciously narrow for how early/uncertain the item is.
 
 - Level is optional and set **per item**, not per session — a backlog mixes items of different maturity.
 - Soft nudge only — never blocks Finalize, consistent with every other §6 guard.
