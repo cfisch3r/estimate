@@ -64,6 +64,30 @@ describe('createTypedActions', () => {
     expect(cb).not.toHaveBeenCalled()
   })
 
+  it('drops a completely malformed incoming estimate (missing fields) without throwing', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onEstimate(cb)
+
+    expect(() => {
+      actionsByName.submitEstimate!.onMessage?.({}, { peerId: 'peer-1' })
+    }).not.toThrow()
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('drops a null incoming estimate without throwing', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onEstimate(cb)
+
+    expect(() => {
+      actionsByName.submitEstimate!.onMessage?.(null, { peerId: 'peer-1' })
+    }).not.toThrow()
+    expect(cb).not.toHaveBeenCalled()
+  })
+
   it('sends a snapshot through the syncState action', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
@@ -100,6 +124,57 @@ describe('createTypedActions', () => {
       },
       'peer-1',
     )
+  })
+
+  it('drops a completely malformed submission entry without losing the rest of the snapshot', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onSyncState(cb)
+
+    actionsByName.syncState!.onMessage?.(
+      {
+        currentItemId: 'item-1',
+        submissions: [null, { participantId: 'a', best: 1, likely: 2, worst: 3 }],
+        finalizedItemIds: ['item-0'],
+      },
+      { peerId: 'peer-1' },
+    )
+
+    expect(cb).toHaveBeenCalledWith(
+      {
+        currentItemId: 'item-1',
+        submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
+        finalizedItemIds: ['item-0'],
+      },
+      'peer-1',
+    )
+  })
+
+  it('drops a non-object incoming snapshot without throwing', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onSyncState(cb)
+
+    expect(() => {
+      actionsByName.syncState!.onMessage?.(null, { peerId: 'peer-1' })
+    }).not.toThrow()
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('drops an incoming snapshot with a malformed currentItemId/finalizedItemIds shape', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onSyncState(cb)
+
+    actionsByName.syncState!.onMessage?.(
+      { currentItemId: 42, submissions: [], finalizedItemIds: 'oops' },
+      { peerId: 'peer-1' },
+    )
+
+    expect(cb).not.toHaveBeenCalled()
   })
 
   it('sends an item id through the reveal action', () => {

@@ -41,6 +41,18 @@ function createSubscribable<T extends unknown[]>() {
   }
 }
 
+/** createEstimate() assumes a well-shaped RawEstimateInput (its existing callers all
+ *  build one from form fields) and throws on null/missing fields rather than
+ *  returning a Result. Peer messages are untrusted, so this boundary must not let
+ *  that throw escape — it's caught and treated the same as a validation failure. */
+function safeCreateEstimate(input: unknown): ReturnType<typeof createEstimate> {
+  try {
+    return createEstimate(input as RawEstimateInput)
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : String(error) }
+  }
+}
+
 /** Every submission is validated through createEstimate() before being kept —
  *  this is the "M5 must call createEstimate() on every incoming peer message"
  *  boundary check from the architecture doc, applied to snapshot payloads too. */
@@ -48,7 +60,7 @@ function sanitizeSubmissions(submissions: unknown): RawEstimateInput[] {
   if (!Array.isArray(submissions)) return []
   const sanitized: RawEstimateInput[] = []
   for (const submission of submissions) {
-    const result = createEstimate(submission as RawEstimateInput)
+    const result = safeCreateEstimate(submission)
     if (result.ok) {
       sanitized.push(result.value)
     } else {
@@ -56,6 +68,16 @@ function sanitizeSubmissions(submissions: unknown): RawEstimateInput[] {
     }
   }
   return sanitized
+}
+
+function isValidSnapshotShape(data: unknown): data is SessionSnapshot {
+  if (typeof data !== 'object' || data === null) return false
+  const snapshot = data as Record<string, unknown>
+  return (
+    (typeof snapshot.currentItemId === 'string' || snapshot.currentItemId === null) &&
+    Array.isArray(snapshot.finalizedItemIds) &&
+    snapshot.finalizedItemIds.every((id) => typeof id === 'string')
+  )
 }
 
 export function createTypedActions(room: ActionRoom): TypedActions {
@@ -68,7 +90,7 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   const revealSubscribable = createSubscribable<[string, string]>()
 
   submitEstimateAction.onMessage = (data, { peerId }) => {
-    const result = createEstimate(data as RawEstimateInput)
+    const result = safeCreateEstimate(data)
     if (result.ok) {
       estimateSubscribable.notify(result.value, peerId)
     } else {
@@ -77,12 +99,15 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   }
 
   syncStateAction.onMessage = (data, { peerId }) => {
-    const snapshot = data as SessionSnapshot
+    if (!isValidSnapshotShape(data)) {
+      console.warn('Dropping malformed incoming snapshot')
+      return
+    }
     syncStateSubscribable.notify(
       {
-        currentItemId: snapshot.currentItemId,
-        submissions: sanitizeSubmissions(snapshot.submissions),
-        finalizedItemIds: snapshot.finalizedItemIds,
+        currentItemId: data.currentItemId,
+        submissions: sanitizeSubmissions(data.submissions),
+        finalizedItemIds: data.finalizedItemIds,
       },
       peerId,
     )

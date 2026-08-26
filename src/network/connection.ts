@@ -36,6 +36,7 @@ export function createConnectionTracker(): ConnectionTracker {
     getState,
 
     handlePeerJoin(peerId) {
+      if (peerIds.includes(peerId)) return
       peerIds.push(peerId)
       status = 'connected'
       notifyStateChange()

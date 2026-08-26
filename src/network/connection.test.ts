@@ -38,6 +38,18 @@ describe('createConnectionTracker', () => {
     expect(tracker.getState()).toEqual({ status: 'connecting', peerIds: [] })
   })
 
+  it('does not duplicate a peer id on a repeated join event', () => {
+    const tracker = createConnectionTracker()
+    tracker.handlePeerJoin('peer-1')
+    tracker.handlePeerJoin('peer-1')
+
+    expect(tracker.getState()).toEqual({ status: 'connected', peerIds: ['peer-1'] })
+
+    tracker.handlePeerLeave('peer-1')
+
+    expect(tracker.getState()).toEqual({ status: 'connecting', peerIds: [] })
+  })
+
   it('sets status to disconnected on a join error', () => {
     const tracker = createConnectionTracker()
     tracker.handleJoinError()
