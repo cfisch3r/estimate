@@ -16,6 +16,13 @@ describe('RangeBar', () => {
     expect(screen.getByTestId('range-bar-marker-ci90')).toHaveStyle({ left: '80%' })
   })
 
+  it('never places the 90%-confidence marker left of the expected marker, even when expected itself is past 80%', () => {
+    render(<RangeBar min={0} max={10} expected={9} ci90={13.27} unitSuffix="w" />)
+
+    expect(screen.getByTestId('range-bar-marker-expected')).toHaveStyle({ left: '90%' })
+    expect(screen.getByTestId('range-bar-marker-ci90')).toHaveStyle({ left: '90%' })
+  })
+
   it('renders the best and worst case values and captions', () => {
     render(<RangeBar min={2} max={6} expected={4} ci90={5.7} unitSuffix="w" />)
 

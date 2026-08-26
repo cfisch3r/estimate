@@ -15,7 +15,7 @@ export function RangeBar({ min, max, expected, ci90, unitSuffix }: RangeBarProps
   const pct = (value: number) =>
     span <= 0 ? 50 : Math.min(100, Math.max(0, ((value - min) / span) * 100))
   const expectedPct = pct(expected)
-  const ci90Pct = Math.min(pct(ci90), 80)
+  const ci90Pct = Math.max(expectedPct, Math.min(pct(ci90), 80))
 
   return (
     <div className="range-bar">
