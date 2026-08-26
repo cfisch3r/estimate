@@ -15,38 +15,59 @@ export function RangeBar({ min, max, expected, ci90, unitSuffix }: RangeBarProps
   const pct = (value: number) =>
     span <= 0 ? 50 : Math.min(100, Math.max(0, ((value - min) / span) * 100))
   const expectedPct = pct(expected)
-  const ci90Pct = pct(ci90)
+  const ci90Pct = Math.max(expectedPct, Math.min(pct(ci90), 80))
 
   return (
     <div className="range-bar">
-      <div className="range-bar-track">
-        <div className="range-bar-fill-wrap">
-          <div className="range-bar-confident" style={{ width: `${expectedPct}%` }} />
+      <div className="range-bar-track-box">
+        <div
+          className="range-bar-callout range-bar-callout--muted"
+          style={{ left: `${expectedPct}%` }}
+        >
+          <div className="range-bar-callout-value">{`${formatValue(expected)}${unitSuffix}`}</div>
+          <div className="range-bar-callout-caption">most likely</div>
+        </div>
+        <div
+          className="range-bar-callout range-bar-callout--accent"
+          style={{ left: `${ci90Pct}%` }}
+        >
+          <div className="range-bar-callout-value">{`${formatValue(ci90)}${unitSuffix}`}</div>
+          <div className="range-bar-callout-caption">90% confidence</div>
+        </div>
+        <div className="range-bar-track">
           <div
-            className="range-bar-uncertain"
-            style={{ width: `${100 - expectedPct}%` }}
+            className="range-bar-segment range-bar-segment--uncertain"
+            style={{ width: `${expectedPct}%` }}
+          />
+          <div
+            className="range-bar-segment range-bar-segment--likely"
+            style={{ width: `${ci90Pct - expectedPct}%` }}
+          />
+          <div
+            className="range-bar-segment range-bar-segment--confident"
+            style={{ width: `${100 - ci90Pct}%` }}
           />
         </div>
         <div
-          className="range-bar-tick range-bar-tick--ci90"
-          style={{ left: `${ci90Pct}%` }}
-        />
-        <div
-          className="range-bar-tick range-bar-tick--expected"
+          data-testid="range-bar-marker-expected"
+          className="range-bar-marker"
           style={{ left: `${expectedPct}%` }}
         />
         <div
-          className="range-bar-caption"
+          data-testid="range-bar-marker-ci90"
+          className="range-bar-marker"
           style={{ left: `${ci90Pct}%` }}
-        >{`${formatValue(ci90)}${unitSuffix}`}</div>
-        <div
-          className="range-bar-value"
-          style={{ left: `${expectedPct}%` }}
-        >{`${formatValue(expected)}${unitSuffix}`}</div>
+        />
       </div>
       <div className="range-bar-ends">
-        <span>{`${formatValue(min)}${unitSuffix} best`}</span>
-        <span>{`${formatValue(max)}${unitSuffix} worst`}</span>
+        <div className="range-bar-end">
+          <span className="range-bar-end-value">{`${formatValue(min)}${unitSuffix}`}</span>
+          <span className="range-bar-end-caption">best case</span>
+        </div>
+        <div className="range-bar-end range-bar-end--right">
+          <span className="range-bar-end-value">{`${formatValue(max)}${unitSuffix}`}</span>
+          <span className="range-bar-end-caption">worst case</span>
+        </div>
       </div>
     </div>
   )

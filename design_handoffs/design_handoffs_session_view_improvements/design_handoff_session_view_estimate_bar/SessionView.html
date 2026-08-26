@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Session View — estimate range bar &amp; guard notes</title>
+<link rel="stylesheet" href="reference/nocturne-styles.css" />
+<style>
+  body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); }
+  .app-header { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); padding: var(--space-4) var(--space-6); background: color-mix(in srgb, var(--color-bg) 90%, transparent); backdrop-filter: blur(8px); border-bottom: 1px solid var(--color-divider); }
+  .app-header-brand { display: inline-flex; align-items: center; gap: var(--space-3); font-family: var(--font-heading); font-weight: 600; font-size: 20px; letter-spacing: -0.01em; color: var(--color-text); }
+  .app-header-session-block { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; text-align: center; }
+  .app-header-session-caption { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-neutral-400); }
+  .app-header-session { font-size: 13px; color: color-mix(in srgb, var(--color-text) 60%, transparent); }
+  .layout { display: grid; grid-template-columns: 260px 1fr; gap: var(--space-6); max-width: 1280px; margin: 0 auto; padding: var(--space-6) var(--space-4); }
+  .sidebar { display: flex; flex-direction: column; gap: var(--space-4); }
+  .sidebar-head { display: flex; align-items: baseline; gap: var(--space-2); }
+  .sidebar-title { font-size: 15px; font-weight: 500; color: var(--color-text); }
+  .sidebar-progress { font-size: 13px; color: var(--color-neutral-400); }
+  .sidebar-rows { display: flex; flex-direction: column; gap: var(--space-2); }
+  .row { display: flex; align-items: center; gap: var(--space-2); border-radius: var(--radius-md); padding: var(--space-3); font-size: 15px; color: var(--color-neutral-300); border: 1px solid var(--color-neutral-800); cursor: pointer; }
+  .row.active { color: var(--color-text); border-color: var(--color-accent); }
+  .summary-link { margin-top: auto; padding-top: var(--space-4); border-top: 1px solid var(--color-neutral-800); display: flex; align-items: center; gap: var(--space-2); color: var(--color-accent-300); font-size: 14px; text-decoration: none; cursor: pointer; }
+  .summary-link.current { color: var(--color-text); }
+  .estimate-row { display: flex; gap: var(--space-4); }
+  .field-hint { display: flex; align-items: flex-start; gap: 6px; font-size: 12px; line-height: 1.4; color: #e0ac67; margin-top: 4px; }
+  .range-wrap { position: relative; padding: 56px 4px 24px; }
+  .range-track-box { position: relative; height: 14px; }
+  .range-track { position: absolute; inset: 0; border-radius: 7px; overflow: hidden; background: var(--color-neutral-800); display: flex; }
+  .range-track > div { height: 100%; }
+  .range-marker { position: absolute; top: 50%; width: 18px; height: 18px; border-radius: 3px; background: var(--color-accent); box-shadow: 0 0 0 3px var(--color-bg); transform: translate(-50%, -50%) rotate(45deg); }
+  .range-callout { position: absolute; top: -52px; transform: translateX(-50%); white-space: nowrap; text-align: center; border-radius: var(--radius-sm); padding: 5px 10px; }
+  .range-callout.muted { background: var(--color-bg); border: 1px solid var(--color-neutral-700); }
+  .range-callout.accent { background: var(--color-accent-900); border: 1px solid var(--color-accent-700); }
+  .range-ends { display: flex; justify-content: space-between; margin-top: 16px; }
+  .range-end { display: flex; flex-direction: column; gap: 2px; }
+  .range-end.right { align-items: flex-end; }
+  .guard-note { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; border-radius: var(--radius-md); background: color-mix(in srgb, #e0ac67 14%, transparent); border: 1px solid color-mix(in srgb, #e0ac67 35%, transparent); margin-top: var(--space-3); }
+  .guard-note .headline { font: 600 14px/1.3 var(--font-heading); color: #e0ac67; }
+  .guard-note .body { font-size: 13px; line-height: 1.5; color: var(--color-neutral-200); }
+</style>
+</head>
+<body>
+
+<header class="app-header">
+  <span class="app-header-brand">
+    <svg width="30" height="22" viewBox="0 0 22 16" fill="none" aria-hidden="true">
+      <line x1="1" y1="8" x2="21" y2="8" stroke="var(--color-divider)" stroke-width="2" stroke-linecap="round"></line>
+      <line x1="1" y1="4" x2="1" y2="12" stroke="var(--color-neutral-400)" stroke-width="2" stroke-linecap="round"></line>
+      <line x1="21" y1="4" x2="21" y2="12" stroke="var(--color-neutral-400)" stroke-width="2" stroke-linecap="round"></line>
+      <line x1="12" y1="1" x2="12" y2="15" stroke="var(--color-accent)" stroke-width="2.5" stroke-linecap="round"></line>
+    </svg>
+    EstiMate
+  </span>
+  <span class="app-header-session-block">
+    <span class="app-header-session-caption">Session</span>
+    <span class="app-header-session">Sprint 14 Planning</span>
+  </span>
+</header>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <span class="sidebar-title">Items</span>
+      <span class="sidebar-progress">1/4 finalized</span>
+    </div>
+    <div class="sidebar-rows">
+      <div class="row">Refactor auth middleware</div>
+      <div class="row active">▷ Add CSV export to reports</div>
+      <div class="row">Migrate session store to Postgres</div>
+      <div class="row">Design onboarding checklist</div>
+    </div>
+    <a class="summary-link" id="summaryLink">Summary</a>
+  </aside>
+
+  <div id="itemView" class="card elev-sm" style="flex:1">
+    <h1 style="margin:0;font-weight:500;font-size:22px;text-align:center">Add CSV export to reports</h1>
+
+    <div class="field">
+      <label for="description">Description (Markdown supported)</label>
+      <textarea id="description" class="input" rows="3">Let facilitators export the finalized estimate table as CSV from the summary screen.</textarea>
+    </div>
+
+    <div class="estimate-row">
+      <div class="field" style="flex:1">
+        <label for="best">Best case (weeks)</label>
+        <input id="best" class="input" type="number" min="0" value="2" style="height:48px;font-size:1.1rem;text-align:center;border-radius:var(--radius-lg)" />
+      </div>
+      <div class="field" style="flex:1">
+        <label for="likely">Most likely (weeks)</label>
+        <input id="likely" class="input" type="number" min="0" value="4" style="height:48px;font-size:1.1rem;text-align:center;border-radius:var(--radius-lg)" />
+      </div>
+      <div class="field" style="flex:1">
+        <label for="worst">Worst case (weeks)</label>
+        <input id="worst" class="input" type="number" min="0" value="6" style="height:48px;font-size:1.1rem;text-align:center;border-radius:var(--radius-lg)" />
+      </div>
+    </div>
+
+    <div class="range-wrap">
+      <div class="range-track-box">
+        <div class="range-callout muted" style="left:50%">
+          <div style="font:600 14px/1 var(--font-heading);color:var(--color-text)">4w</div>
+          <div style="font-size:10px;color:var(--color-neutral-400);margin-top:2px">most likely</div>
+        </div>
+        <div class="range-callout accent" style="left:80%">
+          <div style="font:700 15px/1 var(--font-heading);color:var(--color-accent-300)">5.7w</div>
+          <div style="font-size:10px;color:var(--color-accent-400);margin-top:2px">90% confidence</div>
+        </div>
+        <div class="range-track">
+          <div style="width:50%;background:var(--color-accent-800)"></div>
+          <div style="width:30%;background:var(--color-accent-600)"></div>
+          <div style="width:20%;background:var(--color-accent)"></div>
+        </div>
+        <div class="range-marker" style="left:50%"></div>
+        <div class="range-marker" style="left:80%"></div>
+      </div>
+      <div class="range-ends">
+        <div class="range-end">
+          <span style="font:600 16px/1 var(--font-heading);color:var(--color-text)">2w</span>
+          <span style="font-size:11px;color:var(--color-neutral-400)">best case</span>
+        </div>
+        <div class="range-end right">
+          <span style="font:600 16px/1 var(--font-heading);color:var(--color-text)">6w</span>
+          <span style="font-size:11px;color:var(--color-neutral-400)">worst case</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="guard-note">
+      <svg width="24" height="24" viewBox="0 0 256 256" fill="#e0ac67" style="flex:none"><path d="M128,24A104,104,0,1,0,232,128,104.11,104.11,0,0,0,128,24Zm0,192a88,88,0,1,1,88-88A88.1,88.1,0,0,1,128,216Zm-8-80V80a8,8,0,0,1,16,0v56a8,8,0,0,1-16,0Zm20,32a12,12,0,1,1-12-12A12,12,0,0,1,140,168Z"></path></svg>
+      <div>
+        <div class="headline">Symmetric range</div>
+        <div class="body">Worst case in software usually has more room than best case. Double check.</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-block" style="margin-top:var(--space-3)">Finalize item</button>
+
+    <div class="field" style="margin-top:var(--space-4)">
+      <label for="notes">Notes (captured during discussion, Markdown supported)</label>
+      <textarea id="notes" class="input" rows="8"></textarea>
+    </div>
+  </div>
+
+  <div id="summaryView" class="card elev-sm" style="flex:1;display:none">
+    <h1 style="margin:0;font-weight:500;font-size:22px;text-align:center">Summary</h1>
+    <table class="table">
+      <thead><tr><th>Item</th><th>Best</th><th>Most likely</th><th>Worst</th></tr></thead>
+      <tbody>
+        <tr><td>Refactor auth middleware</td><td>3w</td><td>5w</td><td>9w</td></tr>
+      </tbody>
+    </table>
+    <button class="btn btn-secondary" id="backToItem" style="align-self:flex-start;margin-top:var(--space-2)">Back to item</button>
+  </div>
+</div>
+
+<script>
+  document.getElementById('summaryLink').addEventListener('click', () => {
+    document.getElementById('itemView').style.display = 'none';
+    document.getElementById('summaryView').style.display = '';
+  });
+  document.getElementById('backToItem').addEventListener('click', () => {
+    document.getElementById('summaryView').style.display = 'none';
+    document.getElementById('itemView').style.display = '';
+  });
+</script>
+</body>
+</html>
