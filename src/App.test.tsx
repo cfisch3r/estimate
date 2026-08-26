@@ -118,6 +118,6 @@ describe('Mode B end-to-end flow', () => {
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
     await user.type(screen.getByLabelText('Worst case (days)'), '8')
 
-    expect(screen.getByText(/range looks symmetric/i)).toBeInTheDocument()
+    expect(screen.getByText('Symmetric range')).toBeInTheDocument()
   })
 })

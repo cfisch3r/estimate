@@ -173,13 +173,20 @@ function ActiveItemPanel({
       )}
 
       {symmetricGuard?.fired && (
-        <GuardNote>
-          Your range looks symmetric — worst case in software usually has more room than
-          best case. Double check.
+        <GuardNote variant="banner" headline="Symmetric range">
+          Worst case in software usually has more room than best case. Double check.
         </GuardNote>
       )}
-      {validationError && <GuardNote>{validationError}</GuardNote>}
-      {orderingWarning && <GuardNote>{orderingWarning}</GuardNote>}
+      {validationError && (
+        <GuardNote variant="banner" headline="Invalid range">
+          {validationError}
+        </GuardNote>
+      )}
+      {orderingWarning && (
+        <GuardNote variant="banner" headline="Out of order">
+          {orderingWarning}
+        </GuardNote>
+      )}
 
       <Button variant="primary" disabled={!validation?.ok} onClick={handleFinalize}>
         {isEdit ? 'Update estimate' : 'Finalize item'}
