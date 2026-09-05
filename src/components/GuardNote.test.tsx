@@ -6,7 +6,9 @@ describe('GuardNote', () => {
   it('renders children inline with no headline by default', () => {
     render(<GuardNote>Consider rounding to a meaningful value.</GuardNote>)
 
-    expect(screen.getByText('Consider rounding to a meaningful value.')).toBeInTheDocument()
+    expect(
+      screen.getByText('Consider rounding to a meaningful value.'),
+    ).toBeInTheDocument()
     expect(screen.queryByRole('heading')).not.toBeInTheDocument()
   })
 

@@ -13,11 +13,7 @@ export function GuardNote({
   headline,
   ...props
 }: GuardNoteProps) {
-  const classes = [
-    'guard-note',
-    variant === 'banner' && 'guard-note--banner',
-    className,
-  ]
+  const classes = ['guard-note', variant === 'banner' && 'guard-note--banner', className]
     .filter(Boolean)
     .join(' ')
 
