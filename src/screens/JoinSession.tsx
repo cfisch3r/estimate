@@ -11,39 +11,37 @@ import {
 } from '../components'
 import { useSessionStore } from '../state/store'
 import { useNetworkSession } from '../network'
+import { useLeaveLiveSession } from './useLeaveLiveSession'
 
 export function JoinSession() {
   const connectionStatus = useSessionStore((s) => s.connectionStatus)
   const joinLiveSession = useSessionStore((s) => s.joinLiveSession)
   const goToScreen = useSessionStore((s) => s.goToScreen)
-  const leaveLiveSession = useSessionStore((s) => s.leaveLiveSession)
-  const { connect, disconnect } = useNetworkSession()
+  const { connect } = useNetworkSession()
+  const leave = useLeaveLiveSession()
 
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
+  const [submitted, setSubmitted] = useState(false)
 
   const canSubmit = code.trim().length > 0 && name.trim().length > 0
   const connecting = connectionStatus === 'connecting'
   const failed = connectionStatus === 'disconnected'
 
-  // The handshake completes once the facilitator's peer is visible; move on to the
-  // estimate view then.
+  // Only this client's own join attempt should navigate onward — not a 'connected'
+  // status left in the store by some other flow.
   useEffect(() => {
-    if (connectionStatus === 'connected') {
+    if (submitted && connectionStatus === 'connected') {
       goToScreen('estimate')
     }
-  }, [connectionStatus, goToScreen])
+  }, [submitted, connectionStatus, goToScreen])
 
   function handleJoin() {
     if (!canSubmit) return
     const trimmedCode = code.trim().toUpperCase()
+    setSubmitted(true)
     joinLiveSession(trimmedCode, name)
     connect(trimmedCode)
-  }
-
-  function handleBack() {
-    disconnect()
-    leaveLiveSession() // also routes back to the create screen
   }
 
   return (
@@ -116,7 +114,7 @@ export function JoinSession() {
         {failed ? 'Retry' : 'Join'}
       </Button>
 
-      <Button variant="ghost" onClick={handleBack}>
+      <Button variant="ghost" onClick={leave}>
         ← Back
       </Button>
     </div>

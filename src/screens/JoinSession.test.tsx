@@ -88,11 +88,25 @@ describe('JoinSession', () => {
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
   })
 
-  it('routes to the estimate view once connected', () => {
+  it('routes to the estimate view once this client has joined and is connected', async () => {
+    const user = userEvent.setup()
+    render(<JoinSession />)
+
+    await user.type(screen.getByLabelText('Session code'), 'K7F9Q2')
+    await user.type(screen.getByLabelText('Your name'), 'Sam')
+    await user.click(screen.getByRole('button', { name: 'Join' }))
+    expect(useSessionStore.getState().currentScreen).toBe('join')
+
+    act(() => useSessionStore.setState({ connectionStatus: 'connected' }))
+
+    expect(useSessionStore.getState().currentScreen).toBe('estimate')
+  })
+
+  it('does not route away on mount from a stale connected status it did not initiate', () => {
     useSessionStore.setState({ connectionStatus: 'connected' })
     render(<JoinSession />)
 
-    expect(useSessionStore.getState().currentScreen).toBe('estimate')
+    expect(useSessionStore.getState().currentScreen).toBe('join')
   })
 
   it('Back disconnects and returns to the create screen', async () => {

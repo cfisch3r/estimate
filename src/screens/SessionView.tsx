@@ -250,7 +250,9 @@ function LiveSessionStrip({
         icon
         variant="ghost"
         aria-label="Copy session code"
-        onClick={() => void navigator.clipboard?.writeText(sessionId)}
+        onClick={() => {
+          navigator.clipboard?.writeText(sessionId).catch(() => {})
+        }}
       >
         <CopyIcon size={16} />
       </Button>

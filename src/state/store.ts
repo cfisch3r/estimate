@@ -36,7 +36,6 @@ interface SessionStore {
   joinLiveSession: (sessionCode: string, name: string) => void
   leaveLiveSession: () => void
   setMode: (mode: SessionMode) => void
-  setMyName: (name: string) => void
   setConnectionStatus: (status: LiveConnectionStatus) => void
   setPeerCount: (count: number) => void
   selectItem: (id: string) => void
@@ -160,8 +159,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   leaveLiveSession: () => set({ ...LIVE_SESSION_DEFAULTS, currentScreen: 'create' }),
 
   setMode: (mode) => set({ mode }),
-
-  setMyName: (name) => set({ myName: name }),
 
   setConnectionStatus: (status) => set({ connectionStatus: status }),
 

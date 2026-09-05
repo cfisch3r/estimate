@@ -1,6 +1,6 @@
-import { Button, Card, CardBody, CardKicker, CardTitle } from '../components'
+import { Button, Card, CardBody, CardKicker, CardTitle, GuardNote } from '../components'
 import { useSessionStore } from '../state/store'
-import { useNetworkSession } from '../network'
+import { useLeaveLiveSession } from './useLeaveLiveSession'
 
 // TODO(#7): replace this placeholder with the real Best / Most likely / Worst
 // estimate form (read-only item detail, live bias guards, submit -> sendEstimate).
@@ -8,13 +8,9 @@ export function ParticipantEstimateView() {
   const sessionId = useSessionStore((s) => s.sessionId)
   const myName = useSessionStore((s) => s.myName)
   const connectionStatus = useSessionStore((s) => s.connectionStatus)
-  const leaveLiveSession = useSessionStore((s) => s.leaveLiveSession)
-  const { disconnect } = useNetworkSession()
+  const leave = useLeaveLiveSession()
 
-  function handleLeave() {
-    disconnect()
-    leaveLiveSession() // also routes back to the create screen
-  }
+  const lostConnection = connectionStatus === 'disconnected'
 
   return (
     <div
@@ -38,7 +34,14 @@ export function ParticipantEstimateView() {
         </CardBody>
       </Card>
 
-      <Button variant="ghost" onClick={handleLeave}>
+      {lostConnection && (
+        <GuardNote variant="banner" headline="Session connection lost">
+          You&apos;ve been disconnected from the session. Ask the facilitator for a fresh
+          code, or leave and rejoin.
+        </GuardNote>
+      )}
+
+      <Button variant="ghost" onClick={leave}>
         Leave session
       </Button>
     </div>

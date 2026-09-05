@@ -32,6 +32,14 @@ describe('ParticipantEstimateView', () => {
     expect(screen.getByText('Session K7F9Q2')).toBeInTheDocument()
   })
 
+  it('surfaces a banner when the connection is lost', () => {
+    useSessionStore.setState({ connectionStatus: 'disconnected' })
+    render(<ParticipantEstimateView />)
+
+    expect(screen.getByText('Session connection lost')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Leave session' })).toBeInTheDocument()
+  })
+
   it('leaves the session and returns to the create screen', async () => {
     const user = userEvent.setup()
     render(<ParticipantEstimateView />)
