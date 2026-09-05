@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
 import {
   Button,
   Card,
@@ -10,6 +11,7 @@ import {
   Textarea,
   GuardNote,
   RangeBar,
+  Tag,
 } from '../components'
 import { SessionSidebar } from './SessionSidebar'
 import { useSessionStore } from '../state/store'
@@ -23,7 +25,7 @@ import {
   UNIT_SUFFIX,
 } from '../calc'
 import type { EstimationUnit } from '../calc'
-import type { Item } from '../state/types'
+import type { Item, LiveConnectionStatus } from '../state/types'
 
 interface ActiveItemPanelProps {
   item: Item
@@ -208,11 +210,64 @@ function ActiveItemPanel({
   )
 }
 
+interface LiveSessionStripProps {
+  sessionId: string
+  connectionStatus: LiveConnectionStatus
+  peerCount: number
+}
+
+function LiveSessionStrip({
+  sessionId,
+  connectionStatus,
+  peerCount,
+}: LiveSessionStripProps) {
+  const statusTag =
+    connectionStatus === 'connected'
+      ? {
+          variant: 'accent' as const,
+          label: `${peerCount} participant${peerCount === 1 ? '' : 's'} connected`,
+        }
+      : connectionStatus === 'disconnected'
+        ? { variant: 'outline' as const, label: 'Disconnected' }
+        : { variant: 'neutral' as const, label: 'Waiting for participants…' }
+
+  return (
+    <div
+      style={{
+        gridColumn: '1 / -1',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 'var(--space-4)',
+        padding: 'var(--space-3) var(--space-4)',
+        border: '1px solid var(--color-divider)',
+        borderRadius: 'var(--radius-lg)',
+      }}
+    >
+      <span className="text-muted">Session code</span>
+      <strong style={{ fontSize: '1.1rem', letterSpacing: '0.08em' }}>{sessionId}</strong>
+      <Button
+        icon
+        variant="ghost"
+        aria-label="Copy session code"
+        onClick={() => void navigator.clipboard?.writeText(sessionId)}
+      >
+        <CopyIcon size={16} />
+      </Button>
+      <span style={{ flex: 1 }} />
+      <Tag variant={statusTag.variant}>{statusTag.label}</Tag>
+    </div>
+  )
+}
+
 export function SessionView() {
   const unit = useSessionStore((s) => s.unit)
   const items = useSessionStore((s) => s.items)
   const activeItemId = useSessionStore((s) => s.activeItemId)
   const currentScreen = useSessionStore((s) => s.currentScreen)
+  const mode = useSessionStore((s) => s.mode)
+  const sessionId = useSessionStore((s) => s.sessionId)
+  const connectionStatus = useSessionStore((s) => s.connectionStatus)
+  const peerCount = useSessionStore((s) => s.peerCount)
   const selectItem = useSessionStore((s) => s.selectItem)
   const reorderItems = useSessionStore((s) => s.reorderItems)
   const setItemNotes = useSessionStore((s) => s.setItemNotes)
@@ -235,6 +290,14 @@ export function SessionView() {
         padding: 'var(--space-6) var(--space-4)',
       }}
     >
+      {mode === 'live' && sessionId && (
+        <LiveSessionStrip
+          sessionId={sessionId}
+          connectionStatus={connectionStatus}
+          peerCount={peerCount}
+        />
+      )}
+
       <SessionSidebar
         items={items}
         activeItemId={activeItemId}

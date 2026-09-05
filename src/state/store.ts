@@ -1,7 +1,13 @@
 import { create } from 'zustand'
 import type { EstimationUnit } from '../calc'
 import { createEstimate, aggregateEstimates } from '../calc'
-import type { Item, ScreenId } from './types'
+import type {
+  Item,
+  LiveConnectionStatus,
+  ScreenId,
+  SessionMode,
+  SessionRole,
+} from './types'
 
 type FinalizeResult = { ok: true } | { ok: false; error: string }
 
@@ -12,6 +18,13 @@ interface SessionStore {
   items: Item[]
   activeItemId: string | null
 
+  mode: SessionMode
+  role: SessionRole
+  sessionId: string | null
+  myName: string
+  connectionStatus: LiveConnectionStatus
+  peerCount: number
+
   setSessionName: (name: string) => void
   setUnit: (unit: EstimationUnit) => void
   addItem: (title: string, description?: string) => void
@@ -19,6 +32,13 @@ interface SessionStore {
   removeItem: (id: string) => void
   reorderItems: (fromIndex: number, toIndex: number) => void
   createSession: () => void
+  createLiveSession: (sessionCode: string) => void
+  joinLiveSession: (sessionCode: string, name: string) => void
+  leaveLiveSession: () => void
+  setMode: (mode: SessionMode) => void
+  setMyName: (name: string) => void
+  setConnectionStatus: (status: LiveConnectionStatus) => void
+  setPeerCount: (count: number) => void
   selectItem: (id: string) => void
   setItemNotes: (id: string, notes: string) => void
   setItemDescription: (id: string, description: string) => void
@@ -36,12 +56,25 @@ function firstPendingItemId(items: Item[], excludeId?: string): string | null {
   return pending ? pending.id : null
 }
 
+const LIVE_SESSION_DEFAULTS = {
+  mode: 'manual',
+  role: 'facilitator',
+  sessionId: null,
+  myName: '',
+  connectionStatus: 'idle',
+  peerCount: 0,
+} as const satisfies Pick<
+  SessionStore,
+  'mode' | 'role' | 'sessionId' | 'myName' | 'connectionStatus' | 'peerCount'
+>
+
 export const useSessionStore = create<SessionStore>((set, get) => ({
   currentScreen: 'create',
   sessionName: '',
   unit: 'days',
   items: [],
   activeItemId: null,
+  ...LIVE_SESSION_DEFAULTS,
 
   setSessionName: (name) => set({ sessionName: name }),
 
@@ -94,6 +127,46 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     if (sessionName.trim().length === 0 || items.length === 0) return
     set({ currentScreen: 'session', activeItemId: firstPendingItemId(items) })
   },
+
+  createLiveSession: (sessionCode) => {
+    const { sessionName, items } = get()
+    if (sessionName.trim().length === 0 || items.length === 0) return
+    set({
+      mode: 'live',
+      role: 'facilitator',
+      sessionId: sessionCode,
+      myName: 'Facilitator',
+      connectionStatus: 'connecting',
+      peerCount: 0,
+      currentScreen: 'session',
+      activeItemId: firstPendingItemId(items),
+    })
+  },
+
+  joinLiveSession: (sessionCode, name) => {
+    const code = sessionCode.trim().toUpperCase()
+    if (code.length === 0 || name.trim().length === 0) return
+    set({
+      mode: 'live',
+      role: 'participant',
+      sessionId: code,
+      myName: name.trim(),
+      connectionStatus: 'connecting',
+      peerCount: 0,
+      currentScreen: 'join',
+    })
+  },
+
+  leaveLiveSession: () =>
+    set({ ...LIVE_SESSION_DEFAULTS, currentScreen: 'create' }),
+
+  setMode: (mode) => set({ mode }),
+
+  setMyName: (name) => set({ myName: name }),
+
+  setConnectionStatus: (status) => set({ connectionStatus: status }),
+
+  setPeerCount: (count) => set({ peerCount: count }),
 
   selectItem: (id) => set({ activeItemId: id }),
 

@@ -8,6 +8,12 @@ function resetStore() {
     unit: 'days',
     items: [],
     activeItemId: null,
+    mode: 'manual',
+    role: 'facilitator',
+    sessionId: null,
+    myName: '',
+    connectionStatus: 'idle',
+    peerCount: 0,
   })
 }
 
@@ -142,5 +148,85 @@ describe('removeItem', () => {
     removeItem(id)
     expect(useSessionStore.getState().activeItemId).toBeNull()
     expect(useSessionStore.getState().items).toHaveLength(0)
+  })
+})
+
+describe('createLiveSession', () => {
+  function seedNamedSession() {
+    const { setSessionName, addItem } = useSessionStore.getState()
+    setSessionName('Sprint 14')
+    addItem('First item')
+  }
+
+  it('refuses to start when the session is unnamed or itemless', () => {
+    useSessionStore.getState().createLiveSession('K7F9Q2')
+    expect(useSessionStore.getState().currentScreen).toBe('create')
+    expect(useSessionStore.getState().mode).toBe('manual')
+  })
+
+  it('enters a live facilitator session on the session screen', () => {
+    seedNamedSession()
+    useSessionStore.getState().createLiveSession('K7F9Q2')
+
+    const state = useSessionStore.getState()
+    expect(state).toMatchObject({
+      mode: 'live',
+      role: 'facilitator',
+      sessionId: 'K7F9Q2',
+      connectionStatus: 'connecting',
+      currentScreen: 'session',
+    })
+    expect(state.activeItemId).toBe(state.items[0]?.id)
+  })
+})
+
+describe('joinLiveSession', () => {
+  it('ignores a blank code or blank name', () => {
+    useSessionStore.getState().joinLiveSession('   ', 'Sam')
+    useSessionStore.getState().joinLiveSession('K7F9Q2', '   ')
+    expect(useSessionStore.getState().mode).toBe('manual')
+    expect(useSessionStore.getState().currentScreen).toBe('create')
+  })
+
+  it('enters a connecting participant session, normalising the code', () => {
+    useSessionStore.getState().joinLiveSession('  k7f9q2 ', '  Sam Rivera  ')
+
+    expect(useSessionStore.getState()).toMatchObject({
+      mode: 'live',
+      role: 'participant',
+      sessionId: 'K7F9Q2',
+      myName: 'Sam Rivera',
+      connectionStatus: 'connecting',
+      currentScreen: 'join',
+    })
+  })
+})
+
+describe('leaveLiveSession', () => {
+  it('resets every live field and returns to the create screen', () => {
+    useSessionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
+    useSessionStore.getState().setConnectionStatus('connected')
+    useSessionStore.getState().setPeerCount(3)
+
+    useSessionStore.getState().leaveLiveSession()
+
+    expect(useSessionStore.getState()).toMatchObject({
+      mode: 'manual',
+      role: 'facilitator',
+      sessionId: null,
+      myName: '',
+      connectionStatus: 'idle',
+      peerCount: 0,
+      currentScreen: 'create',
+    })
+  })
+})
+
+describe('connection mirrors', () => {
+  it('setConnectionStatus and setPeerCount update just those fields', () => {
+    useSessionStore.getState().setConnectionStatus('connected')
+    useSessionStore.getState().setPeerCount(2)
+    expect(useSessionStore.getState().connectionStatus).toBe('connected')
+    expect(useSessionStore.getState().peerCount).toBe(2)
   })
 })
