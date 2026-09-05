@@ -1,8 +1,15 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactNode } from 'react'
 import App from './App'
 import { useSessionStore } from './state/store'
+
+vi.mock('./network', () => ({
+  generateSessionCode: () => 'LIVECODE',
+  NetworkProvider: ({ children }: { children: ReactNode }) => children,
+  useNetworkSession: () => ({ connect: vi.fn(), disconnect: vi.fn() }),
+}))
 
 function resetStore() {
   useSessionStore.setState({
@@ -11,6 +18,12 @@ function resetStore() {
     unit: 'days',
     items: [],
     activeItemId: null,
+    mode: 'manual',
+    role: 'facilitator',
+    sessionId: null,
+    myName: '',
+    connectionStatus: 'idle',
+    peerCount: 0,
   })
 }
 
@@ -119,5 +132,34 @@ describe('Mode B end-to-end flow', () => {
     await user.type(screen.getByLabelText('Worst case (days)'), '8')
 
     expect(screen.getByText('Symmetric range')).toBeInTheDocument()
+  })
+})
+
+describe('Mode A (live collaboration)', () => {
+  it('creates a live session and surfaces the shareable code on the session view', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('radio', { name: /Live collaborative/ }))
+    await user.type(screen.getByLabelText('Session name'), 'Live refinement')
+    await user.type(screen.getByPlaceholderText('Add an item'), 'Auth service')
+    await user.click(screen.getByRole('button', { name: 'Add' }))
+    await user.click(screen.getByRole('button', { name: 'Create live session' }))
+
+    expect(screen.getByText('LIVECODE')).toBeInTheDocument()
+    expect(screen.getByText('Waiting for participants…')).toBeInTheDocument()
+  })
+
+  it('navigates to the join screen and back', async () => {
+    const user = userEvent.setup()
+    render(<App />)
+
+    await user.click(screen.getByRole('button', { name: /Join a live session/ }))
+    expect(
+      screen.getByRole('heading', { name: 'Join a live session' }),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: '← Back' }))
+    expect(screen.getByRole('heading', { name: 'New session' })).toBeInTheDocument()
   })
 })

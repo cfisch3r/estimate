@@ -1,6 +1,16 @@
 import { useState } from 'react'
-import { Button, Card, CardKicker, Field, FieldLabel, Input, Select } from '../components'
+import {
+  Button,
+  Card,
+  CardKicker,
+  Field,
+  FieldLabel,
+  Input,
+  RadioTile,
+  Select,
+} from '../components'
 import { useSessionStore } from '../state/store'
+import { generateSessionCode, useNetworkSession } from '../network'
 import { ItemList } from './ItemList'
 import type { EstimationUnit } from '../calc'
 
@@ -8,20 +18,38 @@ export function CreateSession() {
   const sessionName = useSessionStore((s) => s.sessionName)
   const unit = useSessionStore((s) => s.unit)
   const items = useSessionStore((s) => s.items)
+  const mode = useSessionStore((s) => s.mode)
   const setSessionName = useSessionStore((s) => s.setSessionName)
   const setUnit = useSessionStore((s) => s.setUnit)
+  const setMode = useSessionStore((s) => s.setMode)
   const addItem = useSessionStore((s) => s.addItem)
   const updateItem = useSessionStore((s) => s.updateItem)
   const removeItem = useSessionStore((s) => s.removeItem)
   const reorderItems = useSessionStore((s) => s.reorderItems)
   const createSession = useSessionStore((s) => s.createSession)
+  const createLiveSession = useSessionStore((s) => s.createLiveSession)
+  const goToScreen = useSessionStore((s) => s.goToScreen)
+  const { connect } = useNetworkSession()
 
   const [newItemTitle, setNewItemTitle] = useState('')
+
+  const canCreate = sessionName.trim().length > 0 && items.length > 0
 
   function handleAddItem() {
     if (newItemTitle.trim().length === 0) return
     addItem(newItemTitle)
     setNewItemTitle('')
+  }
+
+  function handleCreate() {
+    if (!canCreate) return
+    if (mode === 'live') {
+      const code = generateSessionCode()
+      createLiveSession(code)
+      connect(code)
+    } else {
+      createSession()
+    }
   }
 
   return (
@@ -34,6 +62,28 @@ export function CreateSession() {
           Name what you&apos;re estimating, list the items, and choose a unit.
         </p>
       </div>
+
+      <Card elevation="sm">
+        <CardKicker>Mode</CardKicker>
+        <div style={{ display: 'grid', gap: 'var(--space-3)' }}>
+          <RadioTile
+            name="mode"
+            value="manual"
+            checked={mode === 'manual'}
+            onChange={() => setMode('manual')}
+            label="Manual entry"
+            description="You record the group's agreed best / likely / worst for each item."
+          />
+          <RadioTile
+            name="mode"
+            value="live"
+            checked={mode === 'live'}
+            onChange={() => setMode('live')}
+            label="Live collaborative"
+            description="Participants join with a code and submit their own estimates in real time."
+          />
+        </div>
+      </Card>
 
       <Card elevation="sm">
         <CardKicker>Session</CardKicker>
@@ -87,13 +137,12 @@ export function CreateSession() {
         </Field>
       </Card>
 
-      <Button
-        variant="primary"
-        block
-        disabled={sessionName.trim().length === 0 || items.length === 0}
-        onClick={createSession}
-      >
-        Create session
+      <Button variant="primary" block disabled={!canCreate} onClick={handleCreate}>
+        {mode === 'live' ? 'Create live session' : 'Create session'}
+      </Button>
+
+      <Button variant="ghost" onClick={() => goToScreen('join')}>
+        Join a live session →
       </Button>
     </div>
   )
