@@ -73,9 +73,10 @@ function ActiveItemPanel({
     : null
   const validationError = validation && !validation.ok ? validation.error : null
   const ascendingGuard = checkAscendingOrder(bestOrNull, likelyOrNull, worstOrNull)
-  const orderingWarning = !validationError && ascendingGuard.fired
-    ? 'Values should ascend: best ≤ likely ≤ worst.'
-    : null
+  const orderingWarning =
+    !validationError && ascendingGuard.fired
+      ? 'Values should ascend: best ≤ likely ≤ worst.'
+      : null
 
   const symmetricGuard = allFilled
     ? checkSymmetricRange(bestNum, likelyNum, worstNum)

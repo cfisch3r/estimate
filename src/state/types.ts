@@ -9,13 +9,7 @@ export interface Item {
   finalResult: AggregateResult | null
 }
 
-export type ScreenId =
-  | 'create'
-  | 'session'
-  | 'summary'
-  | 'history'
-  | 'join'
-  | 'estimate'
+export type ScreenId = 'create' | 'session' | 'summary' | 'history' | 'join' | 'estimate'
 
 export type SessionMode = 'manual' | 'live'
 

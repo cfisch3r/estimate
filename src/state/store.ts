@@ -157,8 +157,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     })
   },
 
-  leaveLiveSession: () =>
-    set({ ...LIVE_SESSION_DEFAULTS, currentScreen: 'create' }),
+  leaveLiveSession: () => set({ ...LIVE_SESSION_DEFAULTS, currentScreen: 'create' }),
 
   setMode: (mode) => set({ mode }),
 
