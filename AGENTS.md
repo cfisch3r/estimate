@@ -49,3 +49,27 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 - **Review**: after opening the PR, run the `code-review` skill as an independent pass over the diff (medium effort by default, higher for anything touching `/network` or `/persistence`). Apply confirmed fixes as follow-up commits on the same branch.
 - **Merge gate**: always ask the user whether they want to personally review the PR before merging — even after the automated review comes back clean. Never auto-merge without asking.
 - **Tracking**: GitHub Milestones (M0–M3 closed for history, MVP work + PRD §12 phases open) and a GitHub Project board (`EstiMate Roadmap`, https://github.com/users/cfisch3r/projects/1) with Backlog → In Progress → In Review → Done columns.
+
+## Concept docs & diagrams
+
+Technical concept / architecture write-ups live in `docs/concepts/`. Keep them short and
+diagram-driven — several complementary views (component, sequence, state machine, screen
+flow), not long prose. Prefer tables and diagrams over paragraphs.
+
+Diagram conventions (all Mermaid):
+
+- **Component views**: use C4-style box labels — `Name` on line 1, `[type]` on line 2 (e.g.
+  `[React Component]`, `[Zustand Store]`, `[Factory Function]`) — but draw them as a
+  `flowchart`, **not** Mermaid's native `C4Component` type (its auto-layout and arrow routing
+  are too messy here).
+- Put each component's **responsibilities in a table below the diagram**, never inside the
+  boxes.
+- Group nodes into subgraph **"lanes"** (usually by source directory). Each lane gets an
+  emoji + UPPERCASE title, a light background tint, and member nodes coloured to match via
+  `classDef` / `class`; use `direction LR` inside multi-node lanes. External systems stay
+  outside all lanes with a dashed border.
+- **Legend above every diagram**: solid line = synchronous call, dotted = async
+  callback/event/read, `<-->` = bidirectional. Label edges with what crosses them.
+- Collapse many parallel edges (e.g. store → each screen) into one edge pointing at the lane.
+
+`docs/concepts/collaboration-mode.md` is the reference example.
