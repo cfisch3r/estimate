@@ -15,7 +15,22 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 
 ## Picking the next task
 
-Work is tracked on the **EstiMate Roadmap** GitHub Project (`gh project item-list 1 --owner cfisch3r`, https://github.com/users/cfisch3r/projects/1). Within each status column the items are **manually rank-ordered — the top of `Backlog` is the next task**, regardless of issue number or milestone order. Read the issue body before starting: issues state ordering constraints explicitly (e.g. "reconcile the docs before building the Participant Estimate View (#7)").
+Work is tracked on the **EstiMate Roadmap** GitHub Project (https://github.com/users/cfisch3r/projects/1) as a **two-level ordered backlog**:
+
+- **Epics** — issues titled `Epic: …`, sitting in the `Backlog` column, drag-ordered. Their order (top = highest priority) is read from `gh project item-list 1 --owner cfisch3r` order.
+- **Stories** — each epic's **sub-issues**, drag-ordered within that epic's sub-issue list. That list is the *only* source of truth for story order; a story's own card position on the board is cosmetic.
+
+**Next task = the first open sub-issue of the first open epic in `Backlog`.** An epic whose sub-issues are all closed is finished — move to the next epic. Always read the story's body before starting.
+
+```sh
+# first open epic in Backlog
+gh project item-list 1 --owner cfisch3r --format json | \
+  jq -r 'first(.items[] | select(.status=="Backlog" and (.content.title | startswith("Epic:"))) | .content.number)'
+# that epic's stories, in priority order (replace 30)
+gh api graphql -f query='{repository(owner:"cfisch3r",name:"estimate"){issue(number:30){subIssues(first:50){nodes{number state title}}}}}'
+```
+
+Keep the `Backlog` column on **Manual sort** — re-applying a field sort silently disables drag-ordering. Use *group by Parent issue* for epic swimlanes. Milestones are retired: the closed `M0`–`M3` remain only as historical record.
 
 ## Commands
 
@@ -53,7 +68,7 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 - **Issue-sized work**: one branch per issue (`issue-<n>-<slug>`), PR opened with `Closes #n` in the description, squash-merge into `main`.
 - **Review**: after opening the PR, run the `code-review` skill as an independent pass over the diff (medium effort by default, higher for anything touching `/network` or `/persistence`). Apply confirmed fixes as follow-up commits on the same branch.
 - **Merge gate**: always ask the user whether they want to personally review the PR before merging — even after the automated review comes back clean. Never auto-merge without asking.
-- **Tracking**: GitHub Milestones (M0–M3 closed for history, MVP work + PRD §12 phases open) and a GitHub Project board (`EstiMate Roadmap`, https://github.com/users/cfisch3r/projects/1) with Backlog → In Progress → In Review → Done columns.
+- **Tracking**: the `EstiMate Roadmap` GitHub Project board (https://github.com/users/cfisch3r/projects/1), Backlog → In Progress → In Review → Done. Work is a two-level ordered backlog of epics and their sub-issues — see [Picking the next task](#picking-the-next-task). Milestones are retired (closed `M0`–`M3` kept as history).
 
 ## Concept docs & diagrams
 
