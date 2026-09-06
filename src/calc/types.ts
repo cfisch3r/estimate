@@ -25,7 +25,7 @@ export interface GuardResult {
 export type EstimationUnit = 'hours' | 'days' | 'weeks'
 
 /** Rounding granularity the false-precision guard expects per unit. Tunable — see
- *  ARCHITECTURE-estimation-app.md's "Estimation unit" decision. */
+ *  docs/architecture.md's "Estimation unit" decision. */
 export const UNIT_GRANULARITY: Record<EstimationUnit, number> = {
   hours: 1,
   days: 0.5,

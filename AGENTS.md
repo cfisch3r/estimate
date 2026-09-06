@@ -6,11 +6,16 @@ Instructions for any AI coding agent working in this repository.
 
 EstiMate is a live three-point estimation tool for dev teams. Before making non-trivial changes, read:
 
-- `PRD-estimation-app.md` — product requirements
-- `ADR-001-live-collaboration-architecture.md` — accepted decision on the peer-to-peer live-collaboration architecture
-- `ADR-002-testing-strategy.md` — accepted decision on the layered test strategy (unit/component now; Playwright deferred until `/network` or `/persistence` get real implementations — see that ADR before adding e2e tests or building those modules)
-- `ARCHITECTURE-estimation-app.md` — the technical architecture (stack, module structure, `/calc` design) and decisions made building it
+- `docs/prd.md` — product requirements
+- `docs/architecture.md` — the technical architecture (stack, module structure, `/calc` design) and decisions made building it
+- `docs/adr/001-live-collaboration-architecture.md` — accepted decision on the peer-to-peer live-collaboration architecture
+- `docs/adr/002-testing-strategy.md` — accepted decision on the layered test strategy (unit/component now; Playwright deferred until `/network` or `/persistence` get real implementations — see that ADR before adding e2e tests or building those modules)
+- `docs/concepts/collaboration-mode.md` — Live mode (Mode A) technical concept: the Trystero P2P network layer, join flow, and screen/store wiring delivered so far
 - `design_handoff_estimate_app/` — the design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
+
+## Picking the next task
+
+Work is tracked on the **EstiMate Roadmap** GitHub Project (`gh project item-list 1 --owner cfisch3r`, https://github.com/users/cfisch3r/projects/1). Within each status column the items are **manually rank-ordered — the top of `Backlog` is the next task**, regardless of issue number or milestone order. Read the issue body before starting: issues state ordering constraints explicitly (e.g. "reconcile the docs before building the Participant Estimate View (#7)").
 
 ## Commands
 

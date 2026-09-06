@@ -25,9 +25,9 @@ export interface NetworkSession {
   leave(): void
 }
 
-/** Joins the Trystero room for a session. roomId = sessionId, embedded in the
- *  shareable `/join/<sessionId>` link (link/id generation is issue #6's job).
- *  Uses the Nostr signaling strategy per ARCHITECTURE-estimation-app.md. */
+/** Joins the Trystero room for a session. roomId = sessionId, the 6-char code from
+ *  `generateSessionCode()` that the facilitator shares out of band (no deep link).
+ *  Uses the Nostr signaling strategy per docs/architecture.md. */
 export function joinSession(
   sessionId: string,
   options: JoinSessionOptions = {},

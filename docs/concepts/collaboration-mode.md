@@ -2,10 +2,10 @@
 
 ## Overview
 
-EstiMate has two session modes. **Manual (Mode B)** is single-user, in-memory, and already
-built. **Live (Mode A)** lets named participants join a facilitator's session over a
-serverless peer-to-peer mesh (Trystero over WebRTC, Nostr relays for signaling only) and
-submit private three-point estimates that are revealed together. There is **no backend** —
+EstiMate has two session modes. **Manual mode (Mode B)** is single-user, in-memory, and
+already built. **Live mode (Mode A)** lets named participants join a facilitator's session
+over a serverless peer-to-peer mesh (Trystero over WebRTC, Nostr relays for signaling only)
+and submit private three-point estimates that are revealed together. There is **no backend** —
 every peer runs the same code and computes aggregates locally.
 
 This document covers the foundation delivered with issue #6 (join flow + wiring); the
@@ -101,7 +101,7 @@ flowchart TD
 | **SessionView** | React Component | Existing facilitator / Manual-mode screen. In Live mode additionally renders the session-code strip (with copy button), the "N participants connected" count, and a connection-status `Tag`. |
 | **useSessionStore** | Zustand Store | Single source of truth for session state: `mode`, `role`, `sessionId`, `myName`, `connectionStatus`, `peerCount`, items, current screen. Never imports `src/network`. |
 | **NetworkProvider** | React Context Provider | Wraps `<App>`. Owns the one `NetworkSession` instance for the app's lifetime and exposes it via `useNetworkSession`; tears it down on unmount. |
-| **useNetworkSession** | React Hook | The only code that touches both the store and the P2P core. `connect(code, name)` calls `joinSession()` and subscribes to its events; `disconnect()` calls `leave()`. Mirrors `onConnectionStateChange` and peer join/leave into the store. |
+| **useNetworkSession** | React Hook | The only code that touches both the store and the P2P core. `connect(sessionId)` calls `joinSession()` and subscribes to its events; `disconnect()` calls `leave()`. Mirrors `onConnectionStateChange` and peer join/leave into the store. (The participant name is put in the store by `joinLiveSession()` before `connect()` runs.) |
 | **joinSession** | Factory Function | Entry point of the P2P core (from PR #25). Opens the Trystero room (`roomId = sessionId`), wires up the connection tracker and typed actions, returns a `NetworkSession` of `send*` / `on*` methods. |
 | **typed actions** | Module | Defines the three wire actions (`submitEstimate`, `syncState`, `reveal`), serialises outbound messages, and validates every inbound message through `calc` before surfacing it. |
 | **connection tracker** | Module | State machine over peer join/leave and join errors → `idle` / `connecting` / `connected` / `disconnected` plus the peer list; notifies subscribers on change. |
@@ -161,7 +161,8 @@ stateDiagram-v2
 ```
 
 `disconnected` drives the Join screen's plain-language failure banner + guidance
-(retry / VPN / facilitator switches to Manual) per PRD §4.1.8.
+(retry / VPN / facilitator switches to Manual) per PRD §4.1 step 8. The full
+connection-fallback UX is #9.
 
 ## Store additions (foundation)
 
@@ -187,7 +188,7 @@ each submission re-validated, `reveal` must be a string. The UI only ever sees v
 
 - No TURN server — participants behind symmetric NAT can't connect; Manual mode is the
   fallback.
-- Facilitator disconnect mid-session stalls the session (no host re-election).
+- Facilitator disconnect mid-session stalls the session (no facilitator re-election).
 - Mode is fixed at creation — no mid-session switch.
 - Late-joiner snapshot uses `syncState` broadcast (hits all peers), wired in #7.
 - No `/join/<id>` deep links yet — code is shared out of band.

@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-10
-**Related:** PRD-estimation-app.md §4 (Session modes), §9 (Non-functional requirements)
+**Related:** [../prd.md](../prd.md) §4 (Session modes), §9 (Non-functional requirements)
 
 ## Context
 
