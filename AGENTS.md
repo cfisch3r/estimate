@@ -20,12 +20,21 @@ Work is tracked on the **EstiMate Roadmap** GitHub Project (https://github.com/u
 - **Epics** — issues titled `Epic: …`, sitting in the `Backlog` column, drag-ordered. Their order (top = highest priority) is read from `gh project item-list 1 --owner cfisch3r` order.
 - **Stories** — each epic's **sub-issues**, drag-ordered within that epic's sub-issue list. That list is the *only* source of truth for story order; a story's own card position on the board is cosmetic.
 
-**Next task = the first open sub-issue of the first open epic in `Backlog`.** An epic whose sub-issues are all closed is finished — move to the next epic. Always read the story's body before starting.
+**Next task = the first open sub-issue of the first open epic in `Backlog`.** When an
+epic's last sub-issue closes, move its card to `Done` so `Backlog` only ever holds open
+epics. Always read the story's body before starting.
 
 ```sh
-# first open epic in Backlog
-gh project item-list 1 --owner cfisch3r --format json | \
-  jq -r 'first(.items[] | select(.status=="Backlog" and (.content.title | startswith("Epic:"))) | .content.number)'
+# first open epic in Backlog (board order)
+gh api graphql -f query='
+{ user(login:"cfisch3r"){ projectV2(number:1){ items(first:100){ nodes{
+    status:fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } }
+    content{ ... on Issue{ number title state } } } } } } }' --jq '
+  [ .data.user.projectV2.items.nodes[]
+    | select((.status.name? // "")=="Backlog" and (.content.state? // "")=="OPEN"
+             and (.content.title? // "" | startswith("Epic:"))) ]
+  | first | .content.number'
+
 # that epic's stories, in priority order (replace 30)
 gh api graphql -f query='{repository(owner:"cfisch3r",name:"estimate"){issue(number:30){subIssues(first:50){nodes{number state title}}}}}'
 ```
