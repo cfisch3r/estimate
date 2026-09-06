@@ -1,20 +1,40 @@
 # EstiMate — Technical Architecture
 
 **Status:** Accepted
-**Based on:** PRD-estimation-app.md, ADR-001-live-collaboration-architecture.md, design_handoff_estimate_app/
+**Based on:** [prd.md](prd.md), [adr/001-live-collaboration-architecture.md](adr/001-live-collaboration-architecture.md), design_handoff_estimate_app/
 
 ## Context
 
-EstiMate is a greenfield project — only planning docs existed before this document (`PRD-estimation-app.md`, `ADR-001-live-collaboration-architecture.md`, and a high-fidelity clickable HTML prototype in `design_handoff_estimate_app/`). No code has been written yet. ADR-001 already settles the hardest architectural call: live collaboration is peer-to-peer WebRTC (STUN + serverless signaling), with Manual Entry as a first-class, equally-supported second mode — no backend operated by the product for live session communication.
+This document was written as the architecture proposal before implementation began; it now
+also serves as the as-built reference and is kept in step with the code. Its starting point
+is [adr/001-live-collaboration-architecture.md](adr/001-live-collaboration-architecture.md),
+the [PRD](prd.md), and a high-fidelity clickable HTML prototype in
+`design_handoff_estimate_app/`. ADR-001 settles the hardest architectural call: live
+collaboration is peer-to-peer WebRTC (STUN + serverless signaling), with Manual mode as a
+first-class, equally-supported second mode — no backend operated by the product for live
+session communication.
 
-What this document covers is everything ADR-001 doesn't: the framework, how P2P signaling concretely works, how session history persists (a real point of tension with the PRD's "no operated server" phrasing, since ADR-001's constraint is scoped to live sync, not storage), styling/design-system approach, hosting, and module structure.
+What this document covers is everything ADR-001 doesn't: the framework, how P2P signaling
+concretely works, how session history persists (a real point of tension with the PRD's
+"no operated server" phrasing, since ADR-001's constraint is scoped to live sync, not
+storage), styling/design-system approach, hosting, and module structure.
+
+**As-built status.** The M0 scaffold, the `/calc` engine, the Zustand store, the Mode B
+(Manual) screens, the Trystero P2P network layer, and the Join Session screen have all
+shipped (issues #1–#6). For the concrete as-built detail of the Live-mode layer — the
+`src/network/` component breakdown, the join sequence, the connection state machine, and
+the store fields it added — see [concepts/collaboration-mode.md](concepts/collaboration-mode.md);
+this document keeps the decisions and rationale, that one tracks the implementation. Still
+open: the Participant Estimate View (#7), the Reveal View (#8), connection-fallback UX (#9),
+and real persistence (`src/persistence/` is still a placeholder — session data is in-memory
+only).
 
 ## Confirmed decisions
 
 - **Persistence:** local-first only. Session/history data lives in the facilitator's browser (IndexedDB), with CSV export and a shareable read-only link for reports. No cross-device "team" sync in MVP — a session lives on the device that created it. This keeps the app at genuinely zero operated infrastructure, matching PRD §2's top-level goal, not just ADR-001's narrower live-sync text.
 - **Auth:** none. Open links only — anyone with a session link can view/edit it. Consistent with local-first persistence; revisit if/when cross-device history is ever built.
 - **Facilitator disconnect mid-session:** accepted as an MVP gap. If the facilitator's peer drops, the session stalls for remaining participants; no auto-reassignment or election. Document as a known limitation.
-- **Mode switching mid-session:** out of scope for MVP. Mode is fixed at session creation (per PRD §4.1 flow). If P2P fails mid-session, the facilitator starts a fresh Manual Entry session rather than converting in place.
+- **Mode switching mid-session:** out of scope for MVP. Mode is fixed at session creation (per PRD §4.1 flow). If P2P fails mid-session, the facilitator starts a fresh Manual-mode session rather than converting in place.
 - **Estimation unit:** configurable per session (facilitator picks hours/days/weeks at session creation), not fixed and not per-item. Resolves an inconsistency between PRD §5's worked example (days) and the prototype's hardcoded "weeks" — neither was a real decision. Requires a `unit` field on `Session` (not currently in PRD §8's data model sketch) and a small dropdown on the Create Session screen. The false-precision guard's rounding granularity derives from this field via a lookup (e.g. `{hours: 1, days: 0.5, weeks: 0.5}`, exact values tunable).
 - **Unit selector control:** a native `<select class="input">` on Create Session — reuses Nocturne's existing generic input styling, no new component or design mock needed.
 - **Symmetric-range / false-precision nudge styling:** ship using the same plain `.card-meta` muted-caption treatment already used for the job-stakes hint (no distinct "nudge" component exists in Nocturne today). Explicitly logged as a fast-follow design polish item, not blocking MVP build — pragmatic since the guard thresholds themselves are still untuned and likely to change after real usage.
@@ -23,7 +43,7 @@ What this document covers is everything ADR-001 doesn't: the framework, how P2P 
 ## Recommended stack
 
 **Frontend: React 19 + TypeScript + Vite, no meta-framework.**
-Static SPA — no server-side rendering needed, no routes that require backend data at request time. Phosphor's React icon package matches the prototype directly. Nocturne's design system is plain CSS custom properties + global classes (`.btn`, `.card`, `.field`, `.tag`, `.radio`), so it ports as-is via `className` — no CSS-in-JS conversion needed. React + hooks handles the prototype's interaction surface (drag-reorder, inline edit forms, async peer events) without extra tooling. (Originally scoped as "React 18" during architecture discussion; the M0 scaffold used `create-vite`'s current default, React 19 — a version bump, not a design change, so adopted rather than pinned back.)
+Static SPA — no server-side rendering needed, no routes that require backend data at request time. Phosphor's React icon package matches the prototype directly. Nocturne's design system is plain CSS custom properties + global classes (`.btn`, `.card`, `.field`, `.tag`, `.radio`), so it ports as-is via `className` — no CSS-in-JS conversion needed. React + hooks handles the prototype's interaction surface (drag-reorder, inline edit forms, async peer events) without extra tooling. (The M0 scaffold took `create-vite`'s current default, React 19, rather than the React 18 assumed in early discussion — a version bump, not a design change.)
 
 **Tooling: oxlint for linting, not ESLint.** `create-vite`'s current default template ships oxlint (a faster, Rust-based linter) rather than ESLint + typescript-eslint. Functionally equivalent for this project's needs — TypeScript/React rule coverage, no custom rule authoring required — so adopted as scaffolded rather than swapped for the originally-assumed ESLint setup. Prettier still handles formatting (oxlint doesn't format).
 
@@ -33,11 +53,11 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 
 ## P2P live-sync layer (Mode A)
 
-- **Room identity:** a random session ID (nanoid) generated at session creation, encoded directly in the shareable join link (`/join/<sessionId>`). Used as the Trystero `roomId`, with a fixed `appId` namespacing EstiMate's rooms.
+- **Room identity:** `generateSessionCode()` (`src/network/sessionCode.ts`) produces a 6-char Crockford-base32 code at session creation (crypto RNG, ambiguous glyphs removed) — short enough to read aloud or paste into chat. It is the Trystero `roomId`, with a fixed `appId` (`estimate-app-v1`) namespacing EstiMate's rooms. *(The proposal assumed a nanoid embedded in a `/join/<id>` deep link; the as-built code ships the human-shareable code with no deep-link route — see the concept doc's "Known MVP gaps".)*
 - **Signaling strategy:** Trystero's **Nostr strategy** (`trystero/nostr`) as the default — this is the library's own default and top recommendation, backed by hundreds of independent public relays (most redundancy of the decentralized options), no account/config required, matches ADR-001's "no server we operate." Library's own robustness ranking for the decentralized strategies: Nostr → MQTT → BitTorrent → IPFS. Supabase/Firebase strategies exist but require configuring your own project (not zero-setup); a self-hosted WebSocket relay strategy also exists as an explicit escape hatch if the public networks prove unreliable, mirroring ADR-001's bring-your-own-TURN framing. Verified against current Trystero docs (trystero.dev, github.com/dmotz/trystero).
-- **Room privacy:** `roomId` = the session ID embedded in the shareable join link — this is the invite mechanism. Consider passing Trystero's optional `password` (AES-GCM encrypts the signaling handshake) since without it the roomId is visible as metadata on the public signaling medium; a random nanoid roomId is already hard to guess, but a password closes the gap cheaply.
+- **Room privacy:** `roomId` = the shared session code — this is the invite mechanism. `joinSession()` accepts an optional `password` (Trystero AES-GCM encrypts the signaling handshake); without it the roomId is visible as metadata on the public signaling medium. The 6-char code is already hard to guess, but a password closes the gap cheaply if a session warrants it.
 - **Data sync model: event broadcast, not CRDT.** Each peer only broadcasts its own submissions (`room.makeAction()`); every peer independently maintains the same append-only list of received estimates and computes min/median/max locally. This works because the PRD's aggregation (min of Best, max of Worst, median of Likely) is order-independent and idempotent — no conflict resolution needed, and Mode A/B can share one calculation engine.
-- **Known gap to handle explicitly:** Trystero doesn't replay history to late joiners. On `onPeerJoin`, an existing peer must push a full state snapshot (current item, submissions so far, finalized items) to the newcomer.
+- **Known gap to handle explicitly:** Trystero doesn't replay history to late joiners. On `onPeerJoin`, an existing peer must push a full state snapshot (current item, submissions so far, finalized items) to the newcomer. The wire action for this (`syncState`, carrying a `SessionSnapshot`) exists in `src/network/actions.ts`; broadcasting and applying it on join is wired up in #7.
 
 ## Module structure
 
@@ -45,7 +65,10 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 /src
   /design       — ported Nocturne tokens.css + component CSS (framework-agnostic)
   /components   — Button, Card, Field, RadioTile, Tag — thin wrappers over Nocturne classes
-  /screens      — one per PRD §7 screen (Create, Join, Session View, Estimate, Reveal, Summary, History)
+  /screens      — one per PRD §7 screen (Create, Join, Session View, Participant Estimate
+                  View, Reveal View, Summary, History). Built so far: Create, Session View,
+                  Summary, History, Join. Participant Estimate View is a #6 placeholder
+                  (real form in #7); Reveal View and its `reveal` ScreenId land in #8.
   /calc         — pure functions: aggregateEstimates(), computeCI90() (McConnell's formula, PRD §5),
                   bias guards (symmetric-range, false-precision, outlier — PRD §6). Framework-free,
                   unit-testable, identical between Mode A and Mode B.
@@ -61,7 +84,7 @@ The `/calc` layer's isolation as pure, framework-free functions is the single mo
 
 ## `/calc` module — detailed design
 
-**One aggregation function serves both modes.** `aggregateEstimates()` takes an array of `{best, likely, worst}` estimates and a strategy, and returns the group range. Fed a Live session's N participant submissions or a Manual Entry session's single facilitator-entered set, it's the same call — a single-element array degenerates correctly (min/median/max of one value = that value), so Mode B isn't a special case, it's a consequence of the design (satisfies PRD §4.2 / ADR-001's shared-engine requirement).
+**One aggregation function serves both modes.** `aggregateEstimates()` takes an array of `{best, likely, worst}` estimates and a strategy, and returns the group range. Fed a Live-mode session's N participant submissions or a Manual-mode session's single facilitator-entered set, it's the same call — a single-element array degenerates correctly (min/median/max of one value = that value), so Mode B isn't a special case, it's a consequence of the design (satisfies PRD §4.2 / ADR-001's shared-engine requirement).
 
 ```ts
 interface AggregateStrategy {
@@ -114,7 +137,7 @@ The clickable prototype predates the `/calc` module and unit decisions above, so
 
 **Already covered by the prototype, no gap:**
 - Outlier flag at Reveal — the warning icon on an outlier's row already exists in the design; it just needs to switch from hardcoded/simulated to driven by `checkOutlier()`'s real output.
-- Unit-aware labels (Participant Estimate View, Manual Entry fields, Reveal bars, Summary rows currently hardcode "weeks") — mechanical copy interpolation of `session.unit`, not a new visual pattern.
+- Unit-aware labels (Participant Estimate View, Session View fields in Manual mode, Reveal bars, Summary rows currently hardcode "weeks") — mechanical copy interpolation of `session.unit`, not a new visual pattern.
 
 **Genuine gaps, resolved for MVP:**
 - Symmetric-range and false-precision nudges have no distinct visual pattern in Nocturne (only plain `.card-meta` caption styling exists). **Decision: ship with the plain caption treatment, log a fast-follow design task** for a more distinct "live nudge" treatment rather than blocking MVP on a design pass.
@@ -129,6 +152,21 @@ The clickable prototype predates the `/calc` module and unit decisions above, so
 - `onPeerJoin`/`onPeerLeave` fire on connect/disconnect, but Trystero does not replay history to a newcomer — the late-joiner state snapshot (above) is entirely our responsibility to implement, not something the library helps with.
 - **Markdown rendering is not implemented.** Item descriptions and the per-item Notes field are both labeled "Markdown supported" in the UI (M3), but the values are stored and displayed as raw text — no parser/renderer is wired up anywhere. Found during the M3 screen review (2026-08-21) when a description containing `*`/`##`/`>` syntax rendered literally instead of formatted. Needs a markdown-to-safe-HTML renderer (e.g. `marked` + `DOMPurify`, or a React-native option like `react-markdown`) wired into `CardBody` (item description) and wherever Notes is displayed read-only. Not started; flagging so the "Markdown supported" copy doesn't ship as a false promise.
 
-## Suggested next step
+## Build status &amp; what's next
 
-This document is the architecture proposal, agreed with the product owner. A natural follow-up is scaffolding the project (Vite + React + TS, porting Nocturne tokens, wiring the `/calc` module with unit tests for the PRD §5 formulas first, since that's the one piece with an unambiguous spec) — a separate implementation plan when ready to build.
+The proposal above has been built out through issue #6: Vite + React 19 + TS scaffold,
+Nocturne ported as-is, the `/calc` engine (unit-tested against the PRD §5–6 formulas), the
+Zustand store, the Mode B (Manual) screens, the Trystero P2P network layer, and the Join
+Session screen.
+
+Remaining MVP work, tracked on the EstiMate Roadmap board:
+
+- **#7** — Participant Estimate View: the real Best/Likely/Worst form, plus wiring
+  `NetworkProvider` to dispatch `onEstimate` / `onSyncState` / `onReveal` into the store and
+  adding the `submissions` / round state the store doesn't have yet.
+- **#8** — Reveal View: per-participant range table, group aggregate + CI90, `checkOutlier()`
+  driving the outlier flag, the `reveal` ScreenId, and `revealedItemIds` state.
+- **#9** — connection-fallback UX for peers that can't establish a direct connection.
+- **Persistence** — `src/persistence/` (IndexedDB, CSV export, shareable report link) is
+  still a placeholder.
+- **Post-MVP Phase 5** — the PRD §6.1 cone-of-uncertainty guard.

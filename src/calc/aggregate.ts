@@ -32,7 +32,7 @@ function reduceValues(values: number[], op: 'min' | 'max' | 'median' | 'mean'): 
 /** Combines individual Best/Likely/Worst submissions into one group range (PRD §5).
  *  A single-element array degenerates to that estimate's own values unchanged — this
  *  is what lets Mode B (one facilitator-entered estimate) share this exact function
- *  with Mode A (many participant submissions), per ARCHITECTURE-estimation-app.md. */
+ *  with Mode A (many participant submissions), per docs/architecture.md. */
 export function aggregateEstimates(
   estimates: Estimate[],
   strategy: AggregateStrategy = DEFAULT_STRATEGY,

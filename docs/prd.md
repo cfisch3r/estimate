@@ -34,22 +34,22 @@ EstiMate applies **three-point estimation** — the method recommended in Episod
 
 At session creation, the facilitator picks one of two modes. Both modes produce the same output (items with min/expected/CI90/max) and share the same summary/report/history features — only how the numbers get in differs. See **ADR-001** for the reasoning behind offering both.
 
-**Mode A — Live Collaborative Session (peer-to-peer)**
+**Live mode (Mode A) — live collaborative session (peer-to-peer)**
 The team estimates together in real time, each participant submitting their own numbers from their own device, connected directly browser-to-browser (see §9, ADR-001).
 
-1. **Create session** — facilitator names the session, adds items to estimate (title + optional description), picks "Live Collaborative," gets a shareable join link/code
+1. **Create session** — facilitator names the session, adds items to estimate (title + optional description), picks "Live collaborative," gets a shareable join link/code
 2. **Join session** — participants open the link, enter their name (named, not anonymous — enables direct discussion), browser connects peer-to-peer into the session
 3. **Estimate an item** — for the active item, each participant privately submits three numbers: **Best Case**, **Most Likely**, **Worst Case** (same unit, e.g., days)
 4. **Reveal** — facilitator reveals once everyone has submitted (or manually). Shows each participant's three values side by side, plus the group's calculated confidence interval
 5. **Discuss & converge** — team discusses outliers; facilitator can trigger a re-estimate round for the item
 6. **Finalize item** — facilitator locks in the item's values (either the auto-calculated group range, or a manually reconciled one) and moves to the next item
 7. **Session summary** — at the end, a report of all items with their four values, exportable and saved to session history
-8. **Connection fallback** — if a participant's browser can't establish a direct peer connection (e.g., strict network), the app tells them plainly and suggests the facilitator either retry, have that person join via VPN, or switch that item to manual entry (Mode B) for the group
+8. **Connection fallback** — if a participant's browser can't establish a direct peer connection (e.g., strict network), the app tells them plainly and suggests the facilitator either retry, have that person join via VPN, or switch that item to Manual mode (Mode B) for the group
 
-**Mode B — Single-User / Manual Entry Session**
+**Manual mode (Mode B) — single-user entry session**
 The facilitator ran the estimation discussion elsewhere (in person, on a call, over Slack) and just wants to type in the team's agreed-upon numbers to get the same calculated ranges, guardrails, and report. No connection, no participants joining — just the facilitator and the app.
 
-1. **Create session** — facilitator names the session, adds items, picks "Manual Entry"
+1. **Create session** — facilitator names the session, adds items, picks "Manual entry"
 2. **Enter values per item** — for each item, the facilitator types in the group's agreed Best Case / Most Likely / Worst Case directly (single set of values, no per-participant breakdown)
 3. **Bias guards still apply** — symmetric-range warning, false-precision guard all fire the same way as in live mode (§6)
 4. **Finalize item** — same as Mode A, values are locked and the app calculates min/expected/CI90/max
@@ -57,7 +57,7 @@ The facilitator ran the estimation discussion elsewhere (in person, on a call, o
 
 ### 4.2 Mode comparison
 
-| | Mode A: Live Collaborative | Mode B: Manual Entry |
+| | Live mode (Mode A) | Manual mode (Mode B) |
 |---|---|---|
 | Who submits | Each participant, from their own device | Facilitator only |
 | Real-time sync needed | Yes (peer-to-peer) | No |
@@ -110,7 +110,7 @@ When best/worst are both entered, compute the actual ratio = Worst / Best and co
 
 ## 7. Screens (MVP)
 
-1. **Landing / Create Session** — session name, add items (list, add/remove/edit), **choose mode (Live Collaborative / Manual Entry)**
+1. **Landing / Create Session** — session name, add items (list, add/remove/edit), **choose mode (Live collaborative / Manual entry)**
 2. **Join Session** *(Mode A only)* — enter name, join via code/link, connecting indicator while peer connection establishes
 3. **Facilitator Session View** — item queue, current item spotlighted; in Mode A shows participant submission status (submitted/not) and reveal control, in Mode B shows direct input fields
 4. **Participant Estimate View** *(Mode A only)* — current item detail, three number inputs (Best/Likely/Worst), submit
