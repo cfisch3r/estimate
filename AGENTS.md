@@ -17,23 +17,18 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 
 Work is tracked on the **EstiMate Roadmap** GitHub Project (https://github.com/users/cfisch3r/projects/1) as a **two-level ordered backlog**:
 
-- **Epics** — issues titled `Epic-NNNN: …` (4-digit ordinal), sitting in the `Backlog` column. Their priority order is the **ascending alphanumeric sort of the title** — `Epic-0001` outranks `Epic-0002`. The `NNNN` prefix is the only source of truth for epic order; the board's `Kanban` view is sorted by title so it shows the same order visually. Re-prioritise by renaming (renumber with gaps — 0010, 0020, 0030 — so an epic can be slotted between two others).
+- **Epics** — issues carrying the `epic` label, titled `Epic-NNNN: …` (4-digit ordinal). Their priority order is the **ascending alphanumeric sort of the title** — `Epic-0010` outranks `Epic-0020`. The `NNNN` prefix is the only source of truth for epic order. Re-prioritise by renaming (renumber with gaps — 0010, 0020, 0030 — so an epic can be slotted between two others). Epic cards are hidden from the `Kanban` view (filter `-label:epic`); the `Epics` view lists them, sorted by title.
 - **Stories** — each epic's **sub-issues**, drag-ordered within that epic's sub-issue list. That list is the *only* source of truth for story order; a story's own card position on the board is cosmetic.
 
-**Next task = the first open sub-issue of the first open epic (by title sort) in `Backlog`.**
-When an epic's last sub-issue closes, move its card to `Done` so `Backlog` only ever holds
-open epics. Always read the story's body before starting.
+**Next task = the first open sub-issue of the first open epic (by title sort).** Always read
+the story's body before starting.
 
 ```sh
-# first open epic in Backlog, by title order
+# first open epic, by title order
 gh api graphql -f query='
-{ user(login:"cfisch3r"){ projectV2(number:1){ items(first:100){ nodes{
-    status:fieldValueByName(name:"Status"){ ... on ProjectV2ItemFieldSingleSelectValue{ name } }
-    content{ ... on Issue{ number title state } } } } } } }' --jq '
-  [ .data.user.projectV2.items.nodes[]
-    | select((.status.name? // "")=="Backlog" and (.content.state? // "")=="OPEN"
-             and (.content.title? // "" | startswith("Epic-"))) ]
-  | sort_by(.content.title) | first | .content.number'
+{ repository(owner:"cfisch3r",name:"estimate"){
+    issues(first:50, labels:["epic"], states:OPEN){ nodes{ number title } } } }' --jq '
+  [ .data.repository.issues.nodes[] ] | sort_by(.title) | first | .number'
 
 # that epic's stories, in priority order (replace 30)
 gh api graphql -f query='{repository(owner:"cfisch3r",name:"estimate"){issue(number:30){subIssues(first:50){nodes{number state title}}}}}'
