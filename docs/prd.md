@@ -1,7 +1,7 @@
 # PRD: EstiMate — Live Three-Point Estimation for Dev Teams
 
 **Status:** Draft v1
-**Author:** [you]
+**Author:** Christian Fischer
 **Based on:** Developer's Guide to Software Estimation (agiledojo.de, Episodes I–III)
 
 ## 1. Problem

@@ -9,7 +9,7 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/prd.md` — product requirements
 - `docs/architecture.md` — the technical architecture (stack, module structure, `/calc` design) and decisions made building it
 - `docs/adr/001-live-collaboration-architecture.md` — accepted decision on the peer-to-peer live-collaboration architecture
-- `docs/adr/002-testing-strategy.md` — accepted decision on the layered test strategy (unit/component now; Playwright deferred until `/network` or `/persistence` get real implementations — see that ADR before adding e2e tests or building those modules)
+- `docs/adr/002-testing-strategy.md` — accepted decision on the layered test strategy (unit/component now; Playwright deferred until real browser-only behaviour exists — WebRTC connect/reveal in `/network`, or real `/persistence` — see that ADR's 2026-09-07 update before adding e2e tests)
 - `docs/concepts/collaboration-mode.md` — Live mode (Mode A) technical concept: the Trystero P2P network layer, join flow, and screen/store wiring delivered so far
 - `design_handoff_estimate_app/` — the design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
 
@@ -41,10 +41,12 @@ Milestones are retired: the closed `M0`–`M3` remain only as historical record.
 ```
 pnpm dev             # start the dev server
 pnpm build            # type-check (tsc -b) and production build
+pnpm preview          # serve the production build locally
 pnpm lint             # oxlint
 pnpm format           # prettier --write
 pnpm format:check     # prettier --check
 pnpm test             # vitest run, summary output
+pnpm test:watch       # vitest in watch mode
 pnpm test:verbose     # vitest run, every individual test name and result
 pnpm test:coverage    # vitest run --coverage
 ```
@@ -70,7 +72,7 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 
 - **Trivial changes** (typo, doc tweak): direct push to `main`, no branch/PR needed.
 - **Issue-sized work**: one branch per issue (`issue-<n>-<slug>`), PR opened with `Closes #n` in the description, squash-merge into `main`.
-- **Review**: after opening the PR, run the `code-review` skill as an independent pass over the diff (medium effort by default, higher for anything touching `/network` or `/persistence`). Apply confirmed fixes as follow-up commits on the same branch.
+- **Review**: after opening the PR, run the `code-review` skill as an independent pass over the diff (medium effort by default, higher for anything touching `/network` or `/persistence`). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
 - **Merge gate**: always ask the user whether they want to personally review the PR before merging — even after the automated review comes back clean. Never auto-merge without asking.
 - **Tracking**: the `EstiMate Roadmap` GitHub Project board (https://github.com/users/cfisch3r/projects/1), Backlog → In Progress → In Review → Done. Work is a two-level ordered backlog of epics and their sub-issues — see [Picking the next task](#picking-the-next-task). Milestones are retired (closed `M0`–`M3` kept as history).
 

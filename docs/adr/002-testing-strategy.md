@@ -10,6 +10,8 @@ The app currently has a Vitest + Testing Library suite covering `src/calc/` (the
 
 `src/network/` and `src/persistence/` are currently empty (`.gitkeep` placeholders only, per ADR-001's peer-to-peer/manual-entry architecture, not yet implemented). There is no routing, no real network calls, and no cross-reload persistence to exercise. The app runs entirely in jsdom-testable territory today.
 
+> **Update 2026-09-07:** `src/network/` now has a real implementation — the Trystero P2P layer (issues #25, #6): room join/create, typed actions, connection-state hooks, inbound-message validation. It is covered by unit and jsdom component tests. This does **not** yet trip the Playwright trigger below: the trigger is real WebRTC *connection* behaviour (peer connect/drop, reveal sync) that jsdom can't exercise, which lands with the Participant Estimate View (#7) and Reveal View (#8). `src/persistence/` is still a `.gitkeep` stub. The decision and rationale below stand unchanged.
+
 We considered whether to introduce Playwright now, alongside the existing unit/component layer, to build out a classic test-pyramid shape (broad unit base, narrower component middle, thin e2e top) proactively.
 
 ## Decision

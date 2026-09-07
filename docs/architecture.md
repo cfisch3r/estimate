@@ -19,7 +19,7 @@ concretely works, how session history persists (a real point of tension with the
 "no operated server" phrasing, since ADR-001's constraint is scoped to live sync, not
 storage), styling/design-system approach, hosting, and module structure.
 
-**As-built status.** The M0 scaffold, the `/calc` engine, the Zustand store, the Mode B
+**As-built status.** The initial scaffold, the `/calc` engine, the Zustand store, the Mode B
 (Manual) screens, the Trystero P2P network layer, and the Join Session screen have all
 shipped (issues #1–#6). For the concrete as-built detail of the Live-mode layer — the
 `src/network/` component breakdown, the join sequence, the connection state machine, and
@@ -38,12 +38,12 @@ only).
 - **Estimation unit:** configurable per session (facilitator picks hours/days/weeks at session creation), not fixed and not per-item. Resolves an inconsistency between PRD §5's worked example (days) and the prototype's hardcoded "weeks" — neither was a real decision. Requires a `unit` field on `Session` (not currently in PRD §8's data model sketch) and a small dropdown on the Create Session screen. The false-precision guard's rounding granularity derives from this field via a lookup (e.g. `{hours: 1, days: 0.5, weeks: 0.5}`, exact values tunable).
 - **Unit selector control:** a native `<select class="input">` on Create Session — reuses Nocturne's existing generic input styling, no new component or design mock needed.
 - **Symmetric-range / false-precision nudge styling:** ship using the same plain `.card-meta` muted-caption treatment already used for the job-stakes hint (no distinct "nudge" component exists in Nocturne today). Explicitly logged as a fast-follow design polish item, not blocking MVP build — pragmatic since the guard thresholds themselves are still untuned and likely to change after real usage.
-- **Design system: port Nocturne as-is, no Tailwind migration.** Nocturne's `styles.css` (CSS custom properties + global component classes) is the single canonical source of truth for tokens and components, per its own bundled readme. Considered and rejected migrating it to Tailwind: the values are hand-tuned/procedurally generated (non-round spacing scale, OKLCH color ramps) and re-expressing them in a second config risks fidelity drift plus an ongoing sync burden against `styles.css`, for a benefit (utility-class layout ergonomics) that doesn't clearly apply here since there's no existing Tailwind codebase to align with. Layout glue uses scoped CSS referencing Nocturne's existing `--space-*` variables instead.
+- **Design system: port Nocturne as-is, no Tailwind migration.** Nocturne's canonical stylesheet (CSS custom properties + global component classes) is the single source of truth for tokens and components, per its own bundled readme; it is ported verbatim to `src/design/nocturne.css` (see `AGENTS.md` — that file stays an unmodified diff against its source). Considered and rejected migrating it to Tailwind: the values are hand-tuned/procedurally generated (non-round spacing scale, OKLCH color ramps) and re-expressing them in a second config risks fidelity drift plus an ongoing sync burden against `nocturne.css`, for a benefit (utility-class layout ergonomics) that doesn't clearly apply here since there's no existing Tailwind codebase to align with. Layout glue uses scoped CSS referencing Nocturne's existing `--space-*` variables instead.
 
 ## Recommended stack
 
 **Frontend: React 19 + TypeScript + Vite, no meta-framework.**
-Static SPA — no server-side rendering needed, no routes that require backend data at request time. Phosphor's React icon package matches the prototype directly. Nocturne's design system is plain CSS custom properties + global classes (`.btn`, `.card`, `.field`, `.tag`, `.radio`), so it ports as-is via `className` — no CSS-in-JS conversion needed. React + hooks handles the prototype's interaction surface (drag-reorder, inline edit forms, async peer events) without extra tooling. (The M0 scaffold took `create-vite`'s current default, React 19, rather than the React 18 assumed in early discussion — a version bump, not a design change.)
+Static SPA — no server-side rendering needed, no routes that require backend data at request time. Phosphor's React icon package matches the prototype directly. Nocturne's design system is plain CSS custom properties + global classes (`.btn`, `.card`, `.field`, `.tag`, `.radio`), so it ports as-is via `className` — no CSS-in-JS conversion needed. React + hooks handles the prototype's interaction surface (drag-reorder, inline edit forms, async peer events) without extra tooling. (The initial scaffold took `create-vite`'s current default, React 19, rather than the React 18 assumed in early discussion — a version bump, not a design change.)
 
 **Tooling: oxlint for linting, not ESLint.** `create-vite`'s current default template ships oxlint (a faster, Rust-based linter) rather than ESLint + typescript-eslint. Functionally equivalent for this project's needs — TypeScript/React rule coverage, no custom rule authoring required — so adopted as scaffolded rather than swapped for the originally-assumed ESLint setup. Prettier still handles formatting (oxlint doesn't format).
 
@@ -63,8 +63,10 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 
 ```
 /src
-  /design       — ported Nocturne tokens.css + component CSS (framework-agnostic)
-  /components   — Button, Card, Field, RadioTile, Tag — thin wrappers over Nocturne classes
+  /design       — nocturne.css (verbatim Nocturne port) + composed-pattern CSS built from
+                  its primitives: radio-tile.css, range-bar.css, session-sidebar.css
+  /components   — Button, Card, Field, GuardNote, Header, RadioTile, RangeBar, Tag — thin
+                  wrappers / compositions over Nocturne classes
   /screens      — one per PRD §7 screen (Create, Join, Session View, Participant Estimate
                   View, Reveal View, Summary, History). Built so far: Create, Session View,
                   Summary, History, Join. Participant Estimate View is a #6 placeholder
@@ -80,7 +82,7 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 
 The `/calc` layer's isolation as pure, framework-free functions is the single most load-bearing structural decision — PRD §4.2 and ADR-001 both require identical calculation/bias-guard behavior across both modes, and this makes it trivially unit-testable against the PRD §5–6 formulas independent of UI or networking.
 
-**Testing note (ADR-002):** implementing `/network` or `/persistence` for real is the trigger to add Playwright — that's when browser-specific behavior (real reload/persistence, real P2P connection handling) first exists to justify an e2e layer. Scope it to a handful of golden-path smoke tests; keep edge cases in `/calc`/`/state`/component tests.
+**Testing note (ADR-002):** browser-specific behavior — real reload/persistence, real P2P connection handling — is the trigger to add Playwright. The Trystero `/network` layer has shipped, but its jsdom-testable surface (actions, validation, state machine) doesn't yet trip that trigger; real WebRTC connect/reveal (#7/#8) and real `/persistence` do. Scope it to a handful of golden-path smoke tests; keep edge cases in `/calc`/`/state`/component tests. See ADR-002's 2026-09-07 update.
 
 ## `/calc` module — detailed design
 
@@ -102,7 +104,7 @@ function computeCI90(expected: number, best: number, worst: number): number {
 }
 ```
 
-**`Estimate` is a self-validating value type, not a bare interface.** `best ≤ likely ≤ worst` is a domain invariant of what an Estimate *is* — not a UI-specific concern — so per hexagonal architecture's port/adapter separation, it's enforced once in the core rather than duplicated across every adapter that constructs one (the M3 form, M5's incoming Trystero messages, a future CSV import). `Estimate` is only producible via `createEstimate(input): Result<Estimate, string>`, which is the single point where the ordering (and finiteness) check happens:
+**`Estimate` is a self-validating value type, not a bare interface.** `best ≤ likely ≤ worst` is a domain invariant of what an Estimate *is* — not a UI-specific concern — so per hexagonal architecture's port/adapter separation, it's enforced once in the core rather than duplicated across every adapter that constructs one (the estimate form in #7, incoming Trystero peer messages, a future CSV import). `Estimate` is only producible via `createEstimate(input): Result<Estimate, string>`, which is the single point where the ordering (and finiteness) check happens:
 
 ```ts
 interface RawEstimateInput { participantId: string; best: number; likely: number; worst: number }
@@ -114,7 +116,7 @@ type Estimate = RawEstimateInput & { readonly [EstimateBrand]: true }
 function createEstimate(input: RawEstimateInput): Result<Estimate>
 ```
 
-The brand is compile-time only — it adds no runtime property, so `Estimate` stays plain, JSON-transparent data for network transport and IndexedDB storage — but it does make constructing one any other way (e.g. a bare `{best, likely, worst}` object literal) a type error everywhere `Estimate` is expected. This only guards against *accidental* misuse within our own code, though: TypeScript types don't exist at runtime, so they can't protect against a malformed message from an untrusted Trystero peer. M5 still has to call `createEstimate()` on every incoming peer message before it touches state — the difference is it's now calling one shared validation function instead of re-implementing the ordering check per adapter.
+The brand is compile-time only — it adds no runtime property, so `Estimate` stays plain, JSON-transparent data for network transport and IndexedDB storage — but it does make constructing one any other way (e.g. a bare `{best, likely, worst}` object literal) a type error everywhere `Estimate` is expected. This only guards against *accidental* misuse within our own code, though: TypeScript types don't exist at runtime, so they can't protect against a malformed message from an untrusted Trystero peer. The network layer therefore calls `createEstimate()` on every incoming peer message before it touches state — via `safeCreateEstimate()` in `src/network/actions.ts`, which also traps the throw path since peer input isn't guaranteed well-shaped. One shared validation function, not the ordering check re-implemented per adapter.
 
 **Why `AggregateStrategy` is a per-field interface, not a single toggle:** PRD §5 requires the aggregation logic itself to be configurable, but its philosophy is asymmetric on purpose — `min`/`max` for Best/Worst specifically to *preserve* outliers ("don't average away the outliers... worst case tends to get optimistically averaged down"), `median` for Likely as a robust center. A single `'min-max' | 'average'` switch couldn't express that; three independent knobs can. Currently this is only a code-level configurability point — the PRD data model has no field for *which* strategy a session uses, so it's an engineering default for now, not a facilitator-facing setting (flagged below).
 
@@ -127,13 +129,15 @@ function checkFalsePrecision(value: number, granularity: number): GuardResult
 function checkOutlier(estimate: Estimate, allEstimates: Estimate[], thresholdPct = 0.4): GuardResult
 ```
 
-A fourth guard, the PRD §6.1 uncertainty-range check, is planned (see Post-MVP Phase 5 milestone) but not yet implemented.
+`src/calc/guards.ts` also exports `checkAscendingOrder` — a form-input ordering nudge (best ≤ likely ≤ worst) for the in-progress estimate form, not one of PRD §6's bias guards.
+
+A further guard, the PRD §6.1 uncertainty-range check, is planned (see PRD §12 Phase 5) but not yet implemented.
 
 **Tunable constants, not settled numbers:** the symmetric-range tolerance (proposed 15%) and outlier threshold (proposed: no range overlap, or `likely` deviates >40% of group spread) are UX-tuning parameters PRD leaves vague ("within a tolerance," "far from the group median") — ship as named constants, expect to retune after real sessions rather than treating these as final.
 
 ## Screens — gaps vs. the prototype
 
-The clickable prototype predates the `/calc` module and unit decisions above, so it doesn't show where bias-guard output or unit selection actually render. Checked against Nocturne's stylesheet directly (`_ds/nocturne-.../styles.css`) rather than assumed:
+The clickable prototype predates the `/calc` module and unit decisions above, so it doesn't show where bias-guard output or unit selection actually render. Checked against Nocturne's stylesheet directly (`src/design/nocturne.css`) rather than assumed:
 
 **Already covered by the prototype, no gap:**
 - Outlier flag at Reveal — the warning icon on an outlier's row already exists in the design; it just needs to switch from hardcoded/simulated to driven by `checkOutlier()`'s real output.
@@ -150,7 +154,7 @@ The clickable prototype predates the `/calc` module and unit decisions above, so
 - Trystero has no built-in room-size or message-size limits documented, but the mesh topology (direct peer connections, no SFU) means the library itself advises keeping groups small — a non-issue for typical estimation session sizes, but worth remembering if group sessions ever grow large.
 - `AggregateStrategy` is only an engineering-level default for MVP (min/median/max, not facilitator-configurable) — PRD §5 calls for it to be "configurable" but neither the data model nor the prototype exposes a UI for it. Revisit if teams actually want to change aggregation policy per session, since that needs a schema field + UI, not just the code-level flexibility already designed in.
 - `onPeerJoin`/`onPeerLeave` fire on connect/disconnect, but Trystero does not replay history to a newcomer — the late-joiner state snapshot (above) is entirely our responsibility to implement, not something the library helps with.
-- **Markdown rendering is not implemented.** Item descriptions and the per-item Notes field are both labeled "Markdown supported" in the UI (M3), but the values are stored and displayed as raw text — no parser/renderer is wired up anywhere. Found during the M3 screen review (2026-08-21) when a description containing `*`/`##`/`>` syntax rendered literally instead of formatted. Needs a markdown-to-safe-HTML renderer (e.g. `marked` + `DOMPurify`, or a React-native option like `react-markdown`) wired into `CardBody` (item description) and wherever Notes is displayed read-only. Not started; flagging so the "Markdown supported" copy doesn't ship as a false promise.
+- **Markdown rendering is not implemented.** Item descriptions and the per-item Notes field are both labeled "Markdown supported" in the UI (M3), but the values are stored and displayed as raw text — no parser/renderer is wired up anywhere. Found during the Manual-mode screen review (2026-08-21) when a description containing `*`/`##`/`>` syntax rendered literally instead of formatted. Needs a markdown-to-safe-HTML renderer (e.g. `marked` + `DOMPurify`, or a React-native option like `react-markdown`) wired into `CardBody` (item description) and wherever Notes is displayed read-only. Not started; flagging so the "Markdown supported" copy doesn't ship as a false promise.
 
 ## Build status &amp; what's next
 
@@ -169,4 +173,4 @@ Remaining MVP work, tracked on the EstiMate Roadmap board:
 - **#9** — connection-fallback UX for peers that can't establish a direct connection.
 - **Persistence** — `src/persistence/` (IndexedDB, CSV export, shareable report link) is
   still a placeholder.
-- **Post-MVP Phase 5** — the PRD §6.1 cone-of-uncertainty guard.
+- **PRD §12 Phase 5** — the PRD §6.1 cone-of-uncertainty guard.

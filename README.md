@@ -13,7 +13,7 @@ Both modes share the same calculation engine, bias guards (symmetric-range warni
 
 ## Status
 
-MVP in progress. Manual mode (Mode B) — session creation, item management, Session View, summary, and history — is built. Live mode (Mode A) has its foundation in place — the Trystero peer-to-peer network layer and the Join Session screen — with the Participant Estimate View and Reveal View still to come. Real persistence (currently in-memory only) is not yet implemented. See the repo's [Issues](../../issues) and [Milestones](../../milestones) for current status.
+MVP in progress. Manual mode (Mode B) — session creation, item management, Session View, summary, and history — is built. Live mode (Mode A) has its foundation in place — the Trystero peer-to-peer network layer and the Join Session screen — with the Participant Estimate View and Reveal View still to come. Real persistence (currently in-memory only) is not yet implemented. See the [EstiMate Roadmap](https://github.com/users/cfisch3r/projects/1) project board and the repo's [Issues](../../issues) for current status.
 
 ## Stack
 
@@ -26,10 +26,12 @@ pnpm install
 
 pnpm dev             # start the dev server
 pnpm build           # type-check (tsc -b) and production build
+pnpm preview         # serve the production build locally
 pnpm lint            # oxlint
 pnpm format          # prettier --write
 pnpm format:check    # prettier --check
 pnpm test            # vitest run, summary output
+pnpm test:watch      # vitest in watch mode
 pnpm test:verbose    # vitest run, every individual test name and result
 pnpm test:coverage   # vitest run --coverage
 ```
