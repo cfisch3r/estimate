@@ -53,6 +53,13 @@ pnpm test:coverage    # vitest run --coverage
 
 Run `pnpm build`, `pnpm lint`, `pnpm format:check`, and `pnpm test` before considering any change complete.
 
+Project-owned Claude Code tooling lives in `.claude/` (versioned):
+
+- **`/doc-review`** — read-only documentation audit run in the `doc-quality` subagent.
+  Checks docs for accuracy against shipped code, cross-reference integrity, and
+  conformance to this file's conventions. Defaults to the current diff; `/doc-review all`
+  for a full audit, or pass a path. Reports severity-ranked findings and applies nothing.
+
 ## Code conventions
 
 - **TypeScript strict mode** (`strict: true`, `noUncheckedIndexedAccess: true`) — don't loosen these.
