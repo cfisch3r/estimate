@@ -26,4 +26,21 @@
 }
 .radio-tile .dot {
   margin-top: 2px;
+  width: 16px;
+  height: 16px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-divider);
+}
+.radio-tile:hover .dot {
+  border-color: var(--color-accent);
+}
+.radio-tile input:checked + .dot {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+  box-shadow: inset 0 0 0 4px var(--color-bg);
+}
+.radio-tile input:focus-visible + .dot {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
