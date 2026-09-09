@@ -37,7 +37,7 @@ At session creation, the facilitator picks one of two modes. Both modes produce 
 **Live mode (Mode A) — live collaborative session (peer-to-peer)**
 The team estimates together in real time, each participant submitting their own numbers from their own device, connected directly browser-to-browser (see §9, ADR-001).
 
-1. **Create session** — facilitator names the session, adds items to estimate (title + optional description), picks "Live collaborative," gets a shareable join link/code
+1. **Start collaborative** — facilitator picks "Start collaborative estimation" on the mode-selection screen and immediately gets a shareable code; the session name and items are added on the workspace afterwards (and can keep changing mid-session)
 2. **Join session** — participants open the link, enter their name (named, not anonymous — enables direct discussion), browser connects peer-to-peer into the session
 3. **Estimate an item** — for the active item, each participant privately submits three numbers: **Best Case**, **Most Likely**, **Worst Case** (same unit, e.g., days)
 4. **Reveal** — facilitator reveals once everyone has submitted (or manually). Shows each participant's three values side by side, plus the group's calculated confidence interval
@@ -49,7 +49,7 @@ The team estimates together in real time, each participant submitting their own 
 **Manual mode (Mode B) — single-user entry session**
 The facilitator ran the estimation discussion elsewhere (in person, on a call, over Slack) and just wants to type in the team's agreed-upon numbers to get the same calculated ranges, guardrails, and report. No connection, no participants joining — just the facilitator and the app.
 
-1. **Create session** — facilitator names the session, adds items, picks "Manual entry"
+1. **Start single-user** — facilitator picks "Start single-user mode" on the mode-selection screen and lands on the workspace, where the session name and items are added (and can keep changing)
 2. **Enter values per item** — for each item, the facilitator types in the group's agreed Best Case / Most Likely / Worst Case directly (single set of values, no per-participant breakdown)
 3. **Bias guards still apply** — symmetric-range warning, false-precision guard all fire the same way as in live mode (§6)
 4. **Finalize item** — same as Mode A, values are locked and the app calculates min/expected/CI90/max
@@ -110,13 +110,12 @@ When best/worst are both entered, compute the actual ratio = Worst / Best and co
 
 ## 7. Screens (MVP)
 
-1. **Landing / Create Session** — session name, add items (list, add/remove/edit), **choose mode (Live collaborative / Manual entry)**
-2. **Join Session** *(Mode A only)* — enter name, join via code/link, connecting indicator while peer connection establishes
-3. **Facilitator Session View** — item queue, current item spotlighted; in Mode A shows participant submission status (submitted/not) and reveal control, in Mode B shows direct input fields
-4. **Participant Estimate View** *(Mode A only)* — current item detail, three number inputs (Best/Likely/Worst), submit
-5. **Reveal View** *(Mode A only)* — table of participants × their three values, computed group range + confidence interval, outlier highlights, "re-estimate" and "finalize" actions
-6. **Session Summary / Report** — all finalized items with four values, export (CSV/PDF/link), save to history — same layout regardless of mode
-7. **Session History** — list of past sessions for a team, reopen a summary, shows which mode was used per session
+1. **Mode selection** — entry screen: start single-user, start collaborative (generates a session code), or join a collaborative session. No session setup happens here.
+2. **Workspace** — the single working screen for both modes. Left: editable session name, estimation unit, and the item list (add / remove / reorder at any time, including mid-session); items can be renamed inline from the detail panel. Right: the active item's estimation widget, or an "add an item" prompt when nothing is selected. In collaborative mode a session-code strip (code, copy, participant count) sits above it, the facilitator sees participant submission status and a reveal control instead of direct inputs, and reveal shows the aggregated range plus each participant's values with **Finalize** / **Retry round**.
+3. **Join Session** *(collaborative only)* — enter name, join via code/link, connecting indicator while the peer connection establishes; a connection-failed state points to single-user mode as a fallback.
+4. **Participant Estimate View** *(collaborative only)* — read-only item detail, three number inputs (Best/Likely/Worst), submit; then a waiting state, then a revealed state mirroring the facilitator's aggregated range (no finalize/retry controls).
+5. **Session Summary / Report** — all finalized items with four values, export (CSV/PDF/link), save to history — same layout regardless of mode.
+6. **Session History** — list of past sessions for a team, reopen a summary, shows which mode was used per session.
 
 ## 8. Data model (sketch)
 
