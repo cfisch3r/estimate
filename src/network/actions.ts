@@ -1,7 +1,15 @@
 import { createEstimate, type Estimate, type RawEstimateInput } from '../calc'
 
+/** The subset of an item a participant needs to render the read-only detail —
+ *  broadcast by the facilitator so participants never hold the full item list. */
+export interface SnapshotItem {
+  id: string
+  title: string
+  description: string
+}
+
 export interface SessionSnapshot {
-  currentItemId: string | null
+  currentItem: SnapshotItem | null
   submissions: RawEstimateInput[]
   finalizedItemIds: string[]
 }
@@ -70,11 +78,21 @@ function sanitizeSubmissions(submissions: unknown): RawEstimateInput[] {
   return sanitized
 }
 
+function isValidSnapshotItem(value: unknown): value is SnapshotItem {
+  if (typeof value !== 'object' || value === null) return false
+  const item = value as Record<string, unknown>
+  return (
+    typeof item.id === 'string' &&
+    typeof item.title === 'string' &&
+    typeof item.description === 'string'
+  )
+}
+
 function isValidSnapshotShape(data: unknown): data is SessionSnapshot {
   if (typeof data !== 'object' || data === null) return false
   const snapshot = data as Record<string, unknown>
   return (
-    (typeof snapshot.currentItemId === 'string' || snapshot.currentItemId === null) &&
+    (snapshot.currentItem === null || isValidSnapshotItem(snapshot.currentItem)) &&
     Array.isArray(snapshot.finalizedItemIds) &&
     snapshot.finalizedItemIds.every((id) => typeof id === 'string')
   )
@@ -105,7 +123,7 @@ export function createTypedActions(room: ActionRoom): TypedActions {
     }
     syncStateSubscribable.notify(
       {
-        currentItemId: data.currentItemId,
+        currentItem: data.currentItem,
         submissions: sanitizeSubmissions(data.submissions),
         finalizedItemIds: data.finalizedItemIds,
       },

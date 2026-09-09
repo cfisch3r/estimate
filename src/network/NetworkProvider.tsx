@@ -27,21 +27,59 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       setPeerCount(state.peerIds.length)
     }
 
+    // Facilitator only: keep participants' `liveRound` in sync with whichever item
+    // is active and which items are finalized. Broadcast on real changes, not on
+    // every unrelated store update (notes typing, name edits, …).
+    let lastSnapshotKey = ''
+    const broadcastFacilitatorState = () => {
+      const state = useSessionStore.getState()
+      if (state.mode !== 'live' || state.role !== 'facilitator' || !state.sessionId)
+        return
+      const active = state.items.find((item) => item.id === state.activeItemId) ?? null
+      const currentItem = active
+        ? { id: active.id, title: active.title, description: active.description }
+        : null
+      const finalizedItemIds = state.items
+        .filter((item) => item.finalResult !== null)
+        .map((item) => item.id)
+      const key = JSON.stringify({ currentItem, finalizedItemIds })
+      if (key === lastSnapshotKey) return
+      lastSnapshotKey = key
+      sessionRef.current?.sendSyncState({
+        currentItem,
+        submissions: [],
+        finalizedItemIds,
+      })
+    }
+
     apiRef.current = {
       connect: (sessionId) => {
         teardown()
         const session = joinSession(sessionId)
         sessionRef.current = session
         mirror(session.getConnectionState())
-        unsubscribeRef.current = session.onConnectionStateChange(mirror)
-        // TODO(#7/#8): also subscribe to onEstimate / onSyncState / onReveal here
-        // and dispatch them into the store.
+        lastSnapshotKey = ''
+        const store = useSessionStore
+        const unsubscribers = [
+          session.onConnectionStateChange(mirror),
+          session.onEstimate((estimate) =>
+            store.getState().applyRemoteEstimate(estimate),
+          ),
+          session.onSyncState((snapshot) => store.getState().applySyncState(snapshot)),
+          session.onReveal((itemId) => store.getState().applyReveal(itemId)),
+          store.subscribe(broadcastFacilitatorState),
+        ]
+        unsubscribeRef.current = () => unsubscribers.forEach((off) => off())
+        broadcastFacilitatorState()
       },
       disconnect: () => {
         teardown()
         const { setConnectionStatus, setPeerCount } = useSessionStore.getState()
         setConnectionStatus('idle')
         setPeerCount(0)
+      },
+      sendEstimate: (estimate) => {
+        sessionRef.current?.sendEstimate(estimate)
       },
     }
   }

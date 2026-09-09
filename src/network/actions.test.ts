@@ -88,10 +88,12 @@ describe('createTypedActions', () => {
     expect(cb).not.toHaveBeenCalled()
   })
 
+  const item = { id: 'item-1', title: 'Retry queue', description: 'exponential backoff' }
+
   it('sends a snapshot through the syncState action', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
-    const snapshot = { currentItemId: 'item-1', submissions: [], finalizedItemIds: [] }
+    const snapshot = { currentItem: item, submissions: [], finalizedItemIds: [] }
 
     actions.sendSyncState(snapshot)
 
@@ -106,7 +108,7 @@ describe('createTypedActions', () => {
 
     actionsByName.syncState!.onMessage?.(
       {
-        currentItemId: 'item-1',
+        currentItem: item,
         submissions: [
           { participantId: 'a', best: 1, likely: 2, worst: 3 },
           { participantId: 'b', best: 9, likely: 2, worst: 3 },
@@ -118,7 +120,7 @@ describe('createTypedActions', () => {
 
     expect(cb).toHaveBeenCalledWith(
       {
-        currentItemId: 'item-1',
+        currentItem: item,
         submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
@@ -134,7 +136,7 @@ describe('createTypedActions', () => {
 
     actionsByName.syncState!.onMessage?.(
       {
-        currentItemId: 'item-1',
+        currentItem: item,
         submissions: [null, { participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
@@ -143,7 +145,7 @@ describe('createTypedActions', () => {
 
     expect(cb).toHaveBeenCalledWith(
       {
-        currentItemId: 'item-1',
+        currentItem: item,
         submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
@@ -163,18 +165,49 @@ describe('createTypedActions', () => {
     expect(cb).not.toHaveBeenCalled()
   })
 
-  it('drops an incoming snapshot with a malformed currentItemId/finalizedItemIds shape', () => {
+  it('drops an incoming snapshot with a malformed currentItem/finalizedItemIds shape', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
     const cb = vi.fn()
     actions.onSyncState(cb)
 
     actionsByName.syncState!.onMessage?.(
-      { currentItemId: 42, submissions: [], finalizedItemIds: 'oops' },
+      { currentItem: { id: 42 }, submissions: [], finalizedItemIds: 'oops' },
       { peerId: 'peer-1' },
     )
 
     expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('drops an incoming snapshot whose currentItem is missing title/description', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onSyncState(cb)
+
+    actionsByName.syncState!.onMessage?.(
+      { currentItem: { id: 'item-1' }, submissions: [], finalizedItemIds: [] },
+      { peerId: 'peer-1' },
+    )
+
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('accepts an incoming snapshot with a null currentItem', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onSyncState(cb)
+
+    actionsByName.syncState!.onMessage?.(
+      { currentItem: null, submissions: [], finalizedItemIds: [] },
+      { peerId: 'peer-1' },
+    )
+
+    expect(cb).toHaveBeenCalledWith(
+      { currentItem: null, submissions: [], finalizedItemIds: [] },
+      'peer-1',
+    )
   })
 
   it('sends an item id through the reveal action', () => {

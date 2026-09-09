@@ -77,10 +77,10 @@ Static SPA — no server-side rendering needed, no routes that require backend d
                   Estimate View, Summary, History), plus shared screen-level pieces
                   (SessionSidebar, useLeaveLiveSession). Built so far: ModeSelect, Workspace
                   (single-user path + collaborative session-code strip), Summary, History,
-                  Join. Participant Estimate View is a #6 placeholder (real form in #7); the
-                  facilitator reveal flow and the participant estimating flow are redesigned
-                  in the epic-0010 handoff (`design_handoffs/epic-0010-screen-design-review/`)
-                  and land in #8 / #7.
+                  Join, and Participant Estimate View (#7 — lobby / estimating / waiting /
+                  revealed states driven by `store.liveRound`). The facilitator reveal flow
+                  is redesigned in the epic-0010 handoff
+                  (`design_handoffs/epic-0010-screen-design-review/`) and lands in #8.
   /calc         — pure functions: aggregateEstimates(), computeCI90() (McConnell's formula, PRD §5),
                   bias guards (symmetric-range, false-precision, outlier — PRD §6). Framework-free,
                   unit-testable, identical between Mode A and Mode B.

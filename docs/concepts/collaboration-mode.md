@@ -98,11 +98,11 @@ flowchart TD
 |---|---|---|
 | **ModeSelect** | React Component | The entry screen: three rows — start single-user, start collaborative, join. On "start collaborative": reads a code from `generateSessionCode`, calls `startCollaborative(code)` (which sets `mode` / `role` / `sessionId` and routes to the Workspace), then `connect()`. "Join" routes to the Join screen. |
 | **JoinSession** | React Component | Collects session code + participant name (name required — no anonymous peers). Calls `joinLiveSession()` then `connect()`. Renders connecting / connected / disconnected states from `store.connectionStatus`, including the failure banner + Retry. |
-| **ParticipantEstimateView** | React Component | #6 placeholder: shows "waiting for the facilitator", connection status, and Leave. Replaced by the real three-input estimate form in #7. |
+| **ParticipantEstimateView** | React Component | The participant's whole round (#7), driven by `store.liveRound`: a lobby before the facilitator picks an item, then the Best/Likely/Worst form with live bias guards (5c), a waiting state showing the submitted values with a revise affordance (5d), and a revealed state with the aggregated range bar + per-participant list (5e). No finalize/retry — those are facilitator-only. Submitting calls `store.submitEstimate()` then broadcasts the validated estimate via `useNetworkSession().sendEstimate`. |
 | **Workspace** | React Component | The single working screen for both modes: session-name / unit / item-list sidebar plus the active item's estimate panel (or an empty state). In Live mode additionally renders the session-code strip (with copy button), the "N participants connected" count, and a connection-status `Tag`. |
-| **useSessionStore** | Zustand Store | Single source of truth for session state: `mode`, `role`, `sessionId`, `myName`, `connectionStatus`, `peerCount`, items, current screen. Never imports `src/network`. |
-| **NetworkProvider** | React Context Provider | Wraps `<App>`. Owns the one `NetworkSession` instance for the app's lifetime and exposes it via `useNetworkSession`; tears it down on unmount. |
-| **useNetworkSession** | React Hook | The only code that touches both the store and the P2P core. `connect(sessionId)` calls `joinSession()` and subscribes to its events; `disconnect()` calls `leave()`. Mirrors `onConnectionStateChange` and peer join/leave into the store. (The participant name is put in the store by `joinLiveSession()` before `connect()` runs.) |
+| **useSessionStore** | Zustand Store | Single source of truth for session state: `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `peerCount`, items, current screen. Participant clients also hold `liveRound` (the facilitator's current item + received submissions + revealed flag + own submission), updated by `applySyncState` / `applyRemoteEstimate` / `applyReveal` / `submitEstimate`. Type-only import of `SessionSnapshot` from `src/network/actions`; no runtime `src/network` import. |
+| **NetworkProvider** | React Context Provider | Wraps `<App>`. Owns the one `NetworkSession` instance for the app's lifetime and exposes it via `useNetworkSession`; tears it down on unmount. On `connect` it also dispatches inbound `onEstimate` / `onSyncState` / `onReveal` into the store, and (facilitator only) subscribes to the store to broadcast a `syncState` whenever the active item or finalized set changes. |
+| **useNetworkSession** | React Hook | The only code that touches both the store and the P2P core. `connect(sessionId)` calls `joinSession()` and subscribes to its events; `disconnect()` calls `leave()`; `sendEstimate(estimate)` forwards a participant's submission to the room. Mirrors `onConnectionStateChange` and peer join/leave into the store. (The participant name is put in the store by `joinLiveSession()` before `connect()` runs.) |
 | **joinSession** | Factory Function | Entry point of the P2P core (from PR #25). Opens the Trystero room (`roomId = sessionId`), wires up the connection tracker and typed actions, returns a `NetworkSession` of `send*` / `on*` methods. |
 | **typed actions** | Module | Defines the three wire actions (`submitEstimate`, `syncState`, `reveal`), serialises outbound messages, and validates every inbound message through `calc` before surfacing it. |
 | **connection tracker** | Module | State machine over peer join/leave and join errors → `idle` / `connecting` / `connected` / `disconnected` plus the peer list; notifies subscribers on change. |
@@ -130,7 +130,28 @@ sequenceDiagram
   R-->>P: onPeerJoin(f)
   Note over F,P: connectionStatus = connected
   F-->>F: "1 participant connected"
-  P-->>P: route to placeholder (waiting for facilitator)
+  P-->>P: route to ParticipantEstimateView (lobby until the facilitator picks an item)
+```
+
+## Estimate round (#7)
+
+```mermaid
+sequenceDiagram
+  participant F as Facilitator (tab A)
+  participant R as Trystero room (P2P)
+  participant P as Participant (tab B)
+
+  F->>F: select an item in the Workspace
+  F->>R: sendSyncState({ currentItem })
+  R-->>P: onSyncState → store.applySyncState → liveRound set
+  P-->>P: ParticipantEstimateView shows the Best/Likely/Worst form (5c)
+  P->>P: fill values → store.submitEstimate() validates via createEstimate
+  P->>R: sendEstimate(estimate)
+  R-->>F: onEstimate (facilitator tallies — Reveal View, #8)
+  P-->>P: waiting state with revise affordance (5d)
+  Note over F: facilitator reveals (#8) → sendReveal(itemId)
+  R-->>P: onReveal → store.applyReveal → revealed = true
+  P-->>P: revealed state: aggregated range bar + participant list (5e)
 ```
 
 ## Screen flow
