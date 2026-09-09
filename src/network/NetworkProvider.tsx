@@ -68,6 +68,19 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
           session.onSyncState((snapshot) => store.getState().applySyncState(snapshot)),
           session.onReveal((itemId) => store.getState().applyReveal(itemId)),
           store.subscribe(broadcastFacilitatorState),
+          // Trystero doesn't replay history to a newcomer. When a peer joins, the
+          // facilitator re-announces the current item and every client re-announces
+          // its own submission — both are keyed on the receiver (item id /
+          // participantId) and idempotent, so re-sending is safe.
+          session.onPeerJoin(() => {
+            lastSnapshotKey = ''
+            broadcastFacilitatorState()
+            const s = store.getState()
+            const own = s.liveRound?.submissions.find(
+              (e) => e.participantId === s.participantId,
+            )
+            if (own) sessionRef.current?.sendEstimate(own)
+          }),
         ]
         unsubscribeRef.current = () => unsubscribers.forEach((off) => off())
         broadcastFacilitatorState()

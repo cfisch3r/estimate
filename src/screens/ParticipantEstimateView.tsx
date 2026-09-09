@@ -157,7 +157,7 @@ function EstimateForm({
         Would you stake your job this won&apos;t be exceeded?
       </p>
 
-      {allFilled && !Number.isNaN(bestNum + likelyNum + worstNum) && (
+      {validation?.ok && (
         <RangeBar
           min={bestNum}
           max={worstNum}
@@ -215,10 +215,14 @@ function EstimatingPanel({
   peerCount: number
   onSubmit: (best: number, likely: number, worst: number) => SubmitResult
 }) {
-  const others = peerCount + 1
-  const statusLine = `${round.submissions.length} of ${others} teammate${
-    others === 1 ? '' : 's'
-  } ${round.submissions.length === 1 ? 'has' : 'have'} submitted so far.`
+  // The participant's peers are the facilitator + every other participant, so
+  // the number of people who submit estimates (participants, incl. self) is just
+  // the peer count: (peerCount - 1 facilitator) + 1 self.
+  const totalEstimators = Math.max(peerCount, 1)
+  const submitted = round.submissions.length
+  const statusLine = `${submitted} of ${totalEstimators} teammate${
+    totalEstimators === 1 ? '' : 's'
+  } ${submitted === 1 ? 'has' : 'have'} submitted so far.`
 
   return (
     <Card elevation="sm">
@@ -337,23 +341,30 @@ function RevealedPanel({
       )}
 
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
-        {round.submissions.map((estimate, index) => {
-          const isMe = estimate.participantId === participantId
-          return (
-            <li
-              key={estimate.participantId}
-              style={{ display: 'flex', justifyContent: 'space-between' }}
-            >
-              <span>{isMe ? 'You (you)' : `Teammate ${index + 1}`}</span>
-              <span>
-                {estimate.best}
-                {suffix} / {estimate.likely}
-                {suffix} / {estimate.worst}
-                {suffix}
-              </span>
-            </li>
-          )
-        })}
+        {(() => {
+          // Number only the other participants, so labels stay stable regardless
+          // of where the local user's own row sits in submission order. Real
+          // names are #40.
+          let teammateNo = 0
+          return round.submissions.map((estimate) => {
+            const isMe = estimate.participantId === participantId
+            const label = isMe ? 'You' : `Teammate ${++teammateNo}`
+            return (
+              <li
+                key={estimate.participantId}
+                style={{ display: 'flex', justifyContent: 'space-between' }}
+              >
+                <span>{label}</span>
+                <span>
+                  {estimate.best}
+                  {suffix} / {estimate.likely}
+                  {suffix} / {estimate.worst}
+                  {suffix}
+                </span>
+              </li>
+            )
+          })
+        })()}
       </ul>
 
       <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
@@ -402,10 +413,8 @@ export function ParticipantEstimateView() {
   function handleSubmit(best: number, likely: number, worst: number): SubmitResult {
     const result = submitEstimate(best, likely, worst)
     if (result.ok) {
-      const mine = useSessionStore
-        .getState()
-        .liveRound?.submissions.find((e) => e.participantId === participantId)
-      if (mine) sendEstimate(mine)
+      sendEstimate(result.estimate)
+      return { ok: true }
     }
     return result
   }

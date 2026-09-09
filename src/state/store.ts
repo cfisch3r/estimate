@@ -13,6 +13,11 @@ import type {
 
 type FinalizeResult = { ok: true } | { ok: false; error: string }
 
+/** submitEstimate returns the stored Estimate so the caller broadcasts exactly
+ *  what was recorded — no re-lookup by a key that might not round-trip. */
+type SubmitEstimateResult =
+  { ok: true; estimate: Estimate } | { ok: false; error: string }
+
 interface SessionStore {
   currentScreen: ScreenId
   sessionName: string
@@ -62,7 +67,7 @@ interface SessionStore {
   /** Participant: mark the current round revealed once the facilitator reveals it. */
   applyReveal: (itemId: string) => void
   /** Participant: validate and record this client's own estimate for the round. */
-  submitEstimate: (best: number, likely: number, worst: number) => FinalizeResult
+  submitEstimate: (best: number, likely: number, worst: number) => SubmitEstimateResult
 }
 
 /** Upsert `next` into `list` keyed by participantId — last write wins, insertion
@@ -317,6 +322,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           }
         : {},
     )
-    return { ok: true }
+    return { ok: true, estimate: result.value }
   },
 }))

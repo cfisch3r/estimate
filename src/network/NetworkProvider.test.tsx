@@ -13,6 +13,7 @@ const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
     estimate: null,
     syncState: null,
     reveal: null,
+    peerJoin: null,
   }
   const capture = (name: string) => (cb: (...args: never[]) => void) => {
     handlers[name] = cb
@@ -31,6 +32,7 @@ const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
     onEstimate: vi.fn(capture('estimate')),
     onSyncState: vi.fn(capture('syncState')),
     onReveal: vi.fn(capture('reveal')),
+    onPeerJoin: vi.fn(capture('peerJoin')),
     sendEstimate: vi.fn(),
     sendSyncState: vi.fn(),
     leave: vi.fn(),
@@ -69,6 +71,8 @@ beforeEach(() => {
     mode: 'manual',
     role: 'facilitator',
     sessionId: null,
+    items: [],
+    activeItemId: null,
     liveRound: null,
   })
 })
@@ -143,6 +147,43 @@ describe('useNetworkSession', () => {
 
     act(() => emit('reveal', 'item-1'))
     expect(useSessionStore.getState().liveRound?.revealed).toBe(true)
+  })
+
+  it('re-broadcasts the facilitator snapshot when a peer joins', async () => {
+    const user = userEvent.setup()
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'facilitator',
+        sessionId: 'K7F9Q2',
+        items: [
+          {
+            id: 'i1',
+            title: 'Retry queue',
+            description: 'backoff',
+            notes: '',
+            finalResult: null,
+          },
+        ],
+        activeItemId: 'i1',
+      }),
+    )
+    fakeSession.sendSyncState.mockClear()
+
+    act(() => emit('peerJoin', 'peer-new'))
+
+    expect(fakeSession.sendSyncState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentItem: { id: 'i1', title: 'Retry queue', description: 'backoff' },
+      }),
+    )
   })
 
   it('stops dispatching store updates after disconnect', async () => {

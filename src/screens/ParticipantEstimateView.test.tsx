@@ -88,6 +88,8 @@ describe('ParticipantEstimateView', () => {
 
     expect(screen.getByText('Retry queue')).toBeInTheDocument()
     expect(screen.getByText('exponential backoff')).toBeInTheDocument()
+    // peerCount 1 = just this participant (facilitator excluded, self included).
+    expect(screen.getByText('0 of 1 teammate have submitted so far.')).toBeInTheDocument()
 
     const submit = screen.getByRole('button', { name: 'Submit estimate' })
     expect(submit).toBeDisabled()
@@ -158,7 +160,8 @@ describe('ParticipantEstimateView', () => {
     render(<ParticipantEstimateView />)
 
     expect(screen.getByTestId('range-bar-marker-expected')).toBeInTheDocument()
-    expect(screen.getByText('You (you)')).toBeInTheDocument()
+    expect(screen.getByText('You')).toBeInTheDocument()
+    expect(screen.getByText('Teammate 1')).toBeInTheDocument()
     expect(
       screen.getByText(/Waiting for the facilitator to finalize/),
     ).toBeInTheDocument()

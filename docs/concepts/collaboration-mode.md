@@ -8,9 +8,9 @@ over a serverless peer-to-peer mesh (Trystero over WebRTC, Nostr relays for sign
 and submit private three-point estimates that are revealed together. There is **no backend** —
 every peer runs the same code and computes aggregates locally.
 
-This document covers the foundation delivered with issue #6 (join flow + wiring), updated
-for the #34 mode-select / Workspace entry-flow rebuild; the estimate round (#7) and reveal
-(#8) build on the same structures.
+This document covers the join flow (#6, updated for the #34 mode-select / Workspace
+entry-flow rebuild) and the participant estimate round (#7); the facilitator reveal
+(#8) builds on the same structures.
 
 ## Component view
 
@@ -60,6 +60,7 @@ flowchart TD
   MS -.->|"reads code"| Code
   NP -->|"owns, provides"| Hook
   Hook -->|"joinSession(code)"| JSN
+  PEV -->|"sendEstimate() (own submission)"| Hook
   JSN -->|"creates"| Act
   JSN -->|"creates"| Conn
   Act <-->|"P2P messages (encrypted)"| Trystero
@@ -67,7 +68,10 @@ flowchart TD
 
   %% --- asynchronous events / reads (dotted) ---
   Conn -.->|"onConnectionStateChange"| Hook
+  Act -.->|"onEstimate / onSyncState / onReveal"| NP
   Hook -.->|"setConnectionStatus / setPeerCount"| Store
+  NP -.->|"applySyncState / applyRemoteEstimate / applyReveal"| Store
+  NP -.->|"reads items/activeItem, sends syncState (facilitator)"| Store
   Store -.->|"state (read)"| screens
 
   %% --- lane + node colours ---
@@ -192,7 +196,7 @@ stateDiagram-v2
 (retry / VPN / facilitator switches to Manual) per PRD §4.1 step 8. The full
 connection-fallback UX is #9.
 
-## Store additions (foundation)
+## Store additions
 
 | Field | Purpose |
 |---|---|
@@ -200,10 +204,12 @@ connection-fallback UX is #9.
 | `role: 'facilitator' \| 'participant'` | defaults to `facilitator`; Join flips it to `participant` |
 | `sessionId: string \| null` | the shared 6-char code = Trystero room id |
 | `myName: string` | participant display name (named, never anonymous) |
+| `participantId: string` | stable per-join id (`crypto.randomUUID()`), the submission key |
 | `connectionStatus` | `idle \| connecting \| connected \| disconnected` |
 | `peerCount: number` | connected peers, for the facilitator strip |
+| `liveRound: LiveRound \| null` | participant-only: current item + received `submissions` + `revealed` flag + own `mySubmission`; written by `applySyncState` / `applyRemoteEstimate` / `applyReveal` / `submitEstimate` |
 
-Deferred: `submissions` / rounds (#7), `revealedItemIds` + per-participant view (#8).
+Deferred: `revealedItemIds` + the facilitator per-participant reveal view (#8).
 
 ## Trust boundary
 
