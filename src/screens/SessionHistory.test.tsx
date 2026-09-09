@@ -13,7 +13,7 @@ const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
 
 function resetStore() {
   useSessionStore.setState({
-    currentScreen: 'create',
+    currentScreen: 'mode-select',
     sessionName: '',
     unit: 'days',
     items: [],

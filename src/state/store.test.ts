@@ -3,7 +3,7 @@ import { useSessionStore } from './store'
 
 function resetStore() {
   useSessionStore.setState({
-    currentScreen: 'create',
+    currentScreen: 'mode-select',
     sessionName: '',
     unit: 'days',
     items: [],
@@ -35,6 +35,20 @@ describe('addItem', () => {
     useSessionStore.getState().addItem('   ')
     expect(useSessionStore.getState().items).toHaveLength(0)
   })
+
+  it('auto-selects the first item added to an empty workspace', () => {
+    useSessionStore.getState().addItem('First')
+    const state = useSessionStore.getState()
+    expect(state.activeItemId).toBe(state.items[0]?.id)
+  })
+
+  it('leaves the active item unchanged when adding a later item', () => {
+    const { addItem } = useSessionStore.getState()
+    addItem('First')
+    const firstId = useSessionStore.getState().items[0]!.id
+    addItem('Second')
+    expect(useSessionStore.getState().activeItemId).toBe(firstId)
+  })
 })
 
 describe('reorderItems', () => {
@@ -56,37 +70,30 @@ describe('reorderItems', () => {
   })
 })
 
-describe('createSession', () => {
-  it('refuses to advance the screen when the session name is blank', () => {
-    useSessionStore.getState().createSession()
-    expect(useSessionStore.getState().currentScreen).toBe('create')
+describe('startSingleUser', () => {
+  it('enters the workspace with no items and nothing selected', () => {
+    useSessionStore.getState().startSingleUser()
+    const state = useSessionStore.getState()
+    expect(state.currentScreen).toBe('workspace')
+    expect(state.activeItemId).toBeNull()
   })
 
-  it('refuses to advance the screen when there are no items, even with a name set', () => {
-    useSessionStore.getState().setSessionName('Sprint 14')
-    useSessionStore.getState().createSession()
-    expect(useSessionStore.getState().currentScreen).toBe('create')
-  })
-
-  it('advances to the session screen and selects the first item once named', () => {
-    const { setSessionName, addItem, createSession } = useSessionStore.getState()
-    setSessionName('Sprint 14')
+  it('selects the first pending item when items already exist', () => {
+    const { addItem, startSingleUser } = useSessionStore.getState()
     addItem('First item')
     addItem('Second item')
-    createSession()
+    startSingleUser()
     const state = useSessionStore.getState()
-    expect(state.currentScreen).toBe('session')
+    expect(state.currentScreen).toBe('workspace')
     expect(state.activeItemId).toBe(state.items[0]?.id)
   })
 })
 
 describe('finalizeItem', () => {
   it('rejects an invalid estimate and leaves the item unfinalized', () => {
-    const { setSessionName, addItem, createSession, finalizeItem } =
-      useSessionStore.getState()
-    setSessionName('Sprint 14')
+    const { addItem, startSingleUser, finalizeItem } = useSessionStore.getState()
     addItem('Only item')
-    createSession()
+    startSingleUser()
     const id = useSessionStore.getState().items[0]!.id
 
     const result = finalizeItem(id, 10, 5, 3) // descending, invalid
@@ -95,12 +102,10 @@ describe('finalizeItem', () => {
   })
 
   it('records the aggregated result and advances to the next pending item', () => {
-    const { setSessionName, addItem, createSession, finalizeItem } =
-      useSessionStore.getState()
-    setSessionName('Sprint 14')
+    const { addItem, startSingleUser, finalizeItem } = useSessionStore.getState()
     addItem('First')
     addItem('Second')
-    createSession()
+    startSingleUser()
     const [first, second] = useSessionStore.getState().items
 
     const result = finalizeItem(first!.id, 2, 5, 8)
@@ -112,11 +117,9 @@ describe('finalizeItem', () => {
   })
 
   it('clears activeItemId once every item is finalized', () => {
-    const { setSessionName, addItem, createSession, finalizeItem } =
-      useSessionStore.getState()
-    setSessionName('Sprint 14')
+    const { addItem, startSingleUser, finalizeItem } = useSessionStore.getState()
     addItem('Only item')
-    createSession()
+    startSingleUser()
     const id = useSessionStore.getState().items[0]!.id
 
     finalizeItem(id, 2, 5, 8)
@@ -151,22 +154,9 @@ describe('removeItem', () => {
   })
 })
 
-describe('createLiveSession', () => {
-  function seedNamedSession() {
-    const { setSessionName, addItem } = useSessionStore.getState()
-    setSessionName('Sprint 14')
-    addItem('First item')
-  }
-
-  it('refuses to start when the session is unnamed or itemless', () => {
-    useSessionStore.getState().createLiveSession('K7F9Q2')
-    expect(useSessionStore.getState().currentScreen).toBe('create')
-    expect(useSessionStore.getState().mode).toBe('manual')
-  })
-
-  it('enters a live facilitator session on the session screen', () => {
-    seedNamedSession()
-    useSessionStore.getState().createLiveSession('K7F9Q2')
+describe('startCollaborative', () => {
+  it('enters a live facilitator session on the workspace with no items yet', () => {
+    useSessionStore.getState().startCollaborative('K7F9Q2')
 
     const state = useSessionStore.getState()
     expect(state).toMatchObject({
@@ -174,8 +164,16 @@ describe('createLiveSession', () => {
       role: 'facilitator',
       sessionId: 'K7F9Q2',
       connectionStatus: 'connecting',
-      currentScreen: 'session',
+      currentScreen: 'workspace',
     })
+    expect(state.activeItemId).toBeNull()
+  })
+
+  it('selects the first pending item when items already exist', () => {
+    useSessionStore.getState().addItem('First item')
+    useSessionStore.getState().startCollaborative('K7F9Q2')
+
+    const state = useSessionStore.getState()
     expect(state.activeItemId).toBe(state.items[0]?.id)
   })
 })
@@ -185,7 +183,7 @@ describe('joinLiveSession', () => {
     useSessionStore.getState().joinLiveSession('   ', 'Sam')
     useSessionStore.getState().joinLiveSession('K7F9Q2', '   ')
     expect(useSessionStore.getState().mode).toBe('manual')
-    expect(useSessionStore.getState().currentScreen).toBe('create')
+    expect(useSessionStore.getState().currentScreen).toBe('mode-select')
   })
 
   it('enters a connecting participant session, normalising the code', () => {
@@ -203,7 +201,7 @@ describe('joinLiveSession', () => {
 })
 
 describe('leaveLiveSession', () => {
-  it('resets every live field and returns to the create screen', () => {
+  it('resets every live field and returns to the mode-select screen', () => {
     useSessionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
     useSessionStore.getState().setConnectionStatus('connected')
     useSessionStore.getState().setPeerCount(3)
@@ -217,7 +215,7 @@ describe('leaveLiveSession', () => {
       myName: '',
       connectionStatus: 'idle',
       peerCount: 0,
-      currentScreen: 'create',
+      currentScreen: 'mode-select',
     })
   })
 })

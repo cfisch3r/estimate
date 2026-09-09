@@ -109,13 +109,13 @@ describe('JoinSession', () => {
     expect(useSessionStore.getState().currentScreen).toBe('join')
   })
 
-  it('Back disconnects and returns to the create screen', async () => {
+  it('Back disconnects and returns to the mode-select screen', async () => {
     const user = userEvent.setup()
     render(<JoinSession />)
 
     await user.click(screen.getByRole('button', { name: '← Back' }))
 
     expect(disconnectMock).toHaveBeenCalled()
-    expect(useSessionStore.getState().currentScreen).toBe('create')
+    expect(useSessionStore.getState().currentScreen).toBe('mode-select')
   })
 })

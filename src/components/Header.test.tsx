@@ -5,11 +5,12 @@ import { useSessionStore } from '../state/store'
 
 function resetStore() {
   useSessionStore.setState({
-    currentScreen: 'create',
+    currentScreen: 'mode-select',
     sessionName: '',
     unit: 'days',
     items: [],
     activeItemId: null,
+    mode: 'manual',
   })
 }
 
@@ -22,18 +23,27 @@ describe('Header', () => {
     expect(screen.getByText('EstiMate')).toBeInTheDocument()
   })
 
-  it('omits the session caption when there is no active session', () => {
+  it('omits the mode tag on the mode-select and join screens', () => {
     render(<Header />)
+    expect(screen.queryByText('Single-user')).not.toBeInTheDocument()
 
-    expect(screen.queryByText('Session')).not.toBeInTheDocument()
+    useSessionStore.setState({ currentScreen: 'join' })
+    expect(screen.queryByText('Single-user')).not.toBeInTheDocument()
   })
 
-  it('shows a "Session" caption above the session name once a session is active', () => {
-    useSessionStore.setState({ currentScreen: 'session', sessionName: 'Sprint 14' })
+  it('shows the Single-user tag in manual mode once in the workspace', () => {
+    useSessionStore.setState({ currentScreen: 'workspace', mode: 'manual' })
 
     render(<Header />)
 
-    expect(screen.getByText('Session')).toBeInTheDocument()
-    expect(screen.getByText('Sprint 14')).toBeInTheDocument()
+    expect(screen.getByText('Single-user')).toBeInTheDocument()
+  })
+
+  it('shows the Live tag in live mode', () => {
+    useSessionStore.setState({ currentScreen: 'workspace', mode: 'live' })
+
+    render(<Header />)
+
+    expect(screen.getByText('Live')).toBeInTheDocument()
   })
 })

@@ -1,4 +1,5 @@
 import { useSessionStore } from '../state/store'
+import { Tag } from './Tag'
 
 function BrandMark() {
   return (
@@ -44,10 +45,10 @@ function BrandMark() {
 }
 
 export function Header() {
-  const sessionName = useSessionStore((s) => s.sessionName)
   const currentScreen = useSessionStore((s) => s.currentScreen)
+  const mode = useSessionStore((s) => s.mode)
 
-  const showSessionContext = currentScreen !== 'create' && sessionName.trim().length > 0
+  const showModeTag = currentScreen !== 'mode-select' && currentScreen !== 'join'
 
   return (
     <header className="app-header">
@@ -55,12 +56,12 @@ export function Header() {
         <BrandMark />
         EstiMate
       </span>
-      {showSessionContext && (
-        <span className="app-header-session-block">
-          <span className="app-header-session-caption">Session</span>
-          <span className="app-header-session">{sessionName}</span>
-        </span>
-      )}
+      {showModeTag &&
+        (mode === 'live' ? (
+          <Tag variant="accent">Live</Tag>
+        ) : (
+          <Tag variant="neutral">Single-user</Tag>
+        ))}
     </header>
   )
 }

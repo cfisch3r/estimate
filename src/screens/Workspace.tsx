@@ -1,5 +1,7 @@
 import { useState } from 'react'
 import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
+import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
+import { ListChecksIcon } from '@phosphor-icons/react/dist/csr/ListChecks'
 import {
   Button,
   Card,
@@ -8,6 +10,7 @@ import {
   Field,
   FieldLabel,
   Input,
+  Select,
   Textarea,
   GuardNote,
   RangeBar,
@@ -27,6 +30,78 @@ import {
 import type { EstimationUnit } from '../calc'
 import type { Item, LiveConnectionStatus } from '../state/types'
 
+interface EditableTitleProps {
+  value: string
+  onCommit: (next: string) => void
+}
+
+function EditableTitle({ value, onCommit }: EditableTitleProps) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(value)
+
+  function commit() {
+    setEditing(false)
+    const trimmed = draft.trim()
+    if (trimmed.length > 0 && trimmed !== value) {
+      onCommit(trimmed)
+    } else {
+      setDraft(value)
+    }
+  }
+
+  if (editing) {
+    return (
+      <Input
+        autoFocus
+        aria-label="Item title"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') commit()
+          if (e.key === 'Escape') {
+            setDraft(value)
+            setEditing(false)
+          }
+        }}
+        style={{
+          fontWeight: 500,
+          fontSize: 22,
+          textAlign: 'center',
+          borderRadius: 'var(--radius-lg)',
+        }}
+      />
+    )
+  }
+
+  return (
+    <h1
+      onClick={() => {
+        setDraft(value)
+        setEditing(true)
+      }}
+      title="Click to rename"
+      style={{
+        margin: 0,
+        fontWeight: 500,
+        fontSize: 22,
+        textAlign: 'center',
+        cursor: 'text',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 'var(--space-2)',
+      }}
+    >
+      {value}
+      <PencilSimpleIcon
+        size={13}
+        style={{ color: 'var(--color-neutral-500)', flex: 'none' }}
+      />
+    </h1>
+  )
+}
+
 interface ActiveItemPanelProps {
   item: Item
   unit: EstimationUnit
@@ -38,6 +113,7 @@ interface ActiveItemPanelProps {
   ) => { ok: true } | { ok: false; error: string }
   onNotesChange: (id: string, notes: string) => void
   onDescriptionChange: (id: string, description: string) => void
+  onTitleChange: (id: string, title: string) => void
 }
 
 function ActiveItemPanel({
@@ -46,6 +122,7 @@ function ActiveItemPanel({
   onFinalize,
   onNotesChange,
   onDescriptionChange,
+  onTitleChange,
 }: ActiveItemPanelProps) {
   const isEdit = item.finalResult !== null
   const [best, setBest] = useState(item.finalResult ? String(item.finalResult.min) : '')
@@ -92,9 +169,10 @@ function ActiveItemPanel({
 
   return (
     <Card elevation="sm" style={{ flex: 1 }}>
-      <h1 style={{ margin: 0, fontWeight: 500, fontSize: 22, textAlign: 'center' }}>
-        {item.title}
-      </h1>
+      <EditableTitle
+        value={item.title}
+        onCommit={(next) => onTitleChange(item.id, next)}
+      />
       <Field>
         <FieldLabel htmlFor="description">Description (Markdown supported)</FieldLabel>
         <Textarea
@@ -262,7 +340,8 @@ function LiveSessionStrip({
   )
 }
 
-export function SessionView() {
+export function Workspace() {
+  const sessionName = useSessionStore((s) => s.sessionName)
   const unit = useSessionStore((s) => s.unit)
   const items = useSessionStore((s) => s.items)
   const activeItemId = useSessionStore((s) => s.activeItemId)
@@ -271,6 +350,11 @@ export function SessionView() {
   const sessionId = useSessionStore((s) => s.sessionId)
   const connectionStatus = useSessionStore((s) => s.connectionStatus)
   const peerCount = useSessionStore((s) => s.peerCount)
+  const setSessionName = useSessionStore((s) => s.setSessionName)
+  const setUnit = useSessionStore((s) => s.setUnit)
+  const addItem = useSessionStore((s) => s.addItem)
+  const updateItem = useSessionStore((s) => s.updateItem)
+  const removeItem = useSessionStore((s) => s.removeItem)
   const selectItem = useSessionStore((s) => s.selectItem)
   const reorderItems = useSessionStore((s) => s.reorderItems)
   const setItemNotes = useSessionStore((s) => s.setItemNotes)
@@ -279,14 +363,12 @@ export function SessionView() {
   const goToScreen = useSessionStore((s) => s.goToScreen)
 
   const activeItem = items.find((item) => item.id === activeItemId) ?? null
-  const allFinalized =
-    items.length > 0 && items.every((item) => item.finalResult !== null)
 
   return (
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: '260px 1fr',
+        gridTemplateColumns: '300px 1fr',
         gap: 'var(--space-6)',
         maxWidth: 1280,
         margin: '0 auto',
@@ -301,14 +383,57 @@ export function SessionView() {
         />
       )}
 
-      <SessionSidebar
-        items={items}
-        activeItemId={activeItemId}
-        currentScreen={currentScreen}
-        onSelect={selectItem}
-        onReorder={reorderItems}
-        onGoSummary={() => goToScreen('summary')}
-      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Input
+              aria-label="Session name"
+              value={sessionName}
+              onChange={(e) => setSessionName(e.target.value)}
+              placeholder="Untitled session"
+              style={{
+                fontFamily: 'var(--font-heading)',
+                fontSize: 15,
+                fontWeight: 500,
+                border: 'none',
+                background: 'transparent',
+                padding: 0,
+                height: 'auto',
+              }}
+            />
+            <PencilSimpleIcon
+              size={13}
+              style={{ color: 'var(--color-neutral-500)', flex: 'none' }}
+            />
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span className="text-muted" style={{ fontSize: 12 }}>
+              Estimate in
+            </span>
+            <Select
+              aria-label="Estimation unit"
+              value={unit}
+              onChange={(e) => setUnit(e.target.value as EstimationUnit)}
+              style={{ height: 24, fontSize: 12, padding: '0 4px', width: 'auto' }}
+            >
+              <option value="hours">Hours</option>
+              <option value="days">Days</option>
+              <option value="weeks">Weeks</option>
+            </Select>
+          </div>
+        </div>
+
+        <SessionSidebar
+          items={items}
+          activeItemId={activeItemId}
+          currentScreen={currentScreen}
+          onSelect={selectItem}
+          onReorder={reorderItems}
+          onRemove={removeItem}
+          onAdd={addItem}
+          onGoSummary={() => goToScreen('summary')}
+        />
+      </div>
 
       {activeItem ? (
         <ActiveItemPanel
@@ -318,16 +443,28 @@ export function SessionView() {
           onFinalize={finalizeItem}
           onNotesChange={setItemNotes}
           onDescriptionChange={setItemDescription}
+          onTitleChange={(id, title) =>
+            updateItem(id, { title, description: activeItem.description })
+          }
         />
       ) : (
-        <Card elevation="sm" style={{ flex: 1 }}>
-          <CardTitle>
-            {allFinalized ? 'All items finalized' : 'No item selected'}
+        <Card
+          elevation="sm"
+          style={{
+            flex: 1,
+            alignItems: 'center',
+            justifyContent: 'center',
+            textAlign: 'center',
+            gap: 'var(--space-2)',
+          }}
+        >
+          <ListChecksIcon size={28} style={{ color: 'var(--color-neutral-500)' }} />
+          <CardTitle style={{ marginTop: 'var(--space-2)' }}>
+            Add an item to get started
           </CardTitle>
-          <CardBody>
-            {allFinalized
-              ? 'Every item in this session has a recorded range — view the summary from the sidebar.'
-              : 'Select an item from the queue to estimate it.'}
+          <CardBody style={{ maxWidth: 320 }}>
+            Everything you&apos;re estimating lives in the list on the left. Add one, then
+            select it here to record a best / likely / worst range.
           </CardBody>
         </Card>
       )}

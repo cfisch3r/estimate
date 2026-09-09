@@ -31,8 +31,8 @@ interface SessionStore {
   updateItem: (id: string, updates: { title: string; description: string }) => void
   removeItem: (id: string) => void
   reorderItems: (fromIndex: number, toIndex: number) => void
-  createSession: () => void
-  createLiveSession: (sessionCode: string) => void
+  startSingleUser: () => void
+  startCollaborative: (sessionCode: string) => void
   joinLiveSession: (sessionCode: string, name: string) => void
   leaveLiveSession: () => void
   setMode: (mode: SessionMode) => void
@@ -68,7 +68,7 @@ const LIVE_SESSION_DEFAULTS = {
 >
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
-  currentScreen: 'create',
+  currentScreen: 'mode-select',
   sessionName: '',
   unit: 'days',
   items: [],
@@ -82,18 +82,21 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   addItem: (title, description = '') => {
     const trimmed = title.trim()
     if (trimmed.length === 0) return
-    set((state) => ({
-      items: [
-        ...state.items,
-        {
-          id: crypto.randomUUID(),
-          title: trimmed,
-          description,
-          notes: '',
-          finalResult: null,
-        },
-      ],
-    }))
+    set((state) => {
+      const newItem = {
+        id: crypto.randomUUID(),
+        title: trimmed,
+        description,
+        notes: '',
+        finalResult: null,
+      }
+      return {
+        items: [...state.items, newItem],
+        // Adding the first item to an empty workspace selects it, so the
+        // panel switches from the "add an item" empty state to the widget.
+        activeItemId: state.activeItemId ?? newItem.id,
+      }
+    })
   },
 
   updateItem: (id, updates) =>
@@ -121,15 +124,13 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       return { items }
     }),
 
-  createSession: () => {
-    const { sessionName, items } = get()
-    if (sessionName.trim().length === 0 || items.length === 0) return
-    set({ currentScreen: 'session', activeItemId: firstPendingItemId(items) })
+  startSingleUser: () => {
+    const { items } = get()
+    set({ currentScreen: 'workspace', activeItemId: firstPendingItemId(items) })
   },
 
-  createLiveSession: (sessionCode) => {
-    const { sessionName, items } = get()
-    if (sessionName.trim().length === 0 || items.length === 0) return
+  startCollaborative: (sessionCode) => {
+    const { items } = get()
     set({
       mode: 'live',
       role: 'facilitator',
@@ -137,7 +138,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       myName: 'Facilitator',
       connectionStatus: 'connecting',
       peerCount: 0,
-      currentScreen: 'session',
+      currentScreen: 'workspace',
       activeItemId: firstPendingItemId(items),
     })
   },
@@ -156,7 +157,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     })
   },
 
-  leaveLiveSession: () => set({ ...LIVE_SESSION_DEFAULTS, currentScreen: 'create' }),
+  leaveLiveSession: () => set({ ...LIVE_SESSION_DEFAULTS, currentScreen: 'mode-select' }),
 
   setMode: (mode) => set({ mode }),
 

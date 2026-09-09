@@ -13,7 +13,7 @@ vi.mock('./network', () => ({
 
 function resetStore() {
   useSessionStore.setState({
-    currentScreen: 'create',
+    currentScreen: 'mode-select',
     sessionName: '',
     unit: 'days',
     items: [],
@@ -29,18 +29,29 @@ function resetStore() {
 
 beforeEach(resetStore)
 
-describe('Mode B end-to-end flow', () => {
-  it('creates a session, estimates an item, finalizes it, and shows it in the summary', async () => {
+/** Mode-select → single-user workspace, then add one item (which auto-selects,
+ *  surfacing the estimate widget). */
+async function startSingleUserWithItem(
+  user: ReturnType<typeof userEvent.setup>,
+  title: string,
+) {
+  await user.click(screen.getByRole('button', { name: /Start single-user mode/ }))
+  await user.type(screen.getByPlaceholderText('Add an item'), title)
+  await user.click(screen.getByRole('button', { name: 'Add item' }))
+}
+
+describe('Single-user end-to-end flow', () => {
+  it('enters the workspace, estimates an item, finalizes it, and shows it in the summary', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.type(screen.getByLabelText('Session name'), 'Sprint 14 refinement')
+    await user.click(screen.getByRole('button', { name: /Start single-user mode/ }))
+
+    // empty state until an item exists
+    expect(screen.getByText('Add an item to get started')).toBeInTheDocument()
+
     await user.type(screen.getByPlaceholderText('Add an item'), 'Migrate auth service')
-    await user.click(screen.getByRole('button', { name: 'Add' }))
-
-    expect(screen.getByText('Migrate auth service')).toBeInTheDocument()
-
-    await user.click(screen.getByRole('button', { name: 'Create session' }))
+    await user.click(screen.getByRole('button', { name: 'Add item' }))
 
     expect(
       screen.getByRole('heading', { name: 'Migrate auth service' }),
@@ -52,8 +63,8 @@ describe('Mode B end-to-end flow', () => {
 
     await user.click(screen.getByRole('button', { name: 'Finalize item' }))
 
-    // no active item remains, so the panel shows the all-finalized state
-    expect(screen.getByText('All items finalized')).toBeInTheDocument()
+    // the single item is finalized, so no item stays active
+    expect(screen.getByText('Add an item to get started')).toBeInTheDocument()
 
     await user.click(screen.getByText('Summary'))
 
@@ -68,10 +79,7 @@ describe('Mode B end-to-end flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.type(screen.getByLabelText('Session name'), 'Sprint 14 refinement')
-    await user.type(screen.getByPlaceholderText('Add an item'), 'Only item')
-    await user.click(screen.getByRole('button', { name: 'Add' }))
-    await user.click(screen.getByRole('button', { name: 'Create session' }))
+    await startSingleUserWithItem(user, 'Only item')
 
     await user.type(screen.getByLabelText('Best case (days)'), '2')
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
@@ -87,10 +95,7 @@ describe('Mode B end-to-end flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.type(screen.getByLabelText('Session name'), 'Sprint 14 refinement')
-    await user.type(screen.getByPlaceholderText('Add an item'), 'Only item')
-    await user.click(screen.getByRole('button', { name: 'Add' }))
-    await user.click(screen.getByRole('button', { name: 'Create session' }))
+    await startSingleUserWithItem(user, 'Only item')
 
     await user.type(screen.getByLabelText('Best case (days)'), '2')
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
@@ -108,10 +113,7 @@ describe('Mode B end-to-end flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.type(screen.getByLabelText('Session name'), 'Sprint 14 refinement')
-    await user.type(screen.getByPlaceholderText('Add an item'), 'Only item')
-    await user.click(screen.getByRole('button', { name: 'Add' }))
-    await user.click(screen.getByRole('button', { name: 'Create session' }))
+    await startSingleUserWithItem(user, 'Only item')
 
     expect(screen.getByLabelText('Best case (days)')).toHaveAttribute('min', '0')
     expect(screen.getByLabelText('Most likely (days)')).toHaveAttribute('min', '0')
@@ -122,10 +124,7 @@ describe('Mode B end-to-end flow', () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.type(screen.getByLabelText('Session name'), 'Sprint 14 refinement')
-    await user.type(screen.getByPlaceholderText('Add an item'), 'Only item')
-    await user.click(screen.getByRole('button', { name: 'Add' }))
-    await user.click(screen.getByRole('button', { name: 'Create session' }))
+    await startSingleUserWithItem(user, 'Only item')
 
     await user.type(screen.getByLabelText('Best case (days)'), '2')
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
@@ -135,31 +134,32 @@ describe('Mode B end-to-end flow', () => {
   })
 })
 
-describe('Mode A (live collaboration)', () => {
-  it('creates a live session and surfaces the shareable code on the session view', async () => {
+describe('Mode selection routing', () => {
+  it('starts a live session and surfaces the shareable code on the workspace', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('radio', { name: /Live collaborative/ }))
-    await user.type(screen.getByLabelText('Session name'), 'Live refinement')
-    await user.type(screen.getByPlaceholderText('Add an item'), 'Auth service')
-    await user.click(screen.getByRole('button', { name: 'Add' }))
-    await user.click(screen.getByRole('button', { name: 'Create live session' }))
+    await user.click(
+      screen.getByRole('button', { name: /Start collaborative estimation/ }),
+    )
 
     expect(screen.getByText('LIVECODE')).toBeInTheDocument()
     expect(screen.getByText('Waiting for participants…')).toBeInTheDocument()
+    expect(screen.getByText('Live')).toBeInTheDocument()
   })
 
-  it('navigates to the join screen and back', async () => {
+  it('navigates to the join screen and back to mode selection', async () => {
     const user = userEvent.setup()
     render(<App />)
 
-    await user.click(screen.getByRole('button', { name: /Join a live session/ }))
+    await user.click(screen.getByRole('button', { name: /Join a collaborative session/ }))
     expect(
       screen.getByRole('heading', { name: 'Join a live session' }),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: '← Back' }))
-    expect(screen.getByRole('heading', { name: 'New session' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Start single-user mode/ }),
+    ).toBeInTheDocument()
   })
 })

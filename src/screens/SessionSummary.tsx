@@ -14,6 +14,8 @@ export function SessionSummary() {
   const currentScreen = useSessionStore((s) => s.currentScreen)
   const selectItem = useSessionStore((s) => s.selectItem)
   const reorderItems = useSessionStore((s) => s.reorderItems)
+  const removeItem = useSessionStore((s) => s.removeItem)
+  const addItem = useSessionStore((s) => s.addItem)
   const goToScreen = useSessionStore((s) => s.goToScreen)
 
   const finalizedItems = items.filter(isFinalized)
@@ -35,6 +37,8 @@ export function SessionSummary() {
         currentScreen={currentScreen}
         onSelect={selectItem}
         onReorder={reorderItems}
+        onRemove={removeItem}
+        onAdd={addItem}
         onGoSummary={() => goToScreen('summary')}
       />
 
@@ -69,7 +73,7 @@ export function SessionSummary() {
         )}
 
         <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center' }}>
-          <Button variant="secondary" onClick={() => goToScreen('session')}>
+          <Button variant="secondary" onClick={() => goToScreen('workspace')}>
             Back to item
           </Button>
           <Button variant="secondary" onClick={() => goToScreen('history')}>

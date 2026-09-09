@@ -3,16 +3,16 @@ import { useSessionStore } from './state/store'
 import type { ScreenId } from './state/types'
 import { Header } from './components'
 import { NetworkProvider } from './network'
-import { CreateSession } from './screens/CreateSession'
-import { SessionView } from './screens/SessionView'
+import { ModeSelect } from './screens/ModeSelect'
+import { Workspace } from './screens/Workspace'
 import { SessionSummary } from './screens/SessionSummary'
 import { SessionHistory } from './screens/SessionHistory'
 import { JoinSession } from './screens/JoinSession'
 import { ParticipantEstimateView } from './screens/ParticipantEstimateView'
 
 const SCREENS: Record<ScreenId, ComponentType> = {
-  create: CreateSession,
-  session: SessionView,
+  'mode-select': ModeSelect,
+  workspace: Workspace,
   summary: SessionSummary,
   history: SessionHistory,
   join: JoinSession,
