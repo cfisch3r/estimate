@@ -17,6 +17,7 @@ function resetStore() {
     connectionStatus: 'idle',
     peerCount: 0,
     liveRound: null,
+    participantNames: {},
   })
 }
 
@@ -193,6 +194,13 @@ describe('startCollaborative', () => {
     const state = useSessionStore.getState()
     expect(state.activeItemId).toBe(state.items[0]?.id)
   })
+
+  it("seeds the facilitator's own display name", () => {
+    useSessionStore.getState().startCollaborative('K7F9Q2')
+    expect(useSessionStore.getState().participantNames).toEqual({
+      facilitator: 'Facilitator',
+    })
+  })
 })
 
 describe('joinLiveSession', () => {
@@ -250,6 +258,32 @@ describe('leaveLiveSession', () => {
   it('assigns a stable participant id on join', () => {
     useSessionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
     expect(useSessionStore.getState().participantId).toMatch(/[0-9a-f-]{36}/)
+  })
+
+  it("seeds the participant's own trimmed display name against their id", () => {
+    useSessionStore.getState().joinLiveSession('K7F9Q2', '  Sam Rivera  ')
+    const { participantId, participantNames } = useSessionStore.getState()
+    expect(participantNames).toEqual({ [participantId]: 'Sam Rivera' })
+  })
+
+  it('clears participantNames on leave', () => {
+    useSessionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
+    useSessionStore.getState().applyParticipantName('peer-1', 'Jordan')
+    useSessionStore.getState().leaveLiveSession()
+    expect(useSessionStore.getState().participantNames).toEqual({})
+  })
+})
+
+describe('applyParticipantName', () => {
+  it('inserts and overwrites entries without disturbing the rest of the map', () => {
+    useSessionStore.getState().applyParticipantName('a', 'Ada')
+    useSessionStore.getState().applyParticipantName('b', 'Bo')
+    useSessionStore.getState().applyParticipantName('a', 'Ada L.')
+
+    expect(useSessionStore.getState().participantNames).toEqual({
+      a: 'Ada L.',
+      b: 'Bo',
+    })
   })
 })
 

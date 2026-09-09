@@ -277,6 +277,64 @@ describe('createTypedActions', () => {
     expect(cb).not.toHaveBeenCalled()
   })
 
+  it('sends a participant announce through the announce action', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+
+    actions.sendAnnounce({ participantId: 'p-1', name: 'Sam Rivera' })
+
+    expect(actionsByName.announce!.send).toHaveBeenCalledWith({
+      participantId: 'p-1',
+      name: 'Sam Rivera',
+    })
+  })
+
+  it('forwards a valid incoming announce, trimming the name, to subscribers', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onAnnounce(cb)
+
+    actionsByName.announce!.onMessage?.(
+      { participantId: 'p-2', name: '  Jordan  ' },
+      { peerId: 'peer-2' },
+    )
+
+    expect(cb).toHaveBeenCalledWith({ participantId: 'p-2', name: 'Jordan' }, 'peer-2')
+  })
+
+  it('drops incoming announces with an empty/blank/missing name or empty participantId', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onAnnounce(cb)
+
+    actionsByName.announce!.onMessage?.(
+      { participantId: 'p-1', name: '   ' },
+      { peerId: 'peer-1' },
+    )
+    actionsByName.announce!.onMessage?.({ participantId: 'p-1' }, { peerId: 'peer-1' })
+    actionsByName.announce!.onMessage?.({ name: 'Sam' }, { peerId: 'peer-1' })
+    actionsByName.announce!.onMessage?.(
+      { participantId: '', name: 'Sam' },
+      { peerId: 'peer-1' },
+    )
+
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('drops a non-object incoming announce without throwing', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onAnnounce(cb)
+
+    expect(() => {
+      actionsByName.announce!.onMessage?.(null, { peerId: 'peer-1' })
+    }).not.toThrow()
+    expect(cb).not.toHaveBeenCalled()
+  })
+
   it('stops notifying an estimate subscriber after unsubscribe', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)

@@ -46,6 +46,7 @@ beforeEach(() => {
     connectionStatus: 'connected',
     peerCount: 1,
     liveRound: null,
+    participantNames: {},
   })
 })
 
@@ -165,5 +166,27 @@ describe('ParticipantEstimateView', () => {
     expect(
       screen.getByText(/Waiting for the facilitator to finalize/),
     ).toBeInTheDocument()
+  })
+
+  it('labels revealed rows with announced names, own row stays "You", unknowns fall back', () => {
+    useSessionStore.setState({
+      participantNames: { 'me-123': 'Sam', p2: 'Jordan Lee' },
+      liveRound: {
+        item,
+        submissions: [
+          estimate({ participantId: 'me-123', best: 3, likely: 5, worst: 8 }),
+          estimate({ participantId: 'p2', best: 2, likely: 6, worst: 12 }),
+          estimate({ participantId: 'p3', best: 1, likely: 4, worst: 9 }),
+        ],
+        revealed: true,
+        mySubmission: { best: 3, likely: 5, worst: 8 },
+      },
+    })
+    render(<ParticipantEstimateView />)
+
+    expect(screen.getByText('You')).toBeInTheDocument()
+    expect(screen.getByText('Jordan Lee')).toBeInTheDocument()
+    expect(screen.queryByText('Sam')).not.toBeInTheDocument()
+    expect(screen.getByText('Teammate 1')).toBeInTheDocument()
   })
 })

@@ -9,8 +9,9 @@ and submit private three-point estimates that are revealed together. There is **
 every peer runs the same code and computes aggregates locally.
 
 This document covers the join flow (#6, updated for the #34 mode-select / Workspace
-entry-flow rebuild) and the participant estimate round (#7); the facilitator reveal
-(#8) builds on the same structures.
+entry-flow rebuild), the participant estimate round (#7), and the `announce` action that
+carries participant display names (#40); the facilitator reveal (#8) builds on the same
+structures.
 
 ## Component view
 
@@ -105,10 +106,10 @@ flowchart TD
 | **ParticipantEstimateView** | React Component | The participant's whole round (#7), driven by `store.liveRound`: a lobby before the facilitator picks an item, then the Best/Likely/Worst form with live bias guards (5c), a waiting state showing the submitted values with a revise affordance (5d), and a revealed state with the aggregated range bar + per-participant list (5e). No finalize/retry — those are facilitator-only. Submitting calls `store.submitEstimate()` then broadcasts the validated estimate via `useNetworkSession().sendEstimate`. |
 | **Workspace** | React Component | The single working screen for both modes: session-name / unit / item-list sidebar plus the active item's estimate panel (or an empty state). In Live mode additionally renders the session-code strip (with copy button), the "N participants connected" count, and a connection-status `Tag`. |
 | **useSessionStore** | Zustand Store | Single source of truth for session state: `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `peerCount`, items, current screen. Participant clients also hold `liveRound` (the facilitator's current item + received submissions + revealed flag + own submission), updated by `applySyncState` / `applyRemoteEstimate` / `applyReveal` / `submitEstimate`; `applySyncState` additionally adopts `snapshot.unit` into `store.unit`. Type-only import of `SessionSnapshot` from `src/network/actions`; no runtime `src/network` import. |
-| **NetworkProvider** | React Context Provider | Wraps `<App>`. Owns the one `NetworkSession` instance for the app's lifetime and exposes it via `useNetworkSession`; tears it down on unmount. On `connect` it also dispatches inbound `onEstimate` / `onSyncState` / `onReveal` into the store, and (facilitator only) subscribes to the store to broadcast a `syncState` whenever the active item, estimation unit, or finalized set changes. |
+| **NetworkProvider** | React Context Provider | Wraps `<App>`. Owns the one `NetworkSession` instance for the app's lifetime and exposes it via `useNetworkSession`; tears it down on unmount. On `connect` it also dispatches inbound `onEstimate` / `onSyncState` / `onReveal` / `onAnnounce` into the store, and (facilitator only) subscribes to the store to broadcast a `syncState` whenever the active item, estimation unit, or finalized set changes. It also broadcasts the local client's own `announce` on connect and re-announces on every peer join, and applies inbound announces via `applyParticipantName`. |
 | **useNetworkSession** | React Hook | The only code that touches both the store and the P2P core. `connect(sessionId)` calls `joinSession()` and subscribes to its events; `disconnect()` calls `leave()`; `sendEstimate(estimate)` forwards a participant's submission to the room. Mirrors `onConnectionStateChange` and peer join/leave into the store. (The participant name is put in the store by `joinLiveSession()` before `connect()` runs.) |
 | **joinSession** | Factory Function | Entry point of the P2P core (from PR #25). Opens the Trystero room (`roomId = sessionId`), wires up the connection tracker and typed actions, returns a `NetworkSession` of `send*` / `on*` methods. |
-| **typed actions** | Module | Defines the three wire actions (`submitEstimate`, `syncState`, `reveal`), serialises outbound messages, and validates every inbound message through `calc` before surfacing it. |
+| **typed actions** | Module | Defines the four wire actions (`submitEstimate`, `syncState`, `reveal`, `announce`), serialises outbound messages, and validates every inbound message (through `calc` for estimates; shape checks for the rest) before surfacing it. `announce` carries a `participantId -> display name` pair, kept off the pure `Estimate` type. |
 | **connection tracker** | Module | State machine over peer join/leave and join errors → `idle` / `connecting` / `connected` / `disconnected` plus the peer list; notifies subscribers on change. |
 | **generateSessionCode** | Function | Returns a 6-char Crockford-base32 code (crypto RNG, ambiguous characters removed), used as both the shareable code and the Trystero room id. |
 | **calc** | Pure Module | Existing framework-free math (`createEstimate`, `aggregateEstimates`, `computeCI90`, guards). Used here only to validate inbound peer estimates. |
@@ -133,6 +134,10 @@ sequenceDiagram
   R-->>F: onPeerJoin(p)
   R-->>P: onPeerJoin(f)
   Note over F,P: connectionStatus = connected
+  P->>R: sendAnnounce({ participantId, name })
+  F->>R: sendAnnounce({ participantId: "facilitator", name })
+  Note over F,P: each client also re-announces on every later onPeerJoin (no history replay)
+  R-->>F: onAnnounce → store.participantNames[p] = name
   F-->>F: "1 participant connected"
   P-->>P: route to ParticipantEstimateView (lobby until the facilitator picks an item)
 ```
@@ -208,6 +213,7 @@ connection-fallback UX is #9.
 | `connectionStatus` | `idle \| connecting \| connected \| disconnected` |
 | `peerCount: number` | connected peers, for the facilitator strip |
 | `liveRound: LiveRound \| null` | participant-only: current item + received `submissions` + `revealed` flag + own `mySubmission`; written by `applySyncState` / `applyRemoteEstimate` / `applyReveal` / `submitEstimate` |
+| `participantNames: Record<string, string>` | `participantId -> display name` for every announced client (own entry seeded on join / start; peers filled in by `applyParticipantName` from inbound `announce`). Lets the reveal list — and #8's facilitator table — show real names instead of "Teammate N". Reset on leave. |
 | `unit` (participant) | on every `applySyncState` the participant's `store.unit` is overwritten with the facilitator's `snapshot.unit`, so its estimate form and bars label values in the session's unit (#39) |
 
 Deferred: `revealedItemIds` + the facilitator per-participant reveal view (#8).
@@ -217,7 +223,9 @@ Deferred: `revealedItemIds` + the facilitator per-participant reveal view (#8).
 Every inbound peer message crossing `trystero/nostr → src/network/actions` is untrusted:
 `submitEstimate` re-runs `createEstimate` (drop on failure), `syncState` is shape-checked
 (including `unit` against the known set — an unknown/missing unit drops the whole snapshot)
-and each submission re-validated, `reveal` must be a string. The UI only ever sees validated
+and each submission re-validated, `reveal` must be a string, `announce` must be an object
+with a non-empty `participantId` string and a `name` string that is non-empty after
+trimming (the name is trimmed before it reaches the store). The UI only ever sees validated
 `Estimate` values.
 
 ## Known MVP gaps (accepted)

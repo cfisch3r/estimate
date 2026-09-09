@@ -112,4 +112,29 @@ describe('joinSession', () => {
       estimate.value,
     )
   })
+
+  it('sendAnnounce delegates to the underlying announce action', () => {
+    const session = joinSession('session-abc')
+
+    session.sendAnnounce({ participantId: 'p-1', name: 'Sam Rivera' })
+
+    expect(fakeRoom.actionsByName.announce!.send).toHaveBeenCalledWith({
+      participantId: 'p-1',
+      name: 'Sam Rivera',
+    })
+  })
+
+  it('onAnnounce subscribers receive validated inbound announce messages', () => {
+    const session = joinSession('session-abc')
+    const cb = vi.fn()
+    session.onAnnounce(cb)
+
+    const onMessage = fakeRoom.actionsByName.announce!.onMessage as (
+      data: unknown,
+      context: { peerId: string },
+    ) => void
+    onMessage({ participantId: 'p-2', name: '  Jordan  ' }, { peerId: 'peer-2' })
+
+    expect(cb).toHaveBeenCalledWith({ participantId: 'p-2', name: 'Jordan' }, 'peer-2')
+  })
 })

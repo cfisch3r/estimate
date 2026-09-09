@@ -23,6 +23,14 @@ export interface SessionSnapshot {
   finalizedItemIds: string[]
 }
 
+/** A client announcing which display name belongs to its `participantId`, so
+ *  peers can label reveal rows with real names instead of "Teammate N". Kept off
+ *  the pure `Estimate` wire type — names never enter `calc`. */
+export interface ParticipantAnnounce {
+  participantId: string
+  name: string
+}
+
 type Unsubscribe = () => void
 
 interface MessageAction<T> {
@@ -40,9 +48,11 @@ export interface TypedActions {
   sendEstimate(estimate: Estimate): void
   sendSyncState(snapshot: SessionSnapshot): void
   sendReveal(itemId: string): void
+  sendAnnounce(announce: ParticipantAnnounce): void
   onEstimate(cb: (estimate: Estimate, peerId: string) => void): Unsubscribe
   onSyncState(cb: (snapshot: SessionSnapshot, peerId: string) => void): Unsubscribe
   onReveal(cb: (itemId: string, peerId: string) => void): Unsubscribe
+  onAnnounce(cb: (announce: ParticipantAnnounce, peerId: string) => void): Unsubscribe
 }
 
 function createSubscribable<T extends unknown[]>() {
@@ -97,6 +107,17 @@ function isValidSnapshotItem(value: unknown): value is SnapshotItem {
   )
 }
 
+function isValidAnnounce(data: unknown): data is ParticipantAnnounce {
+  if (typeof data !== 'object' || data === null) return false
+  const announce = data as Record<string, unknown>
+  return (
+    typeof announce.participantId === 'string' &&
+    announce.participantId.length > 0 &&
+    typeof announce.name === 'string' &&
+    announce.name.trim().length > 0
+  )
+}
+
 function isValidSnapshotShape(data: unknown): data is SessionSnapshot {
   if (typeof data !== 'object' || data === null) return false
   const snapshot = data as Record<string, unknown>
@@ -111,10 +132,12 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   const submitEstimateAction = room.makeAction<Estimate>('submitEstimate')
   const syncStateAction = room.makeAction<SessionSnapshot>('syncState')
   const revealAction = room.makeAction<string>('reveal')
+  const announceAction = room.makeAction<ParticipantAnnounce>('announce')
 
   const estimateSubscribable = createSubscribable<[Estimate, string]>()
   const syncStateSubscribable = createSubscribable<[SessionSnapshot, string]>()
   const revealSubscribable = createSubscribable<[string, string]>()
+  const announceSubscribable = createSubscribable<[ParticipantAnnounce, string]>()
 
   submitEstimateAction.onMessage = (data, { peerId }) => {
     const result = safeCreateEstimate(data)
@@ -152,12 +175,25 @@ export function createTypedActions(room: ActionRoom): TypedActions {
     revealSubscribable.notify(data, peerId)
   }
 
+  announceAction.onMessage = (data, { peerId }) => {
+    if (!isValidAnnounce(data)) {
+      console.warn('Dropping malformed incoming announce payload')
+      return
+    }
+    announceSubscribable.notify(
+      { participantId: data.participantId, name: data.name.trim() },
+      peerId,
+    )
+  }
+
   return {
     sendEstimate: (estimate) => submitEstimateAction.send(estimate),
     sendSyncState: (snapshot) => syncStateAction.send(snapshot),
     sendReveal: (itemId) => revealAction.send(itemId),
+    sendAnnounce: (announce) => announceAction.send(announce),
     onEstimate: estimateSubscribable.subscribe,
     onSyncState: syncStateSubscribable.subscribe,
     onReveal: revealSubscribable.subscribe,
+    onAnnounce: announceSubscribable.subscribe,
   }
 }

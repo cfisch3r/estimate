@@ -1,6 +1,11 @@
 import { joinRoom } from 'trystero/nostr'
 import { createConnectionTracker, type ConnectionState } from './connection'
-import { createTypedActions, type ActionRoom, type SessionSnapshot } from './actions'
+import {
+  createTypedActions,
+  type ActionRoom,
+  type ParticipantAnnounce,
+  type SessionSnapshot,
+} from './actions'
 import type { Estimate } from '../calc'
 
 const APP_ID = 'estimate-app-v1'
@@ -15,9 +20,11 @@ export interface NetworkSession {
   sendEstimate(estimate: Estimate): void
   sendSyncState(snapshot: SessionSnapshot): void
   sendReveal(itemId: string): void
+  sendAnnounce(announce: ParticipantAnnounce): void
   onEstimate(cb: (estimate: Estimate, peerId: string) => void): Unsubscribe
   onSyncState(cb: (snapshot: SessionSnapshot, peerId: string) => void): Unsubscribe
   onReveal(cb: (itemId: string, peerId: string) => void): Unsubscribe
+  onAnnounce(cb: (announce: ParticipantAnnounce, peerId: string) => void): Unsubscribe
   onPeerJoin(cb: (peerId: string) => void): Unsubscribe
   onPeerLeave(cb: (peerId: string) => void): Unsubscribe
   onConnectionStateChange(cb: (state: ConnectionState) => void): Unsubscribe
@@ -51,9 +58,11 @@ export function joinSession(
     sendEstimate: actions.sendEstimate,
     sendSyncState: actions.sendSyncState,
     sendReveal: actions.sendReveal,
+    sendAnnounce: actions.sendAnnounce,
     onEstimate: actions.onEstimate,
     onSyncState: actions.onSyncState,
     onReveal: actions.onReveal,
+    onAnnounce: actions.onAnnounce,
     onPeerJoin: connection.onPeerJoin,
     onPeerLeave: connection.onPeerLeave,
     onConnectionStateChange: connection.onStateChange,

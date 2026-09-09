@@ -317,7 +317,11 @@ function RevealedPanel({
   unit,
   sessionId,
   participantId,
-}: RoundPanelProps & { participantId: string }) {
+  participantNames,
+}: RoundPanelProps & {
+  participantId: string
+  participantNames: Record<string, string>
+}) {
   const suffix = UNIT_SUFFIX[unit]
   const aggregate =
     round.submissions.length > 0 ? aggregateEstimates(round.submissions) : null
@@ -342,13 +346,15 @@ function RevealedPanel({
 
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
         {(() => {
-          // Number only the other participants, so labels stay stable regardless
-          // of where the local user's own row sits in submission order. Real
-          // names are #40.
+          // Prefer the announced display name; fall back to a stable "Teammate N"
+          // number for any peer that hasn't announced yet. Numbering only the
+          // unnamed others keeps labels stable regardless of where the local
+          // user's own row sits in submission order.
           let teammateNo = 0
           return round.submissions.map((estimate) => {
             const isMe = estimate.participantId === participantId
-            const label = isMe ? 'You' : `Teammate ${++teammateNo}`
+            const name = participantNames[estimate.participantId]
+            const label = isMe ? 'You' : (name ?? `Teammate ${++teammateNo}`)
             return (
               <li
                 key={estimate.participantId}
@@ -403,6 +409,7 @@ export function ParticipantEstimateView() {
   const unit = useSessionStore((s) => s.unit)
   const peerCount = useSessionStore((s) => s.peerCount)
   const participantId = useSessionStore((s) => s.participantId)
+  const participantNames = useSessionStore((s) => s.participantNames)
   const liveRound = useSessionStore((s) => s.liveRound)
   const submitEstimate = useSessionStore((s) => s.submitEstimate)
   const leave = useLeaveLiveSession()
@@ -431,6 +438,7 @@ export function ParticipantEstimateView() {
         unit={unit}
         sessionId={sessionId}
         participantId={participantId}
+        participantNames={participantNames}
       />
     )
   } else if (liveRound.mySubmission) {
