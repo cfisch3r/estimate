@@ -1,15 +1,22 @@
 import { create } from 'zustand'
-import type { EstimationUnit } from '../calc'
+import type { EstimationUnit, Estimate } from '../calc'
 import { createEstimate, aggregateEstimates } from '../calc'
+import type { SessionSnapshot } from '../network/actions'
 import type {
   Item,
   LiveConnectionStatus,
+  LiveRound,
   ScreenId,
   SessionMode,
   SessionRole,
 } from './types'
 
 type FinalizeResult = { ok: true } | { ok: false; error: string }
+
+/** submitEstimate returns the stored Estimate so the caller broadcasts exactly
+ *  what was recorded — no re-lookup by a key that might not round-trip. */
+type SubmitEstimateResult =
+  { ok: true; estimate: Estimate } | { ok: false; error: string }
 
 interface SessionStore {
   currentScreen: ScreenId
@@ -22,8 +29,12 @@ interface SessionStore {
   role: SessionRole
   sessionId: string | null
   myName: string
+  /** Stable per-join id for this participant, used as the submission key. */
+  participantId: string
   connectionStatus: LiveConnectionStatus
   peerCount: number
+  /** Participant-only view of the facilitator's current round; null otherwise. */
+  liveRound: LiveRound | null
 
   setSessionName: (name: string) => void
   setUnit: (unit: EstimationUnit) => void
@@ -48,6 +59,34 @@ interface SessionStore {
     worst: number,
   ) => FinalizeResult
   goToScreen: (screen: ScreenId) => void
+
+  /** Participant: adopt the facilitator's broadcast round state. */
+  applySyncState: (snapshot: SessionSnapshot) => void
+  /** Participant: record another participant's incoming submission. */
+  applyRemoteEstimate: (estimate: Estimate) => void
+  /** Participant: mark the current round revealed once the facilitator reveals it. */
+  applyReveal: (itemId: string) => void
+  /** Participant: validate and record this client's own estimate for the round. */
+  submitEstimate: (best: number, likely: number, worst: number) => SubmitEstimateResult
+}
+
+/** Upsert `next` into `list` keyed by participantId — last write wins, insertion
+ *  order (and thus submission order) preserved for existing entries. */
+function upsertByParticipant(list: Estimate[], next: Estimate): Estimate[] {
+  const index = list.findIndex((e) => e.participantId === next.participantId)
+  if (index === -1) return [...list, next]
+  const copy = [...list]
+  copy[index] = next
+  return copy
+}
+
+function snapshotSubmissionsToEstimates(snapshot: SessionSnapshot): Estimate[] {
+  const estimates: Estimate[] = []
+  for (const raw of snapshot.submissions) {
+    const result = createEstimate(raw)
+    if (result.ok) estimates.push(result.value)
+  }
+  return estimates
 }
 
 function firstPendingItemId(items: Item[], excludeId?: string): string | null {
@@ -60,11 +99,20 @@ const LIVE_SESSION_DEFAULTS = {
   role: 'facilitator',
   sessionId: null,
   myName: '',
+  participantId: '',
   connectionStatus: 'idle',
   peerCount: 0,
+  liveRound: null,
 } as const satisfies Pick<
   SessionStore,
-  'mode' | 'role' | 'sessionId' | 'myName' | 'connectionStatus' | 'peerCount'
+  | 'mode'
+  | 'role'
+  | 'sessionId'
+  | 'myName'
+  | 'participantId'
+  | 'connectionStatus'
+  | 'peerCount'
+  | 'liveRound'
 >
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
@@ -156,8 +204,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       role: 'participant',
       sessionId: code,
       myName: name.trim(),
+      participantId: crypto.randomUUID(),
       connectionStatus: 'connecting',
       peerCount: 0,
+      liveRound: null,
       currentScreen: 'join',
     })
   },
@@ -208,4 +258,70 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   goToScreen: (screen) => set({ currentScreen: screen }),
+
+  applySyncState: (snapshot) =>
+    set((state) => {
+      if (snapshot.currentItem === null) {
+        return { liveRound: null }
+      }
+      const prev = state.liveRound
+      const sameItem = prev?.item.id === snapshot.currentItem.id
+      const incoming = snapshotSubmissionsToEstimates(snapshot)
+      const submissions = sameItem
+        ? incoming.reduce(upsertByParticipant, prev!.submissions)
+        : incoming
+      return {
+        liveRound: {
+          item: snapshot.currentItem,
+          submissions,
+          revealed: sameItem ? prev!.revealed : false,
+          mySubmission: sameItem ? prev!.mySubmission : null,
+        },
+      }
+    }),
+
+  applyRemoteEstimate: (estimate) =>
+    set((state) => {
+      if (!state.liveRound) return {}
+      return {
+        liveRound: {
+          ...state.liveRound,
+          submissions: upsertByParticipant(state.liveRound.submissions, estimate),
+        },
+      }
+    }),
+
+  applyReveal: (itemId) =>
+    set((state) => {
+      if (!state.liveRound || state.liveRound.item.id !== itemId) return {}
+      return { liveRound: { ...state.liveRound, revealed: true } }
+    }),
+
+  submitEstimate: (best, likely, worst) => {
+    const { liveRound, participantId } = get()
+    if (!liveRound) {
+      return { ok: false, error: 'No active round to estimate.' }
+    }
+    const result = createEstimate({
+      participantId: participantId || 'me',
+      best,
+      likely,
+      worst,
+    })
+    if (!result.ok) {
+      return result
+    }
+    set((state) =>
+      state.liveRound
+        ? {
+            liveRound: {
+              ...state.liveRound,
+              mySubmission: { best, likely, worst },
+              submissions: upsertByParticipant(state.liveRound.submissions, result.value),
+            },
+          }
+        : {},
+    )
+    return { ok: true, estimate: result.value }
+  },
 }))

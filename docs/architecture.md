@@ -20,15 +20,17 @@ concretely works, how session history persists (a real point of tension with the
 storage), styling/design-system approach, hosting, and module structure.
 
 **As-built status.** The initial scaffold, the `/calc` engine, the Zustand store, the
-single-user (Manual) screens, the Trystero P2P network layer, and the Join Session screen
-have all shipped (issues #1–#6), and the entry flow was rebuilt to a mode-selection screen
-plus a unified Workspace in the epic-0010 screen review (#34). For the concrete as-built
+single-user (Manual) screens, the Trystero P2P network layer, the Join Session screen, and
+the participant estimate round have all shipped (issues #1–#7), and the entry flow was
+rebuilt to a mode-selection screen plus a unified Workspace in the epic-0010 screen review
+(#34). For the concrete as-built
 detail of the Live-mode layer — the
-`src/network/` component breakdown, the join sequence, the connection state machine, and
-the store fields it added — see [concepts/collaboration-mode.md](concepts/collaboration-mode.md);
+`src/network/` component breakdown, the join sequence, the estimate round, the connection
+state machine, and the store fields it added — see [concepts/collaboration-mode.md](concepts/collaboration-mode.md);
 this document keeps the decisions and rationale, that one tracks the implementation. Still
-open: the participant estimating flow (#7), the facilitator reveal flow (#8, a Workspace
-state — not a separate screen — after the epic-0010 redesign), connection-fallback UX (#9),
+open: the facilitator reveal flow (#8, a Workspace
+state — not a separate screen — after the epic-0010 redesign), carrying the session unit
+and participant names on the wire (#39 / #40), connection-fallback UX (#9),
 and real persistence (`src/persistence/` is still a placeholder — session data is in-memory
 only).
 
@@ -60,7 +62,7 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 - **Signaling strategy:** Trystero's **Nostr strategy** (`trystero/nostr`) as the default — this is the library's own default and top recommendation, backed by hundreds of independent public relays (most redundancy of the decentralized options), no account/config required, matches ADR-001's "no server we operate." Library's own robustness ranking for the decentralized strategies: Nostr → MQTT → BitTorrent → IPFS. Supabase/Firebase strategies exist but require configuring your own project (not zero-setup); a self-hosted WebSocket relay strategy also exists as an explicit escape hatch if the public networks prove unreliable, mirroring ADR-001's bring-your-own-TURN framing. Verified against current Trystero docs (trystero.dev, github.com/dmotz/trystero).
 - **Room privacy:** `roomId` = the shared session code — this is the invite mechanism. `joinSession()` accepts an optional `password` (Trystero AES-GCM encrypts the signaling handshake); without it the roomId is visible as metadata on the public signaling medium. The 6-char code is already hard to guess, but a password closes the gap cheaply if a session warrants it.
 - **Data sync model: event broadcast, not CRDT.** Each peer only broadcasts its own submissions (`room.makeAction()`); every peer independently maintains the same append-only list of received estimates and computes min/median/max locally. This works because the PRD's aggregation (min of Best, max of Worst, median of Likely) is order-independent and idempotent — no conflict resolution needed, and Mode A/B can share one calculation engine.
-- **Known gap to handle explicitly:** Trystero doesn't replay history to late joiners. On `onPeerJoin`, an existing peer must push a full state snapshot (current item, submissions so far, finalized items) to the newcomer. The wire action for this (`syncState`, carrying a `SessionSnapshot`) exists in `src/network/actions.ts`; broadcasting and applying it on join is wired up in #7.
+- **Known gap to handle explicitly:** Trystero doesn't replay history to late joiners. On `onPeerJoin`, an existing peer must push a full state snapshot (current item, submissions so far, finalized items) to the newcomer. The wire action for this (`syncState`, carrying a `SessionSnapshot`) exists in `src/network/actions.ts`. As of #7 the facilitator broadcasts it from `NetworkProvider` (on active-item / finalized-set change) and participants apply it via `store.applySyncState`; a snapshot targeted at a specific late joiner on `onPeerJoin` is not yet implemented.
 
 ## Module structure
 
@@ -77,10 +79,10 @@ Static SPA — no server-side rendering needed, no routes that require backend d
                   Estimate View, Summary, History), plus shared screen-level pieces
                   (SessionSidebar, useLeaveLiveSession). Built so far: ModeSelect, Workspace
                   (single-user path + collaborative session-code strip), Summary, History,
-                  Join. Participant Estimate View is a #6 placeholder (real form in #7); the
-                  facilitator reveal flow and the participant estimating flow are redesigned
-                  in the epic-0010 handoff (`design_handoffs/epic-0010-screen-design-review/`)
-                  and land in #8 / #7.
+                  Join, and Participant Estimate View (#7 — lobby / estimating / waiting /
+                  revealed states driven by `store.liveRound`). The facilitator reveal flow
+                  is redesigned in the epic-0010 handoff
+                  (`design_handoffs/epic-0010-screen-design-review/`) and lands in #8.
   /calc         — pure functions: aggregateEstimates(), computeCI90() (McConnell's formula, PRD §5),
                   bias guards (symmetric-range, false-precision, outlier — PRD §6). Framework-free,
                   unit-testable, identical between Mode A and Mode B.
@@ -92,7 +94,7 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 
 The `/calc` layer's isolation as pure, framework-free functions is the single most load-bearing structural decision — PRD §4.2 and ADR-001 both require identical calculation/bias-guard behavior across both modes, and this makes it trivially unit-testable against the PRD §5–6 formulas independent of UI or networking.
 
-**Testing note (ADR-002):** browser-specific behavior — real reload/persistence, real P2P connection handling — is the trigger to add Playwright. The Trystero `/network` layer has shipped, but its jsdom-testable surface (actions, validation, state machine) doesn't yet trip that trigger; real WebRTC connect/reveal (#7/#8) and real `/persistence` do. Scope it to a handful of golden-path smoke tests; keep edge cases in `/calc`/`/state`/component tests. See ADR-002's 2026-09-07 update.
+**Testing note (ADR-002):** browser-specific behavior — real reload/persistence, real P2P connection handling — is the trigger to add Playwright. The Trystero `/network` layer has shipped, but its jsdom-testable surface (actions, validation, state machine) doesn't yet trip that trigger — the #7 participant round landed entirely in store + component tests; real WebRTC connect/reveal (#8) and real `/persistence` do. Scope it to a handful of golden-path smoke tests; keep edge cases in `/calc`/`/state`/component tests. See ADR-002's 2026-09-07 update.
 
 ## `/calc` module — detailed design
 
@@ -168,17 +170,19 @@ The clickable prototype predates the `/calc` module and unit decisions above, so
 
 ## Build status &amp; what's next
 
-The proposal above has been built out through issue #6: Vite + React 19 + TS scaffold,
+The proposal above has been built out through issue #7: Vite + React 19 + TS scaffold,
 Nocturne ported as-is, the `/calc` engine (unit-tested against the PRD §5–6 formulas), the
-Zustand store, the single-user Workspace screens, the Trystero P2P network layer, and the
-Join Session screen. The epic-0010 screen review (#34) then rebuilt the entry flow to a
-mode-selection screen plus the unified Workspace.
+Zustand store, the single-user Workspace screens, the Trystero P2P network layer, the
+Join Session screen, and the participant estimate round (lobby / estimating / waiting /
+revealed, driven by `store.liveRound`, with `NetworkProvider` dispatching inbound
+`onEstimate` / `onSyncState` / `onReveal` and broadcasting the facilitator's `syncState`).
+The epic-0010 screen review (#34) rebuilt the entry flow to a mode-selection screen plus
+the unified Workspace.
 
 Remaining MVP work, tracked on the EstiMate Roadmap board:
 
-- **#7** — participant estimating flow: the real Best/Likely/Worst form, plus wiring
-  `NetworkProvider` to dispatch `onEstimate` / `onSyncState` / `onReveal` into the store and
-  adding the `submissions` / round state the store doesn't have yet.
+- **#39 / #40** — carry the session unit and participant display names on the wire
+  (`SessionSnapshot` currently omits both); prerequisites for #8's participant table.
 - **#8** — facilitator reveal flow (a Workspace state, per the epic-0010 handoff):
   per-participant range table, group aggregate + CI90, `checkOutlier()` driving the outlier
   flag, and per-item `revealed` / submissions state.

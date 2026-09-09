@@ -6,9 +6,21 @@ import { NetworkProvider } from './NetworkProvider'
 import { useNetworkSession } from './useNetworkSession'
 import { useSessionStore } from '../state/store'
 
-const { joinSessionMock, fakeSession, emitState } = vi.hoisted(() => {
+const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
   let listener: ((state: ConnectionState) => void) | null = null
   let current: ConnectionState = { status: 'connecting', peerIds: [] }
+  const handlers: Record<string, ((...args: never[]) => void) | null> = {
+    estimate: null,
+    syncState: null,
+    reveal: null,
+    peerJoin: null,
+  }
+  const capture = (name: string) => (cb: (...args: never[]) => void) => {
+    handlers[name] = cb
+    return () => {
+      handlers[name] = null
+    }
+  }
   const fakeSession = {
     getConnectionState: () => current,
     onConnectionStateChange: vi.fn((cb: (state: ConnectionState) => void) => {
@@ -17,13 +29,21 @@ const { joinSessionMock, fakeSession, emitState } = vi.hoisted(() => {
         listener = null
       }
     }),
+    onEstimate: vi.fn(capture('estimate')),
+    onSyncState: vi.fn(capture('syncState')),
+    onReveal: vi.fn(capture('reveal')),
+    onPeerJoin: vi.fn(capture('peerJoin')),
+    sendEstimate: vi.fn(),
+    sendSyncState: vi.fn(),
     leave: vi.fn(),
   }
   const emitState = (state: ConnectionState) => {
     current = state
     listener?.(state)
   }
-  return { joinSessionMock: vi.fn(() => fakeSession), fakeSession, emitState }
+  const emit = (name: string, ...args: unknown[]) =>
+    handlers[name]?.(...(args as never[]))
+  return { joinSessionMock: vi.fn(() => fakeSession), fakeSession, emitState, emit }
 })
 
 vi.mock('./session', () => ({ joinSession: joinSessionMock }))
@@ -42,8 +62,19 @@ beforeEach(() => {
   joinSessionMock.mockClear()
   fakeSession.leave.mockClear()
   fakeSession.onConnectionStateChange.mockClear()
+  fakeSession.sendEstimate.mockClear()
+  fakeSession.sendSyncState.mockClear()
   emitState({ status: 'connecting', peerIds: [] })
-  useSessionStore.setState({ connectionStatus: 'idle', peerCount: 0 })
+  useSessionStore.setState({
+    connectionStatus: 'idle',
+    peerCount: 0,
+    mode: 'manual',
+    role: 'facilitator',
+    sessionId: null,
+    items: [],
+    activeItemId: null,
+    liveRound: null,
+  })
 })
 
 describe('useNetworkSession', () => {
@@ -94,6 +125,86 @@ describe('useNetworkSession', () => {
     expect(fakeSession.leave).toHaveBeenCalled()
     expect(useSessionStore.getState().connectionStatus).toBe('idle')
     expect(useSessionStore.getState().peerCount).toBe(0)
+  })
+
+  it('dispatches incoming syncState / estimate / reveal into the store', async () => {
+    const user = userEvent.setup()
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    const item = { id: 'item-1', title: 'Retry queue', description: 'backoff' }
+    act(() =>
+      emit('syncState', { currentItem: item, submissions: [], finalizedItemIds: [] }),
+    )
+    expect(useSessionStore.getState().liveRound?.item.title).toBe('Retry queue')
+
+    act(() => emit('estimate', { participantId: 'p2', best: 2, likely: 4, worst: 8 }))
+    expect(useSessionStore.getState().liveRound?.submissions).toHaveLength(1)
+
+    act(() => emit('reveal', 'item-1'))
+    expect(useSessionStore.getState().liveRound?.revealed).toBe(true)
+  })
+
+  it('re-broadcasts the facilitator snapshot when a peer joins', async () => {
+    const user = userEvent.setup()
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'facilitator',
+        sessionId: 'K7F9Q2',
+        items: [
+          {
+            id: 'i1',
+            title: 'Retry queue',
+            description: 'backoff',
+            notes: '',
+            finalResult: null,
+          },
+        ],
+        activeItemId: 'i1',
+      }),
+    )
+    fakeSession.sendSyncState.mockClear()
+
+    act(() => emit('peerJoin', 'peer-new'))
+
+    expect(fakeSession.sendSyncState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        currentItem: { id: 'i1', title: 'Retry queue', description: 'backoff' },
+      }),
+    )
+  })
+
+  it('stops dispatching store updates after disconnect', async () => {
+    const user = userEvent.setup()
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+    await user.click(screen.getByText('disconnect'))
+
+    act(() =>
+      emit('syncState', {
+        currentItem: { id: 'x', title: 'late', description: '' },
+        submissions: [],
+        finalizedItemIds: [],
+      }),
+    )
+
+    expect(useSessionStore.getState().liveRound).toBeNull()
   })
 
   it('leaves the room when the provider unmounts', async () => {
