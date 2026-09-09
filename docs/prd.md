@@ -32,7 +32,7 @@ EstiMate applies **three-point estimation** — the method recommended in Episod
 
 ### 4.1 Session modes
 
-At session creation, the facilitator picks one of two modes. Both modes produce the same output (items with min/expected/CI90/max) and share the same summary/report/history features — only how the numbers get in differs. See **ADR-001** for the reasoning behind offering both.
+On the entry screen, before any session setup, the facilitator picks one of two modes. Both modes produce the same output (items with min/expected/CI90/max) and share the same summary/report/history features — only how the numbers get in differs. See **ADR-001** for the reasoning behind offering both.
 
 **Live mode (Mode A) — live collaborative session (peer-to-peer)**
 The team estimates together in real time, each participant submitting their own numbers from their own device, connected directly browser-to-browser (see §9, ADR-001).

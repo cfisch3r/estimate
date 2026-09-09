@@ -53,6 +53,61 @@ describe('Workspace', () => {
     expect(useSessionStore.getState().items).toHaveLength(1)
   })
 
+  it('falls back to the next pending item when the active one is removed', async () => {
+    const user = userEvent.setup()
+    useSessionStore.setState({
+      items: [
+        {
+          id: '1',
+          title: 'Active pending',
+          description: '',
+          notes: '',
+          finalResult: null,
+        },
+        {
+          id: '2',
+          title: 'Other pending',
+          description: '',
+          notes: '',
+          finalResult: null,
+        },
+      ],
+      activeItemId: '1',
+    })
+    const { container } = render(<Workspace />)
+
+    const rows = container.querySelectorAll('.session-sidebar-row')
+    const activeRow = Array.from(rows).find((r) =>
+      r.textContent?.includes('Active pending'),
+    )!
+    await user.click(activeRow.querySelector('button[aria-label="Remove item"]')!)
+
+    expect(useSessionStore.getState().activeItemId).toBe('2')
+    expect(screen.getByRole('heading', { name: 'Other pending' })).toBeInTheDocument()
+  })
+
+  it('distinguishes the empty, all-finalized, and nothing-selected panel states', () => {
+    const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
+    const { rerender } = render(<Workspace />)
+    expect(screen.getByText('Add an item to get started')).toBeInTheDocument()
+
+    useSessionStore.setState({
+      items: [
+        { id: '1', title: 'A', description: '', notes: '', finalResult: finalized },
+      ],
+      activeItemId: null,
+    })
+    rerender(<Workspace />)
+    expect(screen.getByText('All items finalized')).toBeInTheDocument()
+
+    useSessionStore.setState({
+      items: [{ id: '1', title: 'A', description: '', notes: '', finalResult: null }],
+      activeItemId: null,
+    })
+    rerender(<Workspace />)
+    expect(screen.getByText('Select an item to estimate')).toBeInTheDocument()
+  })
+
   it('renames the active item through the click-to-edit title', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({

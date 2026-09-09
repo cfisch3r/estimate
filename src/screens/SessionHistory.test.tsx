@@ -44,6 +44,18 @@ describe('SessionHistory', () => {
     expect(screen.queryByText('No past sessions yet.')).not.toBeInTheDocument()
   })
 
+  it('falls back to "Untitled session" when no name was entered', () => {
+    useSessionStore.setState({
+      sessionName: '',
+      items: [item('1', 'A', finalized)],
+      unit: 'days',
+    })
+
+    render(<SessionHistory />)
+
+    expect(screen.getByText('Untitled session (current)')).toBeInTheDocument()
+  })
+
   it('hides the current session when the search does not match its name', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({

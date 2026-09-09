@@ -10,8 +10,11 @@ export function SessionHistory() {
 
   const [search, setSearch] = useState('')
 
+  // Session name is now an optional free-text field (the mode-select flow no
+  // longer forces one), so fall back to a placeholder for display.
+  const displayName = sessionName.trim() || 'Untitled session'
   const hasFinalizedItem = items.some((item) => item.finalResult !== null)
-  const matchesSearch = sessionName.toLowerCase().includes(search.toLowerCase())
+  const matchesSearch = displayName.toLowerCase().includes(search.toLowerCase())
   const showCurrentSession = hasFinalizedItem && matchesSearch
 
   return (
@@ -31,7 +34,7 @@ export function SessionHistory() {
           style={{ cursor: 'pointer' }}
           onClick={() => goToScreen('summary')}
         >
-          <CardTitle>{`${sessionName} (current)`}</CardTitle>
+          <CardTitle>{`${displayName} (current)`}</CardTitle>
           <CardMeta>{`Manual Entry · ${items.length} item${items.length === 1 ? '' : 's'} · ${unit}`}</CardMeta>
         </Card>
       ) : (

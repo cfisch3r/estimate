@@ -363,6 +363,8 @@ export function Workspace() {
   const goToScreen = useSessionStore((s) => s.goToScreen)
 
   const activeItem = items.find((item) => item.id === activeItemId) ?? null
+  const allFinalized =
+    items.length > 0 && items.every((item) => item.finalResult !== null)
 
   return (
     <div
@@ -460,11 +462,18 @@ export function Workspace() {
         >
           <ListChecksIcon size={28} style={{ color: 'var(--color-neutral-500)' }} />
           <CardTitle style={{ marginTop: 'var(--space-2)' }}>
-            Add an item to get started
+            {items.length === 0
+              ? 'Add an item to get started'
+              : allFinalized
+                ? 'All items finalized'
+                : 'Select an item to estimate'}
           </CardTitle>
           <CardBody style={{ maxWidth: 320 }}>
-            Everything you&apos;re estimating lives in the list on the left. Add one, then
-            select it here to record a best / likely / worst range.
+            {items.length === 0
+              ? "Everything you're estimating lives in the list on the left. Add one, then select it here to record a best / likely / worst range."
+              : allFinalized
+                ? 'Every item has a recorded range — open the summary from the sidebar, or add another item.'
+                : 'Pick an item from the list on the left to record its best / likely / worst range.'}
           </CardBody>
         </Card>
       )}

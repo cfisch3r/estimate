@@ -13,7 +13,7 @@ Both modes share the same calculation engine, bias guards (symmetric-range warni
 
 ## Status
 
-MVP in progress. Manual mode (Mode B) — session creation, item management, Session View, summary, and history — is built. Live mode (Mode A) has its foundation in place — the Trystero peer-to-peer network layer and the Join Session screen — with the Participant Estimate View and Reveal View still to come. Real persistence (currently in-memory only) is not yet implemented. See the [EstiMate Roadmap](https://github.com/users/cfisch3r/projects/1) project board and the repo's [Issues](../../issues) for current status.
+MVP in progress. Single-user mode — mode selection, the unified Workspace (item list + estimation), summary, and history — is built. Live mode (Mode A) has its foundation in place — the Trystero peer-to-peer network layer and the Join Session screen — with the participant estimating flow and the facilitator reveal flow still to come. Real persistence (currently in-memory only) is not yet implemented. See the [EstiMate Roadmap](https://github.com/users/cfisch3r/projects/1) project board and the repo's [Issues](../../issues) for current status.
 
 ## Stack
 

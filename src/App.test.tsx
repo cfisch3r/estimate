@@ -64,7 +64,7 @@ describe('Single-user end-to-end flow', () => {
     await user.click(screen.getByRole('button', { name: 'Finalize item' }))
 
     // the single item is finalized, so no item stays active
-    expect(screen.getByText('Add an item to get started')).toBeInTheDocument()
+    expect(screen.getByText('All items finalized')).toBeInTheDocument()
 
     await user.click(screen.getByText('Summary'))
 

@@ -27,7 +27,8 @@ detail of the Live-mode layer — the
 `src/network/` component breakdown, the join sequence, the connection state machine, and
 the store fields it added — see [concepts/collaboration-mode.md](concepts/collaboration-mode.md);
 this document keeps the decisions and rationale, that one tracks the implementation. Still
-open: the Participant Estimate View (#7), the Reveal View (#8), connection-fallback UX (#9),
+open: the participant estimating flow (#7), the facilitator reveal flow (#8, a Workspace
+state — not a separate screen — after the epic-0010 redesign), connection-fallback UX (#9),
 and real persistence (`src/persistence/` is still a placeholder — session data is in-memory
 only).
 
@@ -36,7 +37,7 @@ only).
 - **Persistence:** local-first only. Session/history data lives in the facilitator's browser (IndexedDB), with CSV export and a shareable read-only link for reports. No cross-device "team" sync in MVP — a session lives on the device that created it. This keeps the app at genuinely zero operated infrastructure, matching PRD §2's top-level goal, not just ADR-001's narrower live-sync text.
 - **Auth:** none. Open links only — anyone with a session link can view/edit it. Consistent with local-first persistence; revisit if/when cross-device history is ever built.
 - **Facilitator disconnect mid-session:** accepted as an MVP gap. If the facilitator's peer drops, the session stalls for remaining participants; no auto-reassignment or election. Document as a known limitation.
-- **Mode switching mid-session:** out of scope for MVP. Mode is fixed at session creation (per PRD §4.1 flow). If P2P fails mid-session, the facilitator starts a fresh Manual-mode session rather than converting in place.
+- **Mode switching mid-session:** out of scope for MVP. Mode is fixed once chosen on the mode-selection screen (per PRD §4.1 flow). If P2P fails mid-session, the facilitator starts a fresh single-user session rather than converting in place.
 - **Estimation unit:** configurable per session (facilitator picks hours/days/weeks), not fixed and not per-item. Resolves an inconsistency between PRD §5's worked example (days) and the prototype's hardcoded "weeks" — neither was a real decision. Requires a `unit` field on `Session` (not currently in PRD §8's data model sketch) and a small dropdown in the Workspace sidebar. The false-precision guard's rounding granularity derives from this field via a lookup (e.g. `{hours: 1, days: 0.5, weeks: 0.5}`, exact values tunable).
 - **Unit selector control:** a native `<select class="input">` in the Workspace sidebar — reuses Nocturne's existing generic input styling, no new component or design mock needed.
 - **Symmetric-range / false-precision nudge styling:** ship using the same plain `.card-meta` muted-caption treatment already used for the job-stakes hint (no distinct "nudge" component exists in Nocturne today). Explicitly logged as a fast-follow design polish item, not blocking MVP build — pragmatic since the guard thresholds themselves are still untuned and likely to change after real usage.
@@ -66,15 +67,20 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 ```
 /src
   /design       — nocturne.css (verbatim Nocturne port) + composed-pattern CSS built from
-                  its primitives: radio-tile.css, range-bar.css, session-sidebar.css
+                  its primitives: radio-tile.css, range-bar.css, session-sidebar.css.
+                  radio-tile.css is unused since the #34 mode-select rebuild removed the
+                  RadioTile mode picker — kept for a possible reuse in the estimate form.
   /components   — Button, Card, Field, GuardNote, Header, RadioTile, RangeBar, Tag — thin
-                  wrappers / compositions over Nocturne classes
-  /screens      — one per PRD §7 screen (ModeSelect, Workspace, Join, Participant Estimate
-                  View, Summary, History). Built so far: ModeSelect, Workspace (single-user
-                  path + collaborative session-code strip), Summary, History, Join.
-                  Participant Estimate View is a #6 placeholder (real form in #7); the
+                  wrappers / compositions over Nocturne classes. RadioTile is currently
+                  unreferenced (see /design note) but retained as a design-system primitive.
+  /screens      — roughly one per PRD §7 screen (ModeSelect, Workspace, Join, Participant
+                  Estimate View, Summary, History), plus shared screen-level pieces
+                  (SessionSidebar, useLeaveLiveSession). Built so far: ModeSelect, Workspace
+                  (single-user path + collaborative session-code strip), Summary, History,
+                  Join. Participant Estimate View is a #6 placeholder (real form in #7); the
                   facilitator reveal flow and the participant estimating flow are redesigned
-                  in the epic-0010 handoff and land in #8 / #7.
+                  in the epic-0010 handoff (`design_handoffs/epic-0010-screen-design-review/`)
+                  and land in #8 / #7.
   /calc         — pure functions: aggregateEstimates(), computeCI90() (McConnell's formula, PRD §5),
                   bias guards (symmetric-range, false-precision, outlier — PRD §6). Framework-free,
                   unit-testable, identical between Mode A and Mode B.
@@ -158,22 +164,24 @@ The clickable prototype predates the `/calc` module and unit decisions above, so
 - Trystero has no built-in room-size or message-size limits documented, but the mesh topology (direct peer connections, no SFU) means the library itself advises keeping groups small — a non-issue for typical estimation session sizes, but worth remembering if group sessions ever grow large.
 - `AggregateStrategy` is only an engineering-level default for MVP (min/median/max, not facilitator-configurable) — PRD §5 calls for it to be "configurable" but neither the data model nor the prototype exposes a UI for it. Revisit if teams actually want to change aggregation policy per session, since that needs a schema field + UI, not just the code-level flexibility already designed in.
 - `onPeerJoin`/`onPeerLeave` fire on connect/disconnect, but Trystero does not replay history to a newcomer — the late-joiner state snapshot (above) is entirely our responsibility to implement, not something the library helps with.
-- **Markdown rendering is not implemented.** Item descriptions and the per-item Notes field are both labeled "Markdown supported" in the UI (M3), but the values are stored and displayed as raw text — no parser/renderer is wired up anywhere. Found during the Manual-mode screen review (2026-08-21) when a description containing `*`/`##`/`>` syntax rendered literally instead of formatted. Needs a markdown-to-safe-HTML renderer (e.g. `marked` + `DOMPurify`, or a React-native option like `react-markdown`) wired into `CardBody` (item description) and wherever Notes is displayed read-only. Not started; flagging so the "Markdown supported" copy doesn't ship as a false promise.
+- **Markdown rendering is not implemented.** Item descriptions and the per-item Notes field are both labeled "Markdown supported" in the UI, but the values are stored and displayed as raw text — no parser/renderer is wired up anywhere. Found during the single-user screen review (2026-08-21) when a description containing `*`/`##`/`>` syntax rendered literally instead of formatted. Needs a markdown-to-safe-HTML renderer (e.g. `marked` + `DOMPurify`, or a React-native option like `react-markdown`) wired into `CardBody` (item description) and wherever Notes is displayed read-only. Not started; flagging so the "Markdown supported" copy doesn't ship as a false promise.
 
 ## Build status &amp; what's next
 
 The proposal above has been built out through issue #6: Vite + React 19 + TS scaffold,
 Nocturne ported as-is, the `/calc` engine (unit-tested against the PRD §5–6 formulas), the
-Zustand store, the Mode B (Manual) screens, the Trystero P2P network layer, and the Join
-Session screen.
+Zustand store, the single-user Workspace screens, the Trystero P2P network layer, and the
+Join Session screen. The epic-0010 screen review (#34) then rebuilt the entry flow to a
+mode-selection screen plus the unified Workspace.
 
 Remaining MVP work, tracked on the EstiMate Roadmap board:
 
-- **#7** — Participant Estimate View: the real Best/Likely/Worst form, plus wiring
+- **#7** — participant estimating flow: the real Best/Likely/Worst form, plus wiring
   `NetworkProvider` to dispatch `onEstimate` / `onSyncState` / `onReveal` into the store and
   adding the `submissions` / round state the store doesn't have yet.
-- **#8** — Reveal View: per-participant range table, group aggregate + CI90, `checkOutlier()`
-  driving the outlier flag, the `reveal` ScreenId, and `revealedItemIds` state.
+- **#8** — facilitator reveal flow (a Workspace state, per the epic-0010 handoff):
+  per-participant range table, group aggregate + CI90, `checkOutlier()` driving the outlier
+  flag, and per-item `revealed` / submissions state.
 - **#9** — connection-fallback UX for peers that can't establish a direct connection.
 - **Persistence** — `src/persistence/` (IndexedDB, CSV export, shareable report link) is
   still a placeholder.

@@ -8,8 +8,9 @@ over a serverless peer-to-peer mesh (Trystero over WebRTC, Nostr relays for sign
 and submit private three-point estimates that are revealed together. There is **no backend** —
 every peer runs the same code and computes aggregates locally.
 
-This document covers the foundation delivered with issue #6 (join flow + wiring); the
-estimate round (#7) and reveal (#8) build on the same structures.
+This document covers the foundation delivered with issue #6 (join flow + wiring), updated
+for the #34 mode-select / Workspace entry-flow rebuild; the estimate round (#7) and reveal
+(#8) build on the same structures.
 
 ## Component view
 
@@ -136,18 +137,21 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
-  [*] --> modeSelect
-  modeSelect --> workspace : "Start collaborative" · mode=live · role=facilitator
-  modeSelect --> workspace : "Start single-user" · mode=manual
-  modeSelect --> join : "Join a collaborative session"
+  [*] --> mode_select
+  mode_select --> workspace : "Start collaborative" · mode=live · role=facilitator
+  mode_select --> workspace : "Start single-user" · mode=manual
+  mode_select --> join : "Join a collaborative session"
   join --> estimate : Join · role=participant
-  estimate --> modeSelect : Leave
+  estimate --> mode_select : Leave
   workspace --> summary : Summary
+  summary --> workspace : Back to item
+  summary --> history : View session history
 ```
 
-`ScreenId` is `mode-select | workspace | join | estimate | summary | history`
-(the `#34` redesign replaced `create` / `session` with `mode-select` / `workspace`;
-`reveal` is still deferred to #8).
+`ScreenId` is `mode-select | workspace | join | estimate | summary | history` (the #34
+redesign replaced `create` / `session` with `mode-select` / `workspace`; `reveal` is still
+deferred to #8). The diagram writes them as `mode_select` / `workspace` because Mermaid
+state ids can't contain `-`.
 
 ## Connection state machine
 

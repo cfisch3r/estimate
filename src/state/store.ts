@@ -109,10 +109,15 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     })),
 
   removeItem: (id) =>
-    set((state) => ({
-      items: state.items.filter((item) => item.id !== id),
-      activeItemId: state.activeItemId === id ? null : state.activeItemId,
-    })),
+    set((state) => {
+      const items = state.items.filter((item) => item.id !== id)
+      if (state.activeItemId !== id) {
+        return { items }
+      }
+      // The removed item was the active one — fall back to the next pending
+      // item so the panel doesn't drop to the empty state while work remains.
+      return { items, activeItemId: firstPendingItemId(items) }
+    }),
 
   reorderItems: (fromIndex, toIndex) =>
     set((state) => {
