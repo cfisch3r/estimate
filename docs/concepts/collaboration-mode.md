@@ -69,10 +69,10 @@ flowchart TD
 
   %% --- asynchronous events / reads (dotted) ---
   Conn -.->|"onConnectionStateChange"| Hook
-  Act -.->|"onEstimate / onSyncState / onReveal"| NP
+  Act -.->|"onEstimate / onSyncState / onReveal / onAnnounce"| NP
   Hook -.->|"setConnectionStatus / setPeerCount"| Store
-  NP -.->|"applySyncState / applyRemoteEstimate / applyReveal"| Store
-  NP -.->|"reads items/activeItem, sends syncState (facilitator)"| Store
+  NP -.->|"applySyncState / applyRemoteEstimate / applyReveal / applyParticipantName"| Store
+  NP -.->|"reads items/activeItem (facilitator syncState); reads own name/id (announce)"| Store
   Store -.->|"state (read)"| screens
 
   %% --- lane + node colours ---
@@ -138,6 +138,7 @@ sequenceDiagram
   F->>R: sendAnnounce({ participantId: "facilitator", name })
   Note over F,P: each client also re-announces on every later onPeerJoin (no history replay)
   R-->>F: onAnnounce → store.participantNames[p] = name
+  R-->>P: onAnnounce → store.participantNames["facilitator"] = name
   F-->>F: "1 participant connected"
   P-->>P: route to ParticipantEstimateView (lobby until the facilitator picks an item)
 ```
