@@ -346,15 +346,19 @@ function RevealedPanel({
 
       <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
         {(() => {
-          // Prefer the announced display name; fall back to a stable "Teammate N"
-          // number for any peer that hasn't announced yet. Numbering only the
-          // unnamed others keeps labels stable regardless of where the local
-          // user's own row sits in submission order.
+          // Every non-self row consumes a teammate number (whether or not it
+          // also has an announced name), so a given peer's "Teammate N" stays
+          // put when a *different* peer's announce arrives. Prefer the announced
+          // name; `Object.hasOwn` guards against an untrusted participantId that
+          // collides with an Object.prototype key ("toString", "constructor", …).
           let teammateNo = 0
           return round.submissions.map((estimate) => {
             const isMe = estimate.participantId === participantId
-            const name = participantNames[estimate.participantId]
-            const label = isMe ? 'You' : (name ?? `Teammate ${++teammateNo}`)
+            const ordinal = isMe ? 0 : ++teammateNo
+            const name = Object.hasOwn(participantNames, estimate.participantId)
+              ? participantNames[estimate.participantId]
+              : undefined
+            const label = isMe ? 'You' : (name ?? `Teammate ${ordinal}`)
             return (
               <li
                 key={estimate.participantId}

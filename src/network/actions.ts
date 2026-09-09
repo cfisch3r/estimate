@@ -107,12 +107,19 @@ function isValidSnapshotItem(value: unknown): value is SnapshotItem {
   )
 }
 
+/** A generous upper bound on a display name — long enough for any real name,
+ *  short enough that a hostile peer can't bloat every client's store / reveal
+ *  list with a multi-megabyte string. Inbound names are truncated to this. */
+export const MAX_ANNOUNCE_NAME_LENGTH = 80
+
 function isValidAnnounce(data: unknown): data is ParticipantAnnounce {
   if (typeof data !== 'object' || data === null) return false
   const announce = data as Record<string, unknown>
   return (
     typeof announce.participantId === 'string' &&
-    announce.participantId.length > 0 &&
+    // Match createEstimate()'s participantId check, so an announce can only ever
+    // key an entry that a real submission could also key.
+    announce.participantId.trim().length > 0 &&
     typeof announce.name === 'string' &&
     announce.name.trim().length > 0
   )
@@ -181,7 +188,10 @@ export function createTypedActions(room: ActionRoom): TypedActions {
       return
     }
     announceSubscribable.notify(
-      { participantId: data.participantId, name: data.name.trim() },
+      {
+        participantId: data.participantId,
+        name: data.name.trim().slice(0, MAX_ANNOUNCE_NAME_LENGTH),
+      },
       peerId,
     )
   }

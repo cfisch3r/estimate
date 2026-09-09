@@ -240,3 +240,8 @@ trimming (the name is trimmed before it reaches the store). The UI only ever see
   not prompted to re-enter. Treat unit as a set-once-per-session choice.
 - Late-joiner snapshot uses `syncState` broadcast (hits all peers), wired in #7.
 - No `/join/<id>` deep links yet — code is shared out of band.
+- No peer-identity binding: `submitEstimate` and `announce` are both keyed purely on the
+  `participantId` in the payload, not on the sending peer, so a hostile peer could submit
+  or rename under someone else's id. Trystero encryption keeps outsiders out; there's no
+  defence against a malicious participant inside the room. Inbound names are shape-checked
+  and length-capped (`MAX_ANNOUNCE_NAME_LENGTH`), not authenticated.
