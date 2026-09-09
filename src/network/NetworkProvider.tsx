@@ -42,11 +42,12 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       const finalizedItemIds = state.items
         .filter((item) => item.finalResult !== null)
         .map((item) => item.id)
-      const key = JSON.stringify({ currentItem, finalizedItemIds })
+      const key = JSON.stringify({ currentItem, unit: state.unit, finalizedItemIds })
       if (key === lastSnapshotKey) return
       lastSnapshotKey = key
       sessionRef.current?.sendSyncState({
         currentItem,
+        unit: state.unit,
         submissions: [],
         finalizedItemIds,
       })

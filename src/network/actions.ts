@@ -1,4 +1,10 @@
-import { createEstimate, type Estimate, type RawEstimateInput } from '../calc'
+import {
+  createEstimate,
+  isEstimationUnit,
+  type Estimate,
+  type EstimationUnit,
+  type RawEstimateInput,
+} from '../calc'
 
 /** The subset of an item a participant needs to render the read-only detail —
  *  broadcast by the facilitator so participants never hold the full item list. */
@@ -10,6 +16,9 @@ export interface SnapshotItem {
 
 export interface SessionSnapshot {
   currentItem: SnapshotItem | null
+  /** The unit the facilitator is estimating in, so participant forms and bars
+   *  label values with the session's unit rather than their local default. */
+  unit: EstimationUnit
   submissions: RawEstimateInput[]
   finalizedItemIds: string[]
 }
@@ -124,6 +133,10 @@ export function createTypedActions(room: ActionRoom): TypedActions {
     syncStateSubscribable.notify(
       {
         currentItem: data.currentItem,
+        // Tolerate a missing/unknown unit (e.g. a facilitator on an older build
+        // mid-deploy) rather than dropping the whole snapshot — fall back to the
+        // store default so the participant still gets the round.
+        unit: isEstimationUnit(data.unit) ? data.unit : 'days',
         submissions: sanitizeSubmissions(data.submissions),
         finalizedItemIds: data.finalizedItemIds,
       },

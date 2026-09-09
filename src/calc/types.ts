@@ -22,7 +22,14 @@ export interface GuardResult {
   deviationPct?: number
 }
 
-export type EstimationUnit = 'hours' | 'days' | 'weeks'
+export const ESTIMATION_UNITS = ['hours', 'days', 'weeks'] as const
+
+export type EstimationUnit = (typeof ESTIMATION_UNITS)[number]
+
+/** Runtime guard for untrusted values (peer messages, persisted config). */
+export function isEstimationUnit(value: unknown): value is EstimationUnit {
+  return (ESTIMATION_UNITS as readonly unknown[]).includes(value)
+}
 
 /** Rounding granularity the false-precision guard expects per unit. Tunable — see
  *  docs/architecture.md's "Estimation unit" decision. */

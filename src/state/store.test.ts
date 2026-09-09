@@ -224,9 +224,11 @@ describe('leaveLiveSession', () => {
     useSessionStore.getState().setPeerCount(3)
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
+      unit: 'weeks',
       submissions: [],
       finalizedItemIds: [],
     })
+    expect(useSessionStore.getState().unit).toBe('weeks')
 
     useSessionStore.getState().leaveLiveSession()
 
@@ -240,6 +242,8 @@ describe('leaveLiveSession', () => {
       peerCount: 0,
       liveRound: null,
       currentScreen: 'mode-select',
+      // a unit inherited from the facilitator must not leak past leave
+      unit: 'days',
     })
   })
 
@@ -250,9 +254,10 @@ describe('leaveLiveSession', () => {
 })
 
 describe('applySyncState', () => {
-  it('creates a live round from the facilitator snapshot', () => {
+  it('creates a live round from the facilitator snapshot and adopts its unit', () => {
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
+      unit: 'weeks',
       submissions: [],
       finalizedItemIds: [],
     })
@@ -263,6 +268,7 @@ describe('applySyncState', () => {
       revealed: false,
       mySubmission: null,
     })
+    expect(useSessionStore.getState().unit).toBe('weeks')
   })
 
   it('clears the live round when the facilitator has no active item', () => {
@@ -277,11 +283,13 @@ describe('applySyncState', () => {
 
     useSessionStore.getState().applySyncState({
       currentItem: null,
+      unit: 'hours',
       submissions: [],
       finalizedItemIds: [],
     })
 
     expect(useSessionStore.getState().liveRound).toBeNull()
+    expect(useSessionStore.getState().unit).toBe('hours')
   })
 
   it('preserves own submission and reveal flag across a same-item snapshot', () => {
@@ -296,6 +304,7 @@ describe('applySyncState', () => {
 
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
+      unit: 'days',
       submissions: [],
       finalizedItemIds: [],
     })
@@ -319,6 +328,7 @@ describe('applySyncState', () => {
     const nextItem = { id: 'item-2', title: 'Next', description: '' }
     useSessionStore.getState().applySyncState({
       currentItem: nextItem,
+      unit: 'days',
       submissions: [],
       finalizedItemIds: [],
     })

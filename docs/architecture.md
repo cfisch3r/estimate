@@ -29,8 +29,8 @@ detail of the Live-mode layer — the
 state machine, and the store fields it added — see [concepts/collaboration-mode.md](concepts/collaboration-mode.md);
 this document keeps the decisions and rationale, that one tracks the implementation. Still
 open: the facilitator reveal flow (#8, a Workspace
-state — not a separate screen — after the epic-0010 redesign), carrying the session unit
-and participant names on the wire (#39 / #40), connection-fallback UX (#9),
+state — not a separate screen — after the epic-0010 redesign), carrying participant names
+on the wire (#40), connection-fallback UX (#9),
 and real persistence (`src/persistence/` is still a placeholder — session data is in-memory
 only).
 
@@ -62,7 +62,7 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 - **Signaling strategy:** Trystero's **Nostr strategy** (`trystero/nostr`) as the default — this is the library's own default and top recommendation, backed by hundreds of independent public relays (most redundancy of the decentralized options), no account/config required, matches ADR-001's "no server we operate." Library's own robustness ranking for the decentralized strategies: Nostr → MQTT → BitTorrent → IPFS. Supabase/Firebase strategies exist but require configuring your own project (not zero-setup); a self-hosted WebSocket relay strategy also exists as an explicit escape hatch if the public networks prove unreliable, mirroring ADR-001's bring-your-own-TURN framing. Verified against current Trystero docs (trystero.dev, github.com/dmotz/trystero).
 - **Room privacy:** `roomId` = the shared session code — this is the invite mechanism. `joinSession()` accepts an optional `password` (Trystero AES-GCM encrypts the signaling handshake); without it the roomId is visible as metadata on the public signaling medium. The 6-char code is already hard to guess, but a password closes the gap cheaply if a session warrants it.
 - **Data sync model: event broadcast, not CRDT.** Each peer only broadcasts its own submissions (`room.makeAction()`); every peer independently maintains the same append-only list of received estimates and computes min/median/max locally. This works because the PRD's aggregation (min of Best, max of Worst, median of Likely) is order-independent and idempotent — no conflict resolution needed, and Mode A/B can share one calculation engine.
-- **Known gap to handle explicitly:** Trystero doesn't replay history to late joiners. On `onPeerJoin`, an existing peer must push a full state snapshot (current item, submissions so far, finalized items) to the newcomer. The wire action for this (`syncState`, carrying a `SessionSnapshot`) exists in `src/network/actions.ts`. As of #7 the facilitator broadcasts it from `NetworkProvider` (on active-item / finalized-set change) and participants apply it via `store.applySyncState`; a snapshot targeted at a specific late joiner on `onPeerJoin` is not yet implemented.
+- **Known gap to handle explicitly:** Trystero doesn't replay history to late joiners. On `onPeerJoin`, an existing peer must push a full state snapshot (current item, submissions so far, finalized items) to the newcomer. The wire action for this (`syncState`, carrying a `SessionSnapshot`) exists in `src/network/actions.ts`. As of #7 the facilitator broadcasts it from `NetworkProvider` (on active-item / estimation-unit / finalized-set change) and participants apply it via `store.applySyncState`; a snapshot targeted at a specific late joiner on `onPeerJoin` is not yet implemented.
 
 ## Module structure
 
@@ -153,7 +153,7 @@ The clickable prototype predates the `/calc` module and unit decisions above, so
 
 **Already covered by the prototype, no gap:**
 - Outlier flag at Reveal — the warning icon on an outlier's row already exists in the design; it just needs to switch from hardcoded/simulated to driven by `checkOutlier()`'s real output.
-- Unit-aware labels (Participant Estimate View, Workspace fields in single-user mode, Reveal bars, Summary rows currently hardcode "weeks") — mechanical copy interpolation of `session.unit`, not a new visual pattern.
+- Unit-aware labels — mechanical copy interpolation of `session.unit`, not a new visual pattern. Done in the Workspace and the Participant Estimate View (which now also receives the facilitator's unit over the wire — `unit` on `SessionSnapshot`, see #39). Still outstanding: the Session Summary table rows carry no unit suffix; fold in when the Reveal View lands (#8).
 
 **Genuine gaps, resolved for MVP:**
 - Symmetric-range and false-precision nudges have no distinct visual pattern in Nocturne (only plain `.card-meta` caption styling exists). **Decision: ship with the plain caption treatment, log a fast-follow design task** for a more distinct "live nudge" treatment rather than blocking MVP on a design pass.
@@ -181,8 +181,9 @@ the unified Workspace.
 
 Remaining MVP work, tracked on the EstiMate Roadmap board:
 
-- **#39 / #40** — carry the session unit and participant display names on the wire
-  (`SessionSnapshot` currently omits both); prerequisites for #8's participant table.
+- **#40** — carry participant display names on the wire (`SessionSnapshot` still omits
+  them); prerequisite for #8's participant table. (#39, the session unit on the wire, is
+  done — `unit` on `SessionSnapshot`, broadcast on change, adopted by `applySyncState`.)
 - **#8** — facilitator reveal flow (a Workspace state, per the epic-0010 handoff):
   per-participant range table, group aggregate + CI90, `checkOutlier()` driving the outlier
   flag, and per-item `revealed` / submissions state.

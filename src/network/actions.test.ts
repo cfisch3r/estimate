@@ -93,7 +93,12 @@ describe('createTypedActions', () => {
   it('sends a snapshot through the syncState action', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
-    const snapshot = { currentItem: item, submissions: [], finalizedItemIds: [] }
+    const snapshot = {
+      currentItem: item,
+      unit: 'weeks' as const,
+      submissions: [],
+      finalizedItemIds: [],
+    }
 
     actions.sendSyncState(snapshot)
 
@@ -109,6 +114,7 @@ describe('createTypedActions', () => {
     actionsByName.syncState!.onMessage?.(
       {
         currentItem: item,
+        unit: 'days',
         submissions: [
           { participantId: 'a', best: 1, likely: 2, worst: 3 },
           { participantId: 'b', best: 9, likely: 2, worst: 3 },
@@ -121,6 +127,7 @@ describe('createTypedActions', () => {
     expect(cb).toHaveBeenCalledWith(
       {
         currentItem: item,
+        unit: 'days',
         submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
@@ -137,6 +144,7 @@ describe('createTypedActions', () => {
     actionsByName.syncState!.onMessage?.(
       {
         currentItem: item,
+        unit: 'days',
         submissions: [null, { participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
@@ -146,6 +154,7 @@ describe('createTypedActions', () => {
     expect(cb).toHaveBeenCalledWith(
       {
         currentItem: item,
+        unit: 'days',
         submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
@@ -200,13 +209,40 @@ describe('createTypedActions', () => {
     actions.onSyncState(cb)
 
     actionsByName.syncState!.onMessage?.(
-      { currentItem: null, submissions: [], finalizedItemIds: [] },
+      { currentItem: null, unit: 'days', submissions: [], finalizedItemIds: [] },
       { peerId: 'peer-1' },
     )
 
     expect(cb).toHaveBeenCalledWith(
-      { currentItem: null, submissions: [], finalizedItemIds: [] },
+      { currentItem: null, unit: 'days', submissions: [], finalizedItemIds: [] },
       'peer-1',
+    )
+  })
+
+  it('falls back to days when an incoming snapshot has a missing or unknown unit', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onSyncState(cb)
+
+    actionsByName.syncState!.onMessage?.(
+      { currentItem: item, submissions: [], finalizedItemIds: [] },
+      { peerId: 'peer-1' },
+    )
+    actionsByName.syncState!.onMessage?.(
+      { currentItem: item, unit: 'fortnights', submissions: [], finalizedItemIds: [] },
+      { peerId: 'peer-2' },
+    )
+
+    expect(cb).toHaveBeenNthCalledWith(
+      1,
+      { currentItem: item, unit: 'days', submissions: [], finalizedItemIds: [] },
+      'peer-1',
+    )
+    expect(cb).toHaveBeenNthCalledWith(
+      2,
+      { currentItem: item, unit: 'days', submissions: [], finalizedItemIds: [] },
+      'peer-2',
     )
   })
 

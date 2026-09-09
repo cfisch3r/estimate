@@ -4,7 +4,13 @@ export type {
   GuardResult,
   EstimationUnit,
 } from './types'
-export { DEFAULT_STRATEGY, UNIT_GRANULARITY, UNIT_SUFFIX } from './types'
+export {
+  DEFAULT_STRATEGY,
+  UNIT_GRANULARITY,
+  UNIT_SUFFIX,
+  ESTIMATION_UNITS,
+  isEstimationUnit,
+} from './types'
 export type { Estimate, RawEstimateInput, Result } from './estimate'
 export { createEstimate } from './estimate'
 export { aggregateEstimates } from './aggregate'
