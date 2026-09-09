@@ -13,6 +13,7 @@ const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
     estimate: null,
     syncState: null,
     reveal: null,
+    announce: null,
     peerJoin: null,
   }
   const capture = (name: string) => (cb: (...args: never[]) => void) => {
@@ -32,9 +33,11 @@ const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
     onEstimate: vi.fn(capture('estimate')),
     onSyncState: vi.fn(capture('syncState')),
     onReveal: vi.fn(capture('reveal')),
+    onAnnounce: vi.fn(capture('announce')),
     onPeerJoin: vi.fn(capture('peerJoin')),
     sendEstimate: vi.fn(),
     sendSyncState: vi.fn(),
+    sendAnnounce: vi.fn(),
     leave: vi.fn(),
   }
   const emitState = (state: ConnectionState) => {
@@ -64,6 +67,7 @@ beforeEach(() => {
   fakeSession.onConnectionStateChange.mockClear()
   fakeSession.sendEstimate.mockClear()
   fakeSession.sendSyncState.mockClear()
+  fakeSession.sendAnnounce.mockClear()
   emitState({ status: 'connecting', peerIds: [] })
   useSessionStore.setState({
     connectionStatus: 'idle',
@@ -71,9 +75,12 @@ beforeEach(() => {
     mode: 'manual',
     role: 'facilitator',
     sessionId: null,
+    myName: '',
+    participantId: '',
     items: [],
     activeItemId: null,
     liveRound: null,
+    participantNames: {},
   })
 })
 
@@ -191,6 +198,58 @@ describe('useNetworkSession', () => {
         unit: 'weeks',
       }),
     )
+  })
+
+  it('announces the local participant on connect and applies inbound announces', async () => {
+    const user = userEvent.setup()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+
+    await user.click(screen.getByText('connect'))
+
+    expect(fakeSession.sendAnnounce).toHaveBeenCalledWith({
+      participantId: 'p-self',
+      name: 'Sam Rivera',
+    })
+
+    act(() => emit('announce', { participantId: 'p-2', name: 'Jordan' }))
+    expect(useSessionStore.getState().participantNames['p-2']).toBe('Jordan')
+  })
+
+  it('re-announces the local client when a peer joins', async () => {
+    const user = userEvent.setup()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'facilitator',
+        myName: 'Facilitator',
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+    fakeSession.sendAnnounce.mockClear()
+
+    act(() => emit('peerJoin', 'peer-new'))
+
+    expect(fakeSession.sendAnnounce).toHaveBeenCalledWith({
+      participantId: 'facilitator',
+      name: 'Facilitator',
+    })
   })
 
   it('stops dispatching store updates after disconnect', async () => {

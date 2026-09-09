@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { createTypedActions, type ActionRoom } from './actions'
+import { createTypedActions, MAX_ANNOUNCE_NAME_LENGTH, type ActionRoom } from './actions'
 import { createEstimate } from '../calc'
 
 function makeFakeAction() {
@@ -274,6 +274,85 @@ describe('createTypedActions', () => {
 
     actionsByName.reveal!.onMessage?.(42, { peerId: 'peer-1' })
 
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('sends a participant announce through the announce action', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+
+    actions.sendAnnounce({ participantId: 'p-1', name: 'Sam Rivera' })
+
+    expect(actionsByName.announce!.send).toHaveBeenCalledWith({
+      participantId: 'p-1',
+      name: 'Sam Rivera',
+    })
+  })
+
+  it('forwards a valid incoming announce, trimming the name, to subscribers', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onAnnounce(cb)
+
+    actionsByName.announce!.onMessage?.(
+      { participantId: 'p-2', name: '  Jordan  ' },
+      { peerId: 'peer-2' },
+    )
+
+    expect(cb).toHaveBeenCalledWith({ participantId: 'p-2', name: 'Jordan' }, 'peer-2')
+  })
+
+  it('drops incoming announces with an empty/blank/missing name or blank participantId', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onAnnounce(cb)
+
+    actionsByName.announce!.onMessage?.(
+      { participantId: 'p-1', name: '   ' },
+      { peerId: 'peer-1' },
+    )
+    actionsByName.announce!.onMessage?.({ participantId: 'p-1' }, { peerId: 'peer-1' })
+    actionsByName.announce!.onMessage?.({ name: 'Sam' }, { peerId: 'peer-1' })
+    actionsByName.announce!.onMessage?.(
+      { participantId: '', name: 'Sam' },
+      { peerId: 'peer-1' },
+    )
+    actionsByName.announce!.onMessage?.(
+      { participantId: '   ', name: 'Sam' },
+      { peerId: 'peer-1' },
+    )
+
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('truncates an over-long incoming announce name', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onAnnounce(cb)
+
+    actionsByName.announce!.onMessage?.(
+      { participantId: 'p-1', name: 'x'.repeat(5000) },
+      { peerId: 'peer-1' },
+    )
+
+    expect(cb).toHaveBeenCalledWith(
+      { participantId: 'p-1', name: 'x'.repeat(MAX_ANNOUNCE_NAME_LENGTH) },
+      'peer-1',
+    )
+  })
+
+  it('drops a non-object incoming announce without throwing', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onAnnounce(cb)
+
+    expect(() => {
+      actionsByName.announce!.onMessage?.(null, { peerId: 'peer-1' })
+    }).not.toThrow()
     expect(cb).not.toHaveBeenCalled()
   })
 

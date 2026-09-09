@@ -35,6 +35,10 @@ interface SessionStore {
   peerCount: number
   /** Participant-only view of the facilitator's current round; null otherwise. */
   liveRound: LiveRound | null
+  /** Display names for every announced client in the session, keyed by the same
+   *  `participantId` submissions carry. Seeded with this client's own entry on
+   *  join; filled from peers' `announce` messages. */
+  participantNames: Record<string, string>
 
   setSessionName: (name: string) => void
   setUnit: (unit: EstimationUnit) => void
@@ -66,6 +70,8 @@ interface SessionStore {
   applyRemoteEstimate: (estimate: Estimate) => void
   /** Participant: mark the current round revealed once the facilitator reveals it. */
   applyReveal: (itemId: string) => void
+  /** Record a peer's (or own) `participantId -> display name` mapping. */
+  applyParticipantName: (participantId: string, name: string) => void
   /** Participant: validate and record this client's own estimate for the round. */
   submitEstimate: (best: number, likely: number, worst: number) => SubmitEstimateResult
 }
@@ -103,6 +109,7 @@ const LIVE_SESSION_DEFAULTS = {
   connectionStatus: 'idle',
   peerCount: 0,
   liveRound: null,
+  participantNames: {},
   // A participant only ever inherits its unit from the facilitator's snapshot
   // (see applySyncState); reset it on leave so a unit picked up from one session
   // doesn't leak into the user's next single-user / facilitator workspace.
@@ -117,6 +124,7 @@ const LIVE_SESSION_DEFAULTS = {
   | 'connectionStatus'
   | 'peerCount'
   | 'liveRound'
+  | 'participantNames'
   | 'unit'
 >
 
@@ -193,6 +201,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       role: 'facilitator',
       sessionId: sessionCode,
       myName: 'Facilitator',
+      participantNames: { facilitator: 'Facilitator' },
       connectionStatus: 'connecting',
       peerCount: 0,
       currentScreen: 'workspace',
@@ -202,13 +211,16 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   joinLiveSession: (sessionCode, name) => {
     const code = sessionCode.trim().toUpperCase()
-    if (code.length === 0 || name.trim().length === 0) return
+    const trimmedName = name.trim()
+    if (code.length === 0 || trimmedName.length === 0) return
+    const participantId = crypto.randomUUID()
     set({
       mode: 'live',
       role: 'participant',
       sessionId: code,
-      myName: name.trim(),
-      participantId: crypto.randomUUID(),
+      myName: trimmedName,
+      participantId,
+      participantNames: { [participantId]: trimmedName },
       connectionStatus: 'connecting',
       peerCount: 0,
       liveRound: null,
@@ -302,6 +314,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       if (!state.liveRound || state.liveRound.item.id !== itemId) return {}
       return { liveRound: { ...state.liveRound, revealed: true } }
     }),
+
+  applyParticipantName: (participantId, name) =>
+    set((state) => ({
+      participantNames: { ...state.participantNames, [participantId]: name },
+    })),
 
   submitEstimate: (best, likely, worst) => {
     const { liveRound, participantId } = get()

@@ -53,6 +53,18 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       })
     }
 
+    // Trystero doesn't replay history to a newcomer, so every client (re-)broadcasts
+    // its own `participantId -> display name` on connect and again whenever a peer
+    // joins, letting reveal rows show real names instead of "Teammate N".
+    const announceSelf = () => {
+      const state = useSessionStore.getState()
+      if (state.mode !== 'live' || state.myName.trim().length === 0) return
+      const participantId =
+        state.role === 'facilitator' ? 'facilitator' : state.participantId
+      if (participantId.length === 0) return
+      sessionRef.current?.sendAnnounce({ participantId, name: state.myName })
+    }
+
     apiRef.current = {
       connect: (sessionId) => {
         teardown()
@@ -68,6 +80,9 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
           ),
           session.onSyncState((snapshot) => store.getState().applySyncState(snapshot)),
           session.onReveal((itemId) => store.getState().applyReveal(itemId)),
+          session.onAnnounce((announce) =>
+            store.getState().applyParticipantName(announce.participantId, announce.name),
+          ),
           store.subscribe(broadcastFacilitatorState),
           // Trystero doesn't replay history to a newcomer. When a peer joins, the
           // facilitator re-announces the current item and every client re-announces
@@ -76,6 +91,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
           session.onPeerJoin(() => {
             lastSnapshotKey = ''
             broadcastFacilitatorState()
+            announceSelf()
             const s = store.getState()
             const own = s.liveRound?.submissions.find(
               (e) => e.participantId === s.participantId,
@@ -85,6 +101,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         ]
         unsubscribeRef.current = () => unsubscribers.forEach((off) => off())
         broadcastFacilitatorState()
+        announceSelf()
       },
       disconnect: () => {
         teardown()
