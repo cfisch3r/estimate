@@ -219,7 +219,7 @@ describe('createTypedActions', () => {
     )
   })
 
-  it('drops an incoming snapshot whose unit is missing or not a known unit', () => {
+  it('falls back to days when an incoming snapshot has a missing or unknown unit', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
     const cb = vi.fn()
@@ -231,10 +231,19 @@ describe('createTypedActions', () => {
     )
     actionsByName.syncState!.onMessage?.(
       { currentItem: item, unit: 'fortnights', submissions: [], finalizedItemIds: [] },
-      { peerId: 'peer-1' },
+      { peerId: 'peer-2' },
     )
 
-    expect(cb).not.toHaveBeenCalled()
+    expect(cb).toHaveBeenNthCalledWith(
+      1,
+      { currentItem: item, unit: 'days', submissions: [], finalizedItemIds: [] },
+      'peer-1',
+    )
+    expect(cb).toHaveBeenNthCalledWith(
+      2,
+      { currentItem: item, unit: 'days', submissions: [], finalizedItemIds: [] },
+      'peer-2',
+    )
   })
 
   it('sends an item id through the reveal action', () => {

@@ -224,10 +224,11 @@ describe('leaveLiveSession', () => {
     useSessionStore.getState().setPeerCount(3)
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
-      unit: 'days',
+      unit: 'weeks',
       submissions: [],
       finalizedItemIds: [],
     })
+    expect(useSessionStore.getState().unit).toBe('weeks')
 
     useSessionStore.getState().leaveLiveSession()
 
@@ -241,6 +242,8 @@ describe('leaveLiveSession', () => {
       peerCount: 0,
       liveRound: null,
       currentScreen: 'mode-select',
+      // a unit inherited from the facilitator must not leak past leave
+      unit: 'days',
     })
   })
 

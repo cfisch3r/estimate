@@ -226,5 +226,8 @@ and each submission re-validated, `reveal` must be a string. The UI only ever se
   fallback.
 - Facilitator disconnect mid-session stalls the session (no facilitator re-election).
 - Mode is fixed at creation — no mid-session switch.
+- Estimation unit is broadcast and re-broadcast on change (#39), but a mid-round change
+  only re-labels values — already-submitted numbers are not converted and participants are
+  not prompted to re-enter. Treat unit as a set-once-per-session choice.
 - Late-joiner snapshot uses `syncState` broadcast (hits all peers), wired in #7.
 - No `/join/<id>` deep links yet — code is shared out of band.

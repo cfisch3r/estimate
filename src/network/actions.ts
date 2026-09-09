@@ -102,7 +102,6 @@ function isValidSnapshotShape(data: unknown): data is SessionSnapshot {
   const snapshot = data as Record<string, unknown>
   return (
     (snapshot.currentItem === null || isValidSnapshotItem(snapshot.currentItem)) &&
-    isEstimationUnit(snapshot.unit) &&
     Array.isArray(snapshot.finalizedItemIds) &&
     snapshot.finalizedItemIds.every((id) => typeof id === 'string')
   )
@@ -134,7 +133,10 @@ export function createTypedActions(room: ActionRoom): TypedActions {
     syncStateSubscribable.notify(
       {
         currentItem: data.currentItem,
-        unit: data.unit,
+        // Tolerate a missing/unknown unit (e.g. a facilitator on an older build
+        // mid-deploy) rather than dropping the whole snapshot — fall back to the
+        // store default so the participant still gets the round.
+        unit: isEstimationUnit(data.unit) ? data.unit : 'days',
         submissions: sanitizeSubmissions(data.submissions),
         finalizedItemIds: data.finalizedItemIds,
       },

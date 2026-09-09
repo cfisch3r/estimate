@@ -103,6 +103,10 @@ const LIVE_SESSION_DEFAULTS = {
   connectionStatus: 'idle',
   peerCount: 0,
   liveRound: null,
+  // A participant only ever inherits its unit from the facilitator's snapshot
+  // (see applySyncState); reset it on leave so a unit picked up from one session
+  // doesn't leak into the user's next single-user / facilitator workspace.
+  unit: 'days',
 } as const satisfies Pick<
   SessionStore,
   | 'mode'
@@ -113,12 +117,12 @@ const LIVE_SESSION_DEFAULTS = {
   | 'connectionStatus'
   | 'peerCount'
   | 'liveRound'
+  | 'unit'
 >
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
   currentScreen: 'mode-select',
   sessionName: '',
-  unit: 'days',
   items: [],
   activeItemId: null,
   ...LIVE_SESSION_DEFAULTS,
