@@ -138,7 +138,12 @@ describe('useNetworkSession', () => {
 
     const item = { id: 'item-1', title: 'Retry queue', description: 'backoff' }
     act(() =>
-      emit('syncState', { currentItem: item, submissions: [], finalizedItemIds: [] }),
+      emit('syncState', {
+        currentItem: item,
+        unit: 'days',
+        submissions: [],
+        finalizedItemIds: [],
+      }),
     )
     expect(useSessionStore.getState().liveRound?.item.title).toBe('Retry queue')
 
@@ -173,6 +178,7 @@ describe('useNetworkSession', () => {
           },
         ],
         activeItemId: 'i1',
+        unit: 'weeks',
       }),
     )
     fakeSession.sendSyncState.mockClear()
@@ -182,6 +188,7 @@ describe('useNetworkSession', () => {
     expect(fakeSession.sendSyncState).toHaveBeenCalledWith(
       expect.objectContaining({
         currentItem: { id: 'i1', title: 'Retry queue', description: 'backoff' },
+        unit: 'weeks',
       }),
     )
   })
@@ -199,6 +206,7 @@ describe('useNetworkSession', () => {
     act(() =>
       emit('syncState', {
         currentItem: { id: 'x', title: 'late', description: '' },
+        unit: 'days',
         submissions: [],
         finalizedItemIds: [],
       }),

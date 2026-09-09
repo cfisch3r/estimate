@@ -1,4 +1,10 @@
-import { createEstimate, type Estimate, type RawEstimateInput } from '../calc'
+import {
+  createEstimate,
+  isEstimationUnit,
+  type Estimate,
+  type EstimationUnit,
+  type RawEstimateInput,
+} from '../calc'
 
 /** The subset of an item a participant needs to render the read-only detail —
  *  broadcast by the facilitator so participants never hold the full item list. */
@@ -10,6 +16,9 @@ export interface SnapshotItem {
 
 export interface SessionSnapshot {
   currentItem: SnapshotItem | null
+  /** The unit the facilitator is estimating in, so participant forms and bars
+   *  label values with the session's unit rather than their local default. */
+  unit: EstimationUnit
   submissions: RawEstimateInput[]
   finalizedItemIds: string[]
 }
@@ -93,6 +102,7 @@ function isValidSnapshotShape(data: unknown): data is SessionSnapshot {
   const snapshot = data as Record<string, unknown>
   return (
     (snapshot.currentItem === null || isValidSnapshotItem(snapshot.currentItem)) &&
+    isEstimationUnit(snapshot.unit) &&
     Array.isArray(snapshot.finalizedItemIds) &&
     snapshot.finalizedItemIds.every((id) => typeof id === 'string')
   )
@@ -124,6 +134,7 @@ export function createTypedActions(room: ActionRoom): TypedActions {
     syncStateSubscribable.notify(
       {
         currentItem: data.currentItem,
+        unit: data.unit,
         submissions: sanitizeSubmissions(data.submissions),
         finalizedItemIds: data.finalizedItemIds,
       },

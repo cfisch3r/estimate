@@ -153,7 +153,7 @@ The clickable prototype predates the `/calc` module and unit decisions above, so
 
 **Already covered by the prototype, no gap:**
 - Outlier flag at Reveal — the warning icon on an outlier's row already exists in the design; it just needs to switch from hardcoded/simulated to driven by `checkOutlier()`'s real output.
-- Unit-aware labels (Participant Estimate View, Workspace fields in single-user mode, Reveal bars, Summary rows currently hardcode "weeks") — mechanical copy interpolation of `session.unit`, not a new visual pattern.
+- Unit-aware labels — mechanical copy interpolation of `session.unit`, not a new visual pattern. Done in the Workspace and the Participant Estimate View (which now also receives the facilitator's unit over the wire — `unit` on `SessionSnapshot`, see #39). Still outstanding: the Session Summary table rows carry no unit suffix; fold in when the Reveal View lands (#8).
 
 **Genuine gaps, resolved for MVP:**
 - Symmetric-range and false-precision nudges have no distinct visual pattern in Nocturne (only plain `.card-meta` caption styling exists). **Decision: ship with the plain caption treatment, log a fast-follow design task** for a more distinct "live nudge" treatment rather than blocking MVP on a design pass.
