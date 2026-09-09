@@ -1,0 +1,118 @@
+/* Range bar — EstiMate's signature visualization. A three-point estimate is not
+   a single number, so it doesn't get a single-color bar: the fill is split into
+   three zones whose color intensity increases left to right, communicating that
+   confidence grows as you move from the optimistic end toward the 90%-confidence
+   point and worst case. The expected value and the 90%-confidence figure get
+   distinct callouts so the two numbers are never confused at a glance. */
+
+.range-bar {
+  position: relative;
+  padding: 56px 4px 24px;
+}
+
+.range-bar-track-box {
+  position: relative;
+  height: 14px;
+}
+
+.range-bar-track {
+  position: absolute;
+  inset: 0;
+  border-radius: 7px;
+  overflow: hidden;
+  background: var(--color-neutral-800);
+  display: flex;
+}
+
+.range-bar-segment {
+  height: 100%;
+}
+
+.range-bar-segment--uncertain {
+  background: var(--color-accent-800);
+}
+
+.range-bar-segment--likely {
+  background: var(--color-accent-600);
+}
+
+.range-bar-segment--confident {
+  background: var(--color-accent);
+}
+
+.range-bar-marker {
+  position: absolute;
+  top: 50%;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  background: var(--color-accent);
+  box-shadow: 0 0 0 3px var(--color-bg);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.range-bar-callout {
+  position: absolute;
+  top: -52px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  text-align: center;
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+}
+
+.range-bar-callout--muted {
+  background: var(--color-bg);
+  border: 1px solid var(--color-neutral-700);
+}
+
+.range-bar-callout--accent {
+  background: var(--color-accent-900);
+  border: 1px solid var(--color-accent-700);
+}
+
+.range-bar-callout-value {
+  font: 600 14px/1 var(--font-heading);
+  color: var(--color-text);
+}
+
+.range-bar-callout--accent .range-bar-callout-value {
+  font: 700 15px/1 var(--font-heading);
+  color: var(--color-accent-300);
+}
+
+.range-bar-callout-caption {
+  font-size: 10px;
+  color: var(--color-neutral-400);
+  margin-top: 2px;
+}
+
+.range-bar-callout--accent .range-bar-callout-caption {
+  color: var(--color-accent-400);
+}
+
+.range-bar-ends {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.range-bar-end {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.range-bar-end--right {
+  align-items: flex-end;
+}
+
+.range-bar-end-value {
+  font: 600 16px/1 var(--font-heading);
+  color: var(--color-text);
+}
+
+.range-bar-end-caption {
+  font-size: 11px;
+  color: var(--color-neutral-400);
+}

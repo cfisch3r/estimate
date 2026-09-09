@@ -1,0 +1,65 @@
+/* Composed from Nocturne tokens for the Session View item queue: a reorderable,
+   progress-aware sidebar shared by the item-detail and summary views. Not part of
+   Nocturne's own styles.css — kept separate so that file stays a verbatim,
+   unmodified port. */
+.session-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.session-sidebar-header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+.session-sidebar-title {
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--color-text);
+}
+.session-sidebar-progress {
+  font-size: 13px;
+  color: var(--color-neutral-400);
+}
+.session-sidebar-rows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.session-sidebar-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  font-size: 15px;
+  color: var(--color-neutral-300);
+  border: 1px solid var(--color-neutral-800);
+  cursor: pointer;
+}
+.session-sidebar-row-active {
+  color: var(--color-text);
+  border-color: var(--color-accent);
+}
+.session-sidebar-grip {
+  color: var(--color-neutral-500);
+  flex-shrink: 0;
+  cursor: grab;
+}
+.session-sidebar-marker {
+  color: var(--color-accent-300);
+}
+.session-sidebar-summary-link {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--color-neutral-800);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--color-accent-300);
+  font-size: 14px;
+  text-decoration: none;
+}
+.session-sidebar-summary-link-current {
+  color: var(--color-text);
+}
