@@ -13,7 +13,7 @@ const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
 
 function resetStore() {
   useSessionStore.setState({
-    currentScreen: 'create',
+    currentScreen: 'mode-select',
     sessionName: '',
     unit: 'days',
     items: [],
@@ -42,6 +42,18 @@ describe('SessionHistory', () => {
     expect(screen.getByText('Sprint 14 (current)')).toBeInTheDocument()
     expect(screen.getByText(/2 items · days/)).toBeInTheDocument()
     expect(screen.queryByText('No past sessions yet.')).not.toBeInTheDocument()
+  })
+
+  it('falls back to "Untitled session" when no name was entered', () => {
+    useSessionStore.setState({
+      sessionName: '',
+      items: [item('1', 'A', finalized)],
+      unit: 'days',
+    })
+
+    render(<SessionHistory />)
+
+    expect(screen.getByText('Untitled session (current)')).toBeInTheDocument()
   })
 
   it('hides the current session when the search does not match its name', async () => {

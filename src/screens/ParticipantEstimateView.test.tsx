@@ -48,7 +48,7 @@ describe('ParticipantEstimateView', () => {
 
     expect(disconnectMock).toHaveBeenCalled()
     expect(useSessionStore.getState()).toMatchObject({
-      currentScreen: 'create',
+      currentScreen: 'mode-select',
       mode: 'manual',
       sessionId: null,
     })

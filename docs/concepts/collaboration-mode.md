@@ -8,8 +8,9 @@ over a serverless peer-to-peer mesh (Trystero over WebRTC, Nostr relays for sign
 and submit private three-point estimates that are revealed together. There is **no backend** —
 every peer runs the same code and computes aggregates locally.
 
-This document covers the foundation delivered with issue #6 (join flow + wiring); the
-estimate round (#7) and reveal (#8) build on the same structures.
+This document covers the foundation delivered with issue #6 (join flow + wiring), updated
+for the #34 mode-select / Workspace entry-flow rebuild; the estimate round (#7) and reveal
+(#8) build on the same structures.
 
 ## Component view
 
@@ -21,10 +22,10 @@ below. Lanes are the source directories. Lines: **solid** = synchronous call,
 flowchart TD
   subgraph screens["🖼️ &nbsp; UI LANE &nbsp;·&nbsp; src/screens"]
     direction LR
-    CS["CreateSession<br/>[React Component]"]
+    MS["ModeSelect<br/>[React Component]"]
     JS["JoinSession<br/>[React Component]"]
     PEV["ParticipantEstimateView<br/>[React Component]"]
-    SV["SessionView<br/>[React Component]"]
+    WS["Workspace<br/>[React Component]"]
   end
 
   subgraph statelane["🗄️ &nbsp; STATE LANE"]
@@ -52,11 +53,11 @@ flowchart TD
   Trystero["trystero / nostr<br/>[External Library — WebRTC mesh + Nostr signalling]"]
 
   %% --- synchronous calls (solid) ---
-  CS -->|"setMode / createSession"| Store
+  MS -->|"startSingleUser / startCollaborative"| Store
   JS -->|"joinLiveSession"| Store
-  CS -->|"connect()"| Hook
+  MS -->|"connect()"| Hook
   JS -->|"connect()"| Hook
-  CS -.->|"reads code"| Code
+  MS -.->|"reads code"| Code
   NP -->|"owns, provides"| Hook
   Hook -->|"joinSession(code)"| JSN
   JSN -->|"creates"| Act
@@ -77,7 +78,7 @@ flowchart TD
   classDef pure   fill:#E2E8F0,stroke:#64748B,color:#0F172A
   classDef ext    fill:#FFEDD5,stroke:#EA580C,color:#3F1D0B,stroke-dasharray:5 4
 
-  class CS,JS,PEV,SV ui
+  class MS,JS,PEV,WS ui
   class Store state
   class NP,Hook br
   class JSN,Act,Conn,Code pcore
@@ -95,10 +96,10 @@ flowchart TD
 
 | Component | Type | Responsibilities |
 |---|---|---|
-| **CreateSession** | React Component | Renders the new-session form and the Manual/Live mode picker (`RadioTile` ×2). On Live create: reads a code from `generateSessionCode`, sets `mode` / `role` / `sessionId` in the store, calls `connect()`. Offers the "Join a live session" link. |
+| **ModeSelect** | React Component | The entry screen: three rows — start single-user, start collaborative, join. On "start collaborative": reads a code from `generateSessionCode`, calls `startCollaborative(code)` (which sets `mode` / `role` / `sessionId` and routes to the Workspace), then `connect()`. "Join" routes to the Join screen. |
 | **JoinSession** | React Component | Collects session code + participant name (name required — no anonymous peers). Calls `joinLiveSession()` then `connect()`. Renders connecting / connected / disconnected states from `store.connectionStatus`, including the failure banner + Retry. |
 | **ParticipantEstimateView** | React Component | #6 placeholder: shows "waiting for the facilitator", connection status, and Leave. Replaced by the real three-input estimate form in #7. |
-| **SessionView** | React Component | Existing facilitator / Manual-mode screen. In Live mode additionally renders the session-code strip (with copy button), the "N participants connected" count, and a connection-status `Tag`. |
+| **Workspace** | React Component | The single working screen for both modes: session-name / unit / item-list sidebar plus the active item's estimate panel (or an empty state). In Live mode additionally renders the session-code strip (with copy button), the "N participants connected" count, and a connection-status `Tag`. |
 | **useSessionStore** | Zustand Store | Single source of truth for session state: `mode`, `role`, `sessionId`, `myName`, `connectionStatus`, `peerCount`, items, current screen. Never imports `src/network`. |
 | **NetworkProvider** | React Context Provider | Wraps `<App>`. Owns the one `NetworkSession` instance for the app's lifetime and exposes it via `useNetworkSession`; tears it down on unmount. |
 | **useNetworkSession** | React Hook | The only code that touches both the store and the P2P core. `connect(sessionId)` calls `joinSession()` and subscribes to its events; `disconnect()` calls `leave()`. Mirrors `onConnectionStateChange` and peer join/leave into the store. (The participant name is put in the store by `joinLiveSession()` before `connect()` runs.) |
@@ -117,11 +118,11 @@ sequenceDiagram
   participant R as Trystero room (P2P)
   participant P as Participant (tab B)
 
-  F->>F: pick "Live collaborative", Create
+  F->>F: pick "Start collaborative estimation"
   F->>F: generateSessionCode() → "K7F9Q2"
   F->>R: joinSession("K7F9Q2")
   Note over F: connectionStatus = connecting
-  F-->>F: SessionView shows code "K7F9Q2"
+  F-->>F: Workspace shows code "K7F9Q2"
 
   P->>P: Join screen — enter code + name
   P->>R: joinSession("K7F9Q2")
@@ -136,15 +137,21 @@ sequenceDiagram
 
 ```mermaid
 stateDiagram-v2
-  [*] --> create
-  create --> session : Create · mode=live · role=facilitator
-  create --> join : "Join a live session"
+  [*] --> mode_select
+  mode_select --> workspace : "Start collaborative" · mode=live · role=facilitator
+  mode_select --> workspace : "Start single-user" · mode=manual
+  mode_select --> join : "Join a collaborative session"
   join --> estimate : Join · role=participant
-  estimate --> create : Leave
-  session --> summary : (existing Mode B path)
+  estimate --> mode_select : Leave
+  workspace --> summary : Summary
+  summary --> workspace : Back to item
+  summary --> history : View session history
 ```
 
-`ScreenId` gains `join` and `estimate` (not `reveal` until #8).
+`ScreenId` is `mode-select | workspace | join | estimate | summary | history` (the #34
+redesign replaced `create` / `session` with `mode-select` / `workspace`; `reveal` is still
+deferred to #8). The diagram writes them as `mode_select` / `workspace` because Mermaid
+state ids can't contain `-`.
 
 ## Connection state machine
 
@@ -168,7 +175,7 @@ connection-fallback UX is #9.
 
 | Field | Purpose |
 |---|---|
-| `mode: 'manual' \| 'live'` | set by the picker; selects the flow |
+| `mode: 'manual' \| 'live'` | set by the mode-selection screen; selects the flow |
 | `role: 'facilitator' \| 'participant'` | defaults to `facilitator`; Join flips it to `participant` |
 | `sessionId: string \| null` | the shared 6-char code = Trystero room id |
 | `myName: string` | participant display name (named, never anonymous) |

@@ -58,7 +58,7 @@ describe('SessionSummary', () => {
 
     await user.click(screen.getByRole('button', { name: 'Back to item' }))
 
-    expect(useSessionStore.getState().currentScreen).toBe('session')
+    expect(useSessionStore.getState().currentScreen).toBe('workspace')
     expect(useSessionStore.getState().activeItemId).toBe('1')
   })
 })
