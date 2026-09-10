@@ -43,10 +43,16 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         .filter((item) => item.finalResult !== null)
         .map((item) => item.id)
       const revealed = active?.revealed ?? false
+      // Once revealed, participants can't tally submissions from `onEstimate` any
+      // more, so the snapshot has to carry the real (now frozen) set. Before
+      // reveal it stays empty — the lightweight `onEstimate` path handles the
+      // live tally and keeps this broadcast off the per-submission hot path.
+      const submissions = revealed && active ? active.submissions : []
       const key = JSON.stringify({
         currentItem,
         unit: state.unit,
         revealed,
+        submissionCount: submissions.length,
         finalizedItemIds,
       })
       if (key === lastSnapshotKey) return
@@ -55,7 +61,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         currentItem,
         unit: state.unit,
         revealed,
-        submissions: [],
+        submissions,
         finalizedItemIds,
       })
     }

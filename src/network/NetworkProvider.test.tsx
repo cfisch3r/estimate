@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { ConnectionState } from './connection'
 import { NetworkProvider } from './NetworkProvider'
 import { useNetworkSession } from './useNetworkSession'
+import { createEstimate } from '../calc'
 import { useSessionStore } from '../state/store'
 
 const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
@@ -215,7 +216,7 @@ describe('useNetworkSession', () => {
     )
   })
 
-  it('broadcasts revealed:true once the facilitator reveals the active item', async () => {
+  it('broadcasts revealed:true plus the frozen submissions once the facilitator reveals', async () => {
     const user = userEvent.setup()
     render(
       <NetworkProvider>
@@ -223,6 +224,9 @@ describe('useNetworkSession', () => {
       </NetworkProvider>,
     )
     await user.click(screen.getByText('connect'))
+
+    const sub = createEstimate({ participantId: 'p1', best: 2, likely: 4, worst: 8 })
+    if (!sub.ok) throw new Error('bad fixture')
 
     act(() =>
       useSessionStore.setState({
@@ -236,7 +240,7 @@ describe('useNetworkSession', () => {
             description: 'backoff',
             notes: '',
             finalResult: null,
-            submissions: [],
+            submissions: [sub.value],
             revealed: false,
           },
         ],
@@ -248,7 +252,7 @@ describe('useNetworkSession', () => {
     act(() => useSessionStore.getState().revealRound('i1'))
 
     expect(fakeSession.sendSyncState).toHaveBeenCalledWith(
-      expect.objectContaining({ revealed: true }),
+      expect.objectContaining({ revealed: true, submissions: [sub.value] }),
     )
   })
 

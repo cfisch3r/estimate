@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { ListChecksIcon } from '@phosphor-icons/react/dist/csr/ListChecks'
@@ -17,7 +17,7 @@ import {
   Tag,
 } from '../components'
 import { SessionSidebar } from './SessionSidebar'
-import { useSessionStore } from '../state/store'
+import { useSessionStore, type FinalizeResult } from '../state/store'
 import { useNetworkSession } from '../network'
 import {
   aggregateEstimates,
@@ -31,8 +31,6 @@ import {
 } from '../calc'
 import type { EstimationUnit } from '../calc'
 import type { Item, LiveConnectionStatus } from '../state/types'
-
-type FinalizeResult = { ok: true } | { ok: false; error: string }
 
 interface EditableTitleProps {
   value: string
@@ -106,15 +104,63 @@ function EditableTitle({ value, onCommit }: EditableTitleProps) {
   )
 }
 
+interface ItemDetailShellProps {
+  item: Item
+  onNotesChange: (id: string, notes: string) => void
+  onDescriptionChange: (id: string, description: string) => void
+  onTitleChange: (id: string, title: string) => void
+  children: ReactNode
+}
+
+/** The chrome shared by every active-item panel: the elevated card, the
+ *  click-to-edit title, the description field, and the discussion-notes field.
+ *  `children` is the mode-specific middle (manual inputs, or the facilitator
+ *  reveal flow). */
+function ItemDetailShell({
+  item,
+  onNotesChange,
+  onDescriptionChange,
+  onTitleChange,
+  children,
+}: ItemDetailShellProps) {
+  return (
+    <Card elevation="sm" style={{ flex: 1 }}>
+      <EditableTitle
+        value={item.title}
+        onCommit={(next) => onTitleChange(item.id, next)}
+      />
+      <Field>
+        <FieldLabel htmlFor="description">Description (Markdown supported)</FieldLabel>
+        <Textarea
+          id="description"
+          rows={3}
+          value={item.description}
+          onChange={(e) => onDescriptionChange(item.id, e.target.value)}
+        />
+      </Field>
+
+      {children}
+
+      <Field style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <FieldLabel htmlFor="notes">
+          Notes (captured during discussion, Markdown supported)
+        </FieldLabel>
+        <Textarea
+          id="notes"
+          rows={8}
+          value={item.notes}
+          onChange={(e) => onNotesChange(item.id, e.target.value)}
+          style={{ flex: 1, minHeight: 0, resize: 'vertical' }}
+        />
+      </Field>
+    </Card>
+  )
+}
+
 interface ActiveItemPanelProps {
   item: Item
   unit: EstimationUnit
-  onFinalize: (
-    id: string,
-    best: number,
-    likely: number,
-    worst: number,
-  ) => { ok: true } | { ok: false; error: string }
+  onFinalize: (id: string, best: number, likely: number, worst: number) => FinalizeResult
   onNotesChange: (id: string, notes: string) => void
   onDescriptionChange: (id: string, description: string) => void
   onTitleChange: (id: string, title: string) => void
@@ -172,21 +218,12 @@ function ActiveItemPanel({
   }
 
   return (
-    <Card elevation="sm" style={{ flex: 1 }}>
-      <EditableTitle
-        value={item.title}
-        onCommit={(next) => onTitleChange(item.id, next)}
-      />
-      <Field>
-        <FieldLabel htmlFor="description">Description (Markdown supported)</FieldLabel>
-        <Textarea
-          id="description"
-          rows={3}
-          value={item.description}
-          onChange={(e) => onDescriptionChange(item.id, e.target.value)}
-        />
-      </Field>
-
+    <ItemDetailShell
+      item={item}
+      onNotesChange={onNotesChange}
+      onDescriptionChange={onDescriptionChange}
+      onTitleChange={onTitleChange}
+    >
       <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
         <Field style={{ flex: 1 }}>
           <FieldLabel htmlFor="best">{`Best case (${unit})`}</FieldLabel>
@@ -276,20 +313,7 @@ function ActiveItemPanel({
       <Button variant="primary" disabled={!validation?.ok} onClick={handleFinalize}>
         {isEdit ? 'Update estimate' : 'Finalize item'}
       </Button>
-
-      <Field style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <FieldLabel htmlFor="notes">
-          Notes (captured during discussion, Markdown supported)
-        </FieldLabel>
-        <Textarea
-          id="notes"
-          rows={8}
-          value={item.notes}
-          onChange={(e) => onNotesChange(item.id, e.target.value)}
-          style={{ flex: 1, minHeight: 0, resize: 'vertical' }}
-        />
-      </Field>
-    </Card>
+    </ItemDetailShell>
   )
 }
 
@@ -360,39 +384,19 @@ function LiveFacilitatorPanel({
   onDescriptionChange,
   onTitleChange,
 }: LiveFacilitatorPanelProps) {
-  const [finalizeError, setFinalizeError] = useState<string | null>(null)
-  // Retry (1d -> 1c) keeps this component mounted (key is the item id), so drop a
-  // stale "can't finalize" banner once the round is no longer revealed.
-  useEffect(() => {
-    if (!item.revealed) setFinalizeError(null)
-  }, [item.revealed])
   const suffix = UNIT_SUFFIX[unit]
   const roster = buildRoster(item, participantNames)
   const submittedCount = item.submissions.length
   const aggregate =
     item.revealed && submittedCount > 0 ? aggregateEstimates(item.submissions) : null
 
-  function handleFinalize() {
-    const result = onFinalize(item.id)
-    setFinalizeError(result.ok ? null : result.error)
-  }
-
   return (
-    <Card elevation="sm" style={{ flex: 1 }}>
-      <EditableTitle
-        value={item.title}
-        onCommit={(next) => onTitleChange(item.id, next)}
-      />
-      <Field>
-        <FieldLabel htmlFor="description">Description (Markdown supported)</FieldLabel>
-        <Textarea
-          id="description"
-          rows={3}
-          value={item.description}
-          onChange={(e) => onDescriptionChange(item.id, e.target.value)}
-        />
-      </Field>
-
+    <ItemDetailShell
+      item={item}
+      onNotesChange={onNotesChange}
+      onDescriptionChange={onDescriptionChange}
+      onTitleChange={onTitleChange}
+    >
       {item.revealed && aggregate && (
         <RangeBar
           min={aggregate.min}
@@ -451,17 +455,12 @@ function LiveFacilitatorPanel({
               round to discard it and re-estimate.
             </GuardNote>
           )}
-          {finalizeError && (
-            <GuardNote variant="banner" headline="Can't finalize yet">
-              {finalizeError}
-            </GuardNote>
-          )}
           <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
             <Button
               variant="primary"
               style={{ flex: 1 }}
               disabled={submittedCount === 0}
-              onClick={handleFinalize}
+              onClick={() => onFinalize(item.id)}
             >
               Finalize item
             </Button>
@@ -485,20 +484,7 @@ function LiveFacilitatorPanel({
             : `Reveal estimates (${submittedCount} submitted)`}
         </Button>
       )}
-
-      <Field style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <FieldLabel htmlFor="notes">
-          Notes (captured during discussion, Markdown supported)
-        </FieldLabel>
-        <Textarea
-          id="notes"
-          rows={8}
-          value={item.notes}
-          onChange={(e) => onNotesChange(item.id, e.target.value)}
-          style={{ flex: 1, minHeight: 0, resize: 'vertical' }}
-        />
-      </Field>
-    </Card>
+    </ItemDetailShell>
   )
 }
 

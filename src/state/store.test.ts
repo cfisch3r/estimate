@@ -330,12 +330,12 @@ describe('applySyncState', () => {
     expect(useSessionStore.getState().unit).toBe('hours')
   })
 
-  it('preserves own submission and accumulated submissions across a same-item snapshot', () => {
+  it('merges live-tallied submissions across a same-item snapshot before reveal', () => {
     useSessionStore.setState({
       liveRound: {
         item: snapshotItem,
-        submissions: [makeEstimate()],
-        revealed: true,
+        submissions: [makeEstimate({ participantId: 'a' })],
+        revealed: false,
         mySubmission: { best: 2, likely: 4, worst: 8 },
       },
     })
@@ -343,7 +343,7 @@ describe('applySyncState', () => {
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
       unit: 'days',
-      revealed: true,
+      revealed: false,
       submissions: [],
       finalizedItemIds: [],
     })
@@ -353,7 +353,33 @@ describe('applySyncState', () => {
     expect(round?.submissions).toHaveLength(1)
   })
 
-  it('takes the reveal flag from the snapshot, not the previous round (un-latches a missed roundReset)', () => {
+  it('takes the frozen submission set from a revealed snapshot (not the local tally)', () => {
+    useSessionStore.setState({
+      liveRound: {
+        item: snapshotItem,
+        submissions: [makeEstimate({ participantId: 'stale' })],
+        revealed: false,
+        mySubmission: null,
+      },
+    })
+
+    useSessionStore.getState().applySyncState({
+      currentItem: snapshotItem,
+      unit: 'days',
+      revealed: true,
+      submissions: [
+        { participantId: 'a', best: 2, likely: 4, worst: 8 },
+        { participantId: 'b', best: 3, likely: 5, worst: 9 },
+      ],
+      finalizedItemIds: [],
+    })
+
+    const round = useSessionStore.getState().liveRound
+    expect(round?.revealed).toBe(true)
+    expect(round?.submissions.map((s) => s.participantId)).toEqual(['a', 'b'])
+  })
+
+  it('drops stale round-local state when a same-item snapshot un-reveals (Retry)', () => {
     useSessionStore.setState({
       liveRound: {
         item: snapshotItem,
@@ -371,7 +397,10 @@ describe('applySyncState', () => {
       finalizedItemIds: [],
     })
 
-    expect(useSessionStore.getState().liveRound?.revealed).toBe(false)
+    const round = useSessionStore.getState().liveRound
+    expect(round?.revealed).toBe(false)
+    expect(round?.submissions).toEqual([])
+    expect(round?.mySubmission).toBeNull()
   })
 
   it('adopts revealed:true from the snapshot for a peer with no prior round', () => {

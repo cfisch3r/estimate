@@ -11,7 +11,7 @@ import type {
   SessionRole,
 } from './types'
 
-type FinalizeResult = { ok: true } | { ok: false; error: string }
+export type FinalizeResult = { ok: true } | { ok: false; error: string }
 
 /** submitEstimate returns the stored Estimate so the caller broadcasts exactly
  *  what was recorded — no re-lookup by a key that might not round-trip. */
@@ -340,20 +340,31 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       const prev = state.liveRound
       const sameItem = prev?.item.id === snapshot.currentItem.id
       const incoming = snapshotSubmissionsToEstimates(snapshot)
-      const submissions = sameItem
-        ? incoming.reduce(upsertByParticipant, prev!.submissions)
-        : incoming
+      // A same-item snapshot that flips `revealed` back off is a Retry the peer
+      // may have seen the Reveal for — drop its stale round-local state so it
+      // doesn't sit in the waiting view (and re-broadcast a pre-Retry estimate)
+      // for the new round. (A peer that missed *both* the Reveal and the Retry
+      // can't tell rounds apart from the snapshot alone — see the accepted gap.)
+      const retried = sameItem && !!prev?.revealed && !snapshot.revealed
+      const submissions = snapshot.revealed
+        ? // Post-reveal the facilitator's snapshot carries the frozen submission
+          // set: participants can't tally it from `onEstimate` any more (that path
+          // is guarded), so the snapshot is the only source.
+          incoming
+        : retried || !sameItem
+          ? incoming
+          : incoming.reduce(upsertByParticipant, prev!.submissions)
       return {
         unit: snapshot.unit,
         liveRound: {
           item: snapshot.currentItem,
           submissions,
           // The facilitator's snapshot is authoritative for reveal state (it's
-          // re-sent on every peer join, unlike the one-shot roundReset), so a
-          // peer joining or reconnecting mid-reveal lands on the revealed view,
-          // and a peer that missed a roundReset is un-latched by the next sync.
+          // re-sent on every peer join, unlike the one-shot reveal/roundReset
+          // events), so a peer joining or reconnecting mid-reveal lands on the
+          // revealed view and a peer that missed a Retry is un-latched.
           revealed: snapshot.revealed,
-          mySubmission: sameItem ? prev!.mySubmission : null,
+          mySubmission: sameItem && !retried ? prev!.mySubmission : null,
         },
       }
     }),
