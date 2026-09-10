@@ -479,6 +479,13 @@ describe('applyRemoteEstimate (participant)', () => {
     expect(useSessionStore.getState().liveRound!.submissions).toHaveLength(0)
   })
 
+  it('records a submission with an empty itemId against the current round (pre-#8 peer)', () => {
+    useSessionStore
+      .getState()
+      .applyRemoteEstimate('', makeEstimate({ participantId: 'a' }))
+    expect(useSessionStore.getState().liveRound!.submissions).toHaveLength(1)
+  })
+
   it('ignores a submission once the round is revealed, so the range bar cannot shift', () => {
     useSessionStore.setState({
       liveRound: {
@@ -644,17 +651,15 @@ describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
     })
   })
 
-  it('retryRound reopens an already-finalized item so new submissions land', () => {
+  it('retryRound leaves a finalized item’s recorded range intact', () => {
     const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
     seed({ revealed: true, finalResult: finalized })
 
     useSessionStore.getState().retryRound('i1')
-    expect(useSessionStore.getState().items[0]!.finalResult).toBeNull()
 
-    useSessionStore
-      .getState()
-      .applyRemoteEstimate('i1', makeEstimate({ participantId: 'a' }))
-    expect(useSessionStore.getState().items[0]!.submissions).toHaveLength(1)
+    // The Retry button is hidden for a finalized item (re-opening it is #36's
+    // confirm flow); if retryRound is still called it must not discard the range.
+    expect(useSessionStore.getState().items[0]!.finalResult).toEqual(finalized)
   })
 
   it('finalizeLiveItem aggregates submissions and advances to the next pending item', () => {

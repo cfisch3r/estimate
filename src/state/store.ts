@@ -319,13 +319,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   retryRound: (id) =>
     set((state) => ({
+      // Discards the round's submissions and returns it to the waiting state.
+      // Only offered for a not-yet-finalized item — re-opening a finalized item
+      // (which would drop its recorded range) is deferred to #36's confirm flow.
       items: state.items.map((item) =>
-        item.id === id
-          ? // Clear the recorded result too: "start a new round" on an item that
-            // was already finalized must reopen it, otherwise applyRemoteEstimate's
-            // `finalResult === null` guard would silently drop every new submission.
-            { ...item, submissions: [], revealed: false, finalResult: null }
-          : item,
+        item.id === id ? { ...item, submissions: [], revealed: false } : item,
       ),
     })),
 
@@ -379,7 +377,9 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         const active = state.items.find((item) => item.id === state.activeItemId)
         if (
           !active ||
-          itemId !== active.id ||
+          // An empty itemId is a pre-#8 peer's bare estimate — record it against
+          // the active round (legacy behaviour) rather than dropping it.
+          (itemId && itemId !== active.id) ||
           active.revealed ||
           active.finalResult !== null
         ) {
@@ -397,7 +397,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       // bar doesn't shift when a peer re-broadcasts after the reveal.
       if (
         !state.liveRound ||
-        state.liveRound.item.id !== itemId ||
+        (itemId && state.liveRound.item.id !== itemId) ||
         state.liveRound.revealed
       ) {
         return {}

@@ -162,6 +162,16 @@ function hasEstimateEnvelope(
   return typeof message.itemId === 'string' && message.itemId.length > 0
 }
 
+/** An older build (issue #7, already on `main`) sends the bare `Estimate` with no
+ *  `{ itemId }` envelope. Same mid-deploy tolerance the `syncState` handler gives
+ *  `unit` / `revealed`: unwrap it and surface an empty `itemId`, which the store
+ *  treats as "the current round" — the pre-#8 behaviour. */
+function unwrapEstimateMessage(data: unknown): { itemId: string; payload: unknown } {
+  return hasEstimateEnvelope(data)
+    ? { itemId: data.itemId, payload: data.estimate }
+    : { itemId: '', payload: data }
+}
+
 export function createTypedActions(room: ActionRoom): TypedActions {
   const submitEstimateAction = room.makeAction<EstimateMessage>('submitEstimate')
   const syncStateAction = room.makeAction<SessionSnapshot>('syncState')
@@ -176,13 +186,10 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   const announceSubscribable = createSubscribable<[ParticipantAnnounce, string]>()
 
   submitEstimateAction.onMessage = (data, { peerId }) => {
-    if (!hasEstimateEnvelope(data)) {
-      console.warn('Dropping incoming estimate with no item id')
-      return
-    }
-    const result = safeCreateEstimate(data.estimate)
+    const { itemId, payload } = unwrapEstimateMessage(data)
+    const result = safeCreateEstimate(payload)
     if (result.ok) {
-      estimateSubscribable.notify(data.itemId, result.value, peerId)
+      estimateSubscribable.notify(itemId, result.value, peerId)
     } else {
       console.warn('Dropping malformed incoming estimate:', result.error)
     }

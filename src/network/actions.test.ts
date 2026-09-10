@@ -57,7 +57,7 @@ describe('createTypedActions', () => {
     )
   })
 
-  it('drops an incoming estimate with no item id envelope', () => {
+  it('accepts a bare estimate with no envelope (pre-#8 build) under an empty item id', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
     const cb = vi.fn()
@@ -68,7 +68,11 @@ describe('createTypedActions', () => {
       { peerId: 'peer-1' },
     )
 
-    expect(cb).not.toHaveBeenCalled()
+    expect(cb).toHaveBeenCalledWith(
+      '',
+      { participantId: 'b', best: 1, likely: 2, worst: 3 },
+      'peer-1',
+    )
   })
 
   it('drops a malformed incoming estimate instead of forwarding it', () => {

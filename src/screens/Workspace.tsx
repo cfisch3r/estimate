@@ -448,13 +448,21 @@ function LiveFacilitatorPanel({
       </div>
 
       {item.revealed ? (
-        <>
-          {item.finalResult !== null && (
+        item.finalResult !== null ? (
+          <>
             <GuardNote variant="banner" headline="Already finalized">
-              This item has a recorded range. Finalize again to refresh it, or start a new
-              round to discard it and re-estimate.
+              This item has a recorded range. Finalize again to refresh it from the
+              current submissions.
             </GuardNote>
-          )}
+            <Button
+              variant="primary"
+              disabled={submittedCount === 0}
+              onClick={() => onFinalize(item.id)}
+            >
+              Finalize item
+            </Button>
+          </>
+        ) : (
           <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
             <Button
               variant="primary"
@@ -472,7 +480,7 @@ function LiveFacilitatorPanel({
               Retry — start new round
             </Button>
           </div>
-        </>
+        )
       ) : (
         <Button
           variant="primary"
