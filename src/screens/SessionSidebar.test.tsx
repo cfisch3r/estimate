@@ -5,7 +5,15 @@ import { SessionSidebar } from './SessionSidebar'
 import type { Item } from '../state/types'
 
 function item(id: string, title: string, finalResult: Item['finalResult'] = null): Item {
-  return { id, title, description: '', notes: '', finalResult }
+  return {
+    id,
+    title,
+    description: '',
+    notes: '',
+    finalResult,
+    submissions: [],
+    revealed: false,
+  }
 }
 
 const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }

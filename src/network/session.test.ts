@@ -113,6 +113,30 @@ describe('joinSession', () => {
     )
   })
 
+  it('sendReveal and sendRoundReset delegate to their underlying actions', () => {
+    const session = joinSession('session-abc')
+
+    session.sendReveal('item-1')
+    session.sendRoundReset('item-1')
+
+    expect(fakeRoom.actionsByName.reveal!.send).toHaveBeenCalledWith('item-1')
+    expect(fakeRoom.actionsByName.roundReset!.send).toHaveBeenCalledWith('item-1')
+  })
+
+  it('onRoundReset subscribers receive validated inbound roundReset messages', () => {
+    const session = joinSession('session-abc')
+    const cb = vi.fn()
+    session.onRoundReset(cb)
+
+    const onMessage = fakeRoom.actionsByName.roundReset!.onMessage as (
+      data: unknown,
+      context: { peerId: string },
+    ) => void
+    onMessage('item-1', { peerId: 'peer-2' })
+
+    expect(cb).toHaveBeenCalledWith('item-1', 'peer-2')
+  })
+
   it('sendAnnounce delegates to the underlying announce action', () => {
     const session = joinSession('session-abc')
 

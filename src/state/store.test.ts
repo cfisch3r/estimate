@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createEstimate, type Estimate } from '../calc'
 import { useSessionStore } from './store'
+import type { Item } from './types'
 
 function resetStore() {
   useSessionStore.setState({
@@ -376,9 +377,10 @@ describe('applySyncState', () => {
   })
 })
 
-describe('applyRemoteEstimate', () => {
-  it('upserts an incoming submission keyed by participantId', () => {
+describe('applyRemoteEstimate (participant)', () => {
+  beforeEach(() => {
     useSessionStore.setState({
+      role: 'participant',
       liveRound: {
         item: snapshotItem,
         submissions: [],
@@ -386,7 +388,9 @@ describe('applyRemoteEstimate', () => {
         mySubmission: null,
       },
     })
+  })
 
+  it('upserts an incoming submission keyed by participantId', () => {
     useSessionStore.getState().applyRemoteEstimate(makeEstimate({ participantId: 'a' }))
     useSessionStore
       .getState()
@@ -399,8 +403,56 @@ describe('applyRemoteEstimate', () => {
   })
 
   it('is a no-op when there is no live round', () => {
+    useSessionStore.setState({ liveRound: null })
     useSessionStore.getState().applyRemoteEstimate(makeEstimate())
     expect(useSessionStore.getState().liveRound).toBeNull()
+  })
+})
+
+describe('applyRemoteEstimate (facilitator)', () => {
+  function seedActiveItem(overrides: Partial<Item> = {}) {
+    useSessionStore.setState({
+      role: 'facilitator',
+      items: [
+        {
+          id: 'i1',
+          title: 'Retry queue',
+          description: '',
+          notes: '',
+          finalResult: null,
+          submissions: [],
+          revealed: false,
+          ...overrides,
+        },
+      ],
+      activeItemId: 'i1',
+    })
+  }
+
+  it('records incoming submissions on the active item, upserting by participantId', () => {
+    seedActiveItem()
+
+    useSessionStore.getState().applyRemoteEstimate(makeEstimate({ participantId: 'a' }))
+    useSessionStore
+      .getState()
+      .applyRemoteEstimate(makeEstimate({ participantId: 'a', worst: 9 }))
+    useSessionStore.getState().applyRemoteEstimate(makeEstimate({ participantId: 'b' }))
+
+    const { submissions } = useSessionStore.getState().items[0]!
+    expect(submissions).toHaveLength(2)
+    expect(submissions[0]).toMatchObject({ participantId: 'a', worst: 9 })
+  })
+
+  it('ignores submissions once the item is revealed or finalized', () => {
+    seedActiveItem({ revealed: true })
+    useSessionStore.getState().applyRemoteEstimate(makeEstimate({ participantId: 'a' }))
+    expect(useSessionStore.getState().items[0]!.submissions).toHaveLength(0)
+  })
+
+  it('is a no-op when no item is active', () => {
+    useSessionStore.setState({ role: 'facilitator', items: [], activeItemId: null })
+    useSessionStore.getState().applyRemoteEstimate(makeEstimate())
+    expect(useSessionStore.getState().items).toEqual([])
   })
 })
 
@@ -420,6 +472,100 @@ describe('applyReveal', () => {
 
     useSessionStore.getState().applyReveal('item-1')
     expect(useSessionStore.getState().liveRound!.revealed).toBe(true)
+  })
+})
+
+describe('applyRoundReset', () => {
+  it('clears the round back to estimating only when the item id matches', () => {
+    useSessionStore.setState({
+      liveRound: {
+        item: snapshotItem,
+        submissions: [makeEstimate({ participantId: 'a' })],
+        revealed: true,
+        mySubmission: { best: 2, likely: 4, worst: 8 },
+      },
+    })
+
+    useSessionStore.getState().applyRoundReset('other-item')
+    expect(useSessionStore.getState().liveRound!.submissions).toHaveLength(1)
+
+    useSessionStore.getState().applyRoundReset('item-1')
+    const round = useSessionStore.getState().liveRound!
+    expect(round.submissions).toEqual([])
+    expect(round.revealed).toBe(false)
+    expect(round.mySubmission).toBeNull()
+  })
+})
+
+describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
+  function seed(overrides: Partial<Item> = {}) {
+    useSessionStore.setState({
+      role: 'facilitator',
+      items: [
+        {
+          id: 'i1',
+          title: 'Retry queue',
+          description: '',
+          notes: '',
+          finalResult: null,
+          submissions: [],
+          revealed: false,
+          ...overrides,
+        },
+        {
+          id: 'i2',
+          title: 'Next',
+          description: '',
+          notes: '',
+          finalResult: null,
+          submissions: [],
+          revealed: false,
+        },
+      ],
+      activeItemId: 'i1',
+    })
+  }
+
+  it('revealRound flips the flag on the target item', () => {
+    seed()
+    useSessionStore.getState().revealRound('i1')
+    expect(useSessionStore.getState().items[0]!.revealed).toBe(true)
+  })
+
+  it('retryRound clears submissions and the revealed flag', () => {
+    seed({ revealed: true, submissions: [makeEstimate({ participantId: 'a' })] })
+    useSessionStore.getState().retryRound('i1')
+    expect(useSessionStore.getState().items[0]!).toMatchObject({
+      revealed: false,
+      submissions: [],
+    })
+  })
+
+  it('finalizeLiveItem aggregates submissions and advances to the next pending item', () => {
+    seed({
+      revealed: true,
+      submissions: [
+        makeEstimate({ participantId: 'a', best: 2, likely: 4, worst: 8 }),
+        makeEstimate({ participantId: 'b', best: 4, likely: 6, worst: 12 }),
+      ],
+    })
+
+    const result = useSessionStore.getState().finalizeLiveItem('i1')
+
+    expect(result.ok).toBe(true)
+    expect(useSessionStore.getState().items[0]!.finalResult).toMatchObject({
+      min: 2,
+      expected: 5,
+      max: 12,
+    })
+    expect(useSessionStore.getState().activeItemId).toBe('i2')
+  })
+
+  it('finalizeLiveItem fails when no submissions have arrived', () => {
+    seed()
+    const result = useSessionStore.getState().finalizeLiveItem('i1')
+    expect(result).toMatchObject({ ok: false })
+    expect(useSessionStore.getState().items[0]!.finalResult).toBeNull()
   })
 })
 

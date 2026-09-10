@@ -62,14 +62,26 @@ interface SessionStore {
     likely: number,
     worst: number,
   ) => FinalizeResult
+  /** Facilitator: finalize a live item by aggregating the participant
+   *  submissions it has collected this round (Workspace state 1d). */
+  finalizeLiveItem: (id: string) => FinalizeResult
+  /** Facilitator: reveal the current round's estimates for `id` (1c -> 1d). */
+  revealRound: (id: string) => void
+  /** Facilitator: discard this item's submissions and drop back to the waiting
+   *  state (1d -> 1c) so participants estimate the item again. */
+  retryRound: (id: string) => void
   goToScreen: (screen: ScreenId) => void
 
   /** Participant: adopt the facilitator's broadcast round state. */
   applySyncState: (snapshot: SessionSnapshot) => void
-  /** Participant: record another participant's incoming submission. */
+  /** Record an incoming peer submission: into the active item's `submissions`
+   *  for a facilitator, into `liveRound` for a participant. */
   applyRemoteEstimate: (estimate: Estimate) => void
   /** Participant: mark the current round revealed once the facilitator reveals it. */
   applyReveal: (itemId: string) => void
+  /** Participant: drop back to the estimating state when the facilitator starts
+   *  a new round for `itemId` (Retry). */
+  applyRoundReset: (itemId: string) => void
   /** Record a peer's (or own) `participantId -> display name` mapping. */
   applyParticipantName: (participantId: string, name: string) => void
   /** Participant: validate and record this client's own estimate for the round. */
@@ -149,6 +161,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         description,
         notes: '',
         finalResult: null,
+        submissions: [],
+        revealed: false,
       }
       return {
         items: [...state.items, newItem],
@@ -273,6 +287,39 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     return { ok: true }
   },
 
+  finalizeLiveItem: (id) => {
+    const item = get().items.find((i) => i.id === id)
+    if (!item) {
+      return { ok: false, error: 'Unknown item.' }
+    }
+    if (item.submissions.length === 0) {
+      return { ok: false, error: 'No estimates have been submitted yet.' }
+    }
+    const finalResult = aggregateEstimates(item.submissions)
+    set((state) => {
+      const wasAlreadyFinalized =
+        state.items.find((i) => i.id === id)?.finalResult !== null
+      const items = state.items.map((i) => (i.id === id ? { ...i, finalResult } : i))
+      const activeItemId = wasAlreadyFinalized ? id : firstPendingItemId(items, id)
+      return { items, activeItemId }
+    })
+    return { ok: true }
+  },
+
+  revealRound: (id) =>
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === id ? { ...item, revealed: true } : item,
+      ),
+    })),
+
+  retryRound: (id) =>
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === id ? { ...item, submissions: [], revealed: false } : item,
+      ),
+    })),
+
   goToScreen: (screen) => set({ currentScreen: screen }),
 
   applySyncState: (snapshot) =>
@@ -300,6 +347,19 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   applyRemoteEstimate: (estimate) =>
     set((state) => {
+      if (state.role === 'facilitator') {
+        // Record against whichever item the round is running on. Ignore arrivals
+        // once it's revealed or finalized — a late (or re-broadcast on peer-join)
+        // submission must not change a range the group has already seen.
+        if (!state.activeItemId) return {}
+        return {
+          items: state.items.map((item) =>
+            item.id === state.activeItemId && !item.revealed && item.finalResult === null
+              ? { ...item, submissions: upsertByParticipant(item.submissions, estimate) }
+              : item,
+          ),
+        }
+      }
       if (!state.liveRound) return {}
       return {
         liveRound: {
@@ -313,6 +373,19 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set((state) => {
       if (!state.liveRound || state.liveRound.item.id !== itemId) return {}
       return { liveRound: { ...state.liveRound, revealed: true } }
+    }),
+
+  applyRoundReset: (itemId) =>
+    set((state) => {
+      if (!state.liveRound || state.liveRound.item.id !== itemId) return {}
+      return {
+        liveRound: {
+          ...state.liveRound,
+          submissions: [],
+          revealed: false,
+          mySubmission: null,
+        },
+      }
     }),
 
   applyParticipantName: (participantId, name) =>

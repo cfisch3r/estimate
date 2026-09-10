@@ -277,6 +277,37 @@ describe('createTypedActions', () => {
     expect(cb).not.toHaveBeenCalled()
   })
 
+  it('sends an item id through the roundReset action', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+
+    actions.sendRoundReset('item-1')
+
+    expect(actionsByName.roundReset!.send).toHaveBeenCalledWith('item-1')
+  })
+
+  it('forwards a valid incoming roundReset to subscribers', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onRoundReset(cb)
+
+    actionsByName.roundReset!.onMessage?.('item-1', { peerId: 'peer-1' })
+
+    expect(cb).toHaveBeenCalledWith('item-1', 'peer-1')
+  })
+
+  it('drops a malformed incoming roundReset payload', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onRoundReset(cb)
+
+    actionsByName.roundReset!.onMessage?.(42, { peerId: 'peer-1' })
+
+    expect(cb).not.toHaveBeenCalled()
+  })
+
   it('sends a participant announce through the announce action', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)

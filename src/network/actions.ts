@@ -48,10 +48,12 @@ export interface TypedActions {
   sendEstimate(estimate: Estimate): void
   sendSyncState(snapshot: SessionSnapshot): void
   sendReveal(itemId: string): void
+  sendRoundReset(itemId: string): void
   sendAnnounce(announce: ParticipantAnnounce): void
   onEstimate(cb: (estimate: Estimate, peerId: string) => void): Unsubscribe
   onSyncState(cb: (snapshot: SessionSnapshot, peerId: string) => void): Unsubscribe
   onReveal(cb: (itemId: string, peerId: string) => void): Unsubscribe
+  onRoundReset(cb: (itemId: string, peerId: string) => void): Unsubscribe
   onAnnounce(cb: (announce: ParticipantAnnounce, peerId: string) => void): Unsubscribe
 }
 
@@ -139,11 +141,13 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   const submitEstimateAction = room.makeAction<Estimate>('submitEstimate')
   const syncStateAction = room.makeAction<SessionSnapshot>('syncState')
   const revealAction = room.makeAction<string>('reveal')
+  const roundResetAction = room.makeAction<string>('roundReset')
   const announceAction = room.makeAction<ParticipantAnnounce>('announce')
 
   const estimateSubscribable = createSubscribable<[Estimate, string]>()
   const syncStateSubscribable = createSubscribable<[SessionSnapshot, string]>()
   const revealSubscribable = createSubscribable<[string, string]>()
+  const roundResetSubscribable = createSubscribable<[string, string]>()
   const announceSubscribable = createSubscribable<[ParticipantAnnounce, string]>()
 
   submitEstimateAction.onMessage = (data, { peerId }) => {
@@ -182,6 +186,14 @@ export function createTypedActions(room: ActionRoom): TypedActions {
     revealSubscribable.notify(data, peerId)
   }
 
+  roundResetAction.onMessage = (data, { peerId }) => {
+    if (typeof data !== 'string') {
+      console.warn('Dropping malformed incoming roundReset payload')
+      return
+    }
+    roundResetSubscribable.notify(data, peerId)
+  }
+
   announceAction.onMessage = (data, { peerId }) => {
     if (!isValidAnnounce(data)) {
       console.warn('Dropping malformed incoming announce payload')
@@ -200,10 +212,12 @@ export function createTypedActions(room: ActionRoom): TypedActions {
     sendEstimate: (estimate) => submitEstimateAction.send(estimate),
     sendSyncState: (snapshot) => syncStateAction.send(snapshot),
     sendReveal: (itemId) => revealAction.send(itemId),
+    sendRoundReset: (itemId) => roundResetAction.send(itemId),
     sendAnnounce: (announce) => announceAction.send(announce),
     onEstimate: estimateSubscribable.subscribe,
     onSyncState: syncStateSubscribable.subscribe,
     onReveal: revealSubscribable.subscribe,
+    onRoundReset: roundResetSubscribable.subscribe,
     onAnnounce: announceSubscribable.subscribe,
   }
 }

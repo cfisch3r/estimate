@@ -8,6 +8,11 @@ export interface NetworkSessionApi {
   disconnect: () => void
   /** Broadcast this participant's validated estimate to the rest of the room. */
   sendEstimate: (estimate: Estimate) => void
+  /** Facilitator: tell participants the round for `itemId` is now revealed. */
+  sendReveal: (itemId: string) => void
+  /** Facilitator: tell participants to discard their submissions and estimate
+   *  `itemId` again (Retry). */
+  sendRoundReset: (itemId: string) => void
 }
 
 export const NetworkSessionContext = createContext<NetworkSessionApi | null>(null)

@@ -13,6 +13,7 @@ const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
     estimate: null,
     syncState: null,
     reveal: null,
+    roundReset: null,
     announce: null,
     peerJoin: null,
   }
@@ -33,10 +34,13 @@ const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
     onEstimate: vi.fn(capture('estimate')),
     onSyncState: vi.fn(capture('syncState')),
     onReveal: vi.fn(capture('reveal')),
+    onRoundReset: vi.fn(capture('roundReset')),
     onAnnounce: vi.fn(capture('announce')),
     onPeerJoin: vi.fn(capture('peerJoin')),
     sendEstimate: vi.fn(),
     sendSyncState: vi.fn(),
+    sendReveal: vi.fn(),
+    sendRoundReset: vi.fn(),
     sendAnnounce: vi.fn(),
     leave: vi.fn(),
   }
@@ -134,8 +138,9 @@ describe('useNetworkSession', () => {
     expect(useSessionStore.getState().peerCount).toBe(0)
   })
 
-  it('dispatches incoming syncState / estimate / reveal into the store', async () => {
+  it('dispatches incoming syncState / estimate / reveal / roundReset into the store', async () => {
     const user = userEvent.setup()
+    act(() => useSessionStore.setState({ mode: 'live', role: 'participant' }))
     render(
       <NetworkProvider>
         <Consumer />
@@ -159,6 +164,10 @@ describe('useNetworkSession', () => {
 
     act(() => emit('reveal', 'item-1'))
     expect(useSessionStore.getState().liveRound?.revealed).toBe(true)
+
+    act(() => emit('roundReset', 'item-1'))
+    expect(useSessionStore.getState().liveRound?.revealed).toBe(false)
+    expect(useSessionStore.getState().liveRound?.submissions).toHaveLength(0)
   })
 
   it('re-broadcasts the facilitator snapshot when a peer joins', async () => {
@@ -182,6 +191,8 @@ describe('useNetworkSession', () => {
             description: 'backoff',
             notes: '',
             finalResult: null,
+            submissions: [],
+            revealed: false,
           },
         ],
         activeItemId: 'i1',

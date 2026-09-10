@@ -80,6 +80,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
           ),
           session.onSyncState((snapshot) => store.getState().applySyncState(snapshot)),
           session.onReveal((itemId) => store.getState().applyReveal(itemId)),
+          session.onRoundReset((itemId) => store.getState().applyRoundReset(itemId)),
           session.onAnnounce((announce) =>
             store.getState().applyParticipantName(announce.participantId, announce.name),
           ),
@@ -111,6 +112,12 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       },
       sendEstimate: (estimate) => {
         sessionRef.current?.sendEstimate(estimate)
+      },
+      sendReveal: (itemId) => {
+        sessionRef.current?.sendReveal(itemId)
+      },
+      sendRoundReset: (itemId) => {
+        sessionRef.current?.sendRoundReset(itemId)
       },
     }
   }

@@ -18,7 +18,9 @@ import {
 } from '../components'
 import { SessionSidebar } from './SessionSidebar'
 import { useSessionStore } from '../state/store'
+import { useNetworkSession } from '../network'
 import {
+  aggregateEstimates,
   checkAscendingOrder,
   checkSymmetricRange,
   checkFalsePrecision,
@@ -29,6 +31,8 @@ import {
 } from '../calc'
 import type { EstimationUnit } from '../calc'
 import type { Item, LiveConnectionStatus } from '../state/types'
+
+type FinalizeResult = { ok: true } | { ok: false; error: string }
 
 interface EditableTitleProps {
   value: string
@@ -289,6 +293,204 @@ function ActiveItemPanel({
   )
 }
 
+interface FacilitatorRosterRow {
+  id: string
+  label: string
+  submission: { best: number; likely: number; worst: number } | null
+}
+
+/** The people the facilitator is waiting on: every announced non-facilitator
+ *  client, plus anyone whose submission arrived before their announce did.
+ *  Announced names win; the rest get a stable "Teammate N". */
+function buildRoster(
+  item: Item,
+  participantNames: Record<string, string>,
+): FacilitatorRosterRow[] {
+  const submissionById = new Map(item.submissions.map((s) => [s.participantId, s]))
+  const ids = [
+    ...Object.keys(participantNames).filter((id) => id !== 'facilitator'),
+    ...item.submissions.map((s) => s.participantId),
+  ]
+  const seen = new Set<string>()
+  let teammateNo = 0
+  const rows: FacilitatorRosterRow[] = []
+  for (const id of ids) {
+    if (seen.has(id)) continue
+    seen.add(id)
+    const named = Object.hasOwn(participantNames, id) ? participantNames[id] : undefined
+    const submission = submissionById.get(id)
+    rows.push({
+      id,
+      label: named ?? `Teammate ${++teammateNo}`,
+      submission: submission
+        ? {
+            best: submission.best,
+            likely: submission.likely,
+            worst: submission.worst,
+          }
+        : null,
+    })
+  }
+  return rows
+}
+
+interface LiveFacilitatorPanelProps {
+  item: Item
+  unit: EstimationUnit
+  participantNames: Record<string, string>
+  onReveal: (id: string) => void
+  onRetry: (id: string) => void
+  onFinalize: (id: string) => FinalizeResult
+  onNotesChange: (id: string, notes: string) => void
+  onDescriptionChange: (id: string, description: string) => void
+  onTitleChange: (id: string, title: string) => void
+}
+
+/** Live mode, facilitator side: Workspace states 1c (waiting for estimates) and
+ *  1d (revealed). The facilitator never types estimate values — the range comes
+ *  from aggregating participants' submissions. */
+function LiveFacilitatorPanel({
+  item,
+  unit,
+  participantNames,
+  onReveal,
+  onRetry,
+  onFinalize,
+  onNotesChange,
+  onDescriptionChange,
+  onTitleChange,
+}: LiveFacilitatorPanelProps) {
+  const [finalizeError, setFinalizeError] = useState<string | null>(null)
+  const suffix = UNIT_SUFFIX[unit]
+  const roster = buildRoster(item, participantNames)
+  const submittedCount = item.submissions.length
+  const aggregate =
+    item.revealed && submittedCount > 0 ? aggregateEstimates(item.submissions) : null
+
+  function handleFinalize() {
+    const result = onFinalize(item.id)
+    setFinalizeError(result.ok ? null : result.error)
+  }
+
+  return (
+    <Card elevation="sm" style={{ flex: 1 }}>
+      <EditableTitle
+        value={item.title}
+        onCommit={(next) => onTitleChange(item.id, next)}
+      />
+      <Field>
+        <FieldLabel htmlFor="description">Description (Markdown supported)</FieldLabel>
+        <Textarea
+          id="description"
+          rows={3}
+          value={item.description}
+          onChange={(e) => onDescriptionChange(item.id, e.target.value)}
+        />
+      </Field>
+
+      {item.revealed && aggregate && (
+        <RangeBar
+          min={aggregate.min}
+          max={aggregate.max}
+          expected={aggregate.expected}
+          ci90={aggregate.ci90}
+          unitSuffix={suffix}
+        />
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <FieldLabel>
+          {item.revealed ? 'Participant estimates' : 'Participants'}
+        </FieldLabel>
+        {roster.length === 0 ? (
+          <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+            No participants have joined yet.
+          </p>
+        ) : (
+          <ul
+            style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 6 }}
+          >
+            {roster.map((row) => (
+              <li
+                key={row.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: 'var(--space-3)',
+                }}
+              >
+                <span>{row.label}</span>
+                {item.revealed ? (
+                  <span className={row.submission ? undefined : 'text-muted'}>
+                    {row.submission
+                      ? `${row.submission.best}${suffix} / ${row.submission.likely}${suffix} / ${row.submission.worst}${suffix}`
+                      : 'No response'}
+                  </span>
+                ) : (
+                  <Tag variant={row.submission ? 'accent' : 'neutral'}>
+                    {row.submission ? 'Submitted' : 'Waiting'}
+                  </Tag>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {item.revealed ? (
+        <>
+          {finalizeError && (
+            <GuardNote variant="banner" headline="Can't finalize yet">
+              {finalizeError}
+            </GuardNote>
+          )}
+          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
+            <Button
+              variant="primary"
+              style={{ flex: 1 }}
+              disabled={submittedCount === 0}
+              onClick={handleFinalize}
+            >
+              Finalize item
+            </Button>
+            <Button
+              variant="secondary"
+              style={{ flex: 1 }}
+              onClick={() => onRetry(item.id)}
+            >
+              Retry — start new round
+            </Button>
+          </div>
+        </>
+      ) : (
+        <Button
+          variant="primary"
+          disabled={submittedCount === 0}
+          onClick={() => onReveal(item.id)}
+        >
+          {submittedCount === 0
+            ? 'Reveal estimates'
+            : `Reveal estimates (${submittedCount} submitted)`}
+        </Button>
+      )}
+
+      <Field style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <FieldLabel htmlFor="notes">
+          Notes (captured during discussion, Markdown supported)
+        </FieldLabel>
+        <Textarea
+          id="notes"
+          rows={8}
+          value={item.notes}
+          onChange={(e) => onNotesChange(item.id, e.target.value)}
+          style={{ flex: 1, minHeight: 0, resize: 'vertical' }}
+        />
+      </Field>
+    </Card>
+  )
+}
+
 interface LiveSessionStripProps {
   sessionId: string
   connectionStatus: LiveConnectionStatus
@@ -347,9 +549,11 @@ export function Workspace() {
   const activeItemId = useSessionStore((s) => s.activeItemId)
   const currentScreen = useSessionStore((s) => s.currentScreen)
   const mode = useSessionStore((s) => s.mode)
+  const role = useSessionStore((s) => s.role)
   const sessionId = useSessionStore((s) => s.sessionId)
   const connectionStatus = useSessionStore((s) => s.connectionStatus)
   const peerCount = useSessionStore((s) => s.peerCount)
+  const participantNames = useSessionStore((s) => s.participantNames)
   const setSessionName = useSessionStore((s) => s.setSessionName)
   const setUnit = useSessionStore((s) => s.setUnit)
   const addItem = useSessionStore((s) => s.addItem)
@@ -360,7 +564,23 @@ export function Workspace() {
   const setItemNotes = useSessionStore((s) => s.setItemNotes)
   const setItemDescription = useSessionStore((s) => s.setItemDescription)
   const finalizeItem = useSessionStore((s) => s.finalizeItem)
+  const finalizeLiveItem = useSessionStore((s) => s.finalizeLiveItem)
+  const revealRound = useSessionStore((s) => s.revealRound)
+  const retryRound = useSessionStore((s) => s.retryRound)
   const goToScreen = useSessionStore((s) => s.goToScreen)
+  const { sendReveal, sendRoundReset } = useNetworkSession()
+
+  const isLiveFacilitator = mode === 'live' && role === 'facilitator'
+
+  function handleReveal(id: string) {
+    revealRound(id)
+    sendReveal(id)
+  }
+
+  function handleRetry(id: string) {
+    retryRound(id)
+    sendRoundReset(id)
+  }
 
   const activeItem = items.find((item) => item.id === activeItemId) ?? null
   const allFinalized =
@@ -438,17 +658,34 @@ export function Workspace() {
       </div>
 
       {activeItem ? (
-        <ActiveItemPanel
-          key={activeItem.id}
-          item={activeItem}
-          unit={unit}
-          onFinalize={finalizeItem}
-          onNotesChange={setItemNotes}
-          onDescriptionChange={setItemDescription}
-          onTitleChange={(id, title) =>
-            updateItem(id, { title, description: activeItem.description })
-          }
-        />
+        isLiveFacilitator ? (
+          <LiveFacilitatorPanel
+            key={activeItem.id}
+            item={activeItem}
+            unit={unit}
+            participantNames={participantNames}
+            onReveal={handleReveal}
+            onRetry={handleRetry}
+            onFinalize={finalizeLiveItem}
+            onNotesChange={setItemNotes}
+            onDescriptionChange={setItemDescription}
+            onTitleChange={(id, title) =>
+              updateItem(id, { title, description: activeItem.description })
+            }
+          />
+        ) : (
+          <ActiveItemPanel
+            key={activeItem.id}
+            item={activeItem}
+            unit={unit}
+            onFinalize={finalizeItem}
+            onNotesChange={setItemNotes}
+            onDescriptionChange={setItemDescription}
+            onTitleChange={(id, title) =>
+              updateItem(id, { title, description: activeItem.description })
+            }
+          />
+        )
       ) : (
         <Card
           elevation="sm"
