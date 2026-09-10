@@ -42,13 +42,26 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       const finalizedItemIds = state.items
         .filter((item) => item.finalResult !== null)
         .map((item) => item.id)
-      const key = JSON.stringify({ currentItem, unit: state.unit, finalizedItemIds })
+      const revealed = active?.revealed ?? false
+      // Once revealed, participants can't tally submissions from `onEstimate` any
+      // more, so the snapshot has to carry the real (now frozen) set. Before
+      // reveal it stays empty — the lightweight `onEstimate` path handles the
+      // live tally and keeps this broadcast off the per-submission hot path.
+      const submissions = revealed && active ? active.submissions : []
+      const key = JSON.stringify({
+        currentItem,
+        unit: state.unit,
+        revealed,
+        submissionCount: submissions.length,
+        finalizedItemIds,
+      })
       if (key === lastSnapshotKey) return
       lastSnapshotKey = key
       sessionRef.current?.sendSyncState({
         currentItem,
         unit: state.unit,
-        submissions: [],
+        revealed,
+        submissions,
         finalizedItemIds,
       })
     }
@@ -75,11 +88,12 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         const store = useSessionStore
         const unsubscribers = [
           session.onConnectionStateChange(mirror),
-          session.onEstimate((estimate) =>
-            store.getState().applyRemoteEstimate(estimate),
+          session.onEstimate((itemId, estimate) =>
+            store.getState().applyRemoteEstimate(itemId, estimate),
           ),
           session.onSyncState((snapshot) => store.getState().applySyncState(snapshot)),
           session.onReveal((itemId) => store.getState().applyReveal(itemId)),
+          session.onRoundReset((itemId) => store.getState().applyRoundReset(itemId)),
           session.onAnnounce((announce) =>
             store.getState().applyParticipantName(announce.participantId, announce.name),
           ),
@@ -96,7 +110,9 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             const own = s.liveRound?.submissions.find(
               (e) => e.participantId === s.participantId,
             )
-            if (own) sessionRef.current?.sendEstimate(own)
+            if (own && s.liveRound) {
+              sessionRef.current?.sendEstimate(s.liveRound.item.id, own)
+            }
           }),
         ]
         unsubscribeRef.current = () => unsubscribers.forEach((off) => off())
@@ -109,8 +125,14 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         setConnectionStatus('idle')
         setPeerCount(0)
       },
-      sendEstimate: (estimate) => {
-        sessionRef.current?.sendEstimate(estimate)
+      sendEstimate: (itemId, estimate) => {
+        sessionRef.current?.sendEstimate(itemId, estimate)
+      },
+      sendReveal: (itemId) => {
+        sessionRef.current?.sendReveal(itemId)
+      },
+      sendRoundReset: (itemId) => {
+        sessionRef.current?.sendRoundReset(itemId)
       },
     }
   }

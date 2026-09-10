@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { EstimationUnit, Estimate } from '../calc'
+import type { AggregateResult, EstimationUnit, Estimate } from '../calc'
 import { createEstimate, aggregateEstimates } from '../calc'
 import type { SessionSnapshot } from '../network/actions'
 import type {
@@ -11,7 +11,7 @@ import type {
   SessionRole,
 } from './types'
 
-type FinalizeResult = { ok: true } | { ok: false; error: string }
+export type FinalizeResult = { ok: true } | { ok: false; error: string }
 
 /** submitEstimate returns the stored Estimate so the caller broadcasts exactly
  *  what was recorded — no re-lookup by a key that might not round-trip. */
@@ -62,14 +62,27 @@ interface SessionStore {
     likely: number,
     worst: number,
   ) => FinalizeResult
+  /** Facilitator: finalize a live item by aggregating the participant
+   *  submissions it has collected this round (Workspace state 1d). */
+  finalizeLiveItem: (id: string) => FinalizeResult
+  /** Facilitator: reveal the current round's estimates for `id` (1c -> 1d). */
+  revealRound: (id: string) => void
+  /** Facilitator: discard this item's submissions and drop back to the waiting
+   *  state (1d -> 1c) so participants estimate the item again. */
+  retryRound: (id: string) => void
   goToScreen: (screen: ScreenId) => void
 
   /** Participant: adopt the facilitator's broadcast round state. */
   applySyncState: (snapshot: SessionSnapshot) => void
-  /** Participant: record another participant's incoming submission. */
-  applyRemoteEstimate: (estimate: Estimate) => void
+  /** Record an incoming peer submission for `itemId`: into that item's
+   *  `submissions` for a facilitator, into `liveRound` for a participant. A
+   *  submission whose `itemId` isn't the current round is dropped. */
+  applyRemoteEstimate: (itemId: string, estimate: Estimate) => void
   /** Participant: mark the current round revealed once the facilitator reveals it. */
   applyReveal: (itemId: string) => void
+  /** Participant: drop back to the estimating state when the facilitator starts
+   *  a new round for `itemId` (Retry). */
+  applyRoundReset: (itemId: string) => void
   /** Record a peer's (or own) `participantId -> display name` mapping. */
   applyParticipantName: (participantId: string, name: string) => void
   /** Participant: validate and record this client's own estimate for the round. */
@@ -98,6 +111,23 @@ function snapshotSubmissionsToEstimates(snapshot: SessionSnapshot): Estimate[] {
 function firstPendingItemId(items: Item[], excludeId?: string): string | null {
   const pending = items.find((item) => item.id !== excludeId && item.finalResult === null)
   return pending ? pending.id : null
+}
+
+/** Shared body of `finalizeItem` / `finalizeLiveItem`: record `finalResult` on
+ *  `id` and, unless it was already finalized (a re-finalize/edit), advance the
+ *  active item to the next pending one. */
+function recordFinalResult(
+  state: Pick<SessionStore, 'items'>,
+  id: string,
+  finalResult: AggregateResult,
+): Pick<SessionStore, 'items' | 'activeItemId'> {
+  const wasAlreadyFinalized =
+    state.items.find((item) => item.id === id)?.finalResult !== null
+  const items = state.items.map((item) =>
+    item.id === id ? { ...item, finalResult } : item,
+  )
+  const activeItemId = wasAlreadyFinalized ? id : firstPendingItemId(items, id)
+  return { items, activeItemId }
 }
 
 const LIVE_SESSION_DEFAULTS = {
@@ -149,6 +179,8 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         description,
         notes: '',
         finalResult: null,
+        submissions: [],
+        revealed: false,
       }
       return {
         items: [...state.items, newItem],
@@ -261,17 +293,39 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       return estimateResult
     }
     const finalResult = aggregateEstimates([estimateResult.value])
-    set((state) => {
-      const wasAlreadyFinalized =
-        state.items.find((item) => item.id === id)?.finalResult !== null
-      const items = state.items.map((item) =>
-        item.id === id ? { ...item, finalResult } : item,
-      )
-      const activeItemId = wasAlreadyFinalized ? id : firstPendingItemId(items, id)
-      return { items, activeItemId }
-    })
+    set((state) => recordFinalResult(state, id, finalResult))
     return { ok: true }
   },
+
+  finalizeLiveItem: (id) => {
+    const item = get().items.find((i) => i.id === id)
+    if (!item) {
+      return { ok: false, error: 'Unknown item.' }
+    }
+    if (item.submissions.length === 0) {
+      return { ok: false, error: 'No estimates have been submitted yet.' }
+    }
+    const finalResult = aggregateEstimates(item.submissions)
+    set((state) => recordFinalResult(state, id, finalResult))
+    return { ok: true }
+  },
+
+  revealRound: (id) =>
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === id ? { ...item, revealed: true } : item,
+      ),
+    })),
+
+  retryRound: (id) =>
+    set((state) => ({
+      // Discards the round's submissions and returns it to the waiting state.
+      // Only offered for a not-yet-finalized item — re-opening a finalized item
+      // (which would drop its recorded range) is deferred to #36's confirm flow.
+      items: state.items.map((item) =>
+        item.id === id ? { ...item, submissions: [], revealed: false } : item,
+      ),
+    })),
 
   goToScreen: (screen) => set({ currentScreen: screen }),
 
@@ -284,23 +338,70 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       const prev = state.liveRound
       const sameItem = prev?.item.id === snapshot.currentItem.id
       const incoming = snapshotSubmissionsToEstimates(snapshot)
-      const submissions = sameItem
-        ? incoming.reduce(upsertByParticipant, prev!.submissions)
-        : incoming
+      // A same-item snapshot that flips `revealed` back off is a Retry the peer
+      // may have seen the Reveal for — drop its stale round-local state so it
+      // doesn't sit in the waiting view (and re-broadcast a pre-Retry estimate)
+      // for the new round. (A peer that missed *both* the Reveal and the Retry
+      // can't tell rounds apart from the snapshot alone — see the accepted gap.)
+      const retried = sameItem && !!prev?.revealed && !snapshot.revealed
+      const submissions = snapshot.revealed
+        ? // Post-reveal the facilitator's snapshot carries the frozen submission
+          // set: participants can't tally it from `onEstimate` any more (that path
+          // is guarded), so the snapshot is the only source.
+          incoming
+        : retried || !sameItem
+          ? incoming
+          : incoming.reduce(upsertByParticipant, prev!.submissions)
       return {
         unit: snapshot.unit,
         liveRound: {
           item: snapshot.currentItem,
           submissions,
-          revealed: sameItem ? prev!.revealed : false,
-          mySubmission: sameItem ? prev!.mySubmission : null,
+          // The facilitator's snapshot is authoritative for reveal state (it's
+          // re-sent on every peer join, unlike the one-shot reveal/roundReset
+          // events), so a peer joining or reconnecting mid-reveal lands on the
+          // revealed view and a peer that missed a Retry is un-latched.
+          revealed: snapshot.revealed,
+          mySubmission: sameItem && !retried ? prev!.mySubmission : null,
         },
       }
     }),
 
-  applyRemoteEstimate: (estimate) =>
+  applyRemoteEstimate: (itemId, estimate) =>
     set((state) => {
-      if (!state.liveRound) return {}
+      if (state.role === 'facilitator') {
+        // Only record if this submission is for the item the round is running on
+        // — a straggler for a just-finalized item must not seed the next round —
+        // and only while that round is still open: a late (or peer-join
+        // re-broadcast) submission must not move a range the group has seen.
+        const active = state.items.find((item) => item.id === state.activeItemId)
+        if (
+          !active ||
+          // An empty itemId is a pre-#8 peer's bare estimate — record it against
+          // the active round (legacy behaviour) rather than dropping it.
+          (itemId && itemId !== active.id) ||
+          active.revealed ||
+          active.finalResult !== null
+        ) {
+          return {}
+        }
+        return {
+          items: state.items.map((item) =>
+            item.id === active.id
+              ? { ...item, submissions: upsertByParticipant(item.submissions, estimate) }
+              : item,
+          ),
+        }
+      }
+      // Same "round still open" rule for a participant, so their revealed range
+      // bar doesn't shift when a peer re-broadcasts after the reveal.
+      if (
+        !state.liveRound ||
+        (itemId && state.liveRound.item.id !== itemId) ||
+        state.liveRound.revealed
+      ) {
+        return {}
+      }
       return {
         liveRound: {
           ...state.liveRound,
@@ -313,6 +414,19 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set((state) => {
       if (!state.liveRound || state.liveRound.item.id !== itemId) return {}
       return { liveRound: { ...state.liveRound, revealed: true } }
+    }),
+
+  applyRoundReset: (itemId) =>
+    set((state) => {
+      if (!state.liveRound || state.liveRound.item.id !== itemId) return {}
+      return {
+        liveRound: {
+          ...state.liveRound,
+          submissions: [],
+          revealed: false,
+          mySubmission: null,
+        },
+      }
     }),
 
   applyParticipantName: (participantId, name) =>

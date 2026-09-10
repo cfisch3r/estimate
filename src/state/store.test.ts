@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createEstimate, type Estimate } from '../calc'
 import { useSessionStore } from './store'
+import type { Item } from './types'
 
 function resetStore() {
   useSessionStore.setState({
@@ -233,6 +234,7 @@ describe('leaveLiveSession', () => {
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
       unit: 'weeks',
+      revealed: false,
       submissions: [],
       finalizedItemIds: [],
     })
@@ -292,6 +294,7 @@ describe('applySyncState', () => {
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
       unit: 'weeks',
+      revealed: false,
       submissions: [],
       finalizedItemIds: [],
     })
@@ -318,6 +321,7 @@ describe('applySyncState', () => {
     useSessionStore.getState().applySyncState({
       currentItem: null,
       unit: 'hours',
+      revealed: false,
       submissions: [],
       finalizedItemIds: [],
     })
@@ -326,7 +330,56 @@ describe('applySyncState', () => {
     expect(useSessionStore.getState().unit).toBe('hours')
   })
 
-  it('preserves own submission and reveal flag across a same-item snapshot', () => {
+  it('merges live-tallied submissions across a same-item snapshot before reveal', () => {
+    useSessionStore.setState({
+      liveRound: {
+        item: snapshotItem,
+        submissions: [makeEstimate({ participantId: 'a' })],
+        revealed: false,
+        mySubmission: { best: 2, likely: 4, worst: 8 },
+      },
+    })
+
+    useSessionStore.getState().applySyncState({
+      currentItem: snapshotItem,
+      unit: 'days',
+      revealed: false,
+      submissions: [],
+      finalizedItemIds: [],
+    })
+
+    const round = useSessionStore.getState().liveRound
+    expect(round?.mySubmission).toEqual({ best: 2, likely: 4, worst: 8 })
+    expect(round?.submissions).toHaveLength(1)
+  })
+
+  it('takes the frozen submission set from a revealed snapshot (not the local tally)', () => {
+    useSessionStore.setState({
+      liveRound: {
+        item: snapshotItem,
+        submissions: [makeEstimate({ participantId: 'stale' })],
+        revealed: false,
+        mySubmission: null,
+      },
+    })
+
+    useSessionStore.getState().applySyncState({
+      currentItem: snapshotItem,
+      unit: 'days',
+      revealed: true,
+      submissions: [
+        { participantId: 'a', best: 2, likely: 4, worst: 8 },
+        { participantId: 'b', best: 3, likely: 5, worst: 9 },
+      ],
+      finalizedItemIds: [],
+    })
+
+    const round = useSessionStore.getState().liveRound
+    expect(round?.revealed).toBe(true)
+    expect(round?.submissions.map((s) => s.participantId)).toEqual(['a', 'b'])
+  })
+
+  it('drops stale round-local state when a same-item snapshot un-reveals (Retry)', () => {
     useSessionStore.setState({
       liveRound: {
         item: snapshotItem,
@@ -339,14 +392,32 @@ describe('applySyncState', () => {
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
       unit: 'days',
+      revealed: false,
       submissions: [],
       finalizedItemIds: [],
     })
 
     const round = useSessionStore.getState().liveRound
-    expect(round?.revealed).toBe(true)
-    expect(round?.mySubmission).toEqual({ best: 2, likely: 4, worst: 8 })
-    expect(round?.submissions).toHaveLength(1)
+    expect(round?.revealed).toBe(false)
+    expect(round?.submissions).toEqual([])
+    expect(round?.mySubmission).toBeNull()
+  })
+
+  it('adopts revealed:true from the snapshot for a peer with no prior round', () => {
+    useSessionStore.setState({ liveRound: null })
+
+    useSessionStore.getState().applySyncState({
+      currentItem: snapshotItem,
+      unit: 'days',
+      revealed: true,
+      submissions: [makeEstimate({ participantId: 'a' })],
+      finalizedItemIds: [],
+    })
+
+    expect(useSessionStore.getState().liveRound).toMatchObject({
+      item: snapshotItem,
+      revealed: true,
+    })
   })
 
   it('resets round-local state when the active item changes', () => {
@@ -363,6 +434,7 @@ describe('applySyncState', () => {
     useSessionStore.getState().applySyncState({
       currentItem: nextItem,
       unit: 'days',
+      revealed: false,
       submissions: [],
       finalizedItemIds: [],
     })
@@ -376,9 +448,10 @@ describe('applySyncState', () => {
   })
 })
 
-describe('applyRemoteEstimate', () => {
-  it('upserts an incoming submission keyed by participantId', () => {
+describe('applyRemoteEstimate (participant)', () => {
+  beforeEach(() => {
     useSessionStore.setState({
+      role: 'participant',
       liveRound: {
         item: snapshotItem,
         submissions: [],
@@ -386,21 +459,110 @@ describe('applyRemoteEstimate', () => {
         mySubmission: null,
       },
     })
+  })
 
-    useSessionStore.getState().applyRemoteEstimate(makeEstimate({ participantId: 'a' }))
-    useSessionStore
-      .getState()
-      .applyRemoteEstimate(makeEstimate({ participantId: 'a', worst: 9 }))
-    useSessionStore.getState().applyRemoteEstimate(makeEstimate({ participantId: 'b' }))
+  it('upserts an incoming submission keyed by participantId', () => {
+    const s = useSessionStore.getState()
+    s.applyRemoteEstimate('item-1', makeEstimate({ participantId: 'a' }))
+    s.applyRemoteEstimate('item-1', makeEstimate({ participantId: 'a', worst: 9 }))
+    s.applyRemoteEstimate('item-1', makeEstimate({ participantId: 'b' }))
 
     const submissions = useSessionStore.getState().liveRound!.submissions
     expect(submissions).toHaveLength(2)
     expect(submissions[0]).toMatchObject({ participantId: 'a', worst: 9 })
   })
 
+  it('drops a submission for an item that is not the current round', () => {
+    useSessionStore
+      .getState()
+      .applyRemoteEstimate('some-other-item', makeEstimate({ participantId: 'a' }))
+    expect(useSessionStore.getState().liveRound!.submissions).toHaveLength(0)
+  })
+
+  it('records a submission with an empty itemId against the current round (pre-#8 peer)', () => {
+    useSessionStore
+      .getState()
+      .applyRemoteEstimate('', makeEstimate({ participantId: 'a' }))
+    expect(useSessionStore.getState().liveRound!.submissions).toHaveLength(1)
+  })
+
+  it('ignores a submission once the round is revealed, so the range bar cannot shift', () => {
+    useSessionStore.setState({
+      liveRound: {
+        item: snapshotItem,
+        submissions: [makeEstimate({ participantId: 'a' })],
+        revealed: true,
+        mySubmission: null,
+      },
+    })
+
+    useSessionStore
+      .getState()
+      .applyRemoteEstimate('item-1', makeEstimate({ participantId: 'b' }))
+
+    expect(useSessionStore.getState().liveRound!.submissions).toHaveLength(1)
+  })
+
   it('is a no-op when there is no live round', () => {
-    useSessionStore.getState().applyRemoteEstimate(makeEstimate())
+    useSessionStore.setState({ liveRound: null })
+    useSessionStore.getState().applyRemoteEstimate('item-1', makeEstimate())
     expect(useSessionStore.getState().liveRound).toBeNull()
+  })
+})
+
+describe('applyRemoteEstimate (facilitator)', () => {
+  function seedActiveItem(overrides: Partial<Item> = {}) {
+    useSessionStore.setState({
+      role: 'facilitator',
+      items: [
+        {
+          id: 'i1',
+          title: 'Retry queue',
+          description: '',
+          notes: '',
+          finalResult: null,
+          submissions: [],
+          revealed: false,
+          ...overrides,
+        },
+      ],
+      activeItemId: 'i1',
+    })
+  }
+
+  it('records incoming submissions on the active item, upserting by participantId', () => {
+    seedActiveItem()
+    const s = useSessionStore.getState()
+
+    s.applyRemoteEstimate('i1', makeEstimate({ participantId: 'a' }))
+    s.applyRemoteEstimate('i1', makeEstimate({ participantId: 'a', worst: 9 }))
+    s.applyRemoteEstimate('i1', makeEstimate({ participantId: 'b' }))
+
+    const { submissions } = useSessionStore.getState().items[0]!
+    expect(submissions).toHaveLength(2)
+    expect(submissions[0]).toMatchObject({ participantId: 'a', worst: 9 })
+  })
+
+  it('drops a straggler submission whose item is no longer the active one', () => {
+    seedActiveItem()
+    useSessionStore
+      .getState()
+      .applyRemoteEstimate('a-finalized-item', makeEstimate({ participantId: 'a' }))
+    expect(useSessionStore.getState().items[0]!.submissions).toHaveLength(0)
+  })
+
+  it('ignores submissions once the item is revealed or finalized', () => {
+    seedActiveItem({ revealed: true })
+    useSessionStore
+      .getState()
+      .applyRemoteEstimate('i1', makeEstimate({ participantId: 'a' }))
+    expect(useSessionStore.getState().items[0]!.submissions).toHaveLength(0)
+  })
+
+  it('is a no-op when no item is active', () => {
+    useSessionStore.setState({ role: 'facilitator', items: [], activeItemId: null })
+    useSessionStore.getState().applyRemoteEstimate('i1', makeEstimate())
+    expect(useSessionStore.getState().items).toEqual([])
   })
 })
 
@@ -420,6 +582,111 @@ describe('applyReveal', () => {
 
     useSessionStore.getState().applyReveal('item-1')
     expect(useSessionStore.getState().liveRound!.revealed).toBe(true)
+  })
+})
+
+describe('applyRoundReset', () => {
+  it('clears the round back to estimating only when the item id matches', () => {
+    useSessionStore.setState({
+      liveRound: {
+        item: snapshotItem,
+        submissions: [makeEstimate({ participantId: 'a' })],
+        revealed: true,
+        mySubmission: { best: 2, likely: 4, worst: 8 },
+      },
+    })
+
+    useSessionStore.getState().applyRoundReset('other-item')
+    expect(useSessionStore.getState().liveRound!.submissions).toHaveLength(1)
+
+    useSessionStore.getState().applyRoundReset('item-1')
+    const round = useSessionStore.getState().liveRound!
+    expect(round.submissions).toEqual([])
+    expect(round.revealed).toBe(false)
+    expect(round.mySubmission).toBeNull()
+  })
+})
+
+describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
+  function seed(overrides: Partial<Item> = {}) {
+    useSessionStore.setState({
+      role: 'facilitator',
+      items: [
+        {
+          id: 'i1',
+          title: 'Retry queue',
+          description: '',
+          notes: '',
+          finalResult: null,
+          submissions: [],
+          revealed: false,
+          ...overrides,
+        },
+        {
+          id: 'i2',
+          title: 'Next',
+          description: '',
+          notes: '',
+          finalResult: null,
+          submissions: [],
+          revealed: false,
+        },
+      ],
+      activeItemId: 'i1',
+    })
+  }
+
+  it('revealRound flips the flag on the target item', () => {
+    seed()
+    useSessionStore.getState().revealRound('i1')
+    expect(useSessionStore.getState().items[0]!.revealed).toBe(true)
+  })
+
+  it('retryRound clears submissions and the revealed flag', () => {
+    seed({ revealed: true, submissions: [makeEstimate({ participantId: 'a' })] })
+    useSessionStore.getState().retryRound('i1')
+    expect(useSessionStore.getState().items[0]!).toMatchObject({
+      revealed: false,
+      submissions: [],
+    })
+  })
+
+  it('retryRound leaves a finalized item’s recorded range intact', () => {
+    const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
+    seed({ revealed: true, finalResult: finalized })
+
+    useSessionStore.getState().retryRound('i1')
+
+    // The Retry button is hidden for a finalized item (re-opening it is #36's
+    // confirm flow); if retryRound is still called it must not discard the range.
+    expect(useSessionStore.getState().items[0]!.finalResult).toEqual(finalized)
+  })
+
+  it('finalizeLiveItem aggregates submissions and advances to the next pending item', () => {
+    seed({
+      revealed: true,
+      submissions: [
+        makeEstimate({ participantId: 'a', best: 2, likely: 4, worst: 8 }),
+        makeEstimate({ participantId: 'b', best: 4, likely: 6, worst: 12 }),
+      ],
+    })
+
+    const result = useSessionStore.getState().finalizeLiveItem('i1')
+
+    expect(result.ok).toBe(true)
+    expect(useSessionStore.getState().items[0]!.finalResult).toMatchObject({
+      min: 2,
+      expected: 5,
+      max: 12,
+    })
+    expect(useSessionStore.getState().activeItemId).toBe('i2')
+  })
+
+  it('finalizeLiveItem fails when no submissions have arrived', () => {
+    seed()
+    const result = useSessionStore.getState().finalizeLiveItem('i1')
+    expect(result).toMatchObject({ ok: false })
+    expect(useSessionStore.getState().items[0]!.finalResult).toBeNull()
   })
 })
 

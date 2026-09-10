@@ -17,13 +17,17 @@ export interface JoinSessionOptions {
 }
 
 export interface NetworkSession {
-  sendEstimate(estimate: Estimate): void
+  sendEstimate(itemId: string, estimate: Estimate): void
   sendSyncState(snapshot: SessionSnapshot): void
   sendReveal(itemId: string): void
+  sendRoundReset(itemId: string): void
   sendAnnounce(announce: ParticipantAnnounce): void
-  onEstimate(cb: (estimate: Estimate, peerId: string) => void): Unsubscribe
+  onEstimate(
+    cb: (itemId: string, estimate: Estimate, peerId: string) => void,
+  ): Unsubscribe
   onSyncState(cb: (snapshot: SessionSnapshot, peerId: string) => void): Unsubscribe
   onReveal(cb: (itemId: string, peerId: string) => void): Unsubscribe
+  onRoundReset(cb: (itemId: string, peerId: string) => void): Unsubscribe
   onAnnounce(cb: (announce: ParticipantAnnounce, peerId: string) => void): Unsubscribe
   onPeerJoin(cb: (peerId: string) => void): Unsubscribe
   onPeerLeave(cb: (peerId: string) => void): Unsubscribe
@@ -58,10 +62,12 @@ export function joinSession(
     sendEstimate: actions.sendEstimate,
     sendSyncState: actions.sendSyncState,
     sendReveal: actions.sendReveal,
+    sendRoundReset: actions.sendRoundReset,
     sendAnnounce: actions.sendAnnounce,
     onEstimate: actions.onEstimate,
     onSyncState: actions.onSyncState,
     onReveal: actions.onReveal,
+    onRoundReset: actions.onRoundReset,
     onAnnounce: actions.onAnnounce,
     onPeerJoin: connection.onPeerJoin,
     onPeerLeave: connection.onPeerLeave,

@@ -120,6 +120,7 @@ describe('ParticipantEstimateView', () => {
     await user.click(screen.getByRole('button', { name: 'Submit estimate' }))
 
     expect(sendEstimateMock).toHaveBeenCalledWith(
+      'item-1',
       expect.objectContaining({ participantId: 'me-123', best: 3, likely: 5, worst: 8 }),
     )
     expect(screen.getByText(/Waiting for the facilitator to reveal/)).toBeInTheDocument()

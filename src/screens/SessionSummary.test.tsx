@@ -6,7 +6,15 @@ import { useSessionStore } from '../state/store'
 import type { Item } from '../state/types'
 
 function item(id: string, title: string, finalResult: Item['finalResult'] = null): Item {
-  return { id, title, description: '', notes: '', finalResult }
+  return {
+    id,
+    title,
+    description: '',
+    notes: '',
+    finalResult,
+    submissions: [],
+    revealed: false,
+  }
 }
 
 const finalized = { min: 2, expected: 5, max: 8, ci90: 8.85 }

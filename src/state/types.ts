@@ -7,6 +7,13 @@ export interface Item {
   description: string
   notes: string
   finalResult: AggregateResult | null
+  /** Live mode (facilitator side): participant submissions received for the
+   *  current round on this item, keyed by participantId (last write wins).
+   *  Always empty in single-user mode and after a Retry. */
+  submissions: Estimate[]
+  /** Live mode (facilitator side): whether this round's estimates have been
+   *  revealed — Workspace state 1d. Reset to false by Retry. */
+  revealed: boolean
 }
 
 /** What a participant client knows about the round the facilitator is running —

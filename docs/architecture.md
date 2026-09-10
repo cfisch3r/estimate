@@ -28,11 +28,8 @@ detail of the Live-mode layer — the
 `src/network/` component breakdown, the join sequence, the estimate round, the connection
 state machine, and the store fields it added — see [concepts/collaboration-mode.md](concepts/collaboration-mode.md);
 this document keeps the decisions and rationale, that one tracks the implementation. Still
-open: the facilitator reveal flow (#8, a Workspace
-state — not a separate screen — after the epic-0010 redesign), carrying participant names
-on the wire (#40), connection-fallback UX (#9),
-and real persistence (`src/persistence/` is still a placeholder — session data is in-memory
-only).
+open: connection-fallback UX (#9) and real persistence (`src/persistence/` is still a
+placeholder — session data is in-memory only).
 
 ## Confirmed decisions
 
@@ -78,23 +75,23 @@ Static SPA — no server-side rendering needed, no routes that require backend d
   /screens      — roughly one per PRD §7 screen (ModeSelect, Workspace, Join, Participant
                   Estimate View, Summary, History), plus shared screen-level pieces
                   (SessionSidebar, useLeaveLiveSession). Built so far: ModeSelect, Workspace
-                  (single-user path + collaborative session-code strip), Summary, History,
-                  Join, and Participant Estimate View (#7 — lobby / estimating / waiting /
-                  revealed states driven by `store.liveRound`). The facilitator reveal flow
-                  is redesigned in the epic-0010 handoff
-                  (`design_handoffs/epic-0010-screen-design-review/`) and lands in #8.
+                  (single-user path, collaborative session-code strip, and the facilitator
+                  reveal panel — states 1c waiting / 1d revealed, driven by per-item
+                  `submissions` / `revealed`, #8), Summary, History, Join, and Participant
+                  Estimate View (#7 — lobby / estimating / waiting / revealed states driven
+                  by `store.liveRound`).
   /calc         — pure functions: aggregateEstimates(), computeCI90() (McConnell's formula, PRD §5),
                   bias guards (symmetric-range, false-precision, outlier — PRD §6). Framework-free,
                   unit-testable, identical between Mode A and Mode B.
   /network      — Trystero wrapper: room join/create, typed actions (submitEstimate, syncState,
-                  reveal), connection-state hooks, late-joiner snapshot handling
+                  reveal, roundReset, announce), connection-state hooks, late-joiner snapshot handling
   /state        — Zustand store; network and persistence are adapters dispatching into it
   /persistence  — IndexedDB adapter, CSV export, shareable-report-link encode/decode
 ```
 
 The `/calc` layer's isolation as pure, framework-free functions is the single most load-bearing structural decision — PRD §4.2 and ADR-001 both require identical calculation/bias-guard behavior across both modes, and this makes it trivially unit-testable against the PRD §5–6 formulas independent of UI or networking.
 
-**Testing note (ADR-002):** browser-specific behavior — real reload/persistence, real P2P connection handling — is the trigger to add Playwright. The Trystero `/network` layer has shipped, but its jsdom-testable surface (actions, validation, state machine) doesn't yet trip that trigger — the #7 participant round landed entirely in store + component tests; real WebRTC connect/reveal (#8) and real `/persistence` do. Scope it to a handful of golden-path smoke tests; keep edge cases in `/calc`/`/state`/component tests. See ADR-002's 2026-09-07 update.
+**Testing note (ADR-002):** browser-specific behavior — real reload/persistence, real P2P connection handling — is the trigger to add Playwright. The Trystero `/network` layer has shipped, but its jsdom-testable surface (actions, validation, state machine) doesn't yet trip that trigger — the #7 participant round and #8 facilitator reveal / `roundReset` sync both landed entirely in store + component tests. Real WebRTC peer connect/drop and real `/persistence` are what trip it. Scope it to a handful of golden-path smoke tests; keep edge cases in `/calc`/`/state`/component tests. See ADR-002's 2026-09-07 update.
 
 ## `/calc` module — detailed design
 
@@ -153,7 +150,7 @@ The clickable prototype predates the `/calc` module and unit decisions above, so
 
 **Already covered by the prototype, no gap:**
 - Outlier flag at Reveal — the warning icon on an outlier's row already exists in the design; it just needs to switch from hardcoded/simulated to driven by `checkOutlier()`'s real output.
-- Unit-aware labels — mechanical copy interpolation of `session.unit`, not a new visual pattern. Done in the Workspace and the Participant Estimate View (which now also receives the facilitator's unit over the wire — `unit` on `SessionSnapshot`, see #39). Still outstanding: the Session Summary table rows carry no unit suffix; fold in when the Reveal View lands (#8).
+- Unit-aware labels — mechanical copy interpolation of `session.unit`, not a new visual pattern. Done in the Workspace and the Participant Estimate View (which now also receives the facilitator's unit over the wire — `unit` on `SessionSnapshot`, see #39). Still outstanding: the Session Summary table rows carry no unit suffix.
 
 **Genuine gaps, resolved for MVP:**
 - Symmetric-range and false-precision nudges have no distinct visual pattern in Nocturne (only plain `.card-meta` caption styling exists). **Decision: ship with the plain caption treatment, log a fast-follow design task** for a more distinct "live nudge" treatment rather than blocking MVP on a design pass.
@@ -170,23 +167,23 @@ The clickable prototype predates the `/calc` module and unit decisions above, so
 
 ## Build status &amp; what's next
 
-The proposal above has been built out through issue #7: Vite + React 19 + TS scaffold,
+The proposal above has been built out through issue #8: Vite + React 19 + TS scaffold,
 Nocturne ported as-is, the `/calc` engine (unit-tested against the PRD §5–6 formulas), the
 Zustand store, the single-user Workspace screens, the Trystero P2P network layer, the
-Join Session screen, and the participant estimate round (lobby / estimating / waiting /
-revealed, driven by `store.liveRound`, with `NetworkProvider` dispatching inbound
-`onEstimate` / `onSyncState` / `onReveal` and broadcasting the facilitator's `syncState`).
-The epic-0010 screen review (#34) rebuilt the entry flow to a mode-selection screen plus
-the unified Workspace.
+Join Session screen, the participant estimate round (lobby / estimating / waiting /
+revealed, driven by `store.liveRound`), participant display names on the wire (#40,
+`announce` action), and the facilitator reveal panel (#8 — Workspace states 1c waiting /
+1d revealed, driven by per-item `submissions` / `revealed`, with group aggregate + CI90
+via `/calc` and a `roundReset` wire action for Retry). `NetworkProvider` dispatches inbound
+`onEstimate` / `onSyncState` / `onReveal` / `onRoundReset` / `onAnnounce` and broadcasts
+the facilitator's `syncState`. The epic-0010 screen review (#34) rebuilt the entry flow to
+a mode-selection screen plus the unified Workspace. (#39, the session unit on the wire, is
+done — `unit` on `SessionSnapshot`, broadcast on change, adopted by `applySyncState`.)
 
 Remaining MVP work, tracked on the EstiMate Roadmap board:
 
-- **#40** — carry participant display names on the wire (`SessionSnapshot` still omits
-  them); prerequisite for #8's participant table. (#39, the session unit on the wire, is
-  done — `unit` on `SessionSnapshot`, broadcast on change, adopted by `applySyncState`.)
-- **#8** — facilitator reveal flow (a Workspace state, per the epic-0010 handoff):
-  per-participant range table, group aggregate + CI90, `checkOutlier()` driving the outlier
-  flag, and per-item `revealed` / submissions state.
+- **Outlier flag** — the reveal panel does not yet surface `checkOutlier()` on the
+  per-participant list; the `/calc` guard exists but nothing drives a UI flag from it.
 - **#9** — connection-fallback UX for peers that can't establish a direct connection.
 - **Persistence** — `src/persistence/` (IndexedDB, CSV export, shareable report link) is
   still a placeholder.

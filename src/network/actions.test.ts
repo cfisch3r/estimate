@@ -24,16 +24,40 @@ const validEstimate = createEstimate({ participantId: 'a', best: 1, likely: 2, w
 if (!validEstimate.ok) throw new Error('test fixture invalid')
 
 describe('createTypedActions', () => {
-  it('sends an estimate through the submitEstimate action', () => {
+  it('sends an estimate (with its item id) through the submitEstimate action', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
 
-    actions.sendEstimate(validEstimate.value)
+    actions.sendEstimate('item-1', validEstimate.value)
 
-    expect(actionsByName.submitEstimate!.send).toHaveBeenCalledWith(validEstimate.value)
+    expect(actionsByName.submitEstimate!.send).toHaveBeenCalledWith({
+      itemId: 'item-1',
+      estimate: validEstimate.value,
+    })
   })
 
-  it('forwards a valid incoming estimate to subscribers', () => {
+  it('forwards a valid incoming estimate, with its item id, to subscribers', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onEstimate(cb)
+
+    actionsByName.submitEstimate!.onMessage?.(
+      {
+        itemId: 'item-1',
+        estimate: { participantId: 'b', best: 1, likely: 2, worst: 3 },
+      },
+      { peerId: 'peer-1' },
+    )
+
+    expect(cb).toHaveBeenCalledWith(
+      'item-1',
+      { participantId: 'b', best: 1, likely: 2, worst: 3 },
+      'peer-1',
+    )
+  })
+
+  it('accepts a bare estimate with no envelope (pre-#8 build) under an empty item id', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
     const cb = vi.fn()
@@ -45,6 +69,7 @@ describe('createTypedActions', () => {
     )
 
     expect(cb).toHaveBeenCalledWith(
+      '',
       { participantId: 'b', best: 1, likely: 2, worst: 3 },
       'peer-1',
     )
@@ -57,7 +82,10 @@ describe('createTypedActions', () => {
     actions.onEstimate(cb)
 
     actionsByName.submitEstimate!.onMessage?.(
-      { participantId: 'b', best: 9, likely: 2, worst: 3 },
+      {
+        itemId: 'item-1',
+        estimate: { participantId: 'b', best: 9, likely: 2, worst: 3 },
+      },
       { peerId: 'peer-1' },
     )
 
@@ -72,6 +100,7 @@ describe('createTypedActions', () => {
 
     expect(() => {
       actionsByName.submitEstimate!.onMessage?.({}, { peerId: 'peer-1' })
+      actionsByName.submitEstimate!.onMessage?.({ itemId: 'x' }, { peerId: 'peer-1' })
     }).not.toThrow()
     expect(cb).not.toHaveBeenCalled()
   })
@@ -96,6 +125,7 @@ describe('createTypedActions', () => {
     const snapshot = {
       currentItem: item,
       unit: 'weeks' as const,
+      revealed: false,
       submissions: [],
       finalizedItemIds: [],
     }
@@ -128,6 +158,7 @@ describe('createTypedActions', () => {
       {
         currentItem: item,
         unit: 'days',
+        revealed: false,
         submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
@@ -155,11 +186,32 @@ describe('createTypedActions', () => {
       {
         currentItem: item,
         unit: 'days',
+        revealed: false,
         submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
       'peer-1',
     )
+  })
+
+  it('forwards the revealed flag from an incoming snapshot', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onSyncState(cb)
+
+    actionsByName.syncState!.onMessage?.(
+      {
+        currentItem: item,
+        unit: 'days',
+        revealed: true,
+        submissions: [],
+        finalizedItemIds: [],
+      },
+      { peerId: 'peer-1' },
+    )
+
+    expect(cb).toHaveBeenCalledWith(expect.objectContaining({ revealed: true }), 'peer-1')
   })
 
   it('drops a non-object incoming snapshot without throwing', () => {
@@ -214,7 +266,13 @@ describe('createTypedActions', () => {
     )
 
     expect(cb).toHaveBeenCalledWith(
-      { currentItem: null, unit: 'days', submissions: [], finalizedItemIds: [] },
+      {
+        currentItem: null,
+        unit: 'days',
+        revealed: false,
+        submissions: [],
+        finalizedItemIds: [],
+      },
       'peer-1',
     )
   })
@@ -236,12 +294,24 @@ describe('createTypedActions', () => {
 
     expect(cb).toHaveBeenNthCalledWith(
       1,
-      { currentItem: item, unit: 'days', submissions: [], finalizedItemIds: [] },
+      {
+        currentItem: item,
+        unit: 'days',
+        revealed: false,
+        submissions: [],
+        finalizedItemIds: [],
+      },
       'peer-1',
     )
     expect(cb).toHaveBeenNthCalledWith(
       2,
-      { currentItem: item, unit: 'days', submissions: [], finalizedItemIds: [] },
+      {
+        currentItem: item,
+        unit: 'days',
+        revealed: false,
+        submissions: [],
+        finalizedItemIds: [],
+      },
       'peer-2',
     )
   })
@@ -273,6 +343,37 @@ describe('createTypedActions', () => {
     actions.onReveal(cb)
 
     actionsByName.reveal!.onMessage?.(42, { peerId: 'peer-1' })
+
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('sends an item id through the roundReset action', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+
+    actions.sendRoundReset('item-1')
+
+    expect(actionsByName.roundReset!.send).toHaveBeenCalledWith('item-1')
+  })
+
+  it('forwards a valid incoming roundReset to subscribers', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onRoundReset(cb)
+
+    actionsByName.roundReset!.onMessage?.('item-1', { peerId: 'peer-1' })
+
+    expect(cb).toHaveBeenCalledWith('item-1', 'peer-1')
+  })
+
+  it('drops a malformed incoming roundReset payload', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onRoundReset(cb)
+
+    actionsByName.roundReset!.onMessage?.(42, { peerId: 'peer-1' })
 
     expect(cb).not.toHaveBeenCalled()
   })
@@ -364,7 +465,10 @@ describe('createTypedActions', () => {
     unsubscribe()
 
     actionsByName.submitEstimate!.onMessage?.(
-      { participantId: 'b', best: 1, likely: 2, worst: 3 },
+      {
+        itemId: 'item-1',
+        estimate: { participantId: 'b', best: 1, likely: 2, worst: 3 },
+      },
       { peerId: 'peer-1' },
     )
 
