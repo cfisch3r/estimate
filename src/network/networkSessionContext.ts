@@ -6,8 +6,9 @@ export interface NetworkSessionApi {
   connect: (sessionId: string) => void
   /** Leave the current room (if any) and reset the store's connection fields. */
   disconnect: () => void
-  /** Broadcast this participant's validated estimate to the rest of the room. */
-  sendEstimate: (estimate: Estimate) => void
+  /** Broadcast this participant's validated estimate (with the item it's for) to
+   *  the rest of the room. */
+  sendEstimate: (itemId: string, estimate: Estimate) => void
   /** Facilitator: tell participants the round for `itemId` is now revealed. */
   sendReveal: (itemId: string) => void
   /** Facilitator: tell participants to discard their submissions and estimate

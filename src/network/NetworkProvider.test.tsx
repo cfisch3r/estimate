@@ -153,13 +153,16 @@ describe('useNetworkSession', () => {
       emit('syncState', {
         currentItem: item,
         unit: 'days',
+        revealed: false,
         submissions: [],
         finalizedItemIds: [],
       }),
     )
     expect(useSessionStore.getState().liveRound?.item.title).toBe('Retry queue')
 
-    act(() => emit('estimate', { participantId: 'p2', best: 2, likely: 4, worst: 8 }))
+    act(() =>
+      emit('estimate', 'item-1', { participantId: 'p2', best: 2, likely: 4, worst: 8 }),
+    )
     expect(useSessionStore.getState().liveRound?.submissions).toHaveLength(1)
 
     act(() => emit('reveal', 'item-1'))
@@ -207,7 +210,45 @@ describe('useNetworkSession', () => {
       expect.objectContaining({
         currentItem: { id: 'i1', title: 'Retry queue', description: 'backoff' },
         unit: 'weeks',
+        revealed: false,
       }),
+    )
+  })
+
+  it('broadcasts revealed:true once the facilitator reveals the active item', async () => {
+    const user = userEvent.setup()
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'facilitator',
+        sessionId: 'K7F9Q2',
+        items: [
+          {
+            id: 'i1',
+            title: 'Retry queue',
+            description: 'backoff',
+            notes: '',
+            finalResult: null,
+            submissions: [],
+            revealed: false,
+          },
+        ],
+        activeItemId: 'i1',
+      }),
+    )
+    fakeSession.sendSyncState.mockClear()
+
+    act(() => useSessionStore.getState().revealRound('i1'))
+
+    expect(fakeSession.sendSyncState).toHaveBeenCalledWith(
+      expect.objectContaining({ revealed: true }),
     )
   })
 
@@ -277,6 +318,7 @@ describe('useNetworkSession', () => {
       emit('syncState', {
         currentItem: { id: 'x', title: 'late', description: '' },
         unit: 'days',
+        revealed: false,
         submissions: [],
         finalizedItemIds: [],
       }),

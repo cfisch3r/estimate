@@ -42,12 +42,19 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       const finalizedItemIds = state.items
         .filter((item) => item.finalResult !== null)
         .map((item) => item.id)
-      const key = JSON.stringify({ currentItem, unit: state.unit, finalizedItemIds })
+      const revealed = active?.revealed ?? false
+      const key = JSON.stringify({
+        currentItem,
+        unit: state.unit,
+        revealed,
+        finalizedItemIds,
+      })
       if (key === lastSnapshotKey) return
       lastSnapshotKey = key
       sessionRef.current?.sendSyncState({
         currentItem,
         unit: state.unit,
+        revealed,
         submissions: [],
         finalizedItemIds,
       })
@@ -75,8 +82,8 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         const store = useSessionStore
         const unsubscribers = [
           session.onConnectionStateChange(mirror),
-          session.onEstimate((estimate) =>
-            store.getState().applyRemoteEstimate(estimate),
+          session.onEstimate((itemId, estimate) =>
+            store.getState().applyRemoteEstimate(itemId, estimate),
           ),
           session.onSyncState((snapshot) => store.getState().applySyncState(snapshot)),
           session.onReveal((itemId) => store.getState().applyReveal(itemId)),
@@ -97,7 +104,9 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             const own = s.liveRound?.submissions.find(
               (e) => e.participantId === s.participantId,
             )
-            if (own) sessionRef.current?.sendEstimate(own)
+            if (own && s.liveRound) {
+              sessionRef.current?.sendEstimate(s.liveRound.item.id, own)
+            }
           }),
         ]
         unsubscribeRef.current = () => unsubscribers.forEach((off) => off())
@@ -110,8 +119,8 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         setConnectionStatus('idle')
         setPeerCount(0)
       },
-      sendEstimate: (estimate) => {
-        sessionRef.current?.sendEstimate(estimate)
+      sendEstimate: (itemId, estimate) => {
+        sessionRef.current?.sendEstimate(itemId, estimate)
       },
       sendReveal: (itemId) => {
         sessionRef.current?.sendReveal(itemId)

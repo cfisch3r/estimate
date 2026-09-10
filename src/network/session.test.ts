@@ -101,16 +101,17 @@ describe('joinSession', () => {
     expect(fakeRoom.leave).toHaveBeenCalled()
   })
 
-  it('sendEstimate delegates to the underlying submitEstimate action', () => {
+  it('sendEstimate delegates to the underlying submitEstimate action with the item id', () => {
     const session = joinSession('session-abc')
     const estimate = createEstimate({ participantId: 'a', best: 1, likely: 2, worst: 3 })
     if (!estimate.ok) throw new Error('test fixture invalid')
 
-    session.sendEstimate(estimate.value)
+    session.sendEstimate('item-1', estimate.value)
 
-    expect(fakeRoom.actionsByName.submitEstimate!.send).toHaveBeenCalledWith(
-      estimate.value,
-    )
+    expect(fakeRoom.actionsByName.submitEstimate!.send).toHaveBeenCalledWith({
+      itemId: 'item-1',
+      estimate: estimate.value,
+    })
   })
 
   it('sendReveal and sendRoundReset delegate to their underlying actions', () => {

@@ -19,8 +19,20 @@ export interface SessionSnapshot {
   /** The unit the facilitator is estimating in, so participant forms and bars
    *  label values with the session's unit rather than their local default. */
   unit: EstimationUnit
+  /** Whether the facilitator has revealed the current round. Lets a peer that
+   *  joins or reconnects mid-reveal land straight on the revealed view instead
+   *  of a dead estimate form. */
+  revealed: boolean
   submissions: RawEstimateInput[]
   finalizedItemIds: string[]
+}
+
+/** A participant's estimate plus the item it belongs to. The item id keeps a
+ *  straggler (or peer-join re-broadcast) submission for a just-finalized item
+ *  from being recorded against whatever item became active next. */
+export interface EstimateMessage {
+  itemId: string
+  estimate: Estimate
 }
 
 /** A client announcing which display name belongs to its `participantId`, so
@@ -45,12 +57,14 @@ export interface ActionRoom {
 }
 
 export interface TypedActions {
-  sendEstimate(estimate: Estimate): void
+  sendEstimate(itemId: string, estimate: Estimate): void
   sendSyncState(snapshot: SessionSnapshot): void
   sendReveal(itemId: string): void
   sendRoundReset(itemId: string): void
   sendAnnounce(announce: ParticipantAnnounce): void
-  onEstimate(cb: (estimate: Estimate, peerId: string) => void): Unsubscribe
+  onEstimate(
+    cb: (itemId: string, estimate: Estimate, peerId: string) => void,
+  ): Unsubscribe
   onSyncState(cb: (snapshot: SessionSnapshot, peerId: string) => void): Unsubscribe
   onReveal(cb: (itemId: string, peerId: string) => void): Unsubscribe
   onRoundReset(cb: (itemId: string, peerId: string) => void): Unsubscribe
@@ -137,23 +151,38 @@ function isValidSnapshotShape(data: unknown): data is SessionSnapshot {
   )
 }
 
+/** The inbound estimate message: `{ itemId, estimate }`. The estimate itself is
+ *  re-validated separately through `safeCreateEstimate`; this only checks the
+ *  envelope. */
+function hasEstimateEnvelope(
+  data: unknown,
+): data is { itemId: string; estimate: unknown } {
+  if (typeof data !== 'object' || data === null) return false
+  const message = data as Record<string, unknown>
+  return typeof message.itemId === 'string' && message.itemId.length > 0
+}
+
 export function createTypedActions(room: ActionRoom): TypedActions {
-  const submitEstimateAction = room.makeAction<Estimate>('submitEstimate')
+  const submitEstimateAction = room.makeAction<EstimateMessage>('submitEstimate')
   const syncStateAction = room.makeAction<SessionSnapshot>('syncState')
   const revealAction = room.makeAction<string>('reveal')
   const roundResetAction = room.makeAction<string>('roundReset')
   const announceAction = room.makeAction<ParticipantAnnounce>('announce')
 
-  const estimateSubscribable = createSubscribable<[Estimate, string]>()
+  const estimateSubscribable = createSubscribable<[string, Estimate, string]>()
   const syncStateSubscribable = createSubscribable<[SessionSnapshot, string]>()
   const revealSubscribable = createSubscribable<[string, string]>()
   const roundResetSubscribable = createSubscribable<[string, string]>()
   const announceSubscribable = createSubscribable<[ParticipantAnnounce, string]>()
 
   submitEstimateAction.onMessage = (data, { peerId }) => {
-    const result = safeCreateEstimate(data)
+    if (!hasEstimateEnvelope(data)) {
+      console.warn('Dropping incoming estimate with no item id')
+      return
+    }
+    const result = safeCreateEstimate(data.estimate)
     if (result.ok) {
-      estimateSubscribable.notify(result.value, peerId)
+      estimateSubscribable.notify(data.itemId, result.value, peerId)
     } else {
       console.warn('Dropping malformed incoming estimate:', result.error)
     }
@@ -171,6 +200,8 @@ export function createTypedActions(room: ActionRoom): TypedActions {
         // mid-deploy) rather than dropping the whole snapshot — fall back to the
         // store default so the participant still gets the round.
         unit: isEstimationUnit(data.unit) ? data.unit : 'days',
+        // Same tolerance for `revealed` (older builds omit it): default to false.
+        revealed: data.revealed === true,
         submissions: sanitizeSubmissions(data.submissions),
         finalizedItemIds: data.finalizedItemIds,
       },
@@ -209,7 +240,7 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   }
 
   return {
-    sendEstimate: (estimate) => submitEstimateAction.send(estimate),
+    sendEstimate: (itemId, estimate) => submitEstimateAction.send({ itemId, estimate }),
     sendSyncState: (snapshot) => syncStateAction.send(snapshot),
     sendReveal: (itemId) => revealAction.send(itemId),
     sendRoundReset: (itemId) => roundResetAction.send(itemId),

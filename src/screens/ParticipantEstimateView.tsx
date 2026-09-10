@@ -424,7 +424,7 @@ export function ParticipantEstimateView() {
   function handleSubmit(best: number, likely: number, worst: number): SubmitResult {
     const result = submitEstimate(best, likely, worst)
     if (result.ok) {
-      sendEstimate(result.estimate)
+      if (liveRound) sendEstimate(liveRound.item.id, result.estimate)
       return { ok: true }
     }
     return result
