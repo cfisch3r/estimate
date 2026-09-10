@@ -9,8 +9,8 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/prd.md` — product requirements
 - `docs/architecture.md` — the technical architecture (stack, module structure, `/calc` design) and decisions made building it
 - `docs/adr/001-live-collaboration-architecture.md` — accepted decision on the peer-to-peer live-collaboration architecture
-- `docs/adr/002-testing-strategy.md` — accepted decision on the layered test strategy (unit/component now; Playwright deferred until real browser-only behaviour exists — WebRTC connect/reveal in `/network`, or real `/persistence` — see that ADR's 2026-09-07 update before adding e2e tests)
-- `docs/concepts/collaboration-mode.md` — Live mode (Mode A) technical concept: the Trystero P2P network layer, join flow, and screen/store wiring delivered so far
+- `docs/adr/002-testing-strategy.md` — accepted decision on the layered test strategy (unit/component now; Playwright deferred until real browser-only behaviour exists — real WebRTC peer connect/drop in `/network`, or real `/persistence` — see that ADR's 2026-09-07 update before adding e2e tests)
+- `docs/concepts/collaboration-mode.md` — Live mode (Mode A) technical concept: the Trystero P2P network layer, join flow, participant estimate round, facilitator reveal / retry-round flow, and screen/store wiring delivered so far
 - `design_handoff_estimate_app/` — the original design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
 - `design_handoffs/epic-0010-screen-design-review/` — the Epic-0010 redesign handoff; **supersedes the entry flow** of the original handoff (mode-selection screen + unified Workspace) and is the source of truth for the participant estimating and facilitator reveal flows.
 

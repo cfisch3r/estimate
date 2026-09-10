@@ -348,10 +348,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         liveRound: {
           item: snapshot.currentItem,
           submissions,
-          // The facilitator's snapshot is authoritative for reveal state, so a
-          // peer joining or reconnecting mid-reveal lands on the revealed view.
-          // Stays revealed for the same item until an explicit roundReset.
-          revealed: snapshot.revealed || (sameItem ? prev!.revealed : false),
+          // The facilitator's snapshot is authoritative for reveal state (it's
+          // re-sent on every peer join, unlike the one-shot roundReset), so a
+          // peer joining or reconnecting mid-reveal lands on the revealed view,
+          // and a peer that missed a roundReset is un-latched by the next sync.
+          revealed: snapshot.revealed,
           mySubmission: sameItem ? prev!.mySubmission : null,
         },
       }
@@ -361,20 +362,35 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set((state) => {
       if (state.role === 'facilitator') {
         // Only record if this submission is for the item the round is running on
-        // — a straggler for a just-finalized item must not seed the next round.
-        // Ignore arrivals once it's revealed or finalized, too: a late (or
-        // peer-join re-broadcast) submission must not move a range the group has
-        // already seen.
-        if (itemId !== state.activeItemId) return {}
+        // — a straggler for a just-finalized item must not seed the next round —
+        // and only while that round is still open: a late (or peer-join
+        // re-broadcast) submission must not move a range the group has seen.
+        const active = state.items.find((item) => item.id === state.activeItemId)
+        if (
+          !active ||
+          itemId !== active.id ||
+          active.revealed ||
+          active.finalResult !== null
+        ) {
+          return {}
+        }
         return {
           items: state.items.map((item) =>
-            item.id === state.activeItemId && !item.revealed && item.finalResult === null
+            item.id === active.id
               ? { ...item, submissions: upsertByParticipant(item.submissions, estimate) }
               : item,
           ),
         }
       }
-      if (!state.liveRound || state.liveRound.item.id !== itemId) return {}
+      // Same "round still open" rule for a participant, so their revealed range
+      // bar doesn't shift when a peer re-broadcasts after the reveal.
+      if (
+        !state.liveRound ||
+        state.liveRound.item.id !== itemId ||
+        state.liveRound.revealed
+      ) {
+        return {}
+      }
       return {
         liveRound: {
           ...state.liveRound,

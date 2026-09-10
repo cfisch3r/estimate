@@ -146,7 +146,7 @@ sequenceDiagram
   P-->>P: route to ParticipantEstimateView (lobby until the facilitator picks an item)
 ```
 
-## Estimate round (#7)
+## Estimate round & facilitator reveal (#7, #8)
 
 ```mermaid
 sequenceDiagram
@@ -257,3 +257,9 @@ trimmed before it reaches the store). The UI only ever sees validated `Estimate`
   or rename under someone else's id. Trystero encryption keeps outsiders out; there's no
   defence against a malicious participant inside the room. Inbound names are shape-checked
   and length-capped (`MAX_ANNOUNCE_NAME_LENGTH`), not authenticated.
+- `participantId` is minted fresh on every `joinLiveSession` (it's a per-join id, not a
+  per-person one) and Trystero peer-leave events carry a `peerId`, not a `participantId`,
+  so the facilitator's 1c/1d roster never prunes a departed participant and a
+  drop-then-rejoin is counted twice in `item.submissions` (and thus in the finalized
+  aggregate). A stable client id + a `peerId ↔ participantId` map (pruned on peer-leave)
+  is follow-up work — see #9's connection-fallback scope.

@@ -330,7 +330,30 @@ describe('applySyncState', () => {
     expect(useSessionStore.getState().unit).toBe('hours')
   })
 
-  it('preserves own submission and reveal flag across a same-item snapshot', () => {
+  it('preserves own submission and accumulated submissions across a same-item snapshot', () => {
+    useSessionStore.setState({
+      liveRound: {
+        item: snapshotItem,
+        submissions: [makeEstimate()],
+        revealed: true,
+        mySubmission: { best: 2, likely: 4, worst: 8 },
+      },
+    })
+
+    useSessionStore.getState().applySyncState({
+      currentItem: snapshotItem,
+      unit: 'days',
+      revealed: true,
+      submissions: [],
+      finalizedItemIds: [],
+    })
+
+    const round = useSessionStore.getState().liveRound
+    expect(round?.mySubmission).toEqual({ best: 2, likely: 4, worst: 8 })
+    expect(round?.submissions).toHaveLength(1)
+  })
+
+  it('takes the reveal flag from the snapshot, not the previous round (un-latches a missed roundReset)', () => {
     useSessionStore.setState({
       liveRound: {
         item: snapshotItem,
@@ -348,10 +371,7 @@ describe('applySyncState', () => {
       finalizedItemIds: [],
     })
 
-    const round = useSessionStore.getState().liveRound
-    expect(round?.revealed).toBe(true)
-    expect(round?.mySubmission).toEqual({ best: 2, likely: 4, worst: 8 })
-    expect(round?.submissions).toHaveLength(1)
+    expect(useSessionStore.getState().liveRound?.revealed).toBe(false)
   })
 
   it('adopts revealed:true from the snapshot for a peer with no prior round', () => {
@@ -428,6 +448,23 @@ describe('applyRemoteEstimate (participant)', () => {
       .getState()
       .applyRemoteEstimate('some-other-item', makeEstimate({ participantId: 'a' }))
     expect(useSessionStore.getState().liveRound!.submissions).toHaveLength(0)
+  })
+
+  it('ignores a submission once the round is revealed, so the range bar cannot shift', () => {
+    useSessionStore.setState({
+      liveRound: {
+        item: snapshotItem,
+        submissions: [makeEstimate({ participantId: 'a' })],
+        revealed: true,
+        mySubmission: null,
+      },
+    })
+
+    useSessionStore
+      .getState()
+      .applyRemoteEstimate('item-1', makeEstimate({ participantId: 'b' }))
+
+    expect(useSessionStore.getState().liveRound!.submissions).toHaveLength(1)
   })
 
   it('is a no-op when there is no live round', () => {

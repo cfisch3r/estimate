@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { ListChecksIcon } from '@phosphor-icons/react/dist/csr/ListChecks'
@@ -361,6 +361,11 @@ function LiveFacilitatorPanel({
   onTitleChange,
 }: LiveFacilitatorPanelProps) {
   const [finalizeError, setFinalizeError] = useState<string | null>(null)
+  // Retry (1d -> 1c) keeps this component mounted (key is the item id), so drop a
+  // stale "can't finalize" banner once the round is no longer revealed.
+  useEffect(() => {
+    if (!item.revealed) setFinalizeError(null)
+  }, [item.revealed])
   const suffix = UNIT_SUFFIX[unit]
   const roster = buildRoster(item, participantNames)
   const submittedCount = item.submissions.length
