@@ -440,6 +440,12 @@ function LiveFacilitatorPanel({
 
       {item.revealed ? (
         <>
+          {item.finalResult !== null && (
+            <GuardNote variant="banner" headline="Already finalized">
+              This item has a recorded range. Finalize again to refresh it, or start a new
+              round to discard it and re-estimate.
+            </GuardNote>
+          )}
           {finalizeError && (
             <GuardNote variant="banner" headline="Can't finalize yet">
               {finalizeError}

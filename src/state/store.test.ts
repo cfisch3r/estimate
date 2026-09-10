@@ -541,6 +541,17 @@ describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
     })
   })
 
+  it('retryRound reopens an already-finalized item so new submissions land', () => {
+    const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
+    seed({ revealed: true, finalResult: finalized })
+
+    useSessionStore.getState().retryRound('i1')
+    expect(useSessionStore.getState().items[0]!.finalResult).toBeNull()
+
+    useSessionStore.getState().applyRemoteEstimate(makeEstimate({ participantId: 'a' }))
+    expect(useSessionStore.getState().items[0]!.submissions).toHaveLength(1)
+  })
+
   it('finalizeLiveItem aggregates submissions and advances to the next pending item', () => {
     seed({
       revealed: true,

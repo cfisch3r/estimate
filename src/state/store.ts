@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { EstimationUnit, Estimate } from '../calc'
+import type { AggregateResult, EstimationUnit, Estimate } from '../calc'
 import { createEstimate, aggregateEstimates } from '../calc'
 import type { SessionSnapshot } from '../network/actions'
 import type {
@@ -110,6 +110,23 @@ function snapshotSubmissionsToEstimates(snapshot: SessionSnapshot): Estimate[] {
 function firstPendingItemId(items: Item[], excludeId?: string): string | null {
   const pending = items.find((item) => item.id !== excludeId && item.finalResult === null)
   return pending ? pending.id : null
+}
+
+/** Shared body of `finalizeItem` / `finalizeLiveItem`: record `finalResult` on
+ *  `id` and, unless it was already finalized (a re-finalize/edit), advance the
+ *  active item to the next pending one. */
+function recordFinalResult(
+  state: Pick<SessionStore, 'items'>,
+  id: string,
+  finalResult: AggregateResult,
+): Pick<SessionStore, 'items' | 'activeItemId'> {
+  const wasAlreadyFinalized =
+    state.items.find((item) => item.id === id)?.finalResult !== null
+  const items = state.items.map((item) =>
+    item.id === id ? { ...item, finalResult } : item,
+  )
+  const activeItemId = wasAlreadyFinalized ? id : firstPendingItemId(items, id)
+  return { items, activeItemId }
 }
 
 const LIVE_SESSION_DEFAULTS = {
@@ -275,15 +292,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       return estimateResult
     }
     const finalResult = aggregateEstimates([estimateResult.value])
-    set((state) => {
-      const wasAlreadyFinalized =
-        state.items.find((item) => item.id === id)?.finalResult !== null
-      const items = state.items.map((item) =>
-        item.id === id ? { ...item, finalResult } : item,
-      )
-      const activeItemId = wasAlreadyFinalized ? id : firstPendingItemId(items, id)
-      return { items, activeItemId }
-    })
+    set((state) => recordFinalResult(state, id, finalResult))
     return { ok: true }
   },
 
@@ -296,13 +305,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       return { ok: false, error: 'No estimates have been submitted yet.' }
     }
     const finalResult = aggregateEstimates(item.submissions)
-    set((state) => {
-      const wasAlreadyFinalized =
-        state.items.find((i) => i.id === id)?.finalResult !== null
-      const items = state.items.map((i) => (i.id === id ? { ...i, finalResult } : i))
-      const activeItemId = wasAlreadyFinalized ? id : firstPendingItemId(items, id)
-      return { items, activeItemId }
-    })
+    set((state) => recordFinalResult(state, id, finalResult))
     return { ok: true }
   },
 
@@ -316,7 +319,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   retryRound: (id) =>
     set((state) => ({
       items: state.items.map((item) =>
-        item.id === id ? { ...item, submissions: [], revealed: false } : item,
+        item.id === id
+          ? // Clear the recorded result too: "start a new round" on an item that
+            // was already finalized must reopen it, otherwise applyRemoteEstimate's
+            // `finalResult === null` guard would silently drop every new submission.
+            { ...item, submissions: [], revealed: false, finalResult: null }
+          : item,
       ),
     })),
 
