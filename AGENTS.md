@@ -21,8 +21,13 @@ Work is tracked on the **EstiMate Roadmap** GitHub Project (https://github.com/u
 - **Epics** — issues carrying the `epic` label, titled `Epic-NNNN: …` (4-digit ordinal). Their priority order is the **ascending alphanumeric sort of the title** — `Epic-0010` outranks `Epic-0020`. The `NNNN` prefix is the only source of truth for epic order. Re-prioritise by renaming (renumber with gaps — 0010, 0020, 0030 — so an epic can be slotted between two others). Epic cards are hidden from the `Kanban` view (filter `-label:epic`); the `Epics` view lists them, sorted by title.
 - **Stories** — each epic's **sub-issues**, drag-ordered within that epic's sub-issue list. That list is the *only* source of truth for story order; a story's own card position on the board is cosmetic.
 
-**Next task = the first open sub-issue of the first open epic (by title sort).** Always read
-the story's body before starting.
+**Next task = the first open sub-issue of the first open epic (by title sort).**
+
+When asked to start the next sub-issue, **fetch it and stop**: summarise the issue body,
+flag ambiguities, superseding design handoffs, and scope questions, then wait for an
+explicit go-ahead. Do not move to a plan, todo list, branch, or edits until then. Once
+planning starts, the [Collaboration workflow](#collaboration-workflow-github) applies
+(branch per issue, PR with `Closes #n`, review passes, ask before merge).
 
 ```sh
 # first open epic, by title order
