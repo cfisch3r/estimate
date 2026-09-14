@@ -5,9 +5,10 @@
 behaviour — the Decision section below is written in the present tense for readability, but
 `SessionSnapshot` has no `roster` and no `round`, `submitEstimate` is still an untargeted
 broadcast, `participantId` is still minted per join, and connection state is still a single
-aggregate. #50 → #51 → #9 deliver it, in that order.
+aggregate. Delivered by #50 → {#60, #51} → #61 → #62 → #9, in that order (#60 and #51 are
+both unblocked once #50 lands; #61 needs #50 and benefits from #51's round tagging).
 **Date:** 2026-09-14 (drafted 2026-09-12)
-**Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop", issues #9, #47, #50, #51
+**Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop", issues #9, #47, #50, #51, #60, #61, #62, #63
 
 ## Context
 
@@ -230,7 +231,15 @@ dated update, not here.
   not worsen the gap but does promote it from cosmetic to affecting connection state.
 
 **Follow-ups**
-- Sequence #50 (element 4) before #51 and #9 so the identity prerequisite lands first
+- #50 — stable client identity. Land first; everything else depends on it.
+- #60 — single owner: facilitator-authoritative rounds, the values-free roster, pull-on-connect.
+- #51 — versioned rounds.
+- #61 — addressed, acknowledged submissions with the kind-driven retry policy.
+- #62 — role-asymmetric connection state.
+- #9 — connection-fallback UX for a participant who never reaches the facilitator at join;
+  rescoped to depend on #62.
+- #63 — pre-reveal estimate-value leak; resolved structurally by #60, filed separately as a
+  product-integrity issue in case #60 slips.
 - Revisit ADR-001's TURN position if connection-loss telemetry justifies it
 - Consider moving `announce` into the snapshot, after which participant↔participant links
   carry nothing at all
