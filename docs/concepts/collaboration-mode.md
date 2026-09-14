@@ -273,16 +273,40 @@ connects." Two things go wrong in practice:
    their traffic through one middleman server instead of directly to each other.
    This app doesn't run one, so those participants can never connect at all —
    Manual mode is the only fallback for them today.
-2. **A 5-second grace period, then a hard close.** Even after a direct path is
-   found, ordinary life breaks it — closing a laptop lid, a Wi-Fi ↔ cellular
-   handoff, a brief router hiccup. The browser notices the path is gone and waits
-   5 seconds hoping it comes back on its own; if it doesn't, it tears the
-   connection down permanently — Trystero has no automatic retry after that. Until
-   #47, our own code didn't even notice this had happened (it reported
+2. **A 5-second grace period, then a hard close — but not a permanent one.**
+   Even after a direct path is found, ordinary life breaks it: closing a laptop
+   lid, a Wi-Fi ↔ cellular handoff, a brief router hiccup. The browser notices the
+   path is gone and waits 5 seconds hoping it returns; if it doesn't, the
+   connection is destroyed. There is **no ICE restart** — the damaged connection
+   is never repaired in place.
+
+   It is, however, rebuilt. Every peer re-announces itself to the signaling relays
+   every ~5.3 seconds for as long as it is in the room
+   (`announceIntervalMs = 5333` in `@trystero-p2p/core`), and a peer that hears an
+   announcement from someone it is not currently connected to builds a fresh
+   connection. **A dropped link therefore re-establishes itself, unprompted,
+   typically within 5–10 seconds** — provided both sides can still reach the
+   relays and their networks still permit a direct path (see point 1).
+
+   Two peers re-announcing can both try to initiate the same connection at once.
+   That collision is a known WebRTC problem ("glare") and Trystero implements the
+   standard perfect-negotiation resolution — the offering side ignores the
+   incoming offer, the answering side rolls its own back — with a further guard
+   that destroys the loser if two connections somehow both complete. No action is
+   needed from application code.
+
+   Until #47 our own code did not notice the drop at all (it reported
    `connecting`, not `disconnected`), so there was no prompt and no way back in.
-   That detection gap is what #47 fixed; the reconnect click above is the manual
-   recovery for it. TURN and an automatic retry-with-backoff are follow-ups, not
-   done here.
+   That detection gap is what #47 fixed, and the Reconnect click above is a manual
+   override — a full room rejoin, not a per-link repair.
+
+   **Consequence worth weighing before doing more network work:** because the
+   transport self-heals, a session that stays broken after a blip is usually not a
+   connection problem. It is a *state* problem — the peer missed the one-shot
+   `reveal` / `roundReset` while away and its view never caught up. That is what
+   [ADR-003](../adr/003-session-reliability-model.md) addresses, and it is the more
+   likely cure for reported "connection loss" than anything in this section. A
+   TURN relay (point 1) remains the fix for peers who cannot connect *at all*.
 
 ## Store additions
 
