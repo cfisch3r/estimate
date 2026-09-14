@@ -5,10 +5,14 @@
 behaviour — the Decision section below is written in the present tense for readability, but
 `SessionSnapshot` has no `roster` and no `round`, `submitEstimate` is still an untargeted
 broadcast, `participantId` is still minted per join, and connection state is still a single
-aggregate. Delivered by #50 → {#60, #51} → #61 → #62 → #9, in that order (#60 and #51 are
-both unblocked once #50 lands; #61 needs #50 and benefits from #51's round tagging).
+aggregate.
 **Date:** 2026-09-14 (drafted 2026-09-12)
-**Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop", issues #9, #47, #50, #51, #60, #61, #62, #63
+**Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop"
+
+> For the current implementation plan and sequencing — which issues carry which element of
+> this decision, in what order, and what's blocked on what — see the Epic-0010 sub-issue list
+> on the project board, not this document. That ordering changes as work happens; this
+> decision shouldn't need editing when it does.
 
 ## Context
 
@@ -27,14 +31,14 @@ implicitly by the implementation, and the implicit answer is "nobody":
 - `connectionStatus` is a single aggregate over *all* peers, so it cannot express "I lost the
   one link that matters."
 
-Four open issues are downstream symptoms of that one unmade decision:
+Symptoms already observed, all downstream of that one unmade decision:
 
-| Issue | Symptom | Root cause |
-|---|---|---|
-| #47 | Mid-session drop went undetected; no way back in | Aggregate-only connection state (partially fixed) |
-| #50 | Rejoin double-counts in the finalized aggregate; roster never prunes | Per-join identity, no `peerId ↔ participantId` map |
-| #51 | Estimate from a pre-Retry round re-injected into the new round | Round has no identity; transitions are one-shot |
-| #9 | No coherent fallback story for a failed/lost connection | No definition of what reconnect restores |
+| Symptom | Root cause |
+|---|---|
+| A mid-session drop went undetected, with no way back in (partially fixed since) | Aggregate-only connection state |
+| A rejoin double-counts in the finalized aggregate; the roster never prunes a departure | Per-join identity, no `peerId ↔ participantId` map |
+| An estimate from a pre-Retry round gets re-injected into the new round | Round has no identity; transitions are one-shot |
+| No coherent fallback story for a failed or lost connection | No definition of what reconnect restores |
 
 Three further defects surfaced while drafting this ADR, all from the same root:
 
@@ -64,9 +68,9 @@ We use only untargeted `makeAction(...).send`.
 projection, never an authoritative copy. Reconnect is defined as "re-obtain the facilitator's
 current snapshot and discard local round state that disagrees with it."**
 
-Five elements, referred to by name throughout the codebase and follow-up issues:
+Five elements, referred to by name throughout the codebase:
 
-### 1. Single owner
+### Single owner
 
 The facilitator's `items[]` is the source of truth for submissions, reveal state, and
 finalization. A participant's `liveRound` is a projection of the facilitator's snapshot plus
@@ -106,7 +110,7 @@ This replaces the existing peer-join re-broadcast in `NetworkProvider`. It is a 
 connect, **not** polling: a participant that asks repeatedly would put the facilitator back in
 the position of serving N clients on a timer.
 
-### 2. Versioned rounds
+### Versioned rounds
 
 Each item carries a `round: number`, bumped by `retryRound` and included in `SessionSnapshot`.
 Participants reset round-local state whenever `(itemId, round)` changes. State converges from
@@ -115,7 +119,7 @@ any snapshot with no dependence on having received a one-shot event, which allow
 they belong to, so a retry landing after a Retry is rejected as stale rather than recorded into
 the new round.
 
-### 3. Acknowledged submissions
+### Acknowledged submissions
 
 `submitEstimate` becomes a targeted request to the facilitator
 (`request(data, {target: facilitatorPeerId, timeoutMs: 1000})`) rather than a broadcast.
@@ -136,7 +140,7 @@ Total retry budget stays under Trystero's 5-second ICE teardown, so a retry sequ
 outlive the link it is retrying on. A dead link rejects immediately rather than waiting out the
 timeout, so this costs nothing in the common failure case.
 
-Correctness does not rest on the ack. The roster from element 1 is the convergence mechanism:
+Correctness does not rest on the ack. The roster from Single owner is the convergence mechanism:
 on every snapshot a participant checks whether it appears as `submitted` and re-sends if not.
 This specifically recovers the case where the estimate arrived but the acknowledgement was lost
 on the return path — a false "not delivered" that would otherwise tell the user to act when
@@ -146,24 +150,25 @@ The participant's waiting view gains a delivery sub-state (*sending* / *submitte
 delivered*). When the facilitator link is down, that banner owns the explanation and the
 delivery state defers to it rather than stacking a second alarm.
 
-### 4. Stable client identity
+### Stable client identity
 
 `participantId` is persisted per browser (`localStorage`) and reused across joins. The
 facilitator maintains a `peerId ↔ participantId` map from inbound `announce`, pruned on
 `onPeerLeave`, so a rejoin replaces its predecessor rather than duplicating, and a departure
 prunes the roster.
 
-**This element must land before element 3's retry.** A retry is a duplicate by design, and
-duplicates are harmless only because `upsertByParticipant` keys on `participantId`. With
-per-join ids, a retry after a reconnect creates a second roster row and double-counts in the
-finalized aggregate — #50, newly triggerable by our own retry logic.
+**Stable identity must land before acknowledged submissions' retry.** A retry is a duplicate
+by design, and duplicates are harmless only because `upsertByParticipant` keys on
+`participantId`. With per-join ids, a retry after a reconnect creates a second roster row and
+double-counts in the finalized aggregate — the exact symptom this element exists to fix,
+newly triggerable by our own retry logic if built first.
 
-### 5. Role-asymmetric link state
+### Role-asymmetric link state
 
 The two roles need different things, so `connectionStatus` stops being one aggregate:
 
 - **Participant** — a single binary: is the link to the facilitator up? Loss of a
-  participant↔participant link is recorded but never surfaced; under element 1 those links
+  participant↔participant link is recorded but never surfaced; under Single owner those links
   carry only `announce`, which the facilitator's snapshot can repair. There is an explicit
   *unknown* window at join, until the first facilitator `announce` arrives over a live link —
   a participant must not be told it is in the session before then.
@@ -183,12 +188,13 @@ dated update, not here.
 
 ## Rationale
 
-- **The issues collapse into one change.** Fixing them individually means local patches to a
+- **The symptoms collapse into one change.** Fixing them individually means local patches to a
   model that keeps regenerating the same class of bug. Versioned facilitator-owned snapshots
-  make #50, #51, and most of #9 structural non-problems rather than handled cases.
+  make double-counted rejoins, stale-round re-injection, and most of the fallback-UX question
+  structural non-problems rather than handled cases.
 - **Convergent state beats event replay.** Trystero has no history replay, so any design that
   depends on receiving a specific message at a specific moment is wrong under reconnection by
-  construction. #51's own analysis reaches this conclusion independently.
+  construction. Independent analysis of the stale-round symptom reaches this conclusion too.
 - **An authoritative owner already exists in the product.** The facilitator reveals, retries,
   and finalizes. Making that explicit in the data model matches the domain rather than imposing
   structure on it.
@@ -231,28 +237,24 @@ dated update, not here.
   not worsen the gap but does promote it from cosmetic to affecting connection state.
 
 **Follow-ups**
-- #50 — stable client identity. Land first; everything else depends on it.
-- #60 — single owner: facilitator-authoritative rounds, the values-free roster, pull-on-connect.
-- #51 — versioned rounds.
-- #61 — addressed, acknowledged submissions with the kind-driven retry policy.
-- #62 — role-asymmetric connection state.
-- #9 — connection-fallback UX for a participant who never reaches the facilitator at join;
-  rescoped to depend on #62.
-- #63 — pre-reveal estimate-value leak; resolved structurally by #60, filed separately as a
-  product-integrity issue in case #60 slips.
+- Stable client identity has to land before any element that retries or resends, since a
+  retry is only safe once a duplicate is distinguishable from a new person
 - Revisit ADR-001's TURN position if connection-loss telemetry justifies it
 - Consider moving `announce` into the snapshot, after which participant↔participant links
   carry nothing at all
+- The pre-reveal estimate-value leak is resolved structurally by the single-owner element;
+  if that slips, it's a product-integrity issue worth its own narrow fix in the meantime
+  (recording only a submitter's id, not their values, until the full model lands)
 
 ## Alternatives considered (summary)
 
 | Option | Rejected because |
 |---|---|
-| Keep fire-and-forget mesh; fix #47/#50/#51/#9 individually | Cheapest per issue, but each fix is local to a symptom; the underlying "no owner" model keeps producing new ones |
-| Add acks and retry to submissions, leave state ownership diffuse | Fixes silent loss only; leaves #50 and #51 needing their own mechanisms and leaves reconnect undefined |
+| Keep fire-and-forget mesh; patch each symptom individually | Cheapest per symptom, but each fix is local; the underlying "no owner" model keeps producing new ones |
+| Add acks and retry to submissions, leave state ownership diffuse | Fixes silent loss only; double-counted rejoins and stale-round re-injection each still need their own mechanism, and reconnect stays undefined |
 | Full CRDT / operation-log replication between peers | Correct under arbitrary partition, but far beyond a handful of peers doing one round at a time; large complexity cost for a session that already has a natural owner |
 | Elect a new authoritative peer when the facilitator drops | Solves the single-point-of-failure trade-off above, but requires consensus among peers with no server; disproportionate for MVP session sizes and lifetimes |
 | Retry submissions for the life of the round | Rests on a false premise: a closed data channel rejects instantly with `disconnected` rather than absorbing retries, so the extra attempts can only ever target failures they cannot fix |
 | Roster only, no acknowledgement | Roster absence carries no cause and no timing, so the kind-driven retry and escalation policy cannot be built on it |
 | Acknowledgement only, no roster | Cannot recover a lost return receipt: the facilitator holds the estimate while the participant is told it failed |
-| Surface every degraded link to every peer | Tells a participant about links they cannot act on and which, under element 1, no longer affect correctness |
+| Surface every degraded link to every peer | Tells a participant about links they cannot act on and which, under Single owner, no longer affect correctness |
