@@ -417,7 +417,7 @@ export function ParticipantEstimateView() {
   const liveRound = useSessionStore((s) => s.liveRound)
   const submitEstimate = useSessionStore((s) => s.submitEstimate)
   const leave = useLeaveLiveSession()
-  const { sendEstimate } = useNetworkSession()
+  const { sendEstimate, connect } = useNetworkSession()
 
   const lostConnection = connectionStatus === 'disconnected'
 
@@ -480,8 +480,16 @@ export function ParticipantEstimateView() {
 
       {lostConnection && (
         <GuardNote variant="banner" headline="Session connection lost">
-          You&apos;ve been disconnected from the session. Ask the facilitator for a fresh
-          code, or leave and rejoin.
+          <p style={{ margin: '0 0 var(--space-2)' }}>
+            You&apos;ve been disconnected from the session.
+          </p>
+          <Button
+            variant="primary"
+            onClick={() => sessionId && connect(sessionId)}
+            disabled={!sessionId}
+          >
+            Reconnect
+          </Button>
         </GuardNote>
       )}
 

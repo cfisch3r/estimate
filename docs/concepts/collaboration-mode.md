@@ -201,14 +201,88 @@ stateDiagram-v2
   [*] --> idle
   idle --> connecting : connect(code)
   connecting --> connected : first peer joins
-  connected --> connecting : last peer leaves
+  connected --> connecting : last peer leaves, never connected before
+  connected --> disconnected : last peer leaves, had connected before (#47)
   connecting --> disconnected : onJoinError (relay unreachable)
-  disconnected --> connecting : Retry
+  disconnected --> connecting : Reconnect / Retry
 ```
 
-`disconnected` drives the Join screen's plain-language failure banner + guidance
-(retry / VPN / facilitator switches to Manual) per PRD §4.1 step 8. The full
-connection-fallback UX is #9.
+`disconnected` drives the plain-language failure banner + a **Reconnect** button, on
+both the Join screen (initial-join failure) and mid-session (Workspace strip for the
+facilitator, banner for the participant, #47). "Reconnect" just calls `connect(code)`
+again — it tears down the old room and re-joins with the same session id.
+
+### Why connections drop (#47)
+
+No backend means every peer's browser must find a working network path straight to
+every other peer's browser — hard, because most browsers sit behind a router doing
+**NAT** (Network Address Translation), which hides their real address from the
+internet. Establishing and then policing that path is what causes almost every
+"connection loss" report:
+
+```mermaid
+flowchart TD
+  subgraph facnet["🏠 &nbsp; FACILITATOR'S NETWORK"]
+    FB["Facilitator's browser"]
+    FNAT["Router (NAT)"]
+  end
+  subgraph signal["📡 &nbsp; SIGNALING (Nostr relays)"]
+    direction LR
+    Sig["Relay: swaps each side's<br/>candidate addresses only —<br/>never session data"]
+  end
+  subgraph parnet["🏠 &nbsp; PARTICIPANT'S NETWORK"]
+    PNAT["Router (NAT)"]
+    PB["Participant's browser"]
+  end
+  Stun["STUN server<br/>[public, free]<br/>'here's what your address<br/>looks like from outside'"]
+  Turn["TURN relay<br/>[not configured — MVP gap]<br/>fallback: relay traffic when<br/>no direct path exists"]
+
+  FB -->|"1 ask my public address"| Stun
+  PB -->|"1 ask my public address"| Stun
+  FB <-.->|"2 exchange addresses<br/>(offer/answer)"| Sig
+  PB <-.->|"2 exchange addresses<br/>(offer/answer)"| Sig
+  FB ==>|"3 direct path, if NAT allows it"| FNAT
+  FNAT ==>|"3"| PNAT
+  PNAT ==>|"3"| PB
+  FB -.->|"3b if direct fails: relay<br/>everything through TURN"| Turn
+  Turn -.-> PB
+
+  classDef net fill:#DDD6FE,stroke:#7C3AED,color:#2E1065
+  classDef sig fill:#99F6E4,stroke:#0D9488,color:#042F2A
+  classDef ext fill:#FFEDD5,stroke:#EA580C,color:#3F1D0B,stroke-dasharray:5 4
+  classDef gap fill:#FEE2E2,stroke:#DC2626,color:#450A0A,stroke-dasharray:5 4
+
+  class FB,FNAT,PNAT,PB net
+  class Sig sig
+  class Stun ext
+  class Turn gap
+
+  style facnet fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
+  style signal fill:#F0FDFA,stroke:#0D9488,stroke-width:2px
+  style parnet fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
+```
+
+Steps 1–3 above are what the browsers call **ICE** (Interactive Connectivity
+Establishment) — "try every address we know about until one pair actually
+connects." Two things go wrong in practice:
+
+1. **No TURN server (step 3b).** STUN only helps discover an address; it doesn't
+   help two browsers *reach* each other when their NAT is a stricter kind (common
+   on corporate networks, mobile carriers, some public Wi-Fi — often called
+   "symmetric NAT"). The real fix for that case is a TURN relay: both sides send
+   their traffic through one middleman server instead of directly to each other.
+   This app doesn't run one, so those participants can never connect at all —
+   Manual mode is the only fallback for them today.
+2. **A 5-second grace period, then a hard close.** Even after a direct path is
+   found, ordinary life breaks it — closing a laptop lid, a Wi-Fi ↔ cellular
+   handoff, a brief router hiccup. The browser notices the path is gone and waits
+   5 seconds hoping it comes back on its own; if it doesn't, it tears the
+   connection down permanently — Trystero has no automatic retry after that. Until
+   #47, our own code didn't even notice this had happened (it reported
+   `connecting`, not `disconnected`), so there was no prompt and no way back in.
+   That detection gap is what #47 fixed; the reconnect click above is the manual
+   recovery for it. TURN and an automatic retry-with-backoff are follow-ups, not
+   done here.
 
 ## Store additions
 
@@ -241,8 +315,20 @@ trimmed before it reaches the store). The UI only ever sees validated `Estimate`
 
 ## Known MVP gaps (accepted)
 
-- No TURN server — participants behind symmetric NAT can't connect; Manual mode is the
-  fallback.
+> Most of the connection/state gaps below are resolved by design in
+> [ADR-003](../adr/003-session-reliability-model.md) (facilitator-authoritative rounds,
+> versioned rounds, a values-free submission roster, acknowledged submissions, stable client
+> identity, role-asymmetric link state). They remain listed here as the *current* behaviour
+> until #50 → #51 → #9 land. Two further defects found while drafting that ADR are not yet
+> listed as issues: participants hold every peer's estimate *values* pre-reveal (the UI just
+> doesn't render them), and `connectionStatus` flips to `connected` on the first peer of any
+> kind, so a participant can be routed out of the join screen having never reached the
+> facilitator.
+
+- No TURN server — participants behind symmetric NAT can't connect at all; Manual mode is
+  the fallback. Mid-session drops for everyone else are now detected and manually
+  recoverable via Reconnect (#47), but frequency isn't reduced without TURN + an
+  automatic retry-with-backoff (see "Why connections drop" above) — both are follow-ups.
 - Facilitator disconnect mid-session stalls the session (no facilitator re-election).
 - Mode is fixed at creation — no mid-session switch.
 - Estimation unit is broadcast and re-broadcast on change (#39), but a mid-round change

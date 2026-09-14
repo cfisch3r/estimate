@@ -20,6 +20,10 @@ export interface ConnectionTracker {
 export function createConnectionTracker(): ConnectionTracker {
   const peerIds: string[] = []
   let status: ConnectionStatus = 'connecting'
+  // Once we've had at least one peer, losing them all is a connection *loss*
+  // ('disconnected'), not the initial pre-join wait ('connecting') — the two
+  // need different UI (silent lobby spinner vs. a reconnect prompt).
+  let hasConnectedOnce = false
 
   const stateChangeListeners = new Set<(state: ConnectionState) => void>()
   const peerJoinListeners = new Set<(peerId: string) => void>()
@@ -39,6 +43,7 @@ export function createConnectionTracker(): ConnectionTracker {
       if (peerIds.includes(peerId)) return
       peerIds.push(peerId)
       status = 'connected'
+      hasConnectedOnce = true
       notifyStateChange()
       for (const listener of peerJoinListeners) listener(peerId)
     },
@@ -46,7 +51,8 @@ export function createConnectionTracker(): ConnectionTracker {
     handlePeerLeave(peerId) {
       const index = peerIds.indexOf(peerId)
       if (index !== -1) peerIds.splice(index, 1)
-      status = peerIds.length > 0 ? 'connected' : 'connecting'
+      status =
+        peerIds.length > 0 ? 'connected' : hasConnectedOnce ? 'disconnected' : 'connecting'
       notifyStateChange()
       for (const listener of peerLeaveListeners) listener(peerId)
     },
