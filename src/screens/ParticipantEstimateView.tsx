@@ -28,6 +28,7 @@ import { useSessionStore } from '../state/store'
 import { useNetworkSession } from '../network'
 import type { LiveRound } from '../state/types'
 import { useLeaveLiveSession } from './useLeaveLiveSession'
+import { useConnectionPhase, type ConnectionPhase } from './useConnectionPhase'
 
 type SubmitResult = { ok: true } | { ok: false; error: string }
 
@@ -228,7 +229,9 @@ function EstimatingPanel({
     <Card elevation="sm">
       <CardKicker>Session {sessionId}</CardKicker>
       <CardTitle>{round.item.title}</CardTitle>
-      {round.item.description && <CardBody>{round.item.description}</CardBody>}
+      {round.item.description && (
+        <CardBody className="card-body--authored">{round.item.description}</CardBody>
+      )}
       <EstimateForm
         unit={unit}
         initial={null}
@@ -256,7 +259,9 @@ function WaitingPanel({
     <Card elevation="sm">
       <CardKicker>Session {sessionId}</CardKicker>
       <CardTitle>{round.item.title}</CardTitle>
-      {round.item.description && <CardBody>{round.item.description}</CardBody>}
+      {round.item.description && (
+        <CardBody className="card-body--authored">{round.item.description}</CardBody>
+      )}
 
       {editing ? (
         <EstimateForm
@@ -330,7 +335,9 @@ function RevealedPanel({
     <Card elevation="sm">
       <CardKicker>Session {sessionId}</CardKicker>
       <CardTitle>{round.item.title}</CardTitle>
-      {round.item.description && <CardBody>{round.item.description}</CardBody>}
+      {round.item.description && (
+        <CardBody className="card-body--authored">{round.item.description}</CardBody>
+      )}
 
       {aggregate ? (
         <RangeBar
@@ -388,9 +395,23 @@ interface LobbyProps {
   sessionId: string | null
   myName: string
   connectionStatus: string
+  connectionPhase: ConnectionPhase
 }
 
-function Lobby({ sessionId, myName, connectionStatus }: LobbyProps) {
+function Lobby({ sessionId, myName, connectionStatus, connectionPhase }: LobbyProps) {
+  // While the connection is down, the spinner or banner below owns the
+  // explanation — the card must not also claim to be "Establishing the peer
+  // connection", which reads as a first join that never happened.
+  if (connectionPhase !== 'ok') {
+    return (
+      <Card elevation="sm">
+        <CardKicker>Session {sessionId}</CardKicker>
+        <CardTitle>Session interrupted</CardTitle>
+        <CardBody>You were in the session; the connection dropped.</CardBody>
+      </Card>
+    )
+  }
+
   return (
     <Card elevation="sm">
       <CardKicker>Session {sessionId}</CardKicker>
@@ -410,6 +431,7 @@ export function ParticipantEstimateView() {
   const sessionId = useSessionStore((s) => s.sessionId)
   const myName = useSessionStore((s) => s.myName)
   const connectionStatus = useSessionStore((s) => s.connectionStatus)
+  const hasEverConnected = useSessionStore((s) => s.hasEverConnected)
   const unit = useSessionStore((s) => s.unit)
   const peerCount = useSessionStore((s) => s.peerCount)
   const participantId = useSessionStore((s) => s.participantId)
@@ -417,9 +439,12 @@ export function ParticipantEstimateView() {
   const liveRound = useSessionStore((s) => s.liveRound)
   const submitEstimate = useSessionStore((s) => s.submitEstimate)
   const leave = useLeaveLiveSession()
-  const { sendEstimate } = useNetworkSession()
-
-  const lostConnection = connectionStatus === 'disconnected'
+  const { sendEstimate, connect } = useNetworkSession()
+  // Down = we reached the session at some point and now hold no peers. Derived
+  // from the store rather than the tracker's status because `connect()` builds a
+  // fresh tracker: keying off status alone would clear the alarm the instant
+  // Reconnect is pressed, hiding a rejoin that never succeeds.
+  const connectionPhase = useConnectionPhase(hasEverConnected && peerCount === 0)
 
   function handleSubmit(best: number, likely: number, worst: number): SubmitResult {
     const result = submitEstimate(best, likely, worst)
@@ -433,7 +458,12 @@ export function ParticipantEstimateView() {
   let panel
   if (!liveRound) {
     panel = (
-      <Lobby sessionId={sessionId} myName={myName} connectionStatus={connectionStatus} />
+      <Lobby
+        sessionId={sessionId}
+        myName={myName}
+        connectionStatus={connectionStatus}
+        connectionPhase={connectionPhase}
+      />
     )
   } else if (liveRound.revealed) {
     panel = (
@@ -478,10 +508,32 @@ export function ParticipantEstimateView() {
     >
       {panel}
 
-      {lostConnection && (
+      {/* A dropped link usually rebuilds itself within seconds, so the first
+       *  stage stays quiet and offers no action — there is nothing useful to do
+       *  yet. Only once that window passes is this a problem worth raising. */}
+      {connectionPhase === 'reconnecting' && (
+        <div
+          className="card-meta"
+          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+        >
+          <CircleNotchIcon size={16} weight="bold" className="spin" />
+          Reconnecting…
+        </div>
+      )}
+
+      {connectionPhase === 'lost' && (
         <GuardNote variant="banner" headline="Session connection lost">
-          You&apos;ve been disconnected from the session. Ask the facilitator for a fresh
-          code, or leave and rejoin.
+          <p style={{ margin: '0 0 var(--space-2)' }}>
+            You&apos;ve been disconnected and the session hasn&apos;t come back on its
+            own.
+          </p>
+          <Button
+            variant="primary"
+            onClick={() => sessionId && connect(sessionId)}
+            disabled={!sessionId}
+          >
+            Reconnect
+          </Button>
         </GuardNote>
       )}
 

@@ -2,7 +2,9 @@ import { createContext } from 'react'
 import type { Estimate } from '../calc'
 
 export interface NetworkSessionApi {
-  /** Join the Trystero room for `sessionId` and mirror its connection state into the store. */
+  /** Join the Trystero room for `sessionId` and mirror its connection state into the store.
+   *  Safe to call again mid-session to re-join after a connection loss — it tears down
+   *  the old room first, so it doubles as `reconnect`. */
   connect: (sessionId: string) => void
   /** Leave the current room (if any) and reset the store's connection fields. */
   disconnect: () => void

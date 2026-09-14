@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ParticipantEstimateView } from './ParticipantEstimateView'
+import { RECONNECT_GRACE_MS } from './useConnectionPhase'
 import { createEstimate, type Estimate } from '../calc'
 import { useSessionStore } from '../state/store'
 
@@ -44,6 +45,7 @@ beforeEach(() => {
     myName: 'Sam',
     participantId: 'me-123',
     connectionStatus: 'connected',
+    hasEverConnected: true,
     peerCount: 1,
     liveRound: null,
     participantNames: {},
@@ -58,12 +60,62 @@ describe('ParticipantEstimateView', () => {
     expect(screen.getByText('Session K7F9Q2')).toBeInTheDocument()
   })
 
-  it('surfaces a banner when the connection is lost', () => {
-    useSessionStore.setState({ connectionStatus: 'disconnected' })
+  // Trystero rebuilds a dropped link on its own within ~5-10s, so a fresh drop
+  // must not raise the alarm — only one that outlives the grace window.
+  it('stays quiet on a fresh drop, offering no reconnect action yet', () => {
+    useSessionStore.setState({ peerCount: 0 })
     render(<ParticipantEstimateView />)
 
-    expect(screen.getByText('Session connection lost')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Leave session' })).toBeInTheDocument()
+    expect(screen.getByText('Reconnecting…')).toBeInTheDocument()
+    expect(screen.queryByText('Session connection lost')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reconnect' })).not.toBeInTheDocument()
+  })
+
+  it('surfaces the banner once the drop outlives the self-healing window', () => {
+    vi.useFakeTimers()
+    try {
+      useSessionStore.setState({ peerCount: 0 })
+      render(<ParticipantEstimateView />)
+
+      act(() => {
+        vi.advanceTimersByTime(RECONNECT_GRACE_MS)
+      })
+
+      expect(screen.getByText('Session connection lost')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Reconnect' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Leave session' })).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  // Regression: `connect()` builds a fresh connection tracker, so a reconnect
+  // resets connectionStatus to 'connecting'. Keying the alarm off status alone
+  // made the banner vanish the moment Reconnect was pressed, leaving a failed
+  // rejoin looking like a healthy session that silently swallows estimates.
+  it('keeps warning when a manual reconnect fails to find anyone', () => {
+    vi.useFakeTimers()
+    try {
+      useSessionStore.setState({ peerCount: 0 })
+      render(<ParticipantEstimateView />)
+      act(() => {
+        vi.advanceTimersByTime(RECONNECT_GRACE_MS)
+      })
+      expect(screen.getByText('Session connection lost')).toBeInTheDocument()
+
+      // Reconnect pressed: the tracker restarts at 'connecting' with no peers.
+      act(() => {
+        useSessionStore.setState({ connectionStatus: 'connecting', peerCount: 0 })
+      })
+      act(() => {
+        vi.advanceTimersByTime(RECONNECT_GRACE_MS)
+      })
+
+      expect(screen.getByText('Session connection lost')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Reconnect' })).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('leaves the session and returns to mode selection', async () => {

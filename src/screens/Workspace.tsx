@@ -500,13 +500,20 @@ interface LiveSessionStripProps {
   sessionId: string
   connectionStatus: LiveConnectionStatus
   peerCount: number
+  onReconnect: () => void
 }
 
 function LiveSessionStrip({
   sessionId,
   connectionStatus,
   peerCount,
+  onReconnect,
 }: LiveSessionStripProps) {
+  // Zero peers is NOT a connection loss for a facilitator: a participant closing
+  // their tab at the end of a session is indistinguishable, at this layer, from a
+  // link breaking, and "Disconnected" on a healthy empty room is the worse error.
+  // Only a join failure (`disconnected`, from onJoinError) is a real fault here.
+  // Telling the two apart needs the per-participant link state in ADR-003.
   const statusTag =
     connectionStatus === 'connected'
       ? {
@@ -542,6 +549,11 @@ function LiveSessionStrip({
         <CopyIcon size={16} />
       </Button>
       <span style={{ flex: 1 }} />
+      {connectionStatus === 'disconnected' && (
+        <Button variant="ghost" onClick={onReconnect}>
+          Reconnect
+        </Button>
+      )}
       <Tag variant={statusTag.variant}>{statusTag.label}</Tag>
     </div>
   )
@@ -573,7 +585,7 @@ export function Workspace() {
   const revealRound = useSessionStore((s) => s.revealRound)
   const retryRound = useSessionStore((s) => s.retryRound)
   const goToScreen = useSessionStore((s) => s.goToScreen)
-  const { sendReveal, sendRoundReset } = useNetworkSession()
+  const { sendReveal, sendRoundReset, connect } = useNetworkSession()
 
   const isLiveFacilitator = mode === 'live' && role === 'facilitator'
 
@@ -607,6 +619,7 @@ export function Workspace() {
           sessionId={sessionId}
           connectionStatus={connectionStatus}
           peerCount={peerCount}
+          onReconnect={() => connect(sessionId)}
         />
       )}
 

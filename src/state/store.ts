@@ -32,6 +32,10 @@ interface SessionStore {
   /** Stable per-join id for this participant, used as the submission key. */
   participantId: string
   connectionStatus: LiveConnectionStatus
+  /** Whether this client has reached at least one peer since joining the current
+   *  session. Distinguishes "still trying to get in" from "was in, lost it" —
+   *  the tracker can't, because it is rebuilt from scratch on every reconnect. */
+  hasEverConnected: boolean
   peerCount: number
   /** Participant-only view of the facilitator's current round; null otherwise. */
   liveRound: LiveRound | null
@@ -137,6 +141,7 @@ const LIVE_SESSION_DEFAULTS = {
   myName: '',
   participantId: '',
   connectionStatus: 'idle',
+  hasEverConnected: false,
   peerCount: 0,
   liveRound: null,
   participantNames: {},
@@ -152,6 +157,7 @@ const LIVE_SESSION_DEFAULTS = {
   | 'myName'
   | 'participantId'
   | 'connectionStatus'
+  | 'hasEverConnected'
   | 'peerCount'
   | 'liveRound'
   | 'participantNames'
@@ -235,6 +241,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       myName: 'Facilitator',
       participantNames: { facilitator: 'Facilitator' },
       connectionStatus: 'connecting',
+      hasEverConnected: false,
       peerCount: 0,
       currentScreen: 'workspace',
       activeItemId: firstPendingItemId(items),
@@ -254,6 +261,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       participantId,
       participantNames: { [participantId]: trimmedName },
       connectionStatus: 'connecting',
+      hasEverConnected: false,
       peerCount: 0,
       liveRound: null,
       currentScreen: 'join',
@@ -264,7 +272,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   setMode: (mode) => set({ mode }),
 
-  setConnectionStatus: (status) => set({ connectionStatus: status }),
+  setConnectionStatus: (status) =>
+    set((state) => ({
+      connectionStatus: status,
+      hasEverConnected: state.hasEverConnected || status === 'connected',
+    })),
 
   setPeerCount: (count) => set({ peerCount: count }),
 
