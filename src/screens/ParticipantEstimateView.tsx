@@ -28,6 +28,7 @@ import { useSessionStore } from '../state/store'
 import { useNetworkSession } from '../network'
 import type { LiveRound } from '../state/types'
 import { useLeaveLiveSession } from './useLeaveLiveSession'
+import { useConnectionPhase } from './useConnectionPhase'
 
 type SubmitResult = { ok: true } | { ok: false; error: string }
 
@@ -418,8 +419,7 @@ export function ParticipantEstimateView() {
   const submitEstimate = useSessionStore((s) => s.submitEstimate)
   const leave = useLeaveLiveSession()
   const { sendEstimate, connect } = useNetworkSession()
-
-  const lostConnection = connectionStatus === 'disconnected'
+  const connectionPhase = useConnectionPhase(connectionStatus)
 
   function handleSubmit(best: number, likely: number, worst: number): SubmitResult {
     const result = submitEstimate(best, likely, worst)
@@ -478,10 +478,24 @@ export function ParticipantEstimateView() {
     >
       {panel}
 
-      {lostConnection && (
+      {/* A dropped link usually rebuilds itself within seconds, so the first
+       *  stage stays quiet and offers no action — there is nothing useful to do
+       *  yet. Only once that window passes is this a problem worth raising. */}
+      {connectionPhase === 'reconnecting' && (
+        <div
+          className="card-meta"
+          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+        >
+          <CircleNotchIcon size={16} weight="bold" className="spin" />
+          Reconnecting…
+        </div>
+      )}
+
+      {connectionPhase === 'lost' && (
         <GuardNote variant="banner" headline="Session connection lost">
           <p style={{ margin: '0 0 var(--space-2)' }}>
-            You&apos;ve been disconnected from the session.
+            You&apos;ve been disconnected and the session hasn&apos;t come back on its
+            own.
           </p>
           <Button
             variant="primary"

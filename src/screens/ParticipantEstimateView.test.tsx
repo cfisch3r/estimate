@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ParticipantEstimateView } from './ParticipantEstimateView'
+import { RECONNECT_GRACE_MS } from './useConnectionPhase'
 import { createEstimate, type Estimate } from '../calc'
 import { useSessionStore } from '../state/store'
 
@@ -58,12 +59,33 @@ describe('ParticipantEstimateView', () => {
     expect(screen.getByText('Session K7F9Q2')).toBeInTheDocument()
   })
 
-  it('surfaces a banner when the connection is lost', () => {
+  // Trystero rebuilds a dropped link on its own within ~5-10s, so a fresh drop
+  // must not raise the alarm — only one that outlives the grace window.
+  it('stays quiet on a fresh drop, offering no reconnect action yet', () => {
     useSessionStore.setState({ connectionStatus: 'disconnected' })
     render(<ParticipantEstimateView />)
 
-    expect(screen.getByText('Session connection lost')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Leave session' })).toBeInTheDocument()
+    expect(screen.getByText('Reconnecting…')).toBeInTheDocument()
+    expect(screen.queryByText('Session connection lost')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Reconnect' })).not.toBeInTheDocument()
+  })
+
+  it('surfaces the banner once the drop outlives the self-healing window', () => {
+    vi.useFakeTimers()
+    try {
+      useSessionStore.setState({ connectionStatus: 'disconnected' })
+      render(<ParticipantEstimateView />)
+
+      act(() => {
+        vi.advanceTimersByTime(RECONNECT_GRACE_MS)
+      })
+
+      expect(screen.getByText('Session connection lost')).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Reconnect' })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Leave session' })).toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('leaves the session and returns to mode selection', async () => {
