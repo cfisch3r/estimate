@@ -81,6 +81,25 @@ participants until the facilitator reveals.
 
 Roster broadcasts coalesce within a tick, so a burst of submissions produces one message.
 
+**How a snapshot is obtained: broadcast on change, pulled on arrival.** The facilitator
+broadcasts a fresh snapshot whenever session state changes — that part is a genuine message to
+everyone and stays. But a peer that has just connected or reconnected **requests** the snapshot
+itself, using the same request/response action as a submission, rather than relying on the
+facilitator's peer-join handler to push one.
+
+The reason is where responsibility sits. A returning participant is the party that knows it was
+away; the facilitator only infers it from a peer-join event. Making recovery depend on the other
+side observing your return leaves a participant with a stale view and no way to prompt a fix if
+that event is missed or arrives while the facilitator's tab is busy. A pull also inherits the
+same typed failures and bounded retry as a submission (one recovery pattern, not two), serves a
+first-time join identically, gives a participant a cheap way to confirm its own submission
+landed, and costs one targeted message per arrival instead of a full-room broadcast per arrival
+— which matters when several peers return together after a blip.
+
+This replaces the existing peer-join re-broadcast in `NetworkProvider`. It is a single fetch on
+connect, **not** polling: a participant that asks repeatedly would put the facilitator back in
+the position of serving N clients on a timer.
+
 ### 2. Versioned rounds
 
 Each item carries a `round: number`, bumped by `retryRound` and included in `SessionSnapshot`.
