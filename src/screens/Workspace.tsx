@@ -17,7 +17,6 @@ import {
   Tag,
 } from '../components'
 import { SessionSidebar } from './SessionSidebar'
-import { useConnectionPhase, type ConnectionPhase } from './useConnectionPhase'
 import { useSessionStore, type FinalizeResult } from '../state/store'
 import { useNetworkSession } from '../network'
 import {
@@ -500,7 +499,6 @@ function LiveFacilitatorPanel({
 interface LiveSessionStripProps {
   sessionId: string
   connectionStatus: LiveConnectionStatus
-  connectionPhase: ConnectionPhase
   peerCount: number
   onReconnect: () => void
 }
@@ -508,24 +506,23 @@ interface LiveSessionStripProps {
 function LiveSessionStrip({
   sessionId,
   connectionStatus,
-  connectionPhase,
   peerCount,
   onReconnect,
 }: LiveSessionStripProps) {
-  // A dropped link normally rebuilds itself in seconds, so a fresh drop reads as
-  // "Reconnecting…" with no action offered; only a drop that outlives that window
-  // is worth calling Disconnected and offering a manual rejoin for.
+  // Zero peers is NOT a connection loss for a facilitator: a participant closing
+  // their tab at the end of a session is indistinguishable, at this layer, from a
+  // link breaking, and "Disconnected" on a healthy empty room is the worse error.
+  // Only a join failure (`disconnected`, from onJoinError) is a real fault here.
+  // Telling the two apart needs the per-participant link state in ADR-003.
   const statusTag =
-    connectionPhase === 'reconnecting'
-      ? { variant: 'neutral' as const, label: 'Reconnecting…' }
-      : connectionPhase === 'lost'
+    connectionStatus === 'connected'
+      ? {
+          variant: 'accent' as const,
+          label: `${peerCount} participant${peerCount === 1 ? '' : 's'} connected`,
+        }
+      : connectionStatus === 'disconnected'
         ? { variant: 'outline' as const, label: 'Disconnected' }
-        : connectionStatus === 'connected'
-          ? {
-              variant: 'accent' as const,
-              label: `${peerCount} participant${peerCount === 1 ? '' : 's'} connected`,
-            }
-          : { variant: 'neutral' as const, label: 'Waiting for participants…' }
+        : { variant: 'neutral' as const, label: 'Waiting for participants…' }
 
   return (
     <div
@@ -552,7 +549,7 @@ function LiveSessionStrip({
         <CopyIcon size={16} />
       </Button>
       <span style={{ flex: 1 }} />
-      {connectionPhase === 'lost' && (
+      {connectionStatus === 'disconnected' && (
         <Button variant="ghost" onClick={onReconnect}>
           Reconnect
         </Button>
@@ -589,7 +586,6 @@ export function Workspace() {
   const retryRound = useSessionStore((s) => s.retryRound)
   const goToScreen = useSessionStore((s) => s.goToScreen)
   const { sendReveal, sendRoundReset, connect } = useNetworkSession()
-  const connectionPhase = useConnectionPhase(connectionStatus)
 
   const isLiveFacilitator = mode === 'live' && role === 'facilitator'
 
@@ -622,7 +618,6 @@ export function Workspace() {
         <LiveSessionStrip
           sessionId={sessionId}
           connectionStatus={connectionStatus}
-          connectionPhase={connectionPhase}
           peerCount={peerCount}
           onReconnect={() => connect(sessionId)}
         />

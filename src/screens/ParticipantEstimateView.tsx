@@ -28,7 +28,7 @@ import { useSessionStore } from '../state/store'
 import { useNetworkSession } from '../network'
 import type { LiveRound } from '../state/types'
 import { useLeaveLiveSession } from './useLeaveLiveSession'
-import { useConnectionPhase } from './useConnectionPhase'
+import { useConnectionPhase, type ConnectionPhase } from './useConnectionPhase'
 
 type SubmitResult = { ok: true } | { ok: false; error: string }
 
@@ -229,7 +229,9 @@ function EstimatingPanel({
     <Card elevation="sm">
       <CardKicker>Session {sessionId}</CardKicker>
       <CardTitle>{round.item.title}</CardTitle>
-      {round.item.description && <CardBody>{round.item.description}</CardBody>}
+      {round.item.description && (
+        <CardBody className="card-body--authored">{round.item.description}</CardBody>
+      )}
       <EstimateForm
         unit={unit}
         initial={null}
@@ -257,7 +259,9 @@ function WaitingPanel({
     <Card elevation="sm">
       <CardKicker>Session {sessionId}</CardKicker>
       <CardTitle>{round.item.title}</CardTitle>
-      {round.item.description && <CardBody>{round.item.description}</CardBody>}
+      {round.item.description && (
+        <CardBody className="card-body--authored">{round.item.description}</CardBody>
+      )}
 
       {editing ? (
         <EstimateForm
@@ -331,7 +335,9 @@ function RevealedPanel({
     <Card elevation="sm">
       <CardKicker>Session {sessionId}</CardKicker>
       <CardTitle>{round.item.title}</CardTitle>
-      {round.item.description && <CardBody>{round.item.description}</CardBody>}
+      {round.item.description && (
+        <CardBody className="card-body--authored">{round.item.description}</CardBody>
+      )}
 
       {aggregate ? (
         <RangeBar
@@ -389,9 +395,23 @@ interface LobbyProps {
   sessionId: string | null
   myName: string
   connectionStatus: string
+  connectionPhase: ConnectionPhase
 }
 
-function Lobby({ sessionId, myName, connectionStatus }: LobbyProps) {
+function Lobby({ sessionId, myName, connectionStatus, connectionPhase }: LobbyProps) {
+  // While the connection is down, the spinner or banner below owns the
+  // explanation — the card must not also claim to be "Establishing the peer
+  // connection", which reads as a first join that never happened.
+  if (connectionPhase !== 'ok') {
+    return (
+      <Card elevation="sm">
+        <CardKicker>Session {sessionId}</CardKicker>
+        <CardTitle>Session interrupted</CardTitle>
+        <CardBody>You were in the session; the connection dropped.</CardBody>
+      </Card>
+    )
+  }
+
   return (
     <Card elevation="sm">
       <CardKicker>Session {sessionId}</CardKicker>
@@ -411,6 +431,7 @@ export function ParticipantEstimateView() {
   const sessionId = useSessionStore((s) => s.sessionId)
   const myName = useSessionStore((s) => s.myName)
   const connectionStatus = useSessionStore((s) => s.connectionStatus)
+  const hasEverConnected = useSessionStore((s) => s.hasEverConnected)
   const unit = useSessionStore((s) => s.unit)
   const peerCount = useSessionStore((s) => s.peerCount)
   const participantId = useSessionStore((s) => s.participantId)
@@ -419,7 +440,11 @@ export function ParticipantEstimateView() {
   const submitEstimate = useSessionStore((s) => s.submitEstimate)
   const leave = useLeaveLiveSession()
   const { sendEstimate, connect } = useNetworkSession()
-  const connectionPhase = useConnectionPhase(connectionStatus)
+  // Down = we reached the session at some point and now hold no peers. Derived
+  // from the store rather than the tracker's status because `connect()` builds a
+  // fresh tracker: keying off status alone would clear the alarm the instant
+  // Reconnect is pressed, hiding a rejoin that never succeeds.
+  const connectionPhase = useConnectionPhase(hasEverConnected && peerCount === 0)
 
   function handleSubmit(best: number, likely: number, worst: number): SubmitResult {
     const result = submitEstimate(best, likely, worst)
@@ -433,7 +458,12 @@ export function ParticipantEstimateView() {
   let panel
   if (!liveRound) {
     panel = (
-      <Lobby sessionId={sessionId} myName={myName} connectionStatus={connectionStatus} />
+      <Lobby
+        sessionId={sessionId}
+        myName={myName}
+        connectionStatus={connectionStatus}
+        connectionPhase={connectionPhase}
+      />
     )
   } else if (liveRound.revealed) {
     panel = (

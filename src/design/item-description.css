@@ -1,0 +1,8 @@
+/* App-specific override for the one .card-body that renders facilitator-authored
+   text (an item's description) rather than our own copy. Nocturne's .card-body is
+   written for short editorial strings and collapses newlines; a description the
+   facilitator typed across several lines must keep them (#49). Kept out of
+   nocturne.css so that file stays a verbatim, unmodified port. */
+.card-body--authored {
+  white-space: pre-wrap;
+}

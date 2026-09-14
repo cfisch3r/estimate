@@ -28,6 +28,7 @@ flowchart TD
     JS["JoinSession<br/>[React Component]"]
     PEV["ParticipantEstimateView<br/>[React Component]"]
     WS["Workspace<br/>[React Component]"]
+    UCP["useConnectionPhase<br/>[React Hook]"]
   end
 
   subgraph statelane["🗄️ &nbsp; STATE LANE"]
@@ -77,6 +78,7 @@ flowchart TD
   NP -.->|"applySyncState / applyRemoteEstimate / applyReveal / applyRoundReset / applyParticipantName"| Store
   NP -.->|"reads items/activeItem (facilitator syncState); reads own name/id (announce)"| Store
   Store -.->|"state (read)"| screens
+  PEV -->|"hasEverConnected && peerCount === 0"| UCP
 
   %% --- lane + node colours ---
   classDef ui     fill:#DDD6FE,stroke:#7C3AED,color:#2E1065
@@ -86,7 +88,7 @@ flowchart TD
   classDef pure   fill:#E2E8F0,stroke:#64748B,color:#0F172A
   classDef ext    fill:#FFEDD5,stroke:#EA580C,color:#3F1D0B,stroke-dasharray:5 4
 
-  class MS,JS,PEV,WS ui
+  class MS,JS,PEV,WS,UCP ui
   class Store state
   class NP,Hook br
   class JSN,Act,Conn,Code pcore
@@ -108,12 +110,13 @@ flowchart TD
 | **JoinSession** | React Component | Collects session code + participant name (name required — no anonymous peers). Calls `joinLiveSession()` then `connect()`. Renders connecting / connected / disconnected states from `store.connectionStatus`, including the failure banner + Retry. |
 | **ParticipantEstimateView** | React Component | The participant's whole round (#7), driven by `store.liveRound`: a lobby before the facilitator picks an item, then the Best/Likely/Worst form with live bias guards (5c), a waiting state showing the submitted values with a revise affordance (5d), and a revealed state with the aggregated range bar + per-participant list (5e). No finalize/retry — those are facilitator-only. Submitting calls `store.submitEstimate()` then broadcasts the validated estimate via `useNetworkSession().sendEstimate`. |
 | **Workspace** | React Component | The single working screen for both modes: session-name / unit / item-list sidebar plus the active item's estimate panel (or an empty state). In Live mode additionally renders the session-code strip (with copy button), the "N participants connected" count, and a connection-status `Tag`. For a **facilitator** in Live mode the manual B/L/W inputs are replaced by the reveal panel: state 1c lists each participant as `Submitted` / `Waiting` and gates a **Reveal estimates** button on `submissions.length >= 1`; state 1d shows the aggregated range bar + per-participant values with **Finalize item** (`finalizeLiveItem`) and **Retry — start new round** (`retryRound` + `sendRoundReset`). Reveal calls `revealRound` + `sendReveal`. |
+| **useConnectionPhase** | React Hook | Turns "is the connection down" into what the user is told, holding a drop at `reconnecting` for `RECONNECT_GRACE_MS` (15s) before escalating to `lost`, because Trystero normally rebuilds a dropped link within 5–10s. Takes a boolean, not a status: what counts as down differs by role (a participant that has lost the session vs. a facilitator merely waiting for arrivals). |
 | **useSessionStore** | Zustand Store | Single source of truth for session state: `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `peerCount`, items, current screen. **Participant** clients hold `liveRound` (the facilitator's current item + received submissions + revealed flag + own submission), updated by `applySyncState` / `applyRemoteEstimate` / `applyReveal` / `applyRoundReset` / `submitEstimate`; `applySyncState` additionally adopts `snapshot.unit` into `store.unit`. **Facilitator** clients instead accumulate each round on the `Item` itself — `applyRemoteEstimate(itemId, estimate)` upserts inbound submissions onto `items[activeItemId].submissions` only when `itemId` is the active item and it is not yet `revealed` or finalized (so a straggler for a just-finalized item can't seed the next round), `revealRound` / `retryRound` flip `items[].revealed` (`retryRound` also clears that item's `submissions`), and `finalizeLiveItem` aggregates `items[].submissions` into `finalResult`. On a participant, `applySyncState` takes `revealed` and — once revealed — the frozen `submissions` list straight from the snapshot, so a peer that joins or reconnects mid-reveal lands on the populated revealed view. Type-only import of `SessionSnapshot` from `src/network/actions`; no runtime `src/network` import. |
 | **NetworkProvider** | React Context Provider | Wraps `<App>`. Owns the one `NetworkSession` instance for the app's lifetime and exposes it via `useNetworkSession`; tears it down on unmount. On `connect` it also dispatches inbound `onEstimate` / `onSyncState` / `onReveal` / `onRoundReset` / `onAnnounce` into the store, and (facilitator only) subscribes to the store to broadcast a `syncState` whenever the active item, estimation unit, or finalized set changes. It also broadcasts the local client's own `announce` on connect and re-announces on every peer join, and applies inbound announces via `applyParticipantName`. The `NetworkSessionApi` it provides adds `sendReveal(itemId)` / `sendRoundReset(itemId)` alongside `sendEstimate`. |
 | **useNetworkSession** | React Hook | The only code that touches both the store and the P2P core. `connect(sessionId)` calls `joinSession()` and subscribes to its events; `disconnect()` calls `leave()`; `sendEstimate(itemId, estimate)` forwards a participant's submission (tagged with the item it's for) to the room; `sendReveal(itemId)` / `sendRoundReset(itemId)` broadcast the facilitator's reveal / new-round signals. Mirrors `onConnectionStateChange` and peer join/leave into the store. (The participant name is put in the store by `joinLiveSession()` before `connect()` runs.) |
 | **joinSession** | Factory Function | Entry point of the P2P core (from PR #25). Opens the Trystero room (`roomId = sessionId`), wires up the connection tracker and typed actions, returns a `NetworkSession` of `send*` / `on*` methods. |
 | **typed actions** | Module | Defines the five wire actions (`submitEstimate`, `syncState`, `reveal`, `roundReset`, `announce`), serialises outbound messages, and validates every inbound message (through `calc` for estimates; shape checks for the rest — `reveal` and `roundReset` payloads must be strings) before surfacing it. `submitEstimate` is an `{ itemId, estimate }` envelope so a straggler submission for a finished item can be dropped rather than mis-recorded; `syncState` carries `unit`, `revealed`, and — once `revealed` — the frozen `submissions` set (participants can't tally it from `onEstimate` after the reveal, so the snapshot is the only source for a late joiner). `announce` carries a `participantId -> display name` pair, kept off the pure `Estimate` type. |
-| **connection tracker** | Module | State machine over peer join/leave and join errors → `idle` / `connecting` / `connected` / `disconnected` plus the peer list; notifies subscribers on change. |
+| **connection tracker** | Module | State machine over peer join/leave and join errors → `connecting` / `connected` / `disconnected` plus the peer list; notifies subscribers on change. (`idle` is store-only — the "not in a live session" default in `LiveConnectionStatus`; the tracker starts at `connecting`.) |
 | **generateSessionCode** | Function | Returns a 6-char Crockford-base32 code (crypto RNG, ambiguous characters removed), used as both the shareable code and the Trystero room id. |
 | **calc** | Pure Module | Existing framework-free math (`createEstimate`, `aggregateEstimates`, `computeCI90`, guards). Used here only to validate inbound peer estimates. |
 | **trystero/nostr** | Library (external) | Third-party. Establishes the WebRTC peer mesh and uses Nostr relays for signalling only — no session data is stored on any relay. |
@@ -201,16 +204,42 @@ stateDiagram-v2
   [*] --> idle
   idle --> connecting : connect(code)
   connecting --> connected : first peer joins
-  connected --> connecting : last peer leaves, never connected before
-  connected --> disconnected : last peer leaves, had connected before (#47)
+  connected --> connecting : last peer leaves
   connecting --> disconnected : onJoinError (relay unreachable)
-  disconnected --> connecting : Reconnect / Retry
+  disconnected --> connecting : Retry
 ```
 
-`disconnected` drives the plain-language failure banner + a **Reconnect** button, on
-both the Join screen (initial-join failure) and mid-session (Workspace strip for the
-facilitator, banner for the participant, #47). "Reconnect" just calls `connect(code)`
-again — it tears down the old room and re-joins with the same session id.
+`disconnected` means **the join itself failed** (`onJoinError`) — nothing else produces
+it. It drives the Join screen's plain-language failure banner, and the facilitator
+strip's `Disconnected` tag + **Reconnect**, which calls `connect(code)` again: a full
+room rejoin, not a per-link repair.
+
+Peers dropping to zero is deliberately *not* a status of its own. At this layer a
+participant who closed their tab is indistinguishable from a link that broke, so
+treating an empty room as a fault would mislabel a facilitator's healthy end-of-session
+as "Disconnected". Telling the two apart needs the per-participant link state in
+[ADR-003](../adr/003-session-reliability-model.md).
+
+### What the participant is told (`useConnectionPhase`)
+
+Connection *status* is not what the participant sees. `src/screens/useConnectionPhase.ts`
+maps a boolean "is it down" — for a participant, `store.hasEverConnected && peerCount === 0`
+— through a grace period, because a dropped link normally rebuilds itself (see below):
+
+```mermaid
+stateDiagram-v2
+  [*] --> ok
+  ok --> reconnecting : reached the session, now holds no peers
+  reconnecting --> ok : a peer returns (the usual outcome)
+  reconnecting --> lost : still none after RECONNECT_GRACE_MS (15s)
+  lost --> ok : a peer returns
+```
+
+`reconnecting` renders a quiet spinner with **no action** — there is nothing useful to
+do while the transport is already retrying. Only `lost` raises the banner and offers
+Reconnect. `store.hasEverConnected` (not the tracker's status) is the input because
+`connect()` builds a fresh tracker: keying off status would clear the alarm the instant
+Reconnect is pressed, hiding a rejoin that never succeeds.
 
 ### Why connections drop (#47)
 
@@ -218,49 +247,54 @@ No backend means every peer's browser must find a working network path straight 
 every other peer's browser — hard, because most browsers sit behind a router doing
 **NAT** (Network Address Translation), which hides their real address from the
 internet. Establishing and then policing that path is what causes almost every
-"connection loss" report:
+"connection loss" report.
+
+Lanes are the two private networks; everything outside them is third-party
+infrastructure (dashed). Lines: **solid** = a request we make, **dotted** = an
+asynchronous exchange, **thick** = the direct peer path we actually want.
 
 ```mermaid
 flowchart TD
   subgraph facnet["🏠 &nbsp; FACILITATOR'S NETWORK"]
-    FB["Facilitator's browser"]
-    FNAT["Router (NAT)"]
-  end
-  subgraph signal["📡 &nbsp; SIGNALING (Nostr relays)"]
-    direction LR
-    Sig["Relay: swaps each side's<br/>candidate addresses only —<br/>never session data"]
+    FB["Facilitator's browser<br/>[WebRTC peer]"]
+    FNAT["Home/office router<br/>[NAT]"]
   end
   subgraph parnet["🏠 &nbsp; PARTICIPANT'S NETWORK"]
-    PNAT["Router (NAT)"]
-    PB["Participant's browser"]
+    PNAT["Home/office router<br/>[NAT]"]
+    PB["Participant's browser<br/>[WebRTC peer]"]
   end
-  Stun["STUN server<br/>[public, free]<br/>'here's what your address<br/>looks like from outside'"]
-  Turn["TURN relay<br/>[not configured — MVP gap]<br/>fallback: relay traffic when<br/>no direct path exists"]
+
+  Sig["Nostr relay<br/>[Public signalling relay]"]
+  Stun["STUN server<br/>[Public, free]"]
+  Turn["TURN relay<br/>[Not configured — MVP gap]"]
 
   FB -->|"1 ask my public address"| Stun
   PB -->|"1 ask my public address"| Stun
-  FB <-.->|"2 exchange addresses<br/>(offer/answer)"| Sig
-  PB <-.->|"2 exchange addresses<br/>(offer/answer)"| Sig
+  FB <-.->|"2 exchange addresses (offer/answer)"| Sig
+  PB <-.->|"2 exchange addresses (offer/answer)"| Sig
   FB ==>|"3 direct path, if NAT allows it"| FNAT
-  FNAT ==>|"3"| PNAT
-  PNAT ==>|"3"| PB
-  FB -.->|"3b if direct fails: relay<br/>everything through TURN"| Turn
+  FNAT ==> PNAT
+  PNAT ==> PB
+  FB -.->|"3b if direct fails"| Turn
   Turn -.-> PB
 
   classDef net fill:#DDD6FE,stroke:#7C3AED,color:#2E1065
-  classDef sig fill:#99F6E4,stroke:#0D9488,color:#042F2A
   classDef ext fill:#FFEDD5,stroke:#EA580C,color:#3F1D0B,stroke-dasharray:5 4
   classDef gap fill:#FEE2E2,stroke:#DC2626,color:#450A0A,stroke-dasharray:5 4
 
   class FB,FNAT,PNAT,PB net
-  class Sig sig
-  class Stun ext
+  class Sig,Stun ext
   class Turn gap
 
   style facnet fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
-  style signal fill:#F0FDFA,stroke:#0D9488,stroke-width:2px
   style parnet fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
 ```
+
+| Box | Role |
+|---|---|
+| **Nostr relay** | Carries each side's candidate addresses to the other so they can find each other. Signalling only — no session data ever passes through it. |
+| **STUN server** | Answers "what does my address look like from outside this router?" Discovery only; it does not carry traffic. |
+| **TURN relay** | Would carry the traffic itself when no direct path can be found. Not configured — this is the MVP gap. |
 
 Steps 1–3 above are what the browsers call **ICE** (Interactive Connectivity
 Establishment) — "try every address we know about until one pair actually
@@ -350,9 +384,11 @@ trimmed before it reaches the store). The UI only ever sees validated `Estimate`
 > facilitator.
 
 - No TURN server — participants behind symmetric NAT can't connect at all; Manual mode is
-  the fallback. Mid-session drops for everyone else are now detected and manually
-  recoverable via Reconnect (#47), but frequency isn't reduced without TURN + an
-  automatic retry-with-backoff (see "Why connections drop" above) — both are follow-ups.
+  the fallback, and TURN is the only remaining lever on drop *frequency*. An automatic
+  retry in our own code is **not** a follow-up: Trystero already rebuilds dropped links
+  every ~5.3s (see "Why connections drop" above), and `useConnectionPhase` relies on
+  exactly that. The remaining gap after a drop is state recovery, not reconnection —
+  see [ADR-003](../adr/003-session-reliability-model.md).
 - Facilitator disconnect mid-session stalls the session (no facilitator re-election).
 - Mode is fixed at creation — no mid-session switch.
 - Estimation unit is broadcast and re-broadcast on change (#39), but a mid-round change

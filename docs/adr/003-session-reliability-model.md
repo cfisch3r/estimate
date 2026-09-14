@@ -1,6 +1,11 @@
 # ADR-003: Facilitator-Authoritative Session State and the Reconnect Model
 
 **Status:** Accepted
+**Implementation:** **none of this is built.** This records a decision, not shipped
+behaviour — the Decision section below is written in the present tense for readability, but
+`SessionSnapshot` has no `roster` and no `round`, `submitEstimate` is still an untargeted
+broadcast, `participantId` is still minted per join, and connection state is still a single
+aggregate. #50 → #51 → #9 deliver it, in that order.
 **Date:** 2026-09-14 (drafted 2026-09-12)
 **Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop", issues #9, #47, #50, #51
 

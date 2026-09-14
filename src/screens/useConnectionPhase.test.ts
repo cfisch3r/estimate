@@ -7,26 +7,21 @@ afterEach(() => {
 })
 
 describe('useConnectionPhase', () => {
-  it('reports ok while connected', () => {
-    const { result } = renderHook(() => useConnectionPhase('connected'))
+  it('reports ok while the connection is up', () => {
+    const { result } = renderHook(() => useConnectionPhase(false))
     expect(result.current).toBe('ok')
   })
 
-  it('reports ok while still connecting — a first join is not a loss', () => {
-    const { result } = renderHook(() => useConnectionPhase('connecting'))
-    expect(result.current).toBe('ok')
-  })
-
-  it('holds a fresh disconnect at reconnecting', () => {
+  it('holds a fresh drop at reconnecting', () => {
     vi.useFakeTimers()
-    const { result } = renderHook(() => useConnectionPhase('disconnected'))
+    const { result } = renderHook(() => useConnectionPhase(true))
 
     expect(result.current).toBe('reconnecting')
   })
 
   it('escalates to lost once the self-healing window has passed', () => {
     vi.useFakeTimers()
-    const { result } = renderHook(() => useConnectionPhase('disconnected'))
+    const { result } = renderHook(() => useConnectionPhase(true))
 
     act(() => {
       vi.advanceTimersByTime(RECONNECT_GRACE_MS)
@@ -38,11 +33,11 @@ describe('useConnectionPhase', () => {
   it('never escalates when the link heals inside the window', () => {
     vi.useFakeTimers()
     const { result, rerender } = renderHook(({ s }) => useConnectionPhase(s), {
-      initialProps: { s: 'disconnected' as const },
+      initialProps: { s: true },
     })
     expect(result.current).toBe('reconnecting')
 
-    rerender({ s: 'connected' as unknown as 'disconnected' })
+    rerender({ s: false })
     act(() => {
       vi.advanceTimersByTime(RECONNECT_GRACE_MS * 2)
     })
@@ -53,15 +48,15 @@ describe('useConnectionPhase', () => {
   it('restarts the window on a second drop rather than escalating immediately', () => {
     vi.useFakeTimers()
     const { result, rerender } = renderHook(({ s }) => useConnectionPhase(s), {
-      initialProps: { s: 'disconnected' as 'disconnected' | 'connected' },
+      initialProps: { s: true },
     })
     act(() => {
       vi.advanceTimersByTime(RECONNECT_GRACE_MS)
     })
     expect(result.current).toBe('lost')
 
-    rerender({ s: 'connected' })
-    rerender({ s: 'disconnected' })
+    rerender({ s: false })
+    rerender({ s: true })
 
     expect(result.current).toBe('reconnecting')
   })
