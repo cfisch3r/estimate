@@ -87,6 +87,11 @@ export function JoinSession() {
         </Field>
       </Card>
 
+      <GuardNote>
+        Joining from another tab in this browser will be treated as the same person —
+        don&rsquo;t estimate from two tabs at once.
+      </GuardNote>
+
       {connecting && (
         <div
           className="card-meta"

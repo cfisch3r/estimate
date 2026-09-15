@@ -1,11 +1,13 @@
 # ADR-003: Facilitator-Authoritative Session State and the Reconnect Model
 
 **Status:** Accepted
-**Implementation:** **none of this is built.** This records a decision, not shipped
-behaviour — the Decision section below is written in the present tense for readability, but
-`SessionSnapshot` has no `roster` and no `round`, `submitEstimate` is still an untargeted
-broadcast, `participantId` is still minted per join, and connection state is still a single
-aggregate.
+**Implementation:** **mostly not built yet.** This records a decision, not shipped
+behaviour — the Decision section below is written in the present tense for readability.
+Stable client identity has landed (#50): `participantId` is a per-browser id persisted via
+`getOrCreateParticipantId()`, and a `peerId ↔ participantId` map lets the facilitator prune
+`participantNames` on `onPeerLeave`. Everything else is still unbuilt: `SessionSnapshot` has
+no `roster` and no `round`, `submitEstimate` is still an untargeted broadcast, and connection
+state is still a single aggregate.
 **Date:** 2026-09-14 (drafted 2026-09-12)
 **Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop"
 

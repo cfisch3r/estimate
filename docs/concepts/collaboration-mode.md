@@ -350,13 +350,13 @@ connects." Two things go wrong in practice:
 | `role: 'facilitator' \| 'participant'` | defaults to `facilitator`; Join flips it to `participant` |
 | `sessionId: string \| null` | the shared 6-char code = Trystero room id |
 | `myName: string` | participant display name (named, never anonymous) |
-| `participantId: string` | stable per-join id (`crypto.randomUUID()`), the submission key |
+| `participantId: string` | stable per-browser id (`getOrCreateParticipantId()`, persisted in `localStorage`), the submission key — survives a drop/rejoin so a reconnect isn't double-counted (#50) |
 | `connectionStatus` | `idle \| connecting \| connected \| disconnected` |
 | `peerCount: number` | connected peers, for the facilitator strip |
 | `liveRound: LiveRound \| null` | participant-only: current item + received `submissions` + `revealed` flag + own `mySubmission`; written by `applySyncState` / `applyRemoteEstimate` / `applyReveal` / `applyRoundReset` / `submitEstimate` |
 | `Item.submissions: Estimate[]` | facilitator-only: submissions received for the current round on that item, upserted by `applyRemoteEstimate`, cleared by `retryRound` (#8). Always empty in single-user mode. |
 | `Item.revealed: boolean` | facilitator-only: whether the round on that item is revealed (Workspace 1c → 1d). Set by `revealRound`, cleared by `retryRound` (#8). |
-| `participantNames: Record<string, string>` | `participantId -> display name` for every announced client (own entry seeded on join / start; peers filled in by `applyParticipantName` from inbound `announce`). Lets the participant reveal list and the facilitator's 1c/1d roster show real names instead of "Teammate N". Reset on leave. |
+| `participantNames: Record<string, string>` | `participantId -> display name` for every announced client (own entry seeded on join / start; peers filled in by `applyParticipantName` from inbound `announce`). Lets the participant reveal list and the facilitator's 1c/1d roster show real names instead of "Teammate N". Reset on leave; on the facilitator, `NetworkProvider` also prunes a departed participant's entry via `removeParticipant` when its `peerId` (mapped from `announce`) reports `onPeerLeave` — unless another live connection still backs that `participantId` (two tabs), or the participant already has a submission this round (its name stays with the recorded estimate per ADR-003). |
 | `unit` (participant) | on every `applySyncState` the participant's `store.unit` is overwritten with the facilitator's `snapshot.unit`, so its estimate form and bars label values in the session's unit (#39) |
 
 ## Trust boundary
@@ -376,9 +376,10 @@ trimmed before it reaches the store). The UI only ever sees validated `Estimate`
 > Most of the connection/state gaps below are resolved by design in
 > [ADR-003](../adr/003-session-reliability-model.md) (facilitator-authoritative rounds,
 > versioned rounds, a values-free submission roster, acknowledged submissions, stable client
-> identity, role-asymmetric link state). They remain listed here as the *current* behaviour
-> until #50 → #51 → #9 land. Two further defects found while drafting that ADR are not yet
-> listed as issues: participants hold every peer's estimate *values* pre-reveal (the UI just
+> identity, role-asymmetric link state). Stable client identity landed in #50; the rest
+> remain listed here as the *current* behaviour until #51 → #9 land. Two further defects
+> found while drafting that ADR are not yet listed as issues: participants hold every
+> peer's estimate *values* pre-reveal (the UI just
 > doesn't render them), and `connectionStatus` flips to `connected` on the first peer of any
 > kind, so a participant can be routed out of the join screen having never reached the
 > facilitator.
@@ -409,12 +410,9 @@ trimmed before it reaches the store). The UI only ever sees validated `Estimate`
   or rename under someone else's id. Trystero encryption keeps outsiders out; there's no
   defence against a malicious participant inside the room. Inbound names are shape-checked
   and length-capped (`MAX_ANNOUNCE_NAME_LENGTH`), not authenticated.
-- `participantId` is minted fresh on every `joinLiveSession` (it's a per-join id, not a
-  per-person one) and Trystero peer-leave events carry a `peerId`, not a `participantId`,
-  so the facilitator's 1c/1d roster never prunes a departed participant and a
-  drop-then-rejoin is counted twice in `item.submissions` (and thus in the finalized
-  aggregate). A stable client id + a `peerId ↔ participantId` map (pruned on peer-leave)
-  is follow-up work — see #9's connection-fallback scope.
+- `participantId` is a stable per-browser id, not a per-device or per-person one (#50): two
+  tabs open in the same browser share it, so the join screen warns against estimating from
+  both at once rather than trying to detect or prevent it.
 - After a reveal, every peer join re-broadcasts the whole frozen `submissions` set to all
   peers (the action layer has no per-peer send), so a join/reconnect storm in a revealed
   round is O(N²) small JSON payloads. Fine at real estimation-session sizes; targeted

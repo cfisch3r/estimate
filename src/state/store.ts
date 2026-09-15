@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { AggregateResult, EstimationUnit, Estimate } from '../calc'
 import { createEstimate, aggregateEstimates } from '../calc'
 import type { SessionSnapshot } from '../network/actions'
+import { getOrCreateParticipantId } from './participantIdentity'
 import type {
   Item,
   LiveConnectionStatus,
@@ -29,7 +30,8 @@ interface SessionStore {
   role: SessionRole
   sessionId: string | null
   myName: string
-  /** Stable per-join id for this participant, used as the submission key. */
+  /** Stable per-browser id for this participant (persisted in `localStorage`, reused
+   *  across joins/reconnects), used as the submission key. */
   participantId: string
   connectionStatus: LiveConnectionStatus
   /** Whether this client has reached at least one peer since joining the current
@@ -89,6 +91,8 @@ interface SessionStore {
   applyRoundReset: (itemId: string) => void
   /** Record a peer's (or own) `participantId -> display name` mapping. */
   applyParticipantName: (participantId: string, name: string) => void
+  /** Facilitator: forget a departed peer's display name once its connection drops. */
+  removeParticipant: (participantId: string) => void
   /** Participant: validate and record this client's own estimate for the round. */
   submitEstimate: (best: number, likely: number, worst: number) => SubmitEstimateResult
 }
@@ -252,7 +256,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     const code = sessionCode.trim().toUpperCase()
     const trimmedName = name.trim()
     if (code.length === 0 || trimmedName.length === 0) return
-    const participantId = crypto.randomUUID()
+    const participantId = getOrCreateParticipantId()
     set({
       mode: 'live',
       role: 'participant',
@@ -445,6 +449,12 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
     set((state) => ({
       participantNames: { ...state.participantNames, [participantId]: name },
     })),
+
+  removeParticipant: (participantId) =>
+    set((state) => {
+      const { [participantId]: _removed, ...rest } = state.participantNames
+      return { participantNames: rest }
+    }),
 
   submitEstimate: (best, likely, worst) => {
     const { liveRound, participantId } = get()

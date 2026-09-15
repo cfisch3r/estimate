@@ -4,6 +4,7 @@ import { useSessionStore } from './store'
 import type { Item } from './types'
 
 function resetStore() {
+  localStorage.clear()
   useSessionStore.setState({
     currentScreen: 'mode-select',
     sessionName: '',
@@ -224,6 +225,16 @@ describe('joinLiveSession', () => {
       currentScreen: 'join',
     })
   })
+
+  it('reuses the same participantId across a drop and rejoin in the same browser', () => {
+    useSessionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
+    const firstId = useSessionStore.getState().participantId
+
+    useSessionStore.getState().leaveLiveSession()
+    useSessionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
+
+    expect(useSessionStore.getState().participantId).toBe(firstId)
+  })
 })
 
 describe('leaveLiveSession', () => {
@@ -286,6 +297,25 @@ describe('applyParticipantName', () => {
       a: 'Ada L.',
       b: 'Bo',
     })
+  })
+})
+
+describe('removeParticipant', () => {
+  it('deletes only the named entry', () => {
+    useSessionStore.getState().applyParticipantName('a', 'Ada')
+    useSessionStore.getState().applyParticipantName('b', 'Bo')
+
+    useSessionStore.getState().removeParticipant('a')
+
+    expect(useSessionStore.getState().participantNames).toEqual({ b: 'Bo' })
+  })
+
+  it('is a no-op for an id that was never announced', () => {
+    useSessionStore.getState().applyParticipantName('a', 'Ada')
+
+    useSessionStore.getState().removeParticipant('never-announced')
+
+    expect(useSessionStore.getState().participantNames).toEqual({ a: 'Ada' })
   })
 })
 

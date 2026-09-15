@@ -31,6 +31,10 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     // is active and which items are finalized. Broadcast on real changes, not on
     // every unrelated store update (notes typing, name edits, …).
     let lastSnapshotKey = ''
+    // Trystero's onPeerLeave gives a peerId (a connection), not a participantId (a
+    // person) — this map, built from inbound announces, is what lets a departure be
+    // resolved back to the participant who left.
+    const peerParticipants = new Map<string, string>()
     const broadcastFacilitatorState = () => {
       const state = useSessionStore.getState()
       if (state.mode !== 'live' || state.role !== 'facilitator' || !state.sessionId)
@@ -85,6 +89,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         sessionRef.current = session
         mirror(session.getConnectionState())
         lastSnapshotKey = ''
+        peerParticipants.clear()
         const store = useSessionStore
         const unsubscribers = [
           session.onConnectionStateChange(mirror),
@@ -94,9 +99,34 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
           session.onSyncState((snapshot) => store.getState().applySyncState(snapshot)),
           session.onReveal((itemId) => store.getState().applyReveal(itemId)),
           session.onRoundReset((itemId) => store.getState().applyRoundReset(itemId)),
-          session.onAnnounce((announce) =>
-            store.getState().applyParticipantName(announce.participantId, announce.name),
-          ),
+          session.onAnnounce((announce, peerId) => {
+            peerParticipants.set(peerId, announce.participantId)
+            store.getState().applyParticipantName(announce.participantId, announce.name)
+          }),
+          session.onPeerLeave((peerId) => {
+            const participantId = peerParticipants.get(peerId)
+            if (participantId === undefined) return
+            peerParticipants.delete(peerId)
+            // Roster pruning is facilitator-only: Item.submissions (the "already
+            // submitted" guard below) only exists on the facilitator's copy of
+            // state.items, so this guard is meaningless on a participant client.
+            const state = store.getState()
+            if (state.role !== 'facilitator') return
+            // Two tabs in one browser share a participantId (see the JoinSession
+            // warning): losing one connection must not prune a name still backed by
+            // another live connection.
+            const stillConnected = [...peerParticipants.values()].includes(participantId)
+            if (stillConnected) return
+            // A participant who already submitted keeps their estimate in the
+            // aggregate (ADR-003) — pruning their name would anonymise an otherwise
+            // still-attributed, already-recorded row on reveal.
+            const activeItem = state.items.find((item) => item.id === state.activeItemId)
+            const hasSubmitted =
+              activeItem?.submissions.some((s) => s.participantId === participantId) ??
+              false
+            if (hasSubmitted) return
+            store.getState().removeParticipant(participantId)
+          }),
           store.subscribe(broadcastFacilitatorState),
           // Trystero doesn't replay history to a newcomer. When a peer joins, the
           // facilitator re-announces the current item and every client re-announces
