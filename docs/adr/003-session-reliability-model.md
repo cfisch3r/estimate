@@ -10,12 +10,14 @@ Stable client identity has landed (#50): `participantId` is a per-browser id per
 `applySyncState` resets round-local state on any round change rather than only on a
 `revealed` true→false transition. Single owner has also landed (#60): the facilitator's
 `items[]` is the sole source of truth, `SessionSnapshot` carries a values-free `roster`,
-`submitEstimate` is a targeted send to the facilitator's peerId (not yet the acknowledged
-request/response — that's still #61), `reveal`/`roundReset` are gone from the wire protocol,
-and a peer pulls the snapshot itself on connect/reconnect via `requestSnapshot` rather than
-the facilitator pushing one. Still unbuilt: acknowledged submissions with a kind-driven
-retry policy (#61) and role-asymmetric connection state (#62) — connection state is still a
-single aggregate.
+`reveal`/`roundReset` are gone from the wire protocol, and a peer pulls the snapshot itself
+on connect/reconnect via `requestSnapshot` rather than the facilitator pushing one.
+Acknowledged submissions with a kind-driven retry policy has also landed (#61):
+`submitEstimate` is a targeted request/response to the facilitator's peerId, both it and
+`requestSnapshot` retry only a `timeout` failure (kind-driven, via the shared
+`withKindDrivenRetry` helper), and a participant's roster entry — not the ack — is what a
+snapshot-driven convergence check resends against. Still unbuilt: role-asymmetric connection
+state (#62) — connection state is still a single aggregate.
 **Date:** 2026-09-15 (drafted 2026-09-12)
 **Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop"
 
@@ -132,7 +134,7 @@ the new round.
 ### Acknowledged submissions
 
 `submitEstimate` becomes a targeted request to the facilitator
-(`request(data, {target: facilitatorPeerId, timeoutMs: 1000})`) rather than a broadcast.
+(`request(data, {target: facilitatorPeerId, timeoutMs: 800})`) rather than a broadcast.
 Participants learn the facilitator's `peerId` from its `announce`.
 
 The acknowledgement's purpose is **failure attribution**, not speed — the roster broadcast
@@ -146,9 +148,11 @@ rejection that the retry policy keys on:
 | `aborted` | We cancelled | Do not retry |
 | *(generic)* | Handler threw, or none registered after Trystero's 500ms buffer | Surface after one attempt |
 
-Total retry budget stays under Trystero's 5-second ICE teardown, so a retry sequence can never
-outlive the link it is retrying on. A dead link rejects immediately rather than waiting out the
-timeout, so this costs nothing in the common failure case.
+Total retry budget stays under Trystero's 5-second ICE teardown with margin to spare — three
+800ms attempts plus 500ms/1500ms backoff is 4.4s worst case, not the full 5s — so a retry
+sequence can never outlive the link it is retrying on even once real network latency is added
+on top. A dead link rejects immediately rather than waiting out the timeout, so this costs
+nothing in the common failure case.
 
 Correctness does not rest on the ack. The roster from Single owner is the convergence mechanism:
 on every snapshot a participant checks whether it appears as `submitted` and re-sends if not.

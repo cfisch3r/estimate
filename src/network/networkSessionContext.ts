@@ -10,8 +10,11 @@ export interface NetworkSessionApi {
   disconnect: () => void
   /** Send this participant's validated estimate (with the item and round it's
    *  for) to the facilitator only — never broadcast to the mesh (ADR-003,
-   *  "Single owner"). */
-  sendEstimate: (itemId: string, estimate: Estimate, round: number) => void
+   *  "Single owner"). Applies the shared kind-driven retry policy internally;
+   *  the returned promise rejects only once retries are exhausted (or the
+   *  failure kind isn't retryable), so callers use it purely to drive
+   *  delivery-status UI, not to decide whether to retry themselves. */
+  sendEstimate: (itemId: string, estimate: Estimate, round: number) => Promise<void>
 }
 
 export const NetworkSessionContext = createContext<NetworkSessionApi | null>(null)

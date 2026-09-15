@@ -8,7 +8,7 @@ import { useSessionStore } from '../state/store'
 
 const { disconnectMock, sendEstimateMock } = vi.hoisted(() => ({
   disconnectMock: vi.fn(),
-  sendEstimateMock: vi.fn(),
+  sendEstimateMock: vi.fn(() => Promise.resolve()),
 }))
 
 vi.mock('../network', () => ({
@@ -196,6 +196,136 @@ describe('ParticipantEstimateView', () => {
       likely: 5,
       worst: 8,
     })
+  })
+
+  it('shows a sending indicator while the estimate delivery is still in flight', async () => {
+    const user = userEvent.setup()
+    let resolveSend: (() => void) | null = null
+    sendEstimateMock.mockImplementationOnce(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveSend = resolve
+        }),
+    )
+    useSessionStore.setState({
+      liveRound: {
+        item,
+        submissions: [],
+        revealed: false,
+        round: 0,
+        roster: [{ participantId: 'me-123', submitted: false, connected: true }],
+        mySubmission: null,
+      },
+    })
+    render(<ParticipantEstimateView />)
+
+    await user.type(screen.getByLabelText('Best case (days)'), '3')
+    await user.type(screen.getByLabelText('Most likely (days)'), '5')
+    await user.type(screen.getByLabelText('Worst case (days)'), '8')
+    await user.click(screen.getByRole('button', { name: 'Submit estimate' }))
+
+    expect(screen.getByText('Sending your estimate…')).toBeInTheDocument()
+    expect(screen.queryByText('Not delivered yet')).not.toBeInTheDocument()
+
+    await act(async () => {
+      resolveSend?.()
+      await Promise.resolve()
+    })
+  })
+
+  it('shows a not-delivered warning once the send fails and the roster still disagrees', async () => {
+    const user = userEvent.setup()
+    sendEstimateMock.mockRejectedValueOnce(new Error('no ack'))
+    useSessionStore.setState({
+      liveRound: {
+        item,
+        submissions: [],
+        revealed: false,
+        round: 0,
+        roster: [{ participantId: 'me-123', submitted: false, connected: true }],
+        mySubmission: null,
+      },
+    })
+    render(<ParticipantEstimateView />)
+
+    await user.type(screen.getByLabelText('Best case (days)'), '3')
+    await user.type(screen.getByLabelText('Most likely (days)'), '5')
+    await user.type(screen.getByLabelText('Worst case (days)'), '8')
+    await user.click(screen.getByRole('button', { name: 'Submit estimate' }))
+
+    expect(await screen.findByText('Not delivered yet')).toBeInTheDocument()
+  })
+
+  it('clears the not-delivered warning once the roster confirms delivery (e.g. a background resend landed)', async () => {
+    const user = userEvent.setup()
+    sendEstimateMock.mockRejectedValueOnce(new Error('no ack'))
+    useSessionStore.setState({
+      liveRound: {
+        item,
+        submissions: [],
+        revealed: false,
+        round: 0,
+        roster: [{ participantId: 'me-123', submitted: false, connected: true }],
+        mySubmission: null,
+      },
+    })
+    render(<ParticipantEstimateView />)
+
+    await user.type(screen.getByLabelText('Best case (days)'), '3')
+    await user.type(screen.getByLabelText('Most likely (days)'), '5')
+    await user.type(screen.getByLabelText('Worst case (days)'), '8')
+    await user.click(screen.getByRole('button', { name: 'Submit estimate' }))
+    expect(await screen.findByText('Not delivered yet')).toBeInTheDocument()
+
+    // The roster is the actual convergence proof (ADR-003) — once it says
+    // delivered, the warning clears even without another local send attempt.
+    act(() => {
+      useSessionStore.setState((state) => ({
+        liveRound: state.liveRound && {
+          ...state.liveRound,
+          roster: [{ participantId: 'me-123', submitted: true, connected: true }],
+        },
+      }))
+    })
+
+    expect(screen.queryByText('Not delivered yet')).not.toBeInTheDocument()
+  })
+
+  it('defers to the connection-lost banner instead of stacking a not-delivered warning', async () => {
+    const user = userEvent.setup()
+    sendEstimateMock.mockRejectedValueOnce(new Error('no ack'))
+    useSessionStore.setState({
+      liveRound: {
+        item,
+        submissions: [],
+        revealed: false,
+        round: 0,
+        roster: [{ participantId: 'me-123', submitted: false, connected: true }],
+        mySubmission: null,
+      },
+    })
+    render(<ParticipantEstimateView />)
+
+    await user.type(screen.getByLabelText('Best case (days)'), '3')
+    await user.type(screen.getByLabelText('Most likely (days)'), '5')
+    await user.type(screen.getByLabelText('Worst case (days)'), '8')
+    await user.click(screen.getByRole('button', { name: 'Submit estimate' }))
+    expect(await screen.findByText('Not delivered yet')).toBeInTheDocument()
+
+    vi.useFakeTimers()
+    try {
+      act(() => {
+        useSessionStore.setState({ peerCount: 0 })
+      })
+      act(() => {
+        vi.advanceTimersByTime(RECONNECT_GRACE_MS)
+      })
+
+      expect(screen.getByText('Session connection lost')).toBeInTheDocument()
+      expect(screen.queryByText('Not delivered yet')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('lets the participant revise a submission before the reveal', async () => {
