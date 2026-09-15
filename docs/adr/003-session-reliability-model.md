@@ -200,7 +200,14 @@ numbers. An early debounced "reconnecting…" hint on the facilitator's roster i
 NAT, TURN, bring-your-own-relay). ADR-001 holds that position; revisiting it belongs there as a
 dated update, not here.
 
-## Rationale
+**Also explicitly out of scope, decided while scoping #9: a per-item or mid-session switch to
+Manual Entry.** A participant who never reaches the facilitator (the case #9 covers) is offered
+a retry, nothing else — there is no facilitator-side control to drop a single item, or the
+whole running session, into Manual Entry without restarting it. ADR-001's Manual Entry
+first-class mode remains a whole-session choice made once at session creation; falling back to
+it after a failed live session means abandoning that session and starting a new one, not a live
+in-place conversion. This is a deliberate product decision, not a gap to fill — do not add UI
+copy that tells a participant to ask the facilitator for a switch that doesn't exist.
 
 - **The symptoms collapse into one change.** Fixing them individually means local patches to a
   model that keeps regenerating the same class of bug. Versioned facilitator-owned snapshots
