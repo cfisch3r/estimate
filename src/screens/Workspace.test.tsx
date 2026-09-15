@@ -244,7 +244,7 @@ describe('Workspace — live facilitator reveal flow', () => {
     expect(screen.getByText('Participants')).toBeInTheDocument()
   })
 
-  it('hides Retry for an already-finalized item (re-open is a separate confirm flow)', () => {
+  it('hides Retry and Finalize for an already-finalized item (re-open is a separate confirm flow, #36)', () => {
     setupRound({
       revealed: true,
       finalResult: { min: 1, expected: 2, max: 3, ci90: 3 },
@@ -254,7 +254,9 @@ describe('Workspace — live facilitator reveal flow', () => {
 
     expect(screen.getByText('Already finalized')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Retry/ })).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Finalize item' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: 'Finalize item' }),
+    ).not.toBeInTheDocument()
   })
 
   it('leaves the manual estimate inputs in place for single-user mode', () => {

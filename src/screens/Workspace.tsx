@@ -449,19 +449,10 @@ function LiveFacilitatorPanel({
 
       {item.revealed ? (
         item.finalResult !== null ? (
-          <>
-            <GuardNote variant="banner" headline="Already finalized">
-              This item has a recorded range. Finalize again to refresh it from the
-              current submissions.
-            </GuardNote>
-            <Button
-              variant="primary"
-              disabled={submittedCount === 0}
-              onClick={() => onFinalize(item.id)}
-            >
-              Finalize item
-            </Button>
-          </>
+          <GuardNote variant="banner" headline="Already finalized">
+            This item has a recorded range. Late submissions are ignored — to re-estimate,
+            reopen the item.
+          </GuardNote>
         ) : (
           <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
             <Button
