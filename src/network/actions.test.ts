@@ -9,15 +9,30 @@ function makeFakeAction() {
   }
 }
 
+function makeFakeRequestAction() {
+  return {
+    request: vi.fn(),
+    onRequest: null as ((data: unknown, ctx: { peerId: string }) => unknown) | null,
+  }
+}
+
 function makeFakeRoom() {
   const actionsByName: Record<string, ReturnType<typeof makeFakeAction>> = {}
+  const requestActionsByName: Record<
+    string,
+    ReturnType<typeof makeFakeRequestAction>
+  > = {}
   const room: ActionRoom = {
-    makeAction: vi.fn((name: string) => {
+    makeAction: vi.fn((name: string, config?: { kind: 'request' }) => {
+      if (config?.kind === 'request') {
+        requestActionsByName[name] = makeFakeRequestAction()
+        return requestActionsByName[name] as never
+      }
       actionsByName[name] = makeFakeAction()
       return actionsByName[name] as never
-    }),
+    }) as ActionRoom['makeAction'],
   }
-  return { room, actionsByName }
+  return { room, actionsByName, requestActionsByName }
 }
 
 const validEstimate = createEstimate({ participantId: 'a', best: 1, likely: 2, worst: 3 })
@@ -153,6 +168,7 @@ describe('createTypedActions', () => {
       unit: 'weeks' as const,
       revealed: false,
       round: 3,
+      roster: [{ participantId: 'a', submitted: false, connected: true }],
       submissions: [],
       finalizedItemIds: [],
     }
@@ -188,6 +204,7 @@ describe('createTypedActions', () => {
         unit: 'days',
         revealed: false,
         round: 1,
+        roster: [],
         submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
@@ -218,9 +235,40 @@ describe('createTypedActions', () => {
         unit: 'days',
         revealed: false,
         round: 1,
+        roster: [],
         submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
+      'peer-1',
+    )
+  })
+
+  it('filters malformed entries out of an incoming snapshot roster before forwarding', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onSyncState(cb)
+
+    actionsByName.syncState!.onMessage?.(
+      {
+        currentItem: item,
+        unit: 'days',
+        round: 1,
+        roster: [
+          { participantId: 'a', submitted: true, connected: true },
+          { participantId: 'b', submitted: 'yes', connected: true },
+          null,
+        ],
+        submissions: [],
+        finalizedItemIds: [],
+      },
+      { peerId: 'peer-1' },
+    )
+
+    expect(cb).toHaveBeenCalledWith(
+      expect.objectContaining({
+        roster: [{ participantId: 'a', submitted: true, connected: true }],
+      }),
       'peer-1',
     )
   })
@@ -327,6 +375,7 @@ describe('createTypedActions', () => {
         unit: 'days',
         revealed: false,
         round: 0,
+        roster: [],
         submissions: [],
         finalizedItemIds: [],
       },
@@ -356,6 +405,7 @@ describe('createTypedActions', () => {
         unit: 'days',
         revealed: false,
         round: 0,
+        roster: [],
         submissions: [],
         finalizedItemIds: [],
       },
@@ -368,6 +418,7 @@ describe('createTypedActions', () => {
         unit: 'days',
         revealed: false,
         round: 0,
+        roster: [],
         submissions: [],
         finalizedItemIds: [],
       },
@@ -375,66 +426,78 @@ describe('createTypedActions', () => {
     )
   })
 
-  it('sends an item id through the reveal action', () => {
+  it('sends a targeted estimate through the submitEstimate action', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
 
-    actions.sendReveal('item-1')
+    actions.sendEstimate('item-1', validEstimate.value, 2, 'facilitator-peer')
 
-    expect(actionsByName.reveal!.send).toHaveBeenCalledWith('item-1')
+    expect(actionsByName.submitEstimate!.send).toHaveBeenCalledWith(
+      { itemId: 'item-1', estimate: validEstimate.value, round: 2 },
+      { target: 'facilitator-peer' },
+    )
   })
 
-  it('forwards a valid incoming reveal to subscribers', () => {
+  it('sends an untargeted estimate when no target is given', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
-    const cb = vi.fn()
-    actions.onReveal(cb)
 
-    actionsByName.reveal!.onMessage?.('item-1', { peerId: 'peer-1' })
+    actions.sendEstimate('item-1', validEstimate.value, 2)
 
-    expect(cb).toHaveBeenCalledWith('item-1', 'peer-1')
+    expect(actionsByName.submitEstimate!.send).toHaveBeenCalledWith({
+      itemId: 'item-1',
+      estimate: validEstimate.value,
+      round: 2,
+    })
   })
 
-  it('drops a malformed incoming reveal payload', () => {
-    const { room, actionsByName } = makeFakeRoom()
+  it('requests a snapshot from the given peer through the requestSnapshot action', async () => {
+    const { room, requestActionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
-    const cb = vi.fn()
-    actions.onReveal(cb)
+    const snapshot = {
+      currentItem: null,
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    }
+    requestActionsByName.requestSnapshot!.request.mockResolvedValue(snapshot)
 
-    actionsByName.reveal!.onMessage?.(42, { peerId: 'peer-1' })
+    const result = await actions.requestSnapshot('facilitator-peer')
 
-    expect(cb).not.toHaveBeenCalled()
+    expect(requestActionsByName.requestSnapshot!.request).toHaveBeenCalledWith(null, {
+      target: 'facilitator-peer',
+      timeoutMs: 2000,
+    })
+    expect(result).toBe(snapshot)
   })
 
-  it('sends an item id through the roundReset action', () => {
-    const { room, actionsByName } = makeFakeRoom()
+  it('answers a requestSnapshot pull through the registered responder', () => {
+    const { room, requestActionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
+    const snapshot = {
+      currentItem: null,
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    }
+    const respond = vi.fn(() => snapshot)
 
-    actions.sendRoundReset('item-1')
+    const unsubscribe = actions.onRequestSnapshot(respond)
+    const result = requestActionsByName.requestSnapshot!.onRequest?.(null, {
+      peerId: 'peer-1',
+    })
 
-    expect(actionsByName.roundReset!.send).toHaveBeenCalledWith('item-1')
-  })
+    expect(respond).toHaveBeenCalled()
+    expect(result).toBe(snapshot)
 
-  it('forwards a valid incoming roundReset to subscribers', () => {
-    const { room, actionsByName } = makeFakeRoom()
-    const actions = createTypedActions(room)
-    const cb = vi.fn()
-    actions.onRoundReset(cb)
-
-    actionsByName.roundReset!.onMessage?.('item-1', { peerId: 'peer-1' })
-
-    expect(cb).toHaveBeenCalledWith('item-1', 'peer-1')
-  })
-
-  it('drops a malformed incoming roundReset payload', () => {
-    const { room, actionsByName } = makeFakeRoom()
-    const actions = createTypedActions(room)
-    const cb = vi.fn()
-    actions.onRoundReset(cb)
-
-    actionsByName.roundReset!.onMessage?.(42, { peerId: 'peer-1' })
-
-    expect(cb).not.toHaveBeenCalled()
+    unsubscribe()
+    expect(requestActionsByName.requestSnapshot!.onRequest).toBeNull()
   })
 
   it('sends a participant announce through the announce action', () => {

@@ -7,8 +7,16 @@ const { joinRoomMock, fakeRoom } = vi.hoisted(() => {
     string,
     { send: ReturnType<typeof vi.fn>; onMessage: unknown }
   > = {}
+  const requestActionsByName: Record<
+    string,
+    { request: ReturnType<typeof vi.fn>; onRequest: unknown }
+  > = {}
   const fakeRoom = {
-    makeAction: vi.fn((name: string) => {
+    makeAction: vi.fn((name: string, config?: { kind: 'request' }) => {
+      if (config?.kind === 'request') {
+        requestActionsByName[name] = { request: vi.fn(), onRequest: null }
+        return requestActionsByName[name]
+      }
       actionsByName[name] = { send: vi.fn(), onMessage: null }
       return actionsByName[name]
     }),
@@ -16,6 +24,7 @@ const { joinRoomMock, fakeRoom } = vi.hoisted(() => {
     onPeerLeave: null as ((peerId: string) => void) | null,
     leave: vi.fn(),
     actionsByName,
+    requestActionsByName,
   }
   const joinRoomMock = vi.fn(
     (
@@ -115,28 +124,46 @@ describe('joinSession', () => {
     })
   })
 
-  it('sendReveal and sendRoundReset delegate to their underlying actions', () => {
+  it('requestSnapshot delegates to the underlying requestSnapshot action', async () => {
     const session = joinSession('session-abc')
+    const snapshot = {
+      currentItem: null,
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    }
+    fakeRoom.requestActionsByName.requestSnapshot!.request.mockResolvedValue(snapshot)
 
-    session.sendReveal('item-1')
-    session.sendRoundReset('item-1')
+    const result = await session.requestSnapshot('peer-1')
 
-    expect(fakeRoom.actionsByName.reveal!.send).toHaveBeenCalledWith('item-1')
-    expect(fakeRoom.actionsByName.roundReset!.send).toHaveBeenCalledWith('item-1')
+    expect(fakeRoom.requestActionsByName.requestSnapshot!.request).toHaveBeenCalledWith(
+      null,
+      { target: 'peer-1', timeoutMs: 2000 },
+    )
+    expect(result).toBe(snapshot)
   })
 
-  it('onRoundReset subscribers receive validated inbound roundReset messages', () => {
+  it('onRequestSnapshot registers a responder on the underlying requestSnapshot action', () => {
     const session = joinSession('session-abc')
-    const cb = vi.fn()
-    session.onRoundReset(cb)
+    const snapshot = {
+      currentItem: null,
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    }
+    session.onRequestSnapshot(() => snapshot)
 
-    const onMessage = fakeRoom.actionsByName.roundReset!.onMessage as (
+    const onRequest = fakeRoom.requestActionsByName.requestSnapshot!.onRequest as (
       data: unknown,
       context: { peerId: string },
-    ) => void
-    onMessage('item-1', { peerId: 'peer-2' })
-
-    expect(cb).toHaveBeenCalledWith('item-1', 'peer-2')
+    ) => unknown
+    expect(onRequest(null, { peerId: 'peer-2' })).toBe(snapshot)
   })
 
   it('sendAnnounce delegates to the underlying announce action', () => {

@@ -1,5 +1,6 @@
 import type { AggregateResult, Estimate } from '../calc'
 import type { ConnectionStatus } from '../network/connection'
+import type { RosterEntry } from '../network/actions'
 
 export interface Item {
   id: string
@@ -26,11 +27,16 @@ export interface Item {
  *  messages. Facilitator clients don't use this; they hold the full `items` list. */
 export interface LiveRound {
   item: { id: string; title: string; description: string }
-  /** Every submission received this round, keyed by participantId (last write wins). */
+  /** The frozen submission set, populated only once `revealed` is true — see
+   *  `SessionSnapshot.submissions`. Empty pre-reveal; use `roster` instead to
+   *  render who has submitted. */
   submissions: Estimate[]
   revealed: boolean
   /** The facilitator's round number for this item, mirrored from the snapshot. */
   round: number
+  /** Who's in and who has submitted this round, with no estimate values
+   *  (ADR-003, "Single owner"). Drives the "N of M submitted" line. */
+  roster: RosterEntry[]
   /** This participant's own most recent submitted values, or null before submitting. */
   mySubmission: { best: number; likely: number; worst: number } | null
 }

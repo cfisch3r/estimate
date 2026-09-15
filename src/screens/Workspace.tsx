@@ -576,18 +576,19 @@ export function Workspace() {
   const revealRound = useSessionStore((s) => s.revealRound)
   const retryRound = useSessionStore((s) => s.retryRound)
   const goToScreen = useSessionStore((s) => s.goToScreen)
-  const { sendReveal, sendRoundReset, connect } = useNetworkSession()
+  const { connect } = useNetworkSession()
 
   const isLiveFacilitator = mode === 'live' && role === 'facilitator'
 
+  // Reveal/Retry are local store mutations only — the store subscription in
+  // NetworkProvider broadcasts the resulting snapshot (revealed/round changed)
+  // to participants, so there's no separate wire event to send here.
   function handleReveal(id: string) {
     revealRound(id)
-    sendReveal(id)
   }
 
   function handleRetry(id: string) {
     retryRound(id)
-    sendRoundReset(id)
   }
 
   const activeItem = items.find((item) => item.id === activeItemId) ?? null

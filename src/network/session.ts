@@ -17,11 +17,12 @@ export interface JoinSessionOptions {
 }
 
 export interface NetworkSession {
-  sendEstimate(itemId: string, estimate: Estimate, round: number): void
+  sendEstimate(itemId: string, estimate: Estimate, round: number, target?: string): void
   sendSyncState(snapshot: SessionSnapshot): void
-  sendReveal(itemId: string): void
-  sendRoundReset(itemId: string): void
   sendAnnounce(announce: ParticipantAnnounce): void
+  /** A peer that just (re)connected pulls the facilitator's current snapshot
+   *  itself (ADR-003, "Snapshot delivery: pull on arrival"). */
+  requestSnapshot(targetPeerId: string): Promise<SessionSnapshot>
   onEstimate(
     cb: (
       itemId: string,
@@ -31,9 +32,9 @@ export interface NetworkSession {
     ) => void,
   ): Unsubscribe
   onSyncState(cb: (snapshot: SessionSnapshot, peerId: string) => void): Unsubscribe
-  onReveal(cb: (itemId: string, peerId: string) => void): Unsubscribe
-  onRoundReset(cb: (itemId: string, peerId: string) => void): Unsubscribe
   onAnnounce(cb: (announce: ParticipantAnnounce, peerId: string) => void): Unsubscribe
+  /** Facilitator-only: answers a peer's `requestSnapshot` pull. */
+  onRequestSnapshot(cb: () => SessionSnapshot): Unsubscribe
   onPeerJoin(cb: (peerId: string) => void): Unsubscribe
   onPeerLeave(cb: (peerId: string) => void): Unsubscribe
   onConnectionStateChange(cb: (state: ConnectionState) => void): Unsubscribe
@@ -66,14 +67,12 @@ export function joinSession(
   return {
     sendEstimate: actions.sendEstimate,
     sendSyncState: actions.sendSyncState,
-    sendReveal: actions.sendReveal,
-    sendRoundReset: actions.sendRoundReset,
     sendAnnounce: actions.sendAnnounce,
+    requestSnapshot: actions.requestSnapshot,
     onEstimate: actions.onEstimate,
     onSyncState: actions.onSyncState,
-    onReveal: actions.onReveal,
-    onRoundReset: actions.onRoundReset,
     onAnnounce: actions.onAnnounce,
+    onRequestSnapshot: actions.onRequestSnapshot,
     onPeerJoin: connection.onPeerJoin,
     onPeerLeave: connection.onPeerLeave,
     onConnectionStateChange: connection.onStateChange,

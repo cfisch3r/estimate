@@ -3,8 +3,38 @@ import type { ReactNode } from 'react'
 import { joinSession } from './session'
 import type { NetworkSession } from './session'
 import type { ConnectionState } from './connection'
+import type { RosterEntry } from './actions'
 import { NetworkSessionContext, type NetworkSessionApi } from './networkSessionContext'
 import { useSessionStore } from '../state/store'
+
+/** The people in the round: every announced non-facilitator client, plus
+ *  anyone whose submission arrived before their announce did. Values-free —
+ *  this is what goes out over the wire (ADR-003, "Single owner"); the
+ *  facilitator's own panel reads its local `item.submissions` for values
+ *  instead. */
+function buildRoster(
+  participantNames: Record<string, string>,
+  submittedParticipantIds: readonly string[],
+  connectedParticipantIds: ReadonlySet<string>,
+): RosterEntry[] {
+  const submitted = new Set(submittedParticipantIds)
+  const ids = [
+    ...Object.keys(participantNames).filter((id) => id !== 'facilitator'),
+    ...submittedParticipantIds,
+  ]
+  const seen = new Set<string>()
+  const roster: RosterEntry[] = []
+  for (const id of ids) {
+    if (seen.has(id)) continue
+    seen.add(id)
+    roster.push({
+      participantId: id,
+      submitted: submitted.has(id),
+      connected: connectedParticipantIds.has(id),
+    })
+  }
+  return roster
+}
 
 /** Owns the single live NetworkSession for the app and bridges its events into the
  *  store, so screens only ever read connection state from `useSessionStore`. */
@@ -27,18 +57,23 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       setPeerCount(state.peerIds.length)
     }
 
-    // Facilitator only: keep participants' `liveRound` in sync with whichever item
-    // is active and which items are finalized. Broadcast on real changes, not on
-    // every unrelated store update (notes typing, name edits, …).
-    let lastSnapshotKey = ''
     // Trystero's onPeerLeave gives a peerId (a connection), not a participantId (a
     // person) — this map, built from inbound announces, is what lets a departure be
-    // resolved back to the participant who left.
+    // resolved back to the participant who left, and lets the roster report who's
+    // currently connected.
     const peerParticipants = new Map<string, string>()
-    const broadcastFacilitatorState = () => {
+
+    // Participant-only: the facilitator's peerId, learned from its `announce`.
+    // Targets `sendEstimate` at it and dedupes the pull-on-connect below so a
+    // re-announce triggered by an unrelated peer join doesn't re-pull.
+    let facilitatorPeerId: string | null = null
+    let lastPulledFacilitatorPeerId: string | null = null
+
+    // Facilitator only: the live-session snapshot, computed fresh on demand — both
+    // as the payload of a change broadcast and as the answer to a participant's
+    // `requestSnapshot` pull.
+    const computeSnapshot = () => {
       const state = useSessionStore.getState()
-      if (state.mode !== 'live' || state.role !== 'facilitator' || !state.sessionId)
-        return
       const active = state.items.find((item) => item.id === state.activeItemId) ?? null
       const currentItem = active
         ? { id: active.id, title: active.title, description: active.description }
@@ -48,29 +83,45 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         .map((item) => item.id)
       const revealed = active?.revealed ?? false
       const round = active?.round ?? 0
-      // Once revealed, participants can't tally submissions from `onEstimate` any
-      // more, so the snapshot has to carry the real (now frozen) set. Before
-      // reveal it stays empty — the lightweight `onEstimate` path handles the
-      // live tally and keeps this broadcast off the per-submission hot path.
+      // Estimate values reach participants only once revealed (ADR-003, "Single
+      // owner") — pre-reveal, the roster (below) is what drives "N of M submitted".
       const submissions = revealed && active ? active.submissions : []
-      const key = JSON.stringify({
+      const roster = buildRoster(
+        state.participantNames,
+        active?.submissions.map((s) => s.participantId) ?? [],
+        new Set(peerParticipants.values()),
+      )
+      return {
         currentItem,
         unit: state.unit,
         revealed,
         round,
-        submissionCount: submissions.length,
+        roster,
+        submissions,
         finalizedItemIds,
+      }
+    }
+
+    // Broadcast on real changes, not on every unrelated store update (notes
+    // typing, name edits, …).
+    let lastSnapshotKey = ''
+    const broadcastFacilitatorState = () => {
+      const state = useSessionStore.getState()
+      if (state.mode !== 'live' || state.role !== 'facilitator' || !state.sessionId)
+        return
+      const snapshot = computeSnapshot()
+      const key = JSON.stringify({
+        currentItem: snapshot.currentItem,
+        unit: snapshot.unit,
+        revealed: snapshot.revealed,
+        round: snapshot.round,
+        roster: snapshot.roster,
+        submissionCount: snapshot.submissions.length,
+        finalizedItemIds: snapshot.finalizedItemIds,
       })
       if (key === lastSnapshotKey) return
       lastSnapshotKey = key
-      sessionRef.current?.sendSyncState({
-        currentItem,
-        unit: state.unit,
-        revealed,
-        round,
-        submissions,
-        finalizedItemIds,
-      })
+      sessionRef.current?.sendSyncState(snapshot)
     }
 
     // Trystero doesn't replay history to a newcomer, so every client (re-)broadcasts
@@ -93,6 +144,8 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         mirror(session.getConnectionState())
         lastSnapshotKey = ''
         peerParticipants.clear()
+        facilitatorPeerId = null
+        lastPulledFacilitatorPeerId = null
         const store = useSessionStore
         const unsubscribers = [
           session.onConnectionStateChange(mirror),
@@ -100,11 +153,31 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             store.getState().applyRemoteEstimate(itemId, estimate, round),
           ),
           session.onSyncState((snapshot) => store.getState().applySyncState(snapshot)),
-          session.onReveal((itemId) => store.getState().applyReveal(itemId)),
-          session.onRoundReset((itemId) => store.getState().applyRoundReset(itemId)),
+          session.onRequestSnapshot(() => computeSnapshot()),
           session.onAnnounce((announce, peerId) => {
             peerParticipants.set(peerId, announce.participantId)
             store.getState().applyParticipantName(announce.participantId, announce.name)
+            // A peer that has just connected or reconnected pulls the snapshot
+            // itself, rather than the facilitator inferring the event and pushing
+            // one (ADR-003, "Snapshot delivery: pull on arrival"). Single fetch,
+            // not polling — only re-pull if the facilitator's peerId actually
+            // changed since the last pull.
+            if (
+              announce.participantId === 'facilitator' &&
+              store.getState().role === 'participant'
+            ) {
+              facilitatorPeerId = peerId
+              if (peerId !== lastPulledFacilitatorPeerId) {
+                lastPulledFacilitatorPeerId = peerId
+                sessionRef.current
+                  ?.requestSnapshot(peerId)
+                  .then((snapshot) => store.getState().applySyncState(snapshot))
+                  .catch(() => {
+                    // Best-effort in #60 — no retry yet. #61 applies the shared
+                    // kind-driven retry policy to this call too.
+                  })
+              }
+            }
           }),
           session.onPeerLeave((peerId) => {
             const participantId = peerParticipants.get(peerId)
@@ -131,26 +204,10 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             store.getState().removeParticipant(participantId)
           }),
           store.subscribe(broadcastFacilitatorState),
-          // Trystero doesn't replay history to a newcomer. When a peer joins, the
-          // facilitator re-announces the current item and every client re-announces
-          // its own submission — both are keyed on the receiver (item id /
-          // participantId) and idempotent, so re-sending is safe.
-          session.onPeerJoin(() => {
-            lastSnapshotKey = ''
-            broadcastFacilitatorState()
-            announceSelf()
-            const s = store.getState()
-            const own = s.liveRound?.submissions.find(
-              (e) => e.participantId === s.participantId,
-            )
-            if (own && s.liveRound) {
-              sessionRef.current?.sendEstimate(
-                s.liveRound.item.id,
-                own,
-                s.liveRound.round,
-              )
-            }
-          }),
+          // Every client still re-announces itself whenever a peer joins, so a
+          // newcomer's reveal rows show real names instead of "Teammate N" (the
+          // snapshot itself is now pulled by the newcomer, not pushed here).
+          session.onPeerJoin(() => announceSelf()),
         ]
         unsubscribeRef.current = () => unsubscribers.forEach((off) => off())
         broadcastFacilitatorState()
@@ -163,13 +220,12 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         setPeerCount(0)
       },
       sendEstimate: (itemId, estimate, round) => {
-        sessionRef.current?.sendEstimate(itemId, estimate, round)
-      },
-      sendReveal: (itemId) => {
-        sessionRef.current?.sendReveal(itemId)
-      },
-      sendRoundReset: (itemId) => {
-        sessionRef.current?.sendRoundReset(itemId)
+        const { role } = useSessionStore.getState()
+        const target =
+          role === 'participant' && facilitatorPeerId !== null
+            ? facilitatorPeerId
+            : undefined
+        sessionRef.current?.sendEstimate(itemId, estimate, round, target)
       },
     }
   }
