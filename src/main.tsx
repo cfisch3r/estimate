@@ -5,6 +5,7 @@ import './design/radio-tile.css'
 import './design/range-bar.css'
 import './design/session-sidebar.css'
 import './design/item-description.css'
+import './design/header.css'
 import './index.css'
 import App from './App.tsx'
 
