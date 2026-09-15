@@ -11,8 +11,11 @@ every peer runs the same code and computes aggregates locally.
 This document covers the join flow (#6, updated for the #34 mode-select / Workspace
 entry-flow rebuild), the participant estimate round (#7), the `announce` action that
 carries participant display names (#40), and the facilitator reveal / retry round (#8) —
-Workspace states 1c (waiting for estimates) → 1d (revealed), carried over the wire by the
-`reveal` and `roundReset` actions.
+Workspace states 1c (waiting for estimates) → 1d (revealed). Since #60 (ADR-003,
+"Single owner") there is no separate `reveal` / `roundReset` wire event: the facilitator's
+`items[]` is the sole source of truth, and a Reveal or Retry is just a `syncState` snapshot
+with different `revealed` / `round` fields. A participant that (re)connects pulls that
+snapshot itself via `requestSnapshot` rather than waiting for the facilitator to push one.
 
 ## Component view
 
@@ -63,20 +66,21 @@ flowchart TD
   MS -.->|"reads code"| Code
   NP -->|"owns, provides"| Hook
   Hook -->|"joinSession(code)"| JSN
-  PEV -->|"sendEstimate(itemId, estimate, round) (own submission)"| Hook
+  PEV -->|"sendEstimate(itemId, estimate, round) (own submission, targeted at the facilitator)"| Hook
   WS -->|"revealRound / retryRound / finalizeLiveItem"| Store
-  WS -->|"sendReveal / sendRoundReset"| Hook
   JSN -->|"creates"| Act
   JSN -->|"creates"| Conn
   Act <-->|"P2P messages (encrypted)"| Trystero
   Act -.->|"validate inbound"| Calc
+  NP -->|"requestSnapshot (participant pull)"| Act
 
   %% --- asynchronous events / reads (dotted) ---
   Conn -.->|"onConnectionStateChange"| Hook
-  Act -.->|"onEstimate / onSyncState / onReveal / onRoundReset / onAnnounce"| NP
+  Act -.->|"onEstimate / onSyncState / onAnnounce"| NP
+  Act -.->|"onRequestSnapshot (facilitator answers)"| NP
   Hook -.->|"setConnectionStatus / setPeerCount"| Store
-  NP -.->|"applySyncState / applyRemoteEstimate / applyReveal / applyRoundReset / applyParticipantName"| Store
-  NP -.->|"reads items/activeItem (facilitator syncState); reads own name/id (announce)"| Store
+  NP -.->|"applySyncState / applyRemoteEstimate / applyParticipantName"| Store
+  NP -.->|"reads items/activeItem/roster (facilitator syncState + requestSnapshot answers); reads own name/id (announce)"| Store
   Store -.->|"state (read)"| screens
   PEV -->|"hasEverConnected && peerCount === 0"| UCP
 
@@ -109,13 +113,13 @@ flowchart TD
 | **ModeSelect** | React Component | The entry screen: three rows — start single-user, start collaborative, join. On "start collaborative": reads a code from `generateSessionCode`, calls `startCollaborative(code)` (which sets `mode` / `role` / `sessionId` and routes to the Workspace), then `connect()`. "Join" routes to the Join screen. |
 | **JoinSession** | React Component | Collects session code + participant name (name required — no anonymous peers). Calls `joinLiveSession()` then `connect()`. Renders connecting / connected / disconnected states from `store.connectionStatus`, including the failure banner + Retry. |
 | **ParticipantEstimateView** | React Component | The participant's whole round (#7), driven by `store.liveRound`: a lobby before the facilitator picks an item, then the Best/Likely/Worst form with live bias guards (5c), a waiting state showing the submitted values with a revise affordance (5d), and a revealed state with the aggregated range bar + per-participant list (5e). No finalize/retry — those are facilitator-only. Submitting calls `store.submitEstimate()` then broadcasts the validated estimate via `useNetworkSession().sendEstimate`. |
-| **Workspace** | React Component | The single working screen for both modes: session-name / unit / item-list sidebar plus the active item's estimate panel (or an empty state). In Live mode additionally renders the session-code strip (with copy button), the "N participants connected" count, and a connection-status `Tag`. For a **facilitator** in Live mode the manual B/L/W inputs are replaced by the reveal panel: state 1c lists each participant as `Submitted` / `Waiting` and gates a **Reveal estimates** button on `submissions.length >= 1`; state 1d shows the aggregated range bar + per-participant values with **Finalize item** (`finalizeLiveItem`) and **Retry — start new round** (`retryRound` + `sendRoundReset`). Reveal calls `revealRound` + `sendReveal`. |
+| **Workspace** | React Component | The single working screen for both modes: session-name / unit / item-list sidebar plus the active item's estimate panel (or an empty state). In Live mode additionally renders the session-code strip (with copy button), the "N participants connected" count, and a connection-status `Tag`. For a **facilitator** in Live mode the manual B/L/W inputs are replaced by the reveal panel: state 1c lists each participant as `Submitted` / `Waiting` (from the facilitator's own `item.submissions`, not the wire roster — it already holds the full local state) and gates a **Reveal estimates** button on `submissions.length >= 1`; state 1d shows the aggregated range bar + per-participant values with **Finalize item** (`finalizeLiveItem`) and **Retry — start new round** (`retryRound`). Reveal/Retry are local store mutations only (`revealRound` / `retryRound`) — the store subscription in `NetworkProvider` broadcasts the resulting snapshot, so there's no separate wire call to make (#60). |
 | **useConnectionPhase** | React Hook | Turns "is the connection down" into what the user is told, holding a drop at `reconnecting` for `RECONNECT_GRACE_MS` (15s) before escalating to `lost`, because Trystero normally rebuilds a dropped link within 5–10s. Takes a boolean, not a status: what counts as down differs by role (a participant that has lost the session vs. a facilitator merely waiting for arrivals). |
-| **useSessionStore** | Zustand Store | Single source of truth for session state: `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `peerCount`, items, current screen. **Participant** clients hold `liveRound` (the facilitator's current item + received submissions + revealed flag + own submission), updated by `applySyncState` / `applyRemoteEstimate` / `applyReveal` / `applyRoundReset` / `submitEstimate`; `applySyncState` additionally adopts `snapshot.unit` into `store.unit`. **Facilitator** clients instead accumulate each round on the `Item` itself — `applyRemoteEstimate(itemId, estimate, round)` upserts inbound submissions onto `items[activeItemId].submissions` only when `itemId` is the active item and it is not yet `revealed` or finalized (so a straggler for a just-finalized item can't seed the next round), `revealRound` / `retryRound` flip `items[].revealed` (`retryRound` also clears that item's `submissions`), and `finalizeLiveItem` aggregates `items[].submissions` into `finalResult`. On a participant, `applySyncState` takes `revealed` and — once revealed — the frozen `submissions` list straight from the snapshot, so a peer that joins or reconnects mid-reveal lands on the populated revealed view. Type-only import of `SessionSnapshot` from `src/network/actions`; no runtime `src/network` import. |
-| **NetworkProvider** | React Context Provider | Wraps `<App>`. Owns the one `NetworkSession` instance for the app's lifetime and exposes it via `useNetworkSession`; tears it down on unmount. On `connect` it also dispatches inbound `onEstimate` / `onSyncState` / `onReveal` / `onRoundReset` / `onAnnounce` into the store, and (facilitator only) subscribes to the store to broadcast a `syncState` whenever the active item, estimation unit, or finalized set changes. It also broadcasts the local client's own `announce` on connect and re-announces on every peer join, and applies inbound announces via `applyParticipantName`. The `NetworkSessionApi` it provides adds `sendReveal(itemId)` / `sendRoundReset(itemId)` alongside `sendEstimate`. |
-| **useNetworkSession** | React Hook | The only code that touches both the store and the P2P core. `connect(sessionId)` calls `joinSession()` and subscribes to its events; `disconnect()` calls `leave()`; `sendEstimate(itemId, estimate, round)` forwards a participant's submission (tagged with the item and round it's for) to the room; `sendReveal(itemId)` / `sendRoundReset(itemId)` broadcast the facilitator's reveal / new-round signals. Mirrors `onConnectionStateChange` and peer join/leave into the store. (The participant name is put in the store by `joinLiveSession()` before `connect()` runs.) |
-| **joinSession** | Factory Function | Entry point of the P2P core (from PR #25). Opens the Trystero room (`roomId = sessionId`), wires up the connection tracker and typed actions, returns a `NetworkSession` of `send*` / `on*` methods. |
-| **typed actions** | Module | Defines the five wire actions (`submitEstimate`, `syncState`, `reveal`, `roundReset`, `announce`), serialises outbound messages, and validates every inbound message (through `calc` for estimates; shape checks for the rest — `reveal` and `roundReset` payloads must be strings) before surfacing it. `submitEstimate` is an `{ itemId, round, estimate }` envelope so a straggler submission for a finished item, or a pre-Retry submission re-broadcast on peer join, can be dropped rather than mis-recorded; `syncState` carries `unit`, `revealed`, `round`, and — once `revealed` — the frozen `submissions` set (participants can't tally it from `onEstimate` after the reveal, so the snapshot is the only source for a late joiner). `announce` carries a `participantId -> display name` pair, kept off the pure `Estimate` type. |
+| **useSessionStore** | Zustand Store | Single source of truth for session state: `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `peerCount`, items, current screen. **Participant** clients hold `liveRound` (the facilitator's current item + a values-free `roster` + revealed flag + own submission, plus the frozen `submissions` once revealed), updated by `applySyncState` / `submitEstimate`; `applySyncState` additionally adopts `snapshot.unit` into `store.unit`. A Reveal or Retry has no separate handler — it's just a later `applySyncState` call with different `revealed` / `round` fields (#60). **Facilitator** clients instead accumulate each round on the `Item` itself — `applyRemoteEstimate(itemId, estimate, round)` upserts inbound (targeted) submissions onto `items[activeItemId].submissions` only when `itemId` is the active item and it is not yet `revealed` or finalized (so a straggler for a just-finalized item can't seed the next round), `revealRound` / `retryRound` flip `items[].revealed` (`retryRound` also clears that item's `submissions`), and `finalizeLiveItem` aggregates `items[].submissions` into `finalResult`. On a participant, `applySyncState` takes `revealed`, `roster`, and — once revealed — the frozen `submissions` list straight from the snapshot; pre-reveal, `submissions` stays empty (estimate values never reach a participant before reveal, #60). A peer that joins or reconnects pulls this snapshot itself (`requestSnapshot`) rather than waiting for a push, so it lands on the correct view regardless of what it missed. Type-only import of `SessionSnapshot` from `src/network/actions`; no runtime `src/network` import. |
+| **NetworkProvider** | React Context Provider | Wraps `<App>`. Owns the one `NetworkSession` instance for the app's lifetime and exposes it via `useNetworkSession`; tears it down on unmount. On `connect` it also dispatches inbound `onEstimate` / `onSyncState` / `onAnnounce` into the store, registers an `onRequestSnapshot` responder (facilitator only, answers with the current snapshot), and (facilitator only) subscribes to the store to broadcast a `syncState` whenever the active item, estimation unit, roster, or finalized set changes. It also broadcasts the local client's own `announce` on connect and re-announces on every peer join, applies inbound announces via `applyParticipantName`, and — participant only — learns the facilitator's peerId from its `announce` to target `sendEstimate` and to pull a snapshot via `requestSnapshot` on first learning (or re-learning, after a peerId change) that id. |
+| **useNetworkSession** | React Hook | The only code that touches both the store and the P2P core. `connect(sessionId)` calls `joinSession()` and subscribes to its events; `disconnect()` calls `leave()`; `sendEstimate(itemId, estimate, round)` forwards a participant's submission (tagged with the item and round it's for), targeted at the facilitator's peerId only — never broadcast to the mesh. Mirrors `onConnectionStateChange` and peer join/leave into the store. (The participant name is put in the store by `joinLiveSession()` before `connect()` runs.) |
+| **joinSession** | Factory Function | Entry point of the P2P core (from PR #25). Opens the Trystero room (`roomId = sessionId`), wires up the connection tracker and typed actions, returns a `NetworkSession` of `send*` / `on*` / `requestSnapshot` methods. |
+| **typed actions** | Module | Defines the wire actions — three message actions (`submitEstimate`, `syncState`, `announce`) and one request/response action (`requestSnapshot`) — serialises outbound messages, and validates every inbound message (through `calc` for estimates; shape checks for the rest) before surfacing it. `submitEstimate` is an `{ itemId, round, estimate }` envelope, sent with `{ target: facilitatorPeerId }` so it reaches the facilitator only, so a straggler submission for a finished item can be dropped rather than mis-recorded; `syncState` carries `unit`, `revealed`, `round`, a values-free `roster: Array<{ participantId, submitted, connected }>`, and — once `revealed` — the frozen `submissions` set. `requestSnapshot` lets a peer that just connected or reconnected pull the current `syncState` payload directly from the facilitator instead of waiting for a push. `announce` carries a `participantId -> display name` pair, kept off the pure `Estimate` type. |
 | **connection tracker** | Module | State machine over peer join/leave and join errors → `connecting` / `connected` / `disconnected` plus the peer list; notifies subscribers on change. (`idle` is store-only — the "not in a live session" default in `LiveConnectionStatus`; the tracker starts at `connecting`.) |
 | **generateSessionCode** | Function | Returns a 6-char Crockford-base32 code (crypto RNG, ambiguous characters removed), used as both the shareable code and the Trystero room id. |
 | **calc** | Pure Module | Existing framework-free math (`createEstimate`, `aggregateEstimates`, `computeCI90`, guards). Used here only to validate inbound peer estimates. |
@@ -149,7 +153,13 @@ sequenceDiagram
   P-->>P: route to ParticipantEstimateView (lobby until the facilitator picks an item)
 ```
 
-## Estimate round & facilitator reveal (#7, #8)
+## Estimate round & facilitator reveal (#7, #8, #60)
+
+Since #60 (ADR-003, "Single owner"), the facilitator's `items[]` is the only source of
+truth. There is no `reveal` / `roundReset` wire event — a Reveal or Retry is just another
+`syncState` snapshot, broadcast on every real change and additionally pulled by a peer on
+connect/reconnect via `requestSnapshot`. A participant's `submitEstimate` targets the
+facilitator's peerId only, so no other participant ever receives it.
 
 ```mermaid
 sequenceDiagram
@@ -158,22 +168,44 @@ sequenceDiagram
   participant P as Participant (tab B)
 
   F->>F: select an item in the Workspace
-  F->>R: sendSyncState({ currentItem, unit, revealed, round })
-  R-->>P: onSyncState → store.applySyncState → liveRound + unit + revealed + round set
-  P-->>P: ParticipantEstimateView shows the Best/Likely/Worst form (5c), labelled in the facilitator's unit (#39)
+  F->>R: sendSyncState({ currentItem, unit, revealed, round, roster, submissions: [] })
+  R-->>P: onSyncState → store.applySyncState → liveRound + unit + revealed + round + roster set
+  P-->>P: ParticipantEstimateView shows the Best/Likely/Worst form (5c), labelled in the facilitator's unit (#39), status line reads liveRound.roster
   P->>P: fill values → store.submitEstimate() validates via createEstimate
-  P->>R: sendEstimate(itemId, estimate, round)
+  P->>R: sendEstimate(itemId, estimate, round, { target: facilitatorPeerId })
   R-->>F: onEstimate → applyRemoteEstimate(itemId, estimate, round) → items[activeItemId].submissions (Workspace 1c)
+  Note over F: store change → NetworkProvider's subscription rebroadcasts syncState with the updated roster
+  R-->>P: onSyncState → roster reflects the new submission (no other peer ever saw the value)
   P-->>P: waiting state with revise affordance (5d)
   F->>F: Reveal estimates (enabled once ≥1 submission) → revealRound(itemId)
-  F->>R: sendReveal(itemId)
-  R-->>P: onReveal → store.applyReveal → revealed = true
+  Note over F,R: revealRound is a local store mutation; the store subscription broadcasts revealed:true + the frozen submissions
+  R-->>P: onSyncState → store.applySyncState → revealed = true, submissions from the snapshot
   F-->>F: Workspace 1d — aggregated range bar + per-participant values
   P-->>P: revealed state: aggregated range bar + participant list (5e)
   Note over F: then either Finalize item (finalizeLiveItem aggregates submissions)…
-  F->>R: …or Retry — start new round → retryRound(itemId) + sendRoundReset(itemId)
-  R-->>P: onRoundReset → store.applyRoundReset → back to the 5c form
+  F->>F: …or Retry — start new round → retryRound(itemId) (bumps round, clears submissions)
+  R-->>P: onSyncState → store.applySyncState sees the round bump → back to the 5c form
 ```
+
+### Snapshot pull on connect/reconnect
+
+```mermaid
+sequenceDiagram
+  participant F as Facilitator (tab A)
+  participant R as Trystero room (P2P)
+  participant P as Participant (tab B, joining or reconnecting)
+
+  P->>R: sendAnnounce({ participantId, name })
+  F->>R: sendAnnounce({ participantId: "facilitator", name }) (own re-announce on every peer join)
+  R-->>P: onAnnounce → learns the facilitator's peerId (first time, or changed since the last pull)
+  P->>R: requestSnapshot(facilitatorPeerId)
+  R-->>F: onRequestSnapshot → answers with the current syncState payload
+  R-->>P: resolves with the snapshot → store.applySyncState
+  P-->>P: lands on the correct view (lobby / estimating / waiting / revealed) regardless of what it missed
+```
+
+A single fetch per (re)connect, not polling — re-announcing the same peerId (triggered by
+an unrelated peer joining) does not trigger a re-pull.
 
 ## Screen flow
 
@@ -336,10 +368,12 @@ connects." Two things go wrong in practice:
 
    **Consequence worth weighing before doing more network work:** because the
    transport self-heals, a session that stays broken after a blip is usually not a
-   connection problem. It is a *state* problem — the peer missed the one-shot
-   `reveal` / `roundReset` while away and its view never caught up. That is what
-   [ADR-003](../adr/003-session-reliability-model.md) addresses, and it is the more
-   likely cure for reported "connection loss" than anything in this section. A
+   connection problem. It was, before #60, a *state* problem — the peer missed a
+   one-shot `reveal` / `roundReset` event while away and its view never caught up.
+   [ADR-003](../adr/003-session-reliability-model.md)'s "Single owner" element (#60)
+   closed that specific gap: state now converges from a pulled `syncState` snapshot
+   regardless of what a peer missed. The ADR's remaining elements (#61, #62) are
+   still the more likely cure for any further reported "connection loss". A
    TURN relay (point 1) remains the fix for peers who cannot connect *at all*.
 
 ## Store additions
@@ -353,7 +387,7 @@ connects." Two things go wrong in practice:
 | `participantId: string` | stable per-browser id (`getOrCreateParticipantId()`, persisted in `localStorage`), the submission key — survives a drop/rejoin so a reconnect isn't double-counted (#50) |
 | `connectionStatus` | `idle \| connecting \| connected \| disconnected` |
 | `peerCount: number` | connected peers, for the facilitator strip |
-| `liveRound: LiveRound \| null` | participant-only: current item + received `submissions` + `revealed` flag + `round` number + own `mySubmission`; written by `applySyncState` / `applyRemoteEstimate` / `applyReveal` / `applyRoundReset` / `submitEstimate` |
+| `liveRound: LiveRound \| null` | participant-only: current item + a values-free `roster` (`{ participantId, submitted, connected }[]`) + `submissions` (frozen, populated only once revealed) + `revealed` flag + `round` number + own `mySubmission`; written by `applySyncState` / `submitEstimate` — a Reveal or Retry is just another `applySyncState` call, not a separate handler (#60) |
 | `Item.submissions: Estimate[]` | facilitator-only: submissions received for the current round on that item, upserted by `applyRemoteEstimate` (dropped if the submission's `round` doesn't match `Item.round`, #51), cleared by `retryRound` (#8). Always empty in single-user mode. |
 | `Item.revealed: boolean` | facilitator-only: whether the round on that item is revealed (Workspace 1c → 1d). Set by `revealRound`, cleared by `retryRound` (#8). |
 | `Item.round: number` | facilitator-only: bumped by `retryRound`, carried in `SessionSnapshot`. Lets `applySyncState` tell a Retry apart from the prior round even when the peer never observed the intervening Reveal (#51). |
@@ -365,28 +399,30 @@ connects." Two things go wrong in practice:
 Every inbound peer message crossing `trystero/nostr → src/network/actions` is untrusted:
 `submitEstimate` must be an `{ itemId, estimate }` envelope with a non-empty string
 `itemId` (drop otherwise), and the estimate re-runs `createEstimate` (drop on failure).
-`syncState` is shape-checked on `currentItem` and `finalizedItemIds`; `unit`, `revealed`, and
-`round` are coerced rather than fatal — an unknown/missing `unit` falls back to `days`, a
-non-`true` `revealed` to `false`, a missing/non-number `round` to `0` — and each submission is
-re-validated. `submitEstimate`'s `round` is optional and left `undefined` rather than
-defaulted, so an older build's bare submission (no `round` at all) bypasses the facilitator's
-round check instead of being read as round `0`. `reveal` and
-`roundReset` must each be a string. `announce` must be an object with a non-empty
-`participantId` string and a `name` string that is non-empty after trimming (the name is
-trimmed before it reaches the store). The UI only ever sees validated `Estimate` values.
+`syncState` is shape-checked on `currentItem` and `finalizedItemIds`; `unit`, `revealed`,
+`round`, and `roster` are coerced rather than fatal — an unknown/missing `unit` falls back
+to `days`, a non-`true` `revealed` to `false`, a missing/non-number `round` to `0`, and each
+`roster` entry / submission is independently validated and dropped if malformed rather than
+rejecting the whole snapshot. `submitEstimate`'s `round` is optional and left `undefined`
+rather than defaulted, so an older build's bare submission (no `round` at all) bypasses the
+facilitator's round check instead of being read as round `0`. `announce` must be an object
+with a non-empty `participantId` string and a `name` string that is non-empty after
+trimming (the name is trimmed before it reaches the store). The UI only ever sees
+validated `Estimate` values.
 
 ## Known MVP gaps (accepted)
 
 > Most of the connection/state gaps below are resolved by design in
 > [ADR-003](../adr/003-session-reliability-model.md) (facilitator-authoritative rounds,
 > versioned rounds, a values-free submission roster, acknowledged submissions, stable client
-> identity, role-asymmetric link state). Stable client identity landed in #50; the rest
-> remain listed here as the *current* behaviour until #51 → #9 land. Two further defects
-> found while drafting that ADR are not yet listed as issues: participants hold every
-> peer's estimate *values* pre-reveal (the UI just
-> doesn't render them), and `connectionStatus` flips to `connected` on the first peer of any
-> kind, so a participant can be routed out of the join screen having never reached the
-> facilitator.
+> identity, role-asymmetric link state). Stable client identity landed in #50, versioned
+> rounds in #51, and facilitator-authoritative rounds + the values-free roster + pull-on-
+> connect in #60 (which also closed the pre-reveal value leak noted below as a former gap).
+> The rest — acknowledged submissions with a kind-driven retry policy (#61), role-asymmetric
+> link state (#62) — remain listed here as the *current* behaviour until they land. One
+> further defect found while drafting that ADR is not yet listed as an issue:
+> `connectionStatus` flips to `connected` on the first peer of any kind, so a participant can
+> be routed out of the join screen having never reached the facilitator.
 
 - No TURN server — participants behind symmetric NAT can't connect at all; Manual mode is
   the fallback, and TURN is the only remaining lever on drop *frequency*. An automatic
@@ -399,19 +435,17 @@ trimmed before it reaches the store). The UI only ever sees validated `Estimate`
 - Estimation unit is broadcast and re-broadcast on change (#39), but a mid-round change
   only re-labels values — already-submitted numbers are not converted and participants are
   not prompted to re-enter. Treat unit as a set-once-per-session choice.
-- Late-joiner snapshot uses `syncState` broadcast (hits all peers), wired in #7; it now
-  carries `revealed` and the frozen submissions (#8) so a peer joining or reconnecting
-  mid-reveal lands on the populated revealed view rather than a dead estimate form.
-  `Item`/`SessionSnapshot`/`LiveRound` also carry a `round: number`, bumped by `retryRound`
-  (#51). `applySyncState` treats a same-item snapshot whose `round` differs from what it last
-  saw as a Retry and drops the peer's stale round-local state — this covers a peer that is
-  disconnected across *both* the Reveal and the following Retry, which a `revealed`
-  true→false transition alone couldn't detect. `applyRemoteEstimate` also rejects an incoming
-  submission whose `round` doesn't match the receiver's own (the active item's round on a
-  facilitator, `liveRound.round` on a participant), which is what actually stops the
-  peer-join re-broadcast (`NetworkProvider`'s `sendEstimate` of a participant's own held
-  submission on every peer join) from re-injecting a pre-Retry estimate into the new round on
-  *any* receiving client, not just the facilitator's own tally.
+- A peer that joins or reconnects pulls the current `syncState` snapshot itself
+  (`requestSnapshot`, #60) rather than relying on the facilitator to notice and push one;
+  the snapshot carries `revealed` and the frozen submissions (#8) so it lands on the
+  populated revealed view rather than a dead estimate form. `Item`/`SessionSnapshot`/
+  `LiveRound` also carry a `round: number`, bumped by `retryRound` (#51). `applySyncState`
+  treats a same-item snapshot whose `round` differs from what it last saw as a Retry and
+  drops the peer's stale round-local state — this covers a peer that is disconnected across
+  *both* the Reveal and the following Retry, which a `revealed` true→false transition alone
+  couldn't detect. `applyRemoteEstimate` also rejects an incoming submission whose `round`
+  doesn't match the facilitator's active item round, guarding against a stale in-flight
+  submission from before a Retry.
 - No `/join/<id>` deep links yet — code is shared out of band.
 - No peer-identity binding: `submitEstimate` and `announce` are both keyed purely on the
   `participantId` in the payload, not on the sending peer, so a hostile peer could submit
@@ -421,10 +455,6 @@ trimmed before it reaches the store). The UI only ever sees validated `Estimate`
 - `participantId` is a stable per-browser id, not a per-device or per-person one (#50): two
   tabs open in the same browser share it, so the join screen warns against estimating from
   both at once rather than trying to detect or prevent it.
-- After a reveal, every peer join re-broadcasts the whole frozen `submissions` set to all
-  peers (the action layer has no per-peer send), so a join/reconnect storm in a revealed
-  round is O(N²) small JSON payloads. Fine at real estimation-session sizes; targeted
-  `syncState` send is a follow-up.
 - The facilitator's 1c/1d panel does not offer Retry once an item is finalized —
   re-opening a finalized item (which discards its recorded range) is deferred to #36's
   confirm-before-destroy flow.

@@ -135,13 +135,20 @@ describe('ParticipantEstimateView', () => {
   it('shows the estimating form for the active item, gated on a valid range', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({
-      liveRound: { item, submissions: [], revealed: false, round: 0, mySubmission: null },
+      liveRound: {
+        item,
+        submissions: [],
+        revealed: false,
+        round: 0,
+        roster: [{ participantId: 'me-123', submitted: false, connected: true }],
+        mySubmission: null,
+      },
     })
     render(<ParticipantEstimateView />)
 
     expect(screen.getByText('Retry queue')).toBeInTheDocument()
     expect(screen.getByText('exponential backoff')).toBeInTheDocument()
-    // peerCount 1 = just this participant (facilitator excluded, self included).
+    // A roster of just this participant (facilitator excluded, self included).
     expect(screen.getByText('0 of 1 teammate have submitted so far.')).toBeInTheDocument()
 
     const submit = screen.getByRole('button', { name: 'Submit estimate' })
@@ -162,7 +169,14 @@ describe('ParticipantEstimateView', () => {
   it('submits a valid estimate, broadcasts it, and moves to the waiting state', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({
-      liveRound: { item, submissions: [], revealed: false, round: 0, mySubmission: null },
+      liveRound: {
+        item,
+        submissions: [],
+        revealed: false,
+        round: 0,
+        roster: [{ participantId: 'me-123', submitted: false, connected: true }],
+        mySubmission: null,
+      },
     })
     render(<ParticipantEstimateView />)
 
@@ -192,6 +206,7 @@ describe('ParticipantEstimateView', () => {
         submissions: [estimate({ participantId: 'me-123' })],
         revealed: false,
         round: 0,
+        roster: [{ participantId: 'me-123', submitted: true, connected: true }],
         mySubmission: { best: 2, likely: 4, worst: 8 },
       },
     })
@@ -211,6 +226,10 @@ describe('ParticipantEstimateView', () => {
         ],
         revealed: true,
         round: 0,
+        roster: [
+          { participantId: 'me-123', submitted: true, connected: true },
+          { participantId: 'p2', submitted: true, connected: true },
+        ],
         mySubmission: { best: 3, likely: 5, worst: 8 },
       },
     })
@@ -236,6 +255,7 @@ describe('ParticipantEstimateView', () => {
         ],
         revealed: true,
         round: 0,
+        roster: [],
         mySubmission: { best: 3, likely: 5, worst: 8 },
       },
     })
@@ -260,6 +280,7 @@ describe('ParticipantEstimateView', () => {
         ],
         revealed: true,
         round: 0,
+        roster: [],
         mySubmission: { best: 3, likely: 5, worst: 8 },
       },
     })

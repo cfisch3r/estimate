@@ -80,17 +80,13 @@ interface SessionStore {
 
   /** Participant: adopt the facilitator's broadcast round state. */
   applySyncState: (snapshot: SessionSnapshot) => void
-  /** Record an incoming peer submission for `itemId`: into that item's
-   *  `submissions` for a facilitator, into `liveRound` for a participant. A
-   *  submission whose `itemId` isn't the current round is dropped, and so is
-   *  one whose `round` doesn't match the receiver's own (active item's round
-   *  for a facilitator, `liveRound.round` for a participant). */
+  /** Facilitator only: record an incoming targeted submission for `itemId`
+   *  into that item's `submissions`. A submission whose `itemId` isn't the
+   *  active item is dropped, and so is one whose `round` doesn't match the
+   *  active item's round. Participants never receive another peer's estimate
+   *  — `sendEstimate` targets the facilitator only (ADR-003, "Single owner") —
+   *  so there is no participant-side handling here. */
   applyRemoteEstimate: (itemId: string, estimate: Estimate, round?: number) => void
-  /** Participant: mark the current round revealed once the facilitator reveals it. */
-  applyReveal: (itemId: string) => void
-  /** Participant: drop back to the estimating state when the facilitator starts
-   *  a new round for `itemId` (Retry). */
-  applyRoundReset: (itemId: string) => void
   /** Record a peer's (or own) `participantId -> display name` mapping. */
   applyParticipantName: (participantId: string, name: string) => void
   /** Facilitator: forget a departed peer's display name once its connection drops. */
@@ -361,34 +357,32 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       }
       const prev = state.liveRound
       const sameItem = prev?.item.id === snapshot.currentItem.id
-      const incoming = snapshotSubmissionsToEstimates(snapshot)
       // A same-item snapshot whose round differs from what we last saw is a
       // Retry — whether or not we saw the Reveal in between. Drop the stale
-      // round-local state so a peer doesn't sit in the waiting view (and
-      // re-broadcast a pre-Retry estimate) for the new round. This replaces the
-      // old "revealed flipped back off" heuristic: Retry always bumps `round`,
-      // so this covers that case and the one it couldn't (missing both the
-      // Reveal and the Retry) — see ADR-003, "Versioned rounds".
+      // round-local state so a peer doesn't sit in the waiting view for the
+      // new round. This replaces the old "revealed flipped back off"
+      // heuristic: Retry always bumps `round`, so this covers that case and
+      // the one it couldn't (missing both the Reveal and the Retry) — see
+      // ADR-003, "Versioned rounds".
       const roundChanged = sameItem && prev?.round !== snapshot.round
+      // Pre-reveal, estimate values never reach a participant at all (ADR-003,
+      // "Single owner") — only the roster drives "N of M submitted". Post-reveal,
+      // the snapshot's frozen submission set is the only source.
       const submissions = snapshot.revealed
-        ? // Post-reveal the facilitator's snapshot carries the frozen submission
-          // set: participants can't tally it from `onEstimate` any more (that path
-          // is guarded), so the snapshot is the only source.
-          incoming
-        : roundChanged || !sameItem
-          ? incoming
-          : incoming.reduce(upsertByParticipant, prev!.submissions)
+        ? snapshotSubmissionsToEstimates(snapshot)
+        : []
       return {
         unit: snapshot.unit,
         liveRound: {
           item: snapshot.currentItem,
           submissions,
           // The facilitator's snapshot is authoritative for reveal state (it's
-          // re-sent on every peer join, unlike the one-shot reveal/roundReset
-          // events), so a peer joining or reconnecting mid-reveal lands on the
-          // revealed view and a peer that missed a Retry is un-latched.
+          // pulled on every connect/reconnect, unlike a one-shot event), so a
+          // peer joining or reconnecting mid-reveal lands on the revealed view
+          // and a peer that missed a Retry is un-latched.
           revealed: snapshot.revealed,
           round: snapshot.round,
+          roster: snapshot.roster,
           mySubmission: sameItem && !roundChanged ? prev!.mySubmission : null,
         },
       }
@@ -396,75 +390,35 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   applyRemoteEstimate: (itemId, estimate, round) =>
     set((state) => {
-      if (state.role === 'facilitator') {
-        // Only record if this submission is for the item the round is running on
-        // — a straggler for a just-finalized item must not seed the next round —
-        // and only while that round is still open: a late (or peer-join
-        // re-broadcast) submission must not move a range the group has seen.
-        const active = state.items.find((item) => item.id === state.activeItemId)
-        if (
-          !active ||
-          // An empty itemId is a pre-#8 peer's bare estimate — record it against
-          // the active round (legacy behaviour) rather than dropping it.
-          (itemId && itemId !== active.id) ||
-          active.revealed ||
-          active.finalResult !== null ||
-          // A round mismatch means this is a peer-join re-broadcast of a
-          // pre-Retry submission from a participant that hasn't yet caught up
-          // to the new round — this, plus the identical check in the
-          // participant branch below, is what stops that re-broadcast from
-          // being recorded anywhere. A missing `round` (older build) bypasses
-          // this check rather than being treated as stale.
-          (round !== undefined && round !== active.round)
-        ) {
-          return {}
-        }
-        return {
-          items: state.items.map((item) =>
-            item.id === active.id
-              ? { ...item, submissions: upsertByParticipant(item.submissions, estimate) }
-              : item,
-          ),
-        }
-      }
-      // Same "round still open" rule for a participant, so their revealed range
-      // bar doesn't shift when a peer re-broadcasts after the reveal. A round
-      // mismatch catches the same stale peer-join re-broadcast the facilitator
-      // branch above rejects — otherwise a participant who is still on the
-      // current round would fold another peer's pre-Retry submission into its
-      // own local tally, inflating the "N of M submitted" count.
+      // Facilitator-only: `sendEstimate` targets the facilitator alone, so a
+      // participant never receives another peer's estimate (ADR-003, "Single
+      // owner") and this handler is never invoked on a participant client.
+      // Only record if this submission is for the item the round is running on
+      // — a straggler for a just-finalized item must not seed the next round —
+      // and only while that round is still open: a late submission must not
+      // move a range the group has seen.
+      const active = state.items.find((item) => item.id === state.activeItemId)
       if (
-        !state.liveRound ||
-        (itemId && state.liveRound.item.id !== itemId) ||
-        state.liveRound.revealed ||
-        (round !== undefined && round !== state.liveRound.round)
+        !active ||
+        // An empty itemId is a pre-#8 peer's bare estimate — record it against
+        // the active round (legacy behaviour) rather than dropping it.
+        (itemId && itemId !== active.id) ||
+        active.revealed ||
+        active.finalResult !== null ||
+        // A round mismatch means this submission belongs to a round the
+        // participant hasn't caught up past yet (a stale in-flight send from
+        // before a Retry). A missing `round` (older build) bypasses this
+        // check rather than being treated as stale.
+        (round !== undefined && round !== active.round)
       ) {
         return {}
       }
       return {
-        liveRound: {
-          ...state.liveRound,
-          submissions: upsertByParticipant(state.liveRound.submissions, estimate),
-        },
-      }
-    }),
-
-  applyReveal: (itemId) =>
-    set((state) => {
-      if (!state.liveRound || state.liveRound.item.id !== itemId) return {}
-      return { liveRound: { ...state.liveRound, revealed: true } }
-    }),
-
-  applyRoundReset: (itemId) =>
-    set((state) => {
-      if (!state.liveRound || state.liveRound.item.id !== itemId) return {}
-      return {
-        liveRound: {
-          ...state.liveRound,
-          submissions: [],
-          revealed: false,
-          mySubmission: null,
-        },
+        items: state.items.map((item) =>
+          item.id === active.id
+            ? { ...item, submissions: upsertByParticipant(item.submissions, estimate) }
+            : item,
+        ),
       }
     }),
 

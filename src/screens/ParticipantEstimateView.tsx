@@ -210,17 +210,15 @@ function EstimatingPanel({
   round,
   unit,
   sessionId,
-  peerCount,
   onSubmit,
 }: RoundPanelProps & {
-  peerCount: number
   onSubmit: (best: number, likely: number, worst: number) => SubmitResult
 }) {
-  // The participant's peers are the facilitator + every other participant, so
-  // the number of people who submit estimates (participants, incl. self) is just
-  // the peer count: (peerCount - 1 facilitator) + 1 self.
-  const totalEstimators = Math.max(peerCount, 1)
-  const submitted = round.submissions.length
+  // The roster (from the facilitator's snapshot) is the authoritative "who's
+  // estimating" list — it replaces deriving the denominator from `peerCount`,
+  // which is only correct while the full peer-to-peer mesh is intact.
+  const totalEstimators = Math.max(round.roster.length, 1)
+  const submitted = round.roster.filter((entry) => entry.submitted).length
   const statusLine = `${submitted} of ${totalEstimators} teammate${
     totalEstimators === 1 ? '' : 's'
   } ${submitted === 1 ? 'has' : 'have'} submitted so far.`
@@ -490,7 +488,6 @@ export function ParticipantEstimateView() {
         round={liveRound}
         unit={unit}
         sessionId={sessionId}
-        peerCount={peerCount}
         onSubmit={handleSubmit}
       />
     )

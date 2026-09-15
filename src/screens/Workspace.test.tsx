@@ -6,18 +6,11 @@ import { createEstimate, type Estimate } from '../calc'
 import { useSessionStore } from '../state/store'
 import type { Item } from '../state/types'
 
-const { sendRevealMock, sendRoundResetMock } = vi.hoisted(() => ({
-  sendRevealMock: vi.fn(),
-  sendRoundResetMock: vi.fn(),
-}))
-
 vi.mock('../network', () => ({
   useNetworkSession: () => ({
     connect: vi.fn(),
     disconnect: vi.fn(),
     sendEstimate: vi.fn(),
-    sendReveal: sendRevealMock,
-    sendRoundReset: sendRoundResetMock,
   }),
 }))
 
@@ -58,8 +51,6 @@ function resetStore() {
 }
 
 beforeEach(() => {
-  sendRevealMock.mockClear()
-  sendRoundResetMock.mockClear()
   resetStore()
 })
 
@@ -192,7 +183,7 @@ describe('Workspace — live facilitator reveal flow', () => {
     expect(screen.getByRole('button', { name: 'Reveal estimates' })).toBeDisabled()
   })
 
-  it('reveals the round: sets the flag, broadcasts, shows the aggregated bar and values', async () => {
+  it('reveals the round: sets the flag, shows the aggregated bar and values', async () => {
     const user = userEvent.setup()
     setupRound({ submissions: [estimate('p1', 2, 4, 8), estimate('p2', 3, 5, 10)] })
     render(<Workspace />)
@@ -200,7 +191,6 @@ describe('Workspace — live facilitator reveal flow', () => {
     await user.click(screen.getByRole('button', { name: /Reveal estimates/ }))
 
     expect(useSessionStore.getState().items[0]!.revealed).toBe(true)
-    expect(sendRevealMock).toHaveBeenCalledWith('i1')
     expect(screen.getByText('Participant estimates')).toBeInTheDocument()
     expect(screen.getByText('2d / 4d / 8d')).toBeInTheDocument()
     expect(screen.getByText('best case')).toBeInTheDocument()
@@ -231,7 +221,7 @@ describe('Workspace — live facilitator reveal flow', () => {
     })
   })
 
-  it('retries a revealed round: clears submissions, broadcasts, returns to waiting', async () => {
+  it('retries a revealed round: clears submissions, returns to waiting', async () => {
     const user = userEvent.setup()
     setupRound({ revealed: true, submissions: [estimate('p1')] })
     render(<Workspace />)
@@ -241,7 +231,6 @@ describe('Workspace — live facilitator reveal flow', () => {
     const stored = useSessionStore.getState().items[0]!
     expect(stored.revealed).toBe(false)
     expect(stored.submissions).toHaveLength(0)
-    expect(sendRoundResetMock).toHaveBeenCalledWith('i1')
     expect(screen.getByText('Participants')).toBeInTheDocument()
   })
 

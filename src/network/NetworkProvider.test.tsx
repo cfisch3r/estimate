@@ -13,12 +13,11 @@ const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
   const handlers: Record<string, ((...args: never[]) => void) | null> = {
     estimate: null,
     syncState: null,
-    reveal: null,
-    roundReset: null,
     announce: null,
     peerJoin: null,
     peerLeave: null,
   }
+  let requestSnapshotResponder: (() => unknown) | null = null
   const capture = (name: string) => (cb: (...args: never[]) => void) => {
     handlers[name] = cb
     return () => {
@@ -35,16 +34,19 @@ const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
     }),
     onEstimate: vi.fn(capture('estimate')),
     onSyncState: vi.fn(capture('syncState')),
-    onReveal: vi.fn(capture('reveal')),
-    onRoundReset: vi.fn(capture('roundReset')),
     onAnnounce: vi.fn(capture('announce')),
+    onRequestSnapshot: vi.fn((cb: () => unknown) => {
+      requestSnapshotResponder = cb
+      return () => {
+        requestSnapshotResponder = null
+      }
+    }),
     onPeerJoin: vi.fn(capture('peerJoin')),
     onPeerLeave: vi.fn(capture('peerLeave')),
     sendEstimate: vi.fn(),
     sendSyncState: vi.fn(),
-    sendReveal: vi.fn(),
-    sendRoundReset: vi.fn(),
     sendAnnounce: vi.fn(),
+    requestSnapshot: vi.fn(() => Promise.resolve(requestSnapshotResponder?.())),
     leave: vi.fn(),
   }
   const emitState = (state: ConnectionState) => {
@@ -75,6 +77,7 @@ beforeEach(() => {
   fakeSession.sendEstimate.mockClear()
   fakeSession.sendSyncState.mockClear()
   fakeSession.sendAnnounce.mockClear()
+  fakeSession.requestSnapshot.mockClear()
   emitState({ status: 'connecting', peerIds: [] })
   useSessionStore.setState({
     connectionStatus: 'idle',
@@ -141,7 +144,7 @@ describe('useNetworkSession', () => {
     expect(useSessionStore.getState().peerCount).toBe(0)
   })
 
-  it('dispatches incoming syncState / estimate / reveal / roundReset into the store', async () => {
+  it('dispatches incoming syncState into the store, including reveal and Retry via later snapshots', async () => {
     const user = userEvent.setup()
     act(() => useSessionStore.setState({ mode: 'live', role: 'participant' }))
     render(
@@ -157,26 +160,71 @@ describe('useNetworkSession', () => {
         currentItem: item,
         unit: 'days',
         revealed: false,
+        round: 0,
+        roster: [{ participantId: 'p2', submitted: true, connected: true }],
         submissions: [],
         finalizedItemIds: [],
       }),
     )
     expect(useSessionStore.getState().liveRound?.item.title).toBe('Retry queue')
+    expect(useSessionStore.getState().liveRound?.roster).toHaveLength(1)
+
+    // A later snapshot carries the reveal — there's no separate one-shot event
+    // any more (ADR-003, "Versioned rounds").
+    act(() =>
+      emit('syncState', {
+        currentItem: item,
+        unit: 'days',
+        revealed: true,
+        round: 0,
+        roster: [{ participantId: 'p2', submitted: true, connected: true }],
+        submissions: [{ participantId: 'p2', best: 2, likely: 4, worst: 8 }],
+        finalizedItemIds: [],
+      }),
+    )
+    expect(useSessionStore.getState().liveRound?.revealed).toBe(true)
+
+    // And a Retry is just a round bump on the next snapshot.
+    act(() =>
+      emit('syncState', {
+        currentItem: item,
+        unit: 'days',
+        revealed: false,
+        round: 1,
+        roster: [],
+        submissions: [],
+        finalizedItemIds: [],
+      }),
+    )
+    expect(useSessionStore.getState().liveRound?.revealed).toBe(false)
+    expect(useSessionStore.getState().liveRound?.round).toBe(1)
+  })
+
+  it('does not record another peer’s estimate on a participant client (sendEstimate targets the facilitator only)', async () => {
+    const user = userEvent.setup()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        items: [],
+        activeItemId: null,
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
 
     act(() =>
       emit('estimate', 'item-1', { participantId: 'p2', best: 2, likely: 4, worst: 8 }),
     )
-    expect(useSessionStore.getState().liveRound?.submissions).toHaveLength(1)
 
-    act(() => emit('reveal', 'item-1'))
-    expect(useSessionStore.getState().liveRound?.revealed).toBe(true)
-
-    act(() => emit('roundReset', 'item-1'))
-    expect(useSessionStore.getState().liveRound?.revealed).toBe(false)
-    expect(useSessionStore.getState().liveRound?.submissions).toHaveLength(0)
+    expect(useSessionStore.getState().liveRound).toBeNull()
   })
 
-  it('re-broadcasts the facilitator snapshot when a peer joins', async () => {
+  it('does not re-broadcast the snapshot on peer-join (a newcomer pulls it instead)', async () => {
     const user = userEvent.setup()
     render(
       <NetworkProvider>
@@ -210,13 +258,229 @@ describe('useNetworkSession', () => {
 
     act(() => emit('peerJoin', 'peer-new'))
 
-    expect(fakeSession.sendSyncState).toHaveBeenCalledWith(
-      expect.objectContaining({
-        currentItem: { id: 'i1', title: 'Retry queue', description: 'backoff' },
+    expect(fakeSession.sendSyncState).not.toHaveBeenCalled()
+  })
+
+  it('answers a requestSnapshot pull with the current facilitator snapshot', async () => {
+    const user = userEvent.setup()
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'facilitator',
+        sessionId: 'K7F9Q2',
+        items: [
+          {
+            id: 'i1',
+            title: 'Retry queue',
+            description: 'backoff',
+            notes: '',
+            finalResult: null,
+            submissions: [],
+            revealed: false,
+            round: 0,
+          },
+        ],
+        activeItemId: 'i1',
         unit: 'weeks',
-        revealed: false,
       }),
     )
+
+    const respond = fakeSession.onRequestSnapshot.mock.calls[0]?.[0] as
+      (() => { currentItem: { id: string } | null }) | undefined
+    expect(respond).toBeDefined()
+    expect(respond?.()).toMatchObject({
+      currentItem: { id: 'i1', title: 'Retry queue', description: 'backoff' },
+      unit: 'weeks',
+      revealed: false,
+    })
+  })
+
+  it("pulls the facilitator's snapshot once a participant learns its peerId from an announce", async () => {
+    const user = userEvent.setup()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    const snapshot = {
+      currentItem: { id: 'i1', title: 'Retry queue', description: 'backoff' },
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [{ participantId: 'p-self', submitted: false, connected: true }],
+      submissions: [],
+      finalizedItemIds: [],
+    }
+    fakeSession.requestSnapshot.mockResolvedValue(snapshot)
+
+    await act(async () => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+      await Promise.resolve()
+    })
+
+    expect(fakeSession.requestSnapshot).toHaveBeenCalledWith('peer-fac')
+    expect(useSessionStore.getState().liveRound?.item.title).toBe('Retry queue')
+  })
+
+  it("does not re-pull when the facilitator's peerId is re-announced unchanged", async () => {
+    const user = userEvent.setup()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    fakeSession.requestSnapshot.mockResolvedValue({
+      currentItem: null,
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    })
+
+    await act(async () => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+      await Promise.resolve()
+    })
+    fakeSession.requestSnapshot.mockClear()
+
+    // A different peer joining re-triggers every client's announce, including
+    // the facilitator's own — re-announcing the same peerId must not re-pull.
+    act(() =>
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac'),
+    )
+
+    expect(fakeSession.requestSnapshot).not.toHaveBeenCalled()
+  })
+
+  it("targets sendEstimate at the facilitator's peerId once learned", async () => {
+    const user = userEvent.setup()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    function EstimateSender() {
+      const { sendEstimate } = useNetworkSession()
+      return (
+        <button
+          onClick={() => {
+            const estimate = createEstimate({
+              participantId: 'p-self',
+              best: 1,
+              likely: 2,
+              worst: 3,
+            })
+            if (estimate.ok) sendEstimate('i1', estimate.value, 0)
+          }}
+        >
+          submit
+        </button>
+      )
+    }
+    render(
+      <NetworkProvider>
+        <EstimateSender />
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+    fakeSession.requestSnapshot.mockResolvedValue({
+      currentItem: null,
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    })
+
+    await act(async () => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+      await Promise.resolve()
+    })
+
+    await user.click(screen.getByText('submit'))
+
+    expect(fakeSession.sendEstimate).toHaveBeenCalledWith(
+      'i1',
+      expect.objectContaining({ participantId: 'p-self' }),
+      0,
+      'peer-fac',
+    )
+  })
+
+  it("never falls back to an untargeted broadcast when the facilitator's peerId isn't known yet", async () => {
+    const user = userEvent.setup()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    function EstimateSender() {
+      const { sendEstimate } = useNetworkSession()
+      return (
+        <button
+          onClick={() => {
+            const estimate = createEstimate({
+              participantId: 'p-self',
+              best: 1,
+              likely: 2,
+              worst: 3,
+            })
+            if (estimate.ok) sendEstimate('i1', estimate.value, 0)
+          }}
+        >
+          submit
+        </button>
+      )
+    }
+    render(
+      <NetworkProvider>
+        <EstimateSender />
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    // No announce from the facilitator has arrived yet, so its peerId is unknown.
+    await user.click(screen.getByText('submit'))
+
+    expect(fakeSession.sendEstimate).not.toHaveBeenCalled()
   })
 
   it('broadcasts revealed:true plus the frozen submissions once the facilitator reveals', async () => {

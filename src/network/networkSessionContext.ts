@@ -8,14 +8,10 @@ export interface NetworkSessionApi {
   connect: (sessionId: string) => void
   /** Leave the current room (if any) and reset the store's connection fields. */
   disconnect: () => void
-  /** Broadcast this participant's validated estimate (with the item and round
-   *  it's for) to the rest of the room. */
+  /** Send this participant's validated estimate (with the item and round it's
+   *  for) to the facilitator only — never broadcast to the mesh (ADR-003,
+   *  "Single owner"). */
   sendEstimate: (itemId: string, estimate: Estimate, round: number) => void
-  /** Facilitator: tell participants the round for `itemId` is now revealed. */
-  sendReveal: (itemId: string) => void
-  /** Facilitator: tell participants to discard their submissions and estimate
-   *  `itemId` again (Retry). */
-  sendRoundReset: (itemId: string) => void
 }
 
 export const NetworkSessionContext = createContext<NetworkSessionApi | null>(null)

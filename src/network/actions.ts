@@ -14,6 +14,16 @@ export interface SnapshotItem {
   description: string
 }
 
+/** A values-free roster row for the current round (ADR-003, "Single owner").
+ *  One structure, two renderings: the facilitator's participant panel and the
+ *  participant's "N of M submitted" line both read this instead of raw
+ *  submission values, which never reach a participant before reveal. */
+export interface RosterEntry {
+  participantId: string
+  submitted: boolean
+  connected: boolean
+}
+
 export interface SessionSnapshot {
   currentItem: SnapshotItem | null
   /** The unit the facilitator is estimating in, so participant forms and bars
@@ -27,6 +37,13 @@ export interface SessionSnapshot {
    *  reconnects after missing both a Reveal and a Retry tell the rounds apart
    *  from the snapshot alone (ADR-003, "Versioned rounds"). */
   round: number
+  /** Who's in and who has submitted this round, with no estimate values.
+   *  Drives a participant's "N of M submitted" line and the facilitator's
+   *  panel alike. */
+  roster: RosterEntry[]
+  /** The frozen submission set, populated only once `revealed` is true —
+   *  pre-reveal this stays empty, since values must not reach participants
+   *  before the reveal (ADR-003). */
   submissions: RawEstimateInput[]
   finalizedItemIds: string[]
 }
@@ -54,22 +71,38 @@ export interface ParticipantAnnounce {
 type Unsubscribe = () => void
 
 interface MessageAction<T> {
-  send: (data: T) => void
+  send: (data: T, options?: { target?: string }) => void
   onMessage: ((data: unknown, context: { peerId: string }) => void) | null
 }
 
+interface RequestAction<TReq, TRes> {
+  request: (data: TReq, options: { target: string; timeoutMs?: number }) => Promise<TRes>
+  onRequest: ((data: TReq, context: { peerId: string }) => TRes | Promise<TRes>) | null
+}
+
 /** The minimal slice of Trystero's Room this module needs, so tests can supply
- *  a fake room without implementing Room's full media/streaming surface. */
+ *  a fake room without implementing Room's full media/streaming surface.
+ *  Overloaded like Trystero's real `makeAction`: a `{ kind: 'request' }`
+ *  config yields a request/response action instead of a one-way message one. */
 export interface ActionRoom {
-  makeAction: <T>(name: string) => MessageAction<T>
+  makeAction<T>(name: string): MessageAction<T>
+  makeAction<TReq, TRes>(
+    name: string,
+    config: { kind: 'request' },
+  ): RequestAction<TReq, TRes>
 }
 
 export interface TypedActions {
-  sendEstimate(itemId: string, estimate: Estimate, round: number): void
+  /** `target` sends only to the facilitator's peerId rather than broadcasting
+   *  to the mesh — this is what keeps a participant's estimate off every other
+   *  peer's wire (ADR-003, "Single owner"). */
+  sendEstimate(itemId: string, estimate: Estimate, round: number, target?: string): void
   sendSyncState(snapshot: SessionSnapshot): void
-  sendReveal(itemId: string): void
-  sendRoundReset(itemId: string): void
   sendAnnounce(announce: ParticipantAnnounce): void
+  /** A peer that just (re)connected pulls the facilitator's current snapshot
+   *  itself, rather than waiting on the facilitator's peer-join handler to
+   *  push one (ADR-003, "Snapshot delivery: pull on arrival"). */
+  requestSnapshot(targetPeerId: string): Promise<SessionSnapshot>
   onEstimate(
     cb: (
       itemId: string,
@@ -79,9 +112,9 @@ export interface TypedActions {
     ) => void,
   ): Unsubscribe
   onSyncState(cb: (snapshot: SessionSnapshot, peerId: string) => void): Unsubscribe
-  onReveal(cb: (itemId: string, peerId: string) => void): Unsubscribe
-  onRoundReset(cb: (itemId: string, peerId: string) => void): Unsubscribe
   onAnnounce(cb: (announce: ParticipantAnnounce, peerId: string) => void): Unsubscribe
+  /** Facilitator-only: answers a peer's `requestSnapshot` pull. */
+  onRequestSnapshot(cb: () => SessionSnapshot): Unsubscribe
 }
 
 function createSubscribable<T extends unknown[]>() {
@@ -124,6 +157,24 @@ function sanitizeSubmissions(submissions: unknown): RawEstimateInput[] {
     }
   }
   return sanitized
+}
+
+function isValidRosterEntry(value: unknown): value is RosterEntry {
+  if (typeof value !== 'object' || value === null) return false
+  const entry = value as Record<string, unknown>
+  return (
+    typeof entry.participantId === 'string' &&
+    entry.participantId.length > 0 &&
+    typeof entry.submitted === 'boolean' &&
+    typeof entry.connected === 'boolean'
+  )
+}
+
+/** Same tolerance as `sanitizeSubmissions`: an older/newer build's malformed
+ *  or missing roster shouldn't drop the whole snapshot — just that entry. */
+function sanitizeRoster(roster: unknown): RosterEntry[] {
+  if (!Array.isArray(roster)) return []
+  return roster.filter(isValidRosterEntry)
 }
 
 function isValidSnapshotItem(value: unknown): value is SnapshotItem {
@@ -195,18 +246,39 @@ function unwrapEstimateMessage(data: unknown): {
     : { itemId: '', payload: data, round: undefined }
 }
 
+/** Shared by the `syncState` push (`onMessage`) and the `requestSnapshot` pull
+ *  (the resolved response) — a peer's answer is just as untrusted as a broadcast,
+ *  so both paths get the same shape check and per-field tolerance/sanitization. */
+function parseSnapshot(data: unknown): SessionSnapshot | null {
+  if (!isValidSnapshotShape(data)) return null
+  return {
+    currentItem: data.currentItem,
+    // Tolerate a missing/unknown unit (e.g. a facilitator on an older build
+    // mid-deploy) rather than dropping the whole snapshot — fall back to the
+    // store default so the participant still gets the round.
+    unit: isEstimationUnit(data.unit) ? data.unit : 'days',
+    // Same tolerance for `revealed` (older builds omit it): default to false.
+    revealed: data.revealed === true,
+    // Same tolerance for `round` (older builds omit it): default to 0.
+    round: typeof data.round === 'number' ? data.round : 0,
+    roster: sanitizeRoster(data.roster),
+    submissions: sanitizeSubmissions(data.submissions),
+    finalizedItemIds: data.finalizedItemIds,
+  }
+}
+
 export function createTypedActions(room: ActionRoom): TypedActions {
   const submitEstimateAction = room.makeAction<EstimateMessage>('submitEstimate')
   const syncStateAction = room.makeAction<SessionSnapshot>('syncState')
-  const revealAction = room.makeAction<string>('reveal')
-  const roundResetAction = room.makeAction<string>('roundReset')
   const announceAction = room.makeAction<ParticipantAnnounce>('announce')
+  const requestSnapshotAction = room.makeAction<null, SessionSnapshot>(
+    'requestSnapshot',
+    { kind: 'request' },
+  )
 
   const estimateSubscribable =
     createSubscribable<[string, Estimate, string, number | undefined]>()
   const syncStateSubscribable = createSubscribable<[SessionSnapshot, string]>()
-  const revealSubscribable = createSubscribable<[string, string]>()
-  const roundResetSubscribable = createSubscribable<[string, string]>()
   const announceSubscribable = createSubscribable<[ParticipantAnnounce, string]>()
 
   submitEstimateAction.onMessage = (data, { peerId }) => {
@@ -220,42 +292,12 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   }
 
   syncStateAction.onMessage = (data, { peerId }) => {
-    if (!isValidSnapshotShape(data)) {
+    const snapshot = parseSnapshot(data)
+    if (!snapshot) {
       console.warn('Dropping malformed incoming snapshot')
       return
     }
-    syncStateSubscribable.notify(
-      {
-        currentItem: data.currentItem,
-        // Tolerate a missing/unknown unit (e.g. a facilitator on an older build
-        // mid-deploy) rather than dropping the whole snapshot — fall back to the
-        // store default so the participant still gets the round.
-        unit: isEstimationUnit(data.unit) ? data.unit : 'days',
-        // Same tolerance for `revealed` (older builds omit it): default to false.
-        revealed: data.revealed === true,
-        // Same tolerance for `round` (older builds omit it): default to 0.
-        round: typeof data.round === 'number' ? data.round : 0,
-        submissions: sanitizeSubmissions(data.submissions),
-        finalizedItemIds: data.finalizedItemIds,
-      },
-      peerId,
-    )
-  }
-
-  revealAction.onMessage = (data, { peerId }) => {
-    if (typeof data !== 'string') {
-      console.warn('Dropping malformed incoming reveal payload')
-      return
-    }
-    revealSubscribable.notify(data, peerId)
-  }
-
-  roundResetAction.onMessage = (data, { peerId }) => {
-    if (typeof data !== 'string') {
-      console.warn('Dropping malformed incoming roundReset payload')
-      return
-    }
-    roundResetSubscribable.notify(data, peerId)
+    syncStateSubscribable.notify(snapshot, peerId)
   }
 
   announceAction.onMessage = (data, { peerId }) => {
@@ -273,16 +315,29 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   }
 
   return {
-    sendEstimate: (itemId, estimate, round) =>
-      submitEstimateAction.send({ itemId, estimate, round }),
+    sendEstimate: (itemId, estimate, round, target) =>
+      target
+        ? submitEstimateAction.send({ itemId, estimate, round }, { target })
+        : submitEstimateAction.send({ itemId, estimate, round }),
     sendSyncState: (snapshot) => syncStateAction.send(snapshot),
-    sendReveal: (itemId) => revealAction.send(itemId),
-    sendRoundReset: (itemId) => roundResetAction.send(itemId),
     sendAnnounce: (announce) => announceAction.send(announce),
+    requestSnapshot: (targetPeerId) =>
+      requestSnapshotAction
+        .request(null, { target: targetPeerId, timeoutMs: 2000 })
+        .then((data) => {
+          const snapshot = parseSnapshot(data)
+          if (!snapshot)
+            throw new Error('Malformed snapshot received from requestSnapshot')
+          return snapshot
+        }),
     onEstimate: estimateSubscribable.subscribe,
     onSyncState: syncStateSubscribable.subscribe,
-    onReveal: revealSubscribable.subscribe,
-    onRoundReset: roundResetSubscribable.subscribe,
     onAnnounce: announceSubscribable.subscribe,
+    onRequestSnapshot: (cb) => {
+      requestSnapshotAction.onRequest = () => cb()
+      return () => {
+        requestSnapshotAction.onRequest = null
+      }
+    },
   }
 }

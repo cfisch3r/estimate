@@ -58,8 +58,8 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 - **Room identity:** `generateSessionCode()` (`src/network/sessionCode.ts`) produces a 6-char Crockford-base32 code at session creation (crypto RNG, ambiguous glyphs removed) — short enough to read aloud or paste into chat. It is the Trystero `roomId`, with a fixed `appId` (`estimate-app-v1`) namespacing EstiMate's rooms. *(The proposal assumed a nanoid embedded in a `/join/<id>` deep link; the as-built code ships the human-shareable code with no deep-link route — see the concept doc's "Known MVP gaps".)*
 - **Signaling strategy:** Trystero's **Nostr strategy** (`trystero/nostr`) as the default — this is the library's own default and top recommendation, backed by hundreds of independent public relays (most redundancy of the decentralized options), no account/config required, matches ADR-001's "no server we operate." Library's own robustness ranking for the decentralized strategies: Nostr → MQTT → BitTorrent → IPFS. Supabase/Firebase strategies exist but require configuring your own project (not zero-setup); a self-hosted WebSocket relay strategy also exists as an explicit escape hatch if the public networks prove unreliable, mirroring ADR-001's bring-your-own-TURN framing. Verified against current Trystero docs (trystero.dev, github.com/dmotz/trystero).
 - **Room privacy:** `roomId` = the shared session code — this is the invite mechanism. `joinSession()` accepts an optional `password` (Trystero AES-GCM encrypts the signaling handshake); without it the roomId is visible as metadata on the public signaling medium. The 6-char code is already hard to guess, but a password closes the gap cheaply if a session warrants it.
-- **Data sync model: event broadcast, not CRDT.** Each peer only broadcasts its own submissions (`room.makeAction()`); every peer independently maintains the same append-only list of received estimates and computes min/median/max locally. **(Superseded in principle 2026-09-14 by [ADR-003](adr/003-session-reliability-model.md), not yet implemented: the facilitator becomes the owner of round state, participants hold a projection, and estimate values stop reaching participants before the reveal. The as-built behaviour is still as described here.)** This works because the PRD's aggregation (min of Best, max of Worst, median of Likely) is order-independent and idempotent — no conflict resolution needed, and Mode A/B can share one calculation engine.
-- **Known gap to handle explicitly:** Trystero doesn't replay history to late joiners. On `onPeerJoin`, an existing peer must push a full state snapshot (current item, submissions so far, finalized items) to the newcomer. The wire action for this (`syncState`, carrying a `SessionSnapshot`) exists in `src/network/actions.ts`. As of #7 the facilitator broadcasts it from `NetworkProvider` (on active-item / estimation-unit / finalized-set change) and participants apply it via `store.applySyncState`; a snapshot targeted at a specific late joiner on `onPeerJoin` is not yet implemented.
+- **Data sync model: facilitator-owned, not CRDT.** **(Superseded 2026-09-15 by [ADR-003](adr/003-session-reliability-model.md), "Single owner" landed in #60.)** The facilitator's `items[]` is the sole source of truth for submissions, reveal state, and finalization; a participant's `liveRound` is a projection of the facilitator's `syncState` snapshot plus its own pending submission. A participant's `submitEstimate` is a targeted send to the facilitator's peerId only — it never reaches other participants, closing the pre-reveal estimate-value leak. This works because the PRD's aggregation (min of Best, max of Worst, median of Likely) is order-independent and idempotent on the facilitator's own accumulated list — no conflict resolution needed, and Mode A/B can share one calculation engine.
+- **Known gap, mostly closed:** Trystero doesn't replay history to late joiners. The wire action for state recovery (`syncState`, carrying a `SessionSnapshot`) exists in `src/network/actions.ts`; the facilitator broadcasts it from `NetworkProvider` on every real change, and — since #60 — a peer that just connected or reconnected pulls it directly via the `requestSnapshot` request/response action, rather than relying on the facilitator to notice the arrival and push one. Remaining gap: that pull is best-effort (a single request, no retry on failure) until #61 applies its shared kind-driven retry policy to this call too.
 
 ## Module structure
 
@@ -84,14 +84,15 @@ Static SPA — no server-side rendering needed, no routes that require backend d
                   bias guards (symmetric-range, false-precision, outlier — PRD §6). Framework-free,
                   unit-testable, identical between Mode A and Mode B.
   /network      — Trystero wrapper: room join/create, typed actions (submitEstimate, syncState,
-                  reveal, roundReset, announce), connection-state hooks, late-joiner snapshot handling
+                  announce, requestSnapshot request/response), connection-state hooks,
+                  facilitator-authoritative round state (ADR-003, #60)
   /state        — Zustand store; network and persistence are adapters dispatching into it
   /persistence  — IndexedDB adapter, CSV export, shareable-report-link encode/decode
 ```
 
 The `/calc` layer's isolation as pure, framework-free functions is the single most load-bearing structural decision — PRD §4.2 and ADR-001 both require identical calculation/bias-guard behavior across both modes, and this makes it trivially unit-testable against the PRD §5–6 formulas independent of UI or networking.
 
-**Testing note (ADR-002):** browser-specific behavior — real reload/persistence, real P2P connection handling — is the trigger to add Playwright. The Trystero `/network` layer has shipped, but its jsdom-testable surface (actions, validation, state machine) doesn't yet trip that trigger — the #7 participant round and #8 facilitator reveal / `roundReset` sync both landed entirely in store + component tests. Real WebRTC peer connect/drop and real `/persistence` are what trip it. Scope it to a handful of golden-path smoke tests; keep edge cases in `/calc`/`/state`/component tests. See ADR-002's 2026-09-07 update.
+**Testing note (ADR-002):** browser-specific behavior — real reload/persistence, real P2P connection handling — is the trigger to add Playwright. The Trystero `/network` layer has shipped, but its jsdom-testable surface (actions, validation, state machine) doesn't yet trip that trigger — the #7 participant round, #8 facilitator reveal, and #60's `syncState`-only convergence (no separate reveal/roundReset events) all landed entirely in store + component tests. Real WebRTC peer connect/drop and real `/persistence` are what trip it. Scope it to a handful of golden-path smoke tests; keep edge cases in `/calc`/`/state`/component tests. See ADR-002's 2026-09-07 update.
 
 ## `/calc` module — detailed design
 
@@ -167,18 +168,22 @@ The clickable prototype predates the `/calc` module and unit decisions above, so
 
 ## Build status &amp; what's next
 
-The proposal above has been built out through issue #8: Vite + React 19 + TS scaffold,
+The proposal above has been built out through issue #60: Vite + React 19 + TS scaffold,
 Nocturne ported as-is, the `/calc` engine (unit-tested against the PRD §5–6 formulas), the
 Zustand store, the single-user Workspace screens, the Trystero P2P network layer, the
 Join Session screen, the participant estimate round (lobby / estimating / waiting /
 revealed, driven by `store.liveRound`), participant display names on the wire (#40,
 `announce` action), and the facilitator reveal panel (#8 — Workspace states 1c waiting /
 1d revealed, driven by per-item `submissions` / `revealed`, with group aggregate + CI90
-via `/calc` and a `roundReset` wire action for Retry). `NetworkProvider` dispatches inbound
-`onEstimate` / `onSyncState` / `onReveal` / `onRoundReset` / `onAnnounce` and broadcasts
-the facilitator's `syncState`. The epic-0010 screen review (#34) rebuilt the entry flow to
-a mode-selection screen plus the unified Workspace. (#39, the session unit on the wire, is
-done — `unit` on `SessionSnapshot`, broadcast on change, adopted by `applySyncState`.)
+via `/calc`). Since #60 (ADR-003, "Single owner"), a Reveal or Retry is just another
+`syncState` snapshot — there is no separate `reveal` / `roundReset` wire action, and a
+participant's `submitEstimate` targets the facilitator's peerId only. `NetworkProvider`
+dispatches inbound `onEstimate` / `onSyncState` / `onAnnounce`, answers a peer's
+`requestSnapshot` pull (facilitator only), and broadcasts the facilitator's `syncState`
+(now carrying a values-free `roster`) on every real change. The epic-0010 screen review
+(#34) rebuilt the entry flow to a mode-selection screen plus the unified Workspace. (#39,
+the session unit on the wire, is done — `unit` on `SessionSnapshot`, broadcast on change,
+adopted by `applySyncState`.)
 
 Remaining MVP work, tracked on the EstiMate Roadmap board:
 
