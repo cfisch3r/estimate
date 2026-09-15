@@ -5,6 +5,7 @@ import { CheckCircleIcon } from '@phosphor-icons/react/dist/csr/CheckCircle'
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
 import { Button, Input } from '../components'
+import { useConfirmArm } from '../hooks/useConfirmArm'
 import type { Item, ScreenId } from '../state/types'
 
 interface SessionSidebarProps {
@@ -44,6 +45,7 @@ function SidebarRow({
   onDragEnd,
 }: SidebarRowProps) {
   const isFinalized = item.finalResult !== null
+  const { armed, handleClick: armAndConfirmRemove } = useConfirmArm(onRemove)
 
   return (
     <div
@@ -95,14 +97,24 @@ function SidebarRow({
       <Button
         variant="ghost"
         icon
-        aria-label="Remove item"
-        style={{ width: 24, height: 24, minWidth: 24, flex: 'none' }}
+        aria-label={isFinalized && armed ? 'Confirm remove' : 'Remove item'}
+        style={{
+          width: 24,
+          height: 24,
+          minWidth: 24,
+          flex: 'none',
+          color: isFinalized && armed ? 'var(--color-warning)' : undefined,
+        }}
         onClick={(e) => {
           e.stopPropagation()
-          onRemove()
+          if (isFinalized) {
+            armAndConfirmRemove()
+          } else {
+            onRemove()
+          }
         }}
       >
-        <XIcon size={12} />
+        <XIcon size={12} weight={isFinalized && armed ? 'bold' : 'regular'} />
       </Button>
     </div>
   )

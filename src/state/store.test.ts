@@ -677,15 +677,15 @@ describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
     expect(useSessionStore.getState().items[0]!.round).toBe(5)
   })
 
-  it('retryRound leaves a finalized item’s recorded range intact', () => {
+  it('retryRound clears a finalized item’s recorded range (reopen)', () => {
     const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
     seed({ revealed: true, finalResult: finalized })
 
+    // retryRound also backs the confirm-guarded "Reopen item" control (#36) for an
+    // already-finalized item, so the stale range must not survive the reopen.
     useSessionStore.getState().retryRound('i1')
 
-    // The Retry button is hidden for a finalized item (re-opening it is #36's
-    // confirm flow); if retryRound is still called it must not discard the range.
-    expect(useSessionStore.getState().items[0]!.finalResult).toEqual(finalized)
+    expect(useSessionStore.getState().items[0]!.finalResult).toBeNull()
   })
 
   it('finalizeLiveItem aggregates submissions and advances to the next pending item', () => {

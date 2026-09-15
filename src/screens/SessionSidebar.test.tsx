@@ -94,6 +94,43 @@ describe('SessionSidebar', () => {
     expect(onSelect).not.toHaveBeenCalled()
   })
 
+  it('requires a second click to remove a finalized item', async () => {
+    const user = userEvent.setup()
+    const onRemove = vi.fn()
+    renderSidebar({
+      items: [item('1', 'A'), item('2', 'B', finalized)],
+      onRemove,
+    })
+
+    const bRow = screen.getByText('B').closest('.session-sidebar-row')!
+    const removeButton = bRow.querySelector('button[aria-label="Remove item"]')!
+
+    await user.click(removeButton)
+    expect(onRemove).not.toHaveBeenCalled()
+    expect(bRow.querySelector('button[aria-label="Confirm remove"]')).toBeInTheDocument()
+
+    await user.click(bRow.querySelector('button[aria-label="Confirm remove"]')!)
+    expect(onRemove).toHaveBeenCalledWith('2')
+  })
+
+  it('clears the confirm state on an outside click without removing', async () => {
+    const user = userEvent.setup()
+    const onRemove = vi.fn()
+    renderSidebar({
+      items: [item('1', 'A'), item('2', 'B', finalized)],
+      onRemove,
+    })
+
+    const bRow = screen.getByText('B').closest('.session-sidebar-row')!
+    await user.click(bRow.querySelector('button[aria-label="Remove item"]')!)
+    expect(bRow.querySelector('button[aria-label="Confirm remove"]')).toBeInTheDocument()
+
+    await user.click(screen.getByText('A'))
+
+    expect(bRow.querySelector('button[aria-label="Remove item"]')).toBeInTheDocument()
+    expect(onRemove).not.toHaveBeenCalled()
+  })
+
   it('calls onAdd with the typed title and clears the input', async () => {
     const user = userEvent.setup()
     const onAdd = vi.fn()

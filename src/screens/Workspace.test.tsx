@@ -264,6 +264,25 @@ describe('Workspace — live facilitator reveal flow', () => {
     ).not.toBeInTheDocument()
   })
 
+  it('reopens a finalized item only after a second confirming click', async () => {
+    const user = userEvent.setup()
+    setupRound({
+      revealed: true,
+      finalResult: { min: 1, expected: 2, max: 3, ci90: 3 },
+      submissions: [estimate('p1')],
+    })
+    render(<Workspace />)
+
+    await user.click(screen.getByRole('button', { name: 'Reopen item' }))
+    expect(useSessionStore.getState().items[0]!.finalResult).not.toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Click again to reopen' }))
+    const stored = useSessionStore.getState().items[0]!
+    expect(stored.finalResult).toBeNull()
+    expect(stored.revealed).toBe(false)
+    expect(stored.submissions).toHaveLength(0)
+  })
+
   it('leaves the manual estimate inputs in place for single-user mode', () => {
     useSessionStore.setState({
       mode: 'manual',
