@@ -708,6 +708,138 @@ describe('useNetworkSession', () => {
     expect(fakeSession.sendEstimate).not.toHaveBeenCalled()
   })
 
+  it('does not stack a second roster-triggered resend while one is already in flight', async () => {
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    act(() => screen.getByText('connect').click())
+    fakeSession.requestSnapshot.mockResolvedValue({
+      currentItem: { id: 'i1', title: 'Item', description: '' },
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    })
+    await act(async () => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+      await Promise.resolve()
+    })
+    act(() => useSessionStore.getState().submitEstimate(1, 2, 3))
+    fakeSession.sendEstimate.mockClear()
+    // First resend never settles within this test, so a second snapshot
+    // arriving before it does must not fire a duplicate.
+    fakeSession.sendEstimate.mockImplementation(() => new Promise(() => {}))
+
+    const unsubmittedSnapshot = {
+      currentItem: { id: 'i1', title: 'Item', description: '' },
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [{ participantId: 'p-self', submitted: false, connected: true }],
+      submissions: [],
+      finalizedItemIds: [],
+    }
+    await act(async () => {
+      emit('syncState', unsubmittedSnapshot)
+      await Promise.resolve()
+    })
+    await act(async () => {
+      emit('syncState', unsubmittedSnapshot)
+      await Promise.resolve()
+    })
+
+    expect(fakeSession.sendEstimate).toHaveBeenCalledTimes(1)
+  })
+
+  it('resends against the facilitator’s current peerId if it changes mid-retry', async () => {
+    vi.useFakeTimers()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    let capturedSend: ((itemId: string, estimate: unknown, round: number) => Promise<void>) | null =
+      null
+    function Capture() {
+      const { sendEstimate } = useNetworkSession()
+      capturedSend = sendEstimate
+      return null
+    }
+    render(
+      <NetworkProvider>
+        <Capture />
+        <Consumer />
+      </NetworkProvider>,
+    )
+    act(() => screen.getByText('connect').click())
+    fakeSession.requestSnapshot.mockResolvedValue({
+      currentItem: null,
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    })
+    await act(async () => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac-old')
+      await Promise.resolve()
+    })
+
+    const timeoutError = Object.assign(new Error('timed out'), { kind: 'timeout' })
+    fakeSession.sendEstimate.mockRejectedValueOnce(timeoutError).mockResolvedValueOnce()
+
+    const estimate = createEstimate({
+      participantId: 'p-self',
+      best: 1,
+      likely: 2,
+      worst: 3,
+    })
+    if (!estimate.ok) throw new Error('test fixture invalid')
+
+    const sendPromise = capturedSend!('i1', estimate.value, 0)
+
+    // The facilitator reconnects mid-retry, announcing under a new peerId.
+    await act(async () => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac-new')
+      await Promise.resolve()
+    })
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+    await sendPromise
+
+    expect(fakeSession.sendEstimate).toHaveBeenNthCalledWith(
+      1,
+      'i1',
+      expect.objectContaining({ participantId: 'p-self' }),
+      0,
+      'peer-fac-old',
+    )
+    expect(fakeSession.sendEstimate).toHaveBeenNthCalledWith(
+      2,
+      'i1',
+      expect.objectContaining({ participantId: 'p-self' }),
+      0,
+      'peer-fac-new',
+    )
+  })
+
   it('broadcasts revealed:true plus the frozen submissions once the facilitator reveals', async () => {
     const user = userEvent.setup()
     render(

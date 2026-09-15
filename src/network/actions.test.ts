@@ -48,7 +48,7 @@ describe('createTypedActions', () => {
 
     expect(requestActionsByName.submitEstimate!.request).toHaveBeenCalledWith(
       { itemId: 'item-1', estimate: validEstimate.value, round: 2 },
-      { target: 'facilitator-peer', timeoutMs: 1000 },
+      { target: 'facilitator-peer', timeoutMs: 800 },
     )
   })
 
@@ -462,7 +462,7 @@ describe('createTypedActions', () => {
 
     expect(requestActionsByName.requestSnapshot!.request).toHaveBeenCalledWith(null, {
       target: 'facilitator-peer',
-      timeoutMs: 1000,
+      timeoutMs: 800,
     })
     expect(result).toEqual(snapshot)
   })

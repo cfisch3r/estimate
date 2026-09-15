@@ -134,7 +134,7 @@ the new round.
 ### Acknowledged submissions
 
 `submitEstimate` becomes a targeted request to the facilitator
-(`request(data, {target: facilitatorPeerId, timeoutMs: 1000})`) rather than a broadcast.
+(`request(data, {target: facilitatorPeerId, timeoutMs: 800})`) rather than a broadcast.
 Participants learn the facilitator's `peerId` from its `announce`.
 
 The acknowledgement's purpose is **failure attribution**, not speed — the roster broadcast
@@ -148,9 +148,11 @@ rejection that the retry policy keys on:
 | `aborted` | We cancelled | Do not retry |
 | *(generic)* | Handler threw, or none registered after Trystero's 500ms buffer | Surface after one attempt |
 
-Total retry budget stays under Trystero's 5-second ICE teardown, so a retry sequence can never
-outlive the link it is retrying on. A dead link rejects immediately rather than waiting out the
-timeout, so this costs nothing in the common failure case.
+Total retry budget stays under Trystero's 5-second ICE teardown with margin to spare — three
+800ms attempts plus 500ms/1500ms backoff is 4.4s worst case, not the full 5s — so a retry
+sequence can never outlive the link it is retrying on even once real network latency is added
+on top. A dead link rejects immediately rather than waiting out the timeout, so this costs
+nothing in the common failure case.
 
 Correctness does not rest on the ack. The roster from Single owner is the convergence mechanism:
 on every snapshot a participant checks whether it appears as `submitted` and re-sends if not.

@@ -71,6 +71,13 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     let facilitatorPeerId: string | null = null
     let lastPulledFacilitatorPeerId: string | null = null
 
+    // Participant-only: `item:round` of a roster-triggered resend already in
+    // flight (see the onSyncState handler below). Snapshots can arrive faster
+    // than a resend's own retry/backoff resolves, so without this a burst of
+    // snapshots before the roster catches up fires one duplicate submitEstimate
+    // request per snapshot instead of letting the first one finish.
+    let resendInFlightKey: string | null = null
+
     // Facilitator only: the live-session snapshot, computed fresh on demand — both
     // as the payload of a change broadcast and as the answer to a participant's
     // `requestSnapshot` pull.
@@ -147,6 +154,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         peerParticipants.clear()
         facilitatorPeerId = null
         lastPulledFacilitatorPeerId = null
+        resendInFlightKey = null
         const store = useSessionStore
         const unsubscribers = [
           session.onConnectionStateChange(mirror),
@@ -174,15 +182,25 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
               (entry) => entry.participantId === state.participantId,
             )
             if (myEntry?.submitted) return
+            // A burst of snapshots (other participants submitting in quick
+            // succession) can arrive before this participant's own roster entry
+            // catches up — don't stack a second resend on top of one already
+            // in flight for the same item/round.
+            const resendKey = `${liveRound.item.id}:${liveRound.round}`
+            if (resendInFlightKey === resendKey) return
             const result = createEstimate({
               participantId: state.participantId,
               ...liveRound.mySubmission,
             })
             if (!result.ok) return
+            resendInFlightKey = resendKey
             apiRef.current
               ?.sendEstimate(liveRound.item.id, result.value, liveRound.round)
               .catch((error) => {
                 console.warn('Roster-triggered resend failed:', error)
+              })
+              .finally(() => {
+                if (resendInFlightKey === resendKey) resendInFlightKey = null
               })
           }),
           session.onRequestSnapshot(() => computeSnapshot()),
@@ -274,11 +292,22 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             }),
           )
         }
-        const target = facilitatorPeerId
+        // Re-read facilitatorPeerId on every attempt, not just the first: a
+        // retry can span several seconds, long enough for the facilitator to
+        // reconnect and re-announce under a new peerId mid-retry. Capturing
+        // the old one up front would keep every retry aimed at a connection
+        // that's already gone.
         return withKindDrivenRetry(() => {
           const session = sessionRef.current
           if (!session) return Promise.reject(new Error('No active session'))
-          return session.sendEstimate(itemId, estimate, round, target)
+          if (facilitatorPeerId === null) {
+            return Promise.reject(
+              Object.assign(new Error("The facilitator's peerId isn't known yet"), {
+                kind: 'disconnected',
+              }),
+            )
+          }
+          return session.sendEstimate(itemId, estimate, round, facilitatorPeerId)
         })
       },
     }

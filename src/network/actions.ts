@@ -335,19 +335,20 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   }
 
   return {
+    // 800ms, not 1000ms: worst case is 3 attempts plus 500ms/1500ms backoff
+    // (ADR-003, "Acknowledged submissions") — at 1000ms/attempt that's exactly
+    // Trystero's 5s ICE-teardown window with no margin for the network latency
+    // each attempt still has to spend before it can time out at all.
     sendEstimate: (itemId, estimate, round, target) =>
       submitEstimateAction
-        .request({ itemId, estimate, round }, { target, timeoutMs: 1000 })
+        .request({ itemId, estimate, round }, { target, timeoutMs: 800 })
         .then(() => {}),
     sendSyncState: (snapshot) => syncStateAction.send(snapshot),
     sendAnnounce: (announce) => announceAction.send(announce),
     requestSnapshot: (targetPeerId) =>
       requestSnapshotAction
-        // Kept in the same ~1s budget as sendEstimate: at 2 retries with
-        // 500ms/1500ms backoff, a longer per-attempt timeout here would risk
-        // outliving Trystero's 5s ICE-teardown window (ADR-003, "Acknowledged
-        // submissions").
-        .request(null, { target: targetPeerId, timeoutMs: 1000 })
+        // Kept in the same budget as sendEstimate, for the same reason.
+        .request(null, { target: targetPeerId, timeoutMs: 800 })
         .then((data) => {
           const snapshot = parseSnapshot(data)
           if (!snapshot)

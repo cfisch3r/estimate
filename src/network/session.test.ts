@@ -120,7 +120,7 @@ describe('joinSession', () => {
 
     expect(fakeRoom.requestActionsByName.submitEstimate!.request).toHaveBeenCalledWith(
       { itemId: 'item-1', estimate: estimate.value, round: 2 },
-      { target: 'facilitator-peer', timeoutMs: 1000 },
+      { target: 'facilitator-peer', timeoutMs: 800 },
     )
   })
 
@@ -141,7 +141,7 @@ describe('joinSession', () => {
 
     expect(fakeRoom.requestActionsByName.requestSnapshot!.request).toHaveBeenCalledWith(
       null,
-      { target: 'peer-1', timeoutMs: 1000 },
+      { target: 'peer-1', timeoutMs: 800 },
     )
     expect(result).toEqual(snapshot)
   })
