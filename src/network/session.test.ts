@@ -106,11 +106,12 @@ describe('joinSession', () => {
     const estimate = createEstimate({ participantId: 'a', best: 1, likely: 2, worst: 3 })
     if (!estimate.ok) throw new Error('test fixture invalid')
 
-    session.sendEstimate('item-1', estimate.value)
+    session.sendEstimate('item-1', estimate.value, 2)
 
     expect(fakeRoom.actionsByName.submitEstimate!.send).toHaveBeenCalledWith({
       itemId: 'item-1',
       estimate: estimate.value,
+      round: 2,
     })
   })
 

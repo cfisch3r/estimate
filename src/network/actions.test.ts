@@ -28,15 +28,39 @@ describe('createTypedActions', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
 
-    actions.sendEstimate('item-1', validEstimate.value)
+    actions.sendEstimate('item-1', validEstimate.value, 2)
 
     expect(actionsByName.submitEstimate!.send).toHaveBeenCalledWith({
       itemId: 'item-1',
       estimate: validEstimate.value,
+      round: 2,
     })
   })
 
-  it('forwards a valid incoming estimate, with its item id, to subscribers', () => {
+  it('forwards a valid incoming estimate, with its item id and round, to subscribers', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onEstimate(cb)
+
+    actionsByName.submitEstimate!.onMessage?.(
+      {
+        itemId: 'item-1',
+        round: 2,
+        estimate: { participantId: 'b', best: 1, likely: 2, worst: 3 },
+      },
+      { peerId: 'peer-1' },
+    )
+
+    expect(cb).toHaveBeenCalledWith(
+      'item-1',
+      { participantId: 'b', best: 1, likely: 2, worst: 3 },
+      'peer-1',
+      2,
+    )
+  })
+
+  it('forwards an incoming estimate with round undefined when the envelope omits it', () => {
     const { room, actionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
     const cb = vi.fn()
@@ -54,6 +78,7 @@ describe('createTypedActions', () => {
       'item-1',
       { participantId: 'b', best: 1, likely: 2, worst: 3 },
       'peer-1',
+      undefined,
     )
   })
 
@@ -72,6 +97,7 @@ describe('createTypedActions', () => {
       '',
       { participantId: 'b', best: 1, likely: 2, worst: 3 },
       'peer-1',
+      undefined,
     )
   })
 
@@ -126,6 +152,7 @@ describe('createTypedActions', () => {
       currentItem: item,
       unit: 'weeks' as const,
       revealed: false,
+      round: 3,
       submissions: [],
       finalizedItemIds: [],
     }
@@ -145,6 +172,7 @@ describe('createTypedActions', () => {
       {
         currentItem: item,
         unit: 'days',
+        round: 1,
         submissions: [
           { participantId: 'a', best: 1, likely: 2, worst: 3 },
           { participantId: 'b', best: 9, likely: 2, worst: 3 },
@@ -159,6 +187,7 @@ describe('createTypedActions', () => {
         currentItem: item,
         unit: 'days',
         revealed: false,
+        round: 1,
         submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
@@ -176,6 +205,7 @@ describe('createTypedActions', () => {
       {
         currentItem: item,
         unit: 'days',
+        round: 1,
         submissions: [null, { participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
@@ -187,6 +217,7 @@ describe('createTypedActions', () => {
         currentItem: item,
         unit: 'days',
         revealed: false,
+        round: 1,
         submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
       },
@@ -212,6 +243,31 @@ describe('createTypedActions', () => {
     )
 
     expect(cb).toHaveBeenCalledWith(expect.objectContaining({ revealed: true }), 'peer-1')
+  })
+
+  it('falls back to 0 when an incoming snapshot has a missing or non-number round', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onSyncState(cb)
+
+    actionsByName.syncState!.onMessage?.(
+      { currentItem: item, unit: 'days', submissions: [], finalizedItemIds: [] },
+      { peerId: 'peer-1' },
+    )
+    actionsByName.syncState!.onMessage?.(
+      {
+        currentItem: item,
+        unit: 'days',
+        round: 'two',
+        submissions: [],
+        finalizedItemIds: [],
+      },
+      { peerId: 'peer-2' },
+    )
+
+    expect(cb).toHaveBeenNthCalledWith(1, expect.objectContaining({ round: 0 }), 'peer-1')
+    expect(cb).toHaveBeenNthCalledWith(2, expect.objectContaining({ round: 0 }), 'peer-2')
   })
 
   it('drops a non-object incoming snapshot without throwing', () => {
@@ -270,6 +326,7 @@ describe('createTypedActions', () => {
         currentItem: null,
         unit: 'days',
         revealed: false,
+        round: 0,
         submissions: [],
         finalizedItemIds: [],
       },
@@ -298,6 +355,7 @@ describe('createTypedActions', () => {
         currentItem: item,
         unit: 'days',
         revealed: false,
+        round: 0,
         submissions: [],
         finalizedItemIds: [],
       },
@@ -309,6 +367,7 @@ describe('createTypedActions', () => {
         currentItem: item,
         unit: 'days',
         revealed: false,
+        round: 0,
         submissions: [],
         finalizedItemIds: [],
       },
