@@ -46,6 +46,7 @@ function resetStore() {
     sessionId: null,
     connectionStatus: 'idle',
     peerCount: 0,
+    hasEverConnected: false,
     participantNames: {},
   })
 }
@@ -147,6 +148,20 @@ describe('Workspace', () => {
 
     expect(screen.getByText('K7F9Q2')).toBeInTheDocument()
     expect(screen.getByText('Waiting for participants…')).toBeInTheDocument()
+  })
+
+  it('tells "everyone left" apart from "nobody has joined yet" in the session strip', () => {
+    useSessionStore.setState({
+      mode: 'live',
+      sessionId: 'K7F9Q2',
+      connectionStatus: 'connecting',
+      peerCount: 0,
+      hasEverConnected: true,
+    })
+    render(<Workspace />)
+
+    expect(screen.getByText('All participants disconnected')).toBeInTheDocument()
+    expect(screen.queryByText('Waiting for participants…')).not.toBeInTheDocument()
   })
 })
 

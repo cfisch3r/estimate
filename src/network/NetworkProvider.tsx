@@ -2,12 +2,31 @@ import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { joinSession } from './session'
 import type { NetworkSession } from './session'
-import type { ConnectionState } from './connection'
+import type { ConnectionState, ConnectionStatus } from './connection'
 import type { RosterEntry } from './actions'
 import { NetworkSessionContext, type NetworkSessionApi } from './networkSessionContext'
 import { withKindDrivenRetry } from './retryPolicy'
 import { useSessionStore } from '../state/store'
 import { createEstimate } from '../calc'
+import type { SessionRole } from '../state/types'
+
+/** For a participant, the transport can report `'connected'` the instant it
+ *  reaches ANY peer — including another participant, never the facilitator.
+ *  Only once the facilitator's own peerId is confirmed (via its `announce`)
+ *  is a participant actually "in" the session; until then this holds it at
+ *  `'connecting'`, the same state used before any peer at all has joined. A
+ *  facilitator's status passes through unchanged — it already means "at
+ *  least one peer is here" for that role. */
+function deriveConnectionStatus(
+  role: SessionRole,
+  trackerStatus: ConnectionStatus,
+  hasFacilitatorLink: boolean,
+): ConnectionStatus {
+  if (role === 'participant' && trackerStatus === 'connected' && !hasFacilitatorLink) {
+    return 'connecting'
+  }
+  return trackerStatus
+}
 
 /** The people in the round: every announced non-facilitator client, plus
  *  anyone whose submission arrived before their announce did. Values-free —
@@ -53,12 +72,6 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
   }
 
   if (apiRef.current === null) {
-    const mirror = (state: ConnectionState) => {
-      const { setConnectionStatus, setPeerCount } = useSessionStore.getState()
-      setConnectionStatus(state.status)
-      setPeerCount(state.peerIds.length)
-    }
-
     // Trystero's onPeerLeave gives a peerId (a connection), not a participantId (a
     // person) — this map, built from inbound announces, is what lets a departure be
     // resolved back to the participant who left, and lets the roster report who's
@@ -70,6 +83,17 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     // re-announce triggered by an unrelated peer join doesn't re-pull.
     let facilitatorPeerId: string | null = null
     let lastPulledFacilitatorPeerId: string | null = null
+
+    // Writes connectionStatus/peerCount into the store from the transport's raw
+    // state, gated through deriveConnectionStatus so a participant isn't told
+    // it's connected before facilitatorPeerId (above) is known.
+    const syncConnectionStatus = (trackerState: ConnectionState) => {
+      const { role, setConnectionStatus, setPeerCount } = useSessionStore.getState()
+      setConnectionStatus(
+        deriveConnectionStatus(role, trackerState.status, facilitatorPeerId !== null),
+      )
+      setPeerCount(trackerState.peerIds.length)
+    }
 
     // Participant-only: `item:round` of a roster-triggered resend already in
     // flight (see the onSyncState handler below). Snapshots can arrive faster
@@ -149,7 +173,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         teardown()
         const session = joinSession(sessionId)
         sessionRef.current = session
-        mirror(session.getConnectionState())
+        syncConnectionStatus(session.getConnectionState())
         lastSnapshotKey = ''
         peerParticipants.clear()
         facilitatorPeerId = null
@@ -157,7 +181,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         resendInFlightKey = null
         const store = useSessionStore
         const unsubscribers = [
-          session.onConnectionStateChange(mirror),
+          session.onConnectionStateChange(syncConnectionStatus),
           session.onEstimate((itemId, estimate, _peerId, round) =>
             store.getState().applyRemoteEstimate(itemId, estimate, round),
           ),
@@ -217,6 +241,8 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
               store.getState().role === 'participant'
             ) {
               facilitatorPeerId = peerId
+              const current = sessionRef.current?.getConnectionState()
+              if (current) syncConnectionStatus(current)
               if (peerId !== lastPulledFacilitatorPeerId) {
                 lastPulledFacilitatorPeerId = peerId
                 withKindDrivenRetry(() => {
@@ -235,6 +261,20 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             const participantId = peerParticipants.get(peerId)
             if (participantId === undefined) return
             peerParticipants.delete(peerId)
+            // Losing the facilitator's own peer means the confirmed link is gone,
+            // even if other participants' connections remain up. Re-derive right
+            // away — connection.ts's handlePeerLeave fires notifyStateChange (which
+            // drives syncConnectionStatus above) BEFORE its peerLeaveListeners
+            // (this handler), so without this the tracker-driven sync would already
+            // have run with a stale, not-yet-cleared facilitatorPeerId. Clearing
+            // lastPulledFacilitatorPeerId too lets a facilitator reconnect under a
+            // new peerId re-trigger the snapshot pull instead of being deduped.
+            if (participantId === 'facilitator') {
+              facilitatorPeerId = null
+              lastPulledFacilitatorPeerId = null
+              const current = sessionRef.current?.getConnectionState()
+              if (current) syncConnectionStatus(current)
+            }
             // Roster pruning is facilitator-only: Item.submissions (the "already
             // submitted" guard below) only exists on the facilitator's copy of
             // state.items, so this guard is meaningless on a participant client.

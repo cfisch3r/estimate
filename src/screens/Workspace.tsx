@@ -491,6 +491,7 @@ interface LiveSessionStripProps {
   sessionId: string
   connectionStatus: LiveConnectionStatus
   peerCount: number
+  hasEverConnected: boolean
   onReconnect: () => void
 }
 
@@ -498,13 +499,15 @@ function LiveSessionStrip({
   sessionId,
   connectionStatus,
   peerCount,
+  hasEverConnected,
   onReconnect,
 }: LiveSessionStripProps) {
   // Zero peers is NOT a connection loss for a facilitator: a participant closing
   // their tab at the end of a session is indistinguishable, at this layer, from a
-  // link breaking, and "Disconnected" on a healthy empty room is the worse error.
-  // Only a join failure (`disconnected`, from onJoinError) is a real fault here.
-  // Telling the two apart needs the per-participant link state in ADR-003.
+  // link breaking. Only a join failure (`disconnected`, from onJoinError) is a
+  // real fault. hasEverConnected (latched true once this room has had a peer,
+  // never reset until a new session) is what lets "nobody has joined yet" read
+  // differently from "everyone who was here has left".
   const statusTag =
     connectionStatus === 'connected'
       ? {
@@ -513,7 +516,9 @@ function LiveSessionStrip({
         }
       : connectionStatus === 'disconnected'
         ? { variant: 'outline' as const, label: 'Disconnected' }
-        : { variant: 'neutral' as const, label: 'Waiting for participants…' }
+        : hasEverConnected
+          ? { variant: 'outline' as const, label: 'All participants disconnected' }
+          : { variant: 'neutral' as const, label: 'Waiting for participants…' }
 
   return (
     <div
@@ -561,6 +566,7 @@ export function Workspace() {
   const sessionId = useSessionStore((s) => s.sessionId)
   const connectionStatus = useSessionStore((s) => s.connectionStatus)
   const peerCount = useSessionStore((s) => s.peerCount)
+  const hasEverConnected = useSessionStore((s) => s.hasEverConnected)
   const participantNames = useSessionStore((s) => s.participantNames)
   const setSessionName = useSessionStore((s) => s.setSessionName)
   const setUnit = useSessionStore((s) => s.setUnit)
@@ -611,6 +617,7 @@ export function Workspace() {
           sessionId={sessionId}
           connectionStatus={connectionStatus}
           peerCount={peerCount}
+          hasEverConnected={hasEverConnected}
           onReconnect={() => connect(sessionId)}
         />
       )}

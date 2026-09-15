@@ -133,6 +133,112 @@ describe('useNetworkSession', () => {
     expect(useSessionStore.getState().peerCount).toBe(2)
   })
 
+  it('does not report a participant as connected until the facilitator announces', async () => {
+    const user = userEvent.setup()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    // Reaches a peer, but it isn't the facilitator yet.
+    act(() => emitState({ status: 'connected', peerIds: ['peer-other'] }))
+
+    expect(useSessionStore.getState().connectionStatus).toBe('connecting')
+    expect(useSessionStore.getState().peerCount).toBe(1)
+  })
+
+  it("flips a participant to connected once the facilitator's announce arrives", async () => {
+    const user = userEvent.setup()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    act(() => emitState({ status: 'connected', peerIds: ['peer-fac'] }))
+    expect(useSessionStore.getState().connectionStatus).toBe('connecting')
+
+    act(() => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+    })
+
+    expect(useSessionStore.getState().connectionStatus).toBe('connected')
+  })
+
+  it('drops a participant back to connecting (not disconnected) when only the facilitator peer leaves', async () => {
+    const user = userEvent.setup()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    act(() => emitState({ status: 'connected', peerIds: ['peer-fac', 'peer-other'] }))
+    act(() => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+      emit('announce', { participantId: 'p-other', name: 'Other' }, 'peer-other')
+    })
+    expect(useSessionStore.getState().connectionStatus).toBe('connected')
+
+    // Mirrors connection.ts's real ordering: the tracker's own state-change
+    // fires before its peer-leave listeners, so the raw peer count drops
+    // first (leaving connectionStatus stale at 'connected', since peer-other
+    // is still up) and only the onPeerLeave handler's facilitator-departure
+    // check corrects it back down.
+    act(() => {
+      emitState({ status: 'connected', peerIds: ['peer-other'] })
+      emit('peerLeave', 'peer-fac')
+    })
+
+    expect(useSessionStore.getState().connectionStatus).toBe('connecting')
+    expect(useSessionStore.getState().peerCount).toBe(1)
+
+    // The facilitator reconnecting under a new peerId still triggers a pull
+    // (lastPulledFacilitatorPeerId was cleared on the departure above).
+    fakeSession.requestSnapshot.mockResolvedValue({
+      currentItem: null,
+      unit: 'days',
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    })
+    await act(async () => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac-2')
+      await Promise.resolve()
+    })
+    expect(fakeSession.requestSnapshot).toHaveBeenCalledWith('peer-fac-2')
+  })
+
   it('tears down the room and resets the store on disconnect', async () => {
     const user = userEvent.setup()
     render(
