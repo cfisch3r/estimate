@@ -107,6 +107,11 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             const participantId = peerParticipants.get(peerId)
             if (participantId === undefined) return
             peerParticipants.delete(peerId)
+            // Roster pruning is facilitator-only: Item.submissions (the "already
+            // submitted" guard below) only exists on the facilitator's copy of
+            // state.items, so this guard is meaningless on a participant client.
+            const state = store.getState()
+            if (state.role !== 'facilitator') return
             // Two tabs in one browser share a participantId (see the JoinSession
             // warning): losing one connection must not prune a name still backed by
             // another live connection.
@@ -115,7 +120,6 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             // A participant who already submitted keeps their estimate in the
             // aggregate (ADR-003) — pruning their name would anonymise an otherwise
             // still-attributed, already-recorded row on reveal.
-            const state = store.getState()
             const activeItem = state.items.find((item) => item.id === state.activeItemId)
             const hasSubmitted =
               activeItem?.submissions.some((s) => s.participantId === participantId) ??
