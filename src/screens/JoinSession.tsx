@@ -12,6 +12,7 @@ import {
 import { useSessionStore } from '../state/store'
 import { useNetworkSession } from '../network'
 import { useLeaveLiveSession } from './useLeaveLiveSession'
+import { useConnectionPhase } from './useConnectionPhase'
 
 export function JoinSession() {
   const connectionStatus = useSessionStore((s) => s.connectionStatus)
@@ -26,7 +27,14 @@ export function JoinSession() {
 
   const canSubmit = code.trim().length > 0 && name.trim().length > 0
   const connecting = connectionStatus === 'connecting'
-  const failed = connectionStatus === 'disconnected'
+  // A participant's connectionStatus now only reaches 'connected' once the
+  // facilitator's own link is confirmed (#62) — so 'connecting' held past the
+  // same self-healing grace used for a mid-session drop means the facilitator
+  // was never reached, not just "still setting up". A hard onJoinError
+  // ('disconnected') escalates immediately; it isn't the kind of blip the
+  // grace period exists to absorb.
+  const connectionPhase = useConnectionPhase(submitted && connecting)
+  const failed = connectionStatus === 'disconnected' || connectionPhase === 'lost'
 
   // Only this client's own join attempt should navigate onward — not a 'connected'
   // status left in the store by some other flow.
@@ -92,7 +100,7 @@ export function JoinSession() {
         don&rsquo;t estimate from two tabs at once.
       </GuardNote>
 
-      {connecting && (
+      {connecting && !failed && (
         <div
           className="card-meta"
           style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
@@ -103,10 +111,13 @@ export function JoinSession() {
       )}
 
       {failed && (
+        // Retry is the only action offered on purpose: there is no facilitator-side
+        // control to switch a session or item to Manual Entry mid-flight (ADR-003,
+        // "Also explicitly out of scope" under Role-asymmetric link state), so this
+        // must not suggest one.
         <GuardNote variant="banner" headline="Couldn't reach the session">
-          The peer connection failed. Ask the facilitator to double-check the code and try
-          again, retry from another network or a VPN, or ask them to switch the session to
-          manual entry.
+          We couldn&rsquo;t reach the facilitator. Double-check the session code with them and
+          try again.
         </GuardNote>
       )}
 
@@ -114,7 +125,7 @@ export function JoinSession() {
         variant="primary"
         block
         onClick={handleJoin}
-        disabled={!canSubmit || connecting}
+        disabled={!canSubmit || (connecting && !failed)}
       >
         {failed ? 'Retry' : 'Join'}
       </Button>

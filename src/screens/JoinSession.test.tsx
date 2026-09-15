@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { act, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { JoinSession } from './JoinSession'
+import { RECONNECT_GRACE_MS } from './useConnectionPhase'
 import { useSessionStore } from '../state/store'
 
 const { connectMock, disconnectMock } = vi.hoisted(() => ({
@@ -92,6 +93,49 @@ describe('JoinSession', () => {
 
     expect(screen.getByText(/Couldn.t reach the session/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+  })
+
+  // #9: a participant's connectionStatus now stays 'connecting' until the
+  // facilitator's own link is confirmed (#62), so a join that never reaches
+  // the facilitator looks identical to one that's still in progress until the
+  // same self-healing grace used for a mid-session drop rules out a blip.
+  it('stays on the spinner for a connecting join within the grace window', () => {
+    vi.useFakeTimers()
+    try {
+      render(<JoinSession />)
+      fireEvent.change(screen.getByLabelText('Session code'), { target: { value: 'K7F9Q2' } })
+      fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Sam' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Join' }))
+
+      act(() => {
+        vi.advanceTimersByTime(RECONNECT_GRACE_MS - 1)
+      })
+
+      expect(screen.getByText('Connecting to peers…')).toBeInTheDocument()
+      expect(screen.queryByText(/Couldn.t reach the session/)).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('escalates to the failure banner once a connecting join outlives the grace window', () => {
+    vi.useFakeTimers()
+    try {
+      render(<JoinSession />)
+      fireEvent.change(screen.getByLabelText('Session code'), { target: { value: 'K7F9Q2' } })
+      fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Sam' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Join' }))
+
+      act(() => {
+        vi.advanceTimersByTime(RECONNECT_GRACE_MS)
+      })
+
+      expect(screen.getByText(/Couldn.t reach the session/)).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: 'Retry' })).toBeEnabled()
+      expect(screen.queryByText('Connecting to peers…')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('routes to the estimate view once this client has joined and is connected', async () => {
