@@ -36,6 +36,12 @@ beforeEach(() => {
 })
 
 describe('JoinSession', () => {
+  it('warns about joining from a second tab in the same browser', () => {
+    render(<JoinSession />)
+
+    expect(screen.getByText(/another tab in this browser/i)).toBeInTheDocument()
+  })
+
   it('keeps Join disabled until both code and name are provided', async () => {
     const user = userEvent.setup()
     render(<JoinSession />)

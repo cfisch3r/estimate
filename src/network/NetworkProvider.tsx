@@ -31,6 +31,10 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     // is active and which items are finalized. Broadcast on real changes, not on
     // every unrelated store update (notes typing, name edits, …).
     let lastSnapshotKey = ''
+    // Trystero's onPeerLeave gives a peerId (a connection), not a participantId (a
+    // person) — this map, built from inbound announces, is what lets a departure be
+    // resolved back to the participant who left.
+    const peerParticipants = new Map<string, string>()
     const broadcastFacilitatorState = () => {
       const state = useSessionStore.getState()
       if (state.mode !== 'live' || state.role !== 'facilitator' || !state.sessionId)
@@ -85,6 +89,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         sessionRef.current = session
         mirror(session.getConnectionState())
         lastSnapshotKey = ''
+        peerParticipants.clear()
         const store = useSessionStore
         const unsubscribers = [
           session.onConnectionStateChange(mirror),
@@ -94,9 +99,16 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
           session.onSyncState((snapshot) => store.getState().applySyncState(snapshot)),
           session.onReveal((itemId) => store.getState().applyReveal(itemId)),
           session.onRoundReset((itemId) => store.getState().applyRoundReset(itemId)),
-          session.onAnnounce((announce) =>
-            store.getState().applyParticipantName(announce.participantId, announce.name),
-          ),
+          session.onAnnounce((announce, peerId) => {
+            peerParticipants.set(peerId, announce.participantId)
+            store.getState().applyParticipantName(announce.participantId, announce.name)
+          }),
+          session.onPeerLeave((peerId) => {
+            const participantId = peerParticipants.get(peerId)
+            if (participantId === undefined) return
+            peerParticipants.delete(peerId)
+            store.getState().removeParticipant(participantId)
+          }),
           store.subscribe(broadcastFacilitatorState),
           // Trystero doesn't replay history to a newcomer. When a peer joins, the
           // facilitator re-announces the current item and every client re-announces
