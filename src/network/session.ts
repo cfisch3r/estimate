@@ -17,13 +17,18 @@ export interface JoinSessionOptions {
 }
 
 export interface NetworkSession {
-  sendEstimate(itemId: string, estimate: Estimate): void
+  sendEstimate(itemId: string, estimate: Estimate, round: number): void
   sendSyncState(snapshot: SessionSnapshot): void
   sendReveal(itemId: string): void
   sendRoundReset(itemId: string): void
   sendAnnounce(announce: ParticipantAnnounce): void
   onEstimate(
-    cb: (itemId: string, estimate: Estimate, peerId: string) => void,
+    cb: (
+      itemId: string,
+      estimate: Estimate,
+      peerId: string,
+      round: number | undefined,
+    ) => void,
   ): Unsubscribe
   onSyncState(cb: (snapshot: SessionSnapshot, peerId: string) => void): Unsubscribe
   onReveal(cb: (itemId: string, peerId: string) => void): Unsubscribe

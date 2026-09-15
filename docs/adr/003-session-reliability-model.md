@@ -5,9 +5,12 @@
 behaviour — the Decision section below is written in the present tense for readability.
 Stable client identity has landed (#50): `participantId` is a per-browser id persisted via
 `getOrCreateParticipantId()`, and a `peerId ↔ participantId` map lets the facilitator prune
-`participantNames` on `onPeerLeave`. Everything else is still unbuilt: `SessionSnapshot` has
-no `roster` and no `round`, `submitEstimate` is still an untargeted broadcast, and connection
-state is still a single aggregate.
+`participantNames` on `onPeerLeave`. Versioned rounds have also landed (#51): `Item` /
+`SessionSnapshot` / `LiveRound` carry a `round: number`, bumped by `retryRound`, and
+`applySyncState` resets round-local state on any round change rather than only on a
+`revealed` true→false transition. Everything else is still unbuilt: `SessionSnapshot` has no
+`roster`, `submitEstimate` is still an untargeted broadcast (though its envelope now carries
+`round`), and connection state is still a single aggregate.
 **Date:** 2026-09-14 (drafted 2026-09-12)
 **Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop"
 

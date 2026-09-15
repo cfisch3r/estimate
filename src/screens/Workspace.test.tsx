@@ -30,6 +30,7 @@ function item(overrides: Partial<Item> = {}): Item {
     finalResult: null,
     submissions: [],
     revealed: false,
+    round: 0,
     ...overrides,
   }
 }

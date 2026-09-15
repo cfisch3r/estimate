@@ -23,6 +23,10 @@ export interface SessionSnapshot {
    *  joins or reconnects mid-reveal land straight on the revealed view instead
    *  of a dead estimate form. */
   revealed: boolean
+  /** The active item's round number, bumped by Retry. Lets a participant that
+   *  reconnects after missing both a Reveal and a Retry tell the rounds apart
+   *  from the snapshot alone (ADR-003, "Versioned rounds"). */
+  round: number
   submissions: RawEstimateInput[]
   finalizedItemIds: string[]
 }
@@ -32,6 +36,10 @@ export interface SessionSnapshot {
  *  from being recorded against whatever item became active next. */
 export interface EstimateMessage {
   itemId: string
+  /** The round this submission was made for. A missing value (older build, or a
+   *  bare pre-#8 estimate) bypasses the facilitator's round check rather than
+   *  being treated as a mismatch — see `unwrapEstimateMessage`. */
+  round?: number
   estimate: Estimate
 }
 
@@ -57,13 +65,18 @@ export interface ActionRoom {
 }
 
 export interface TypedActions {
-  sendEstimate(itemId: string, estimate: Estimate): void
+  sendEstimate(itemId: string, estimate: Estimate, round: number): void
   sendSyncState(snapshot: SessionSnapshot): void
   sendReveal(itemId: string): void
   sendRoundReset(itemId: string): void
   sendAnnounce(announce: ParticipantAnnounce): void
   onEstimate(
-    cb: (itemId: string, estimate: Estimate, peerId: string) => void,
+    cb: (
+      itemId: string,
+      estimate: Estimate,
+      peerId: string,
+      round: number | undefined,
+    ) => void,
   ): Unsubscribe
   onSyncState(cb: (snapshot: SessionSnapshot, peerId: string) => void): Unsubscribe
   onReveal(cb: (itemId: string, peerId: string) => void): Unsubscribe
@@ -156,7 +169,7 @@ function isValidSnapshotShape(data: unknown): data is SessionSnapshot {
  *  envelope. */
 function hasEstimateEnvelope(
   data: unknown,
-): data is { itemId: string; estimate: unknown } {
+): data is { itemId: string; estimate: unknown; round?: unknown } {
   if (typeof data !== 'object' || data === null) return false
   const message = data as Record<string, unknown>
   return typeof message.itemId === 'string' && message.itemId.length > 0
@@ -165,11 +178,21 @@ function hasEstimateEnvelope(
 /** An older build (issue #7, already on `main`) sends the bare `Estimate` with no
  *  `{ itemId }` envelope. Same mid-deploy tolerance the `syncState` handler gives
  *  `unit` / `revealed`: unwrap it and surface an empty `itemId`, which the store
- *  treats as "the current round" — the pre-#8 behaviour. */
-function unwrapEstimateMessage(data: unknown): { itemId: string; payload: unknown } {
+ *  treats as "the current round" — the pre-#8 behaviour. A missing/non-number
+ *  `round` surfaces as `undefined`, which the facilitator's round check treats
+ *  as "no round to compare" rather than a mismatch. */
+function unwrapEstimateMessage(data: unknown): {
+  itemId: string
+  payload: unknown
+  round: number | undefined
+} {
   return hasEstimateEnvelope(data)
-    ? { itemId: data.itemId, payload: data.estimate }
-    : { itemId: '', payload: data }
+    ? {
+        itemId: data.itemId,
+        payload: data.estimate,
+        round: typeof data.round === 'number' ? data.round : undefined,
+      }
+    : { itemId: '', payload: data, round: undefined }
 }
 
 export function createTypedActions(room: ActionRoom): TypedActions {
@@ -179,17 +202,18 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   const roundResetAction = room.makeAction<string>('roundReset')
   const announceAction = room.makeAction<ParticipantAnnounce>('announce')
 
-  const estimateSubscribable = createSubscribable<[string, Estimate, string]>()
+  const estimateSubscribable =
+    createSubscribable<[string, Estimate, string, number | undefined]>()
   const syncStateSubscribable = createSubscribable<[SessionSnapshot, string]>()
   const revealSubscribable = createSubscribable<[string, string]>()
   const roundResetSubscribable = createSubscribable<[string, string]>()
   const announceSubscribable = createSubscribable<[ParticipantAnnounce, string]>()
 
   submitEstimateAction.onMessage = (data, { peerId }) => {
-    const { itemId, payload } = unwrapEstimateMessage(data)
+    const { itemId, payload, round } = unwrapEstimateMessage(data)
     const result = safeCreateEstimate(payload)
     if (result.ok) {
-      estimateSubscribable.notify(itemId, result.value, peerId)
+      estimateSubscribable.notify(itemId, result.value, peerId, round)
     } else {
       console.warn('Dropping malformed incoming estimate:', result.error)
     }
@@ -209,6 +233,8 @@ export function createTypedActions(room: ActionRoom): TypedActions {
         unit: isEstimationUnit(data.unit) ? data.unit : 'days',
         // Same tolerance for `revealed` (older builds omit it): default to false.
         revealed: data.revealed === true,
+        // Same tolerance for `round` (older builds omit it): default to 0.
+        round: typeof data.round === 'number' ? data.round : 0,
         submissions: sanitizeSubmissions(data.submissions),
         finalizedItemIds: data.finalizedItemIds,
       },
@@ -247,7 +273,8 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   }
 
   return {
-    sendEstimate: (itemId, estimate) => submitEstimateAction.send({ itemId, estimate }),
+    sendEstimate: (itemId, estimate, round) =>
+      submitEstimateAction.send({ itemId, estimate, round }),
     sendSyncState: (snapshot) => syncStateAction.send(snapshot),
     sendReveal: (itemId) => revealAction.send(itemId),
     sendRoundReset: (itemId) => roundResetAction.send(itemId),

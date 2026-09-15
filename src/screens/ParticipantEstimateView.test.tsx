@@ -135,7 +135,7 @@ describe('ParticipantEstimateView', () => {
   it('shows the estimating form for the active item, gated on a valid range', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({
-      liveRound: { item, submissions: [], revealed: false, mySubmission: null },
+      liveRound: { item, submissions: [], revealed: false, round: 0, mySubmission: null },
     })
     render(<ParticipantEstimateView />)
 
@@ -162,7 +162,7 @@ describe('ParticipantEstimateView', () => {
   it('submits a valid estimate, broadcasts it, and moves to the waiting state', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({
-      liveRound: { item, submissions: [], revealed: false, mySubmission: null },
+      liveRound: { item, submissions: [], revealed: false, round: 0, mySubmission: null },
     })
     render(<ParticipantEstimateView />)
 
@@ -174,6 +174,7 @@ describe('ParticipantEstimateView', () => {
     expect(sendEstimateMock).toHaveBeenCalledWith(
       'item-1',
       expect.objectContaining({ participantId: 'me-123', best: 3, likely: 5, worst: 8 }),
+      0,
     )
     expect(screen.getByText(/Waiting for the facilitator to reveal/)).toBeInTheDocument()
     expect(useSessionStore.getState().liveRound?.mySubmission).toEqual({
@@ -190,6 +191,7 @@ describe('ParticipantEstimateView', () => {
         item,
         submissions: [estimate({ participantId: 'me-123' })],
         revealed: false,
+        round: 0,
         mySubmission: { best: 2, likely: 4, worst: 8 },
       },
     })
@@ -208,6 +210,7 @@ describe('ParticipantEstimateView', () => {
           estimate({ participantId: 'p2', best: 2, likely: 6, worst: 12 }),
         ],
         revealed: true,
+        round: 0,
         mySubmission: { best: 3, likely: 5, worst: 8 },
       },
     })
@@ -232,6 +235,7 @@ describe('ParticipantEstimateView', () => {
           estimate({ participantId: 'p3', best: 1, likely: 4, worst: 9 }),
         ],
         revealed: true,
+        round: 0,
         mySubmission: { best: 3, likely: 5, worst: 8 },
       },
     })
@@ -255,6 +259,7 @@ describe('ParticipantEstimateView', () => {
           estimate({ participantId: 'toString', best: 2, likely: 6, worst: 12 }),
         ],
         revealed: true,
+        round: 0,
         mySubmission: { best: 3, likely: 5, worst: 8 },
       },
     })

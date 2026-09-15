@@ -14,6 +14,11 @@ export interface Item {
   /** Live mode (facilitator side): whether this round's estimates have been
    *  revealed — Workspace state 1d. Reset to false by Retry. */
   revealed: boolean
+  /** Live mode: this item's round number, bumped by Retry. Lets a participant
+   *  that reconnects after missing both a Reveal and the following Retry tell
+   *  the new round apart from the old one, which a `revealed` transition alone
+   *  can't do (ADR-003, "Versioned rounds"). */
+  round: number
 }
 
 /** What a participant client knows about the round the facilitator is running —
@@ -24,6 +29,8 @@ export interface LiveRound {
   /** Every submission received this round, keyed by participantId (last write wins). */
   submissions: Estimate[]
   revealed: boolean
+  /** The facilitator's round number for this item, mirrored from the snapshot. */
+  round: number
   /** This participant's own most recent submitted values, or null before submitting. */
   mySubmission: { best: number; likely: number; worst: number } | null
 }

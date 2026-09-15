@@ -13,6 +13,7 @@ function item(id: string, title: string, finalResult: Item['finalResult'] = null
     finalResult,
     submissions: [],
     revealed: false,
+    round: 0,
   }
 }
 
