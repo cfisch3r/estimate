@@ -16,8 +16,12 @@ Acknowledged submissions with a kind-driven retry policy has also landed (#61):
 `submitEstimate` is a targeted request/response to the facilitator's peerId, both it and
 `requestSnapshot` retry only a `timeout` failure (kind-driven, via the shared
 `withKindDrivenRetry` helper), and a participant's roster entry — not the ack — is what a
-snapshot-driven convergence check resends against. Still unbuilt: role-asymmetric connection
-state (#62) — connection state is still a single aggregate.
+snapshot-driven convergence check resends against. Role-asymmetric link state has also landed,
+narrowed in scope (#62): a participant's `connectionStatus` now only reaches `'connected'` once
+the facilitator's own `announce` is confirmed, not on any peer, and the facilitator distinguishes
+"nobody has joined yet" from "everyone who was here has left." Deferred from #62's original
+scope: an explicit per-row `Disconnected` roster state (current silent-removal behaviour already
+gets the facilitator to the correct reveal-without-them outcome).
 **Date:** 2026-09-15 (drafted 2026-09-12)
 **Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop"
 
@@ -208,6 +212,8 @@ first-class mode remains a whole-session choice made once at session creation; f
 it after a failed live session means abandoning that session and starting a new one, not a live
 in-place conversion. This is a deliberate product decision, not a gap to fill — do not add UI
 copy that tells a participant to ask the facilitator for a switch that doesn't exist.
+
+## Rationale
 
 - **The symptoms collapse into one change.** Fixing them individually means local patches to a
   model that keeps regenerating the same class of bug. Versioned facilitator-owned snapshots

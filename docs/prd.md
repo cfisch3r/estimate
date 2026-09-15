@@ -44,7 +44,7 @@ The team estimates together in real time, each participant submitting their own 
 5. **Discuss & converge** — team discusses outliers; facilitator can trigger a re-estimate round for the item
 6. **Finalize item** — facilitator locks in the item's values (either the auto-calculated group range, or a manually reconciled one) and moves to the next item
 7. **Session summary** — at the end, a report of all items with their four values, exportable and saved to session history
-8. **Connection fallback** — if a participant's browser can't establish a direct peer connection (e.g., strict network), the app tells them plainly and suggests the facilitator either retry, have that person join via VPN, or switch that item to Manual mode (Mode B) for the group
+8. **Connection fallback** — if a participant never reaches the facilitator (e.g., strict network at join time), the app tells them plainly and offers a retry; there is no in-app way to switch a single item, or the running session, to Manual mode (Mode B) mid-flight — see ADR-003, "Role-asymmetric link state"
 
 **Manual mode (Mode B) — single-user entry session**
 The facilitator ran the estimation discussion elsewhere (in person, on a call, over Slack) and just wants to type in the team's agreed-upon numbers to get the same calculated ranges, guardrails, and report. No connection, no participants joining — just the facilitator and the app.

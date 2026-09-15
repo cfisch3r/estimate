@@ -246,11 +246,19 @@ Mirrored from `src/network`'s connection tracker into `store.connectionStatus`:
 stateDiagram-v2
   [*] --> idle
   idle --> connecting : connect(code)
-  connecting --> connected : first peer joins
-  connected --> connecting : last peer leaves
+  connecting --> connected : facilitator link confirmed (participant) / first peer joins (facilitator)
+  connected --> connecting : facilitator link lost (participant) / last peer leaves (facilitator)
   connecting --> disconnected : onJoinError (relay unreachable)
   disconnected --> connecting : Retry
 ```
+
+The `connecting → connected` transition is role-asymmetric ([ADR-003](../adr/003-session-reliability-model.md),
+"Role-asymmetric link state", #62): a facilitator's status reflects any peer, but a
+participant only reaches `connected` once the facilitator's own `announce` is
+confirmed — reaching another participant first is not enough. `NetworkProvider`'s
+`deriveConnectionStatus` holds a participant at `connecting` until then, which is what
+lets the Join screen's grace-period escalation below (§9) tell "still trying" apart
+from "reached someone, just not the facilitator."
 
 `disconnected` means **the join itself failed** (`onJoinError`) — nothing else produces
 it. It drives the Join screen's plain-language failure banner, and the facilitator
@@ -283,6 +291,14 @@ do while the transport is already retrying. Only `lost` raises the banner and of
 Reconnect. `store.hasEverConnected` (not the tracker's status) is the input because
 `connect()` builds a fresh tracker: keying off status would clear the alarm the instant
 Reconnect is pressed, hiding a rejoin that never succeeds.
+
+A second call site, `src/screens/JoinSession.tsx` (#9), uses the same hook for the
+**initial join**, not a drop: its "is it down" input is `submitted && connectionStatus
+=== 'connecting'`. Held past the grace period, that means the participant never
+reached the facilitator at all — the Join screen escalates from its spinner to the
+same shape of plain-language banner, offering Retry only. There is no per-item or
+mid-session switch to Manual mode to offer alongside it (ADR-003, "Role-asymmetric
+link state" — decided out of scope while building #9).
 
 ### Why connections drop (#47)
 
