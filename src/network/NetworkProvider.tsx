@@ -107,6 +107,20 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             const participantId = peerParticipants.get(peerId)
             if (participantId === undefined) return
             peerParticipants.delete(peerId)
+            // Two tabs in one browser share a participantId (see the JoinSession
+            // warning): losing one connection must not prune a name still backed by
+            // another live connection.
+            const stillConnected = [...peerParticipants.values()].includes(participantId)
+            if (stillConnected) return
+            // A participant who already submitted keeps their estimate in the
+            // aggregate (ADR-003) — pruning their name would anonymise an otherwise
+            // still-attributed, already-recorded row on reveal.
+            const state = store.getState()
+            const activeItem = state.items.find((item) => item.id === state.activeItemId)
+            const hasSubmitted =
+              activeItem?.submissions.some((s) => s.participantId === participantId) ??
+              false
+            if (hasSubmitted) return
             store.getState().removeParticipant(participantId)
           }),
           store.subscribe(broadcastFacilitatorState),

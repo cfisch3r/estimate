@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getOrCreateParticipantId } from './participantIdentity'
 
 beforeEach(() => localStorage.clear())
@@ -25,5 +25,16 @@ describe('getOrCreateParticipantId', () => {
 
     expect(id.trim().length).toBeGreaterThan(0)
     expect(id).not.toBe('   ')
+  })
+
+  it('falls back to an in-memory id when localStorage throws', () => {
+    const getItem = vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError')
+    })
+
+    const id = getOrCreateParticipantId()
+
+    expect(id).toMatch(/^[0-9a-f-]{36}$/)
+    getItem.mockRestore()
   })
 })

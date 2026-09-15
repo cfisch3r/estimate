@@ -309,6 +309,68 @@ describe('useNetworkSession', () => {
     expect(useSessionStore.getState().participantNames['p-2']).toBeUndefined()
   })
 
+  it('keeps a name backed by another live connection (two tabs, one participantId)', async () => {
+    const user = userEvent.setup()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'facilitator',
+        myName: 'Facilitator',
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    // Two tabs in the same browser share a participantId (see the JoinSession
+    // warning) — each gets its own peerId.
+    act(() => emit('announce', { participantId: 'p-2', name: 'Jordan' }, 'peer-2a'))
+    act(() => emit('announce', { participantId: 'p-2', name: 'Jordan' }, 'peer-2b'))
+
+    act(() => emit('peerLeave', 'peer-2a'))
+
+    expect(useSessionStore.getState().participantNames['p-2']).toBe('Jordan')
+  })
+
+  it('keeps the name of a participant who already submitted this round', async () => {
+    const user = userEvent.setup()
+    const sub = createEstimate({ participantId: 'p-2', best: 2, likely: 4, worst: 8 })
+    if (!sub.ok) throw new Error('bad fixture')
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'facilitator',
+        myName: 'Facilitator',
+        items: [
+          {
+            id: 'i1',
+            title: 'Retry queue',
+            description: 'backoff',
+            notes: '',
+            finalResult: null,
+            submissions: [sub.value],
+            revealed: false,
+          },
+        ],
+        activeItemId: 'i1',
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    act(() => emit('announce', { participantId: 'p-2', name: 'Jordan' }, 'peer-2'))
+    act(() => emit('peerLeave', 'peer-2'))
+
+    expect(useSessionStore.getState().participantNames['p-2']).toBe('Jordan')
+  })
+
   it('does nothing when an unannounced peer leaves', async () => {
     const user = userEvent.setup()
     act(() =>
