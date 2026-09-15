@@ -143,7 +143,7 @@ describe('joinSession', () => {
       null,
       { target: 'peer-1', timeoutMs: 2000 },
     )
-    expect(result).toBe(snapshot)
+    expect(result).toEqual(snapshot)
   })
 
   it('onRequestSnapshot registers a responder on the underlying requestSnapshot action', () => {

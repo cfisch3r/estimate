@@ -441,6 +441,48 @@ describe('useNetworkSession', () => {
     )
   })
 
+  it("never falls back to an untargeted broadcast when the facilitator's peerId isn't known yet", async () => {
+    const user = userEvent.setup()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    function EstimateSender() {
+      const { sendEstimate } = useNetworkSession()
+      return (
+        <button
+          onClick={() => {
+            const estimate = createEstimate({
+              participantId: 'p-self',
+              best: 1,
+              likely: 2,
+              worst: 3,
+            })
+            if (estimate.ok) sendEstimate('i1', estimate.value, 0)
+          }}
+        >
+          submit
+        </button>
+      )
+    }
+    render(
+      <NetworkProvider>
+        <EstimateSender />
+        <Consumer />
+      </NetworkProvider>,
+    )
+    await user.click(screen.getByText('connect'))
+
+    // No announce from the facilitator has arrived yet, so its peerId is unknown.
+    await user.click(screen.getByText('submit'))
+
+    expect(fakeSession.sendEstimate).not.toHaveBeenCalled()
+  })
+
   it('broadcasts revealed:true plus the frozen submissions once the facilitator reveals', async () => {
     const user = userEvent.setup()
     render(

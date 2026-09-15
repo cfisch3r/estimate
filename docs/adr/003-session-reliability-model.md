@@ -1,17 +1,22 @@
 # ADR-003: Facilitator-Authoritative Session State and the Reconnect Model
 
 **Status:** Accepted
-**Implementation:** **mostly not built yet.** This records a decision, not shipped
+**Implementation:** **partially built.** This records a decision, not shipped
 behaviour — the Decision section below is written in the present tense for readability.
 Stable client identity has landed (#50): `participantId` is a per-browser id persisted via
 `getOrCreateParticipantId()`, and a `peerId ↔ participantId` map lets the facilitator prune
 `participantNames` on `onPeerLeave`. Versioned rounds have also landed (#51): `Item` /
 `SessionSnapshot` / `LiveRound` carry a `round: number`, bumped by `retryRound`, and
 `applySyncState` resets round-local state on any round change rather than only on a
-`revealed` true→false transition. Everything else is still unbuilt: `SessionSnapshot` has no
-`roster`, `submitEstimate` is still an untargeted broadcast (though its envelope now carries
-`round`), and connection state is still a single aggregate.
-**Date:** 2026-09-14 (drafted 2026-09-12)
+`revealed` true→false transition. Single owner has also landed (#60): the facilitator's
+`items[]` is the sole source of truth, `SessionSnapshot` carries a values-free `roster`,
+`submitEstimate` is a targeted send to the facilitator's peerId (not yet the acknowledged
+request/response — that's still #61), `reveal`/`roundReset` are gone from the wire protocol,
+and a peer pulls the snapshot itself on connect/reconnect via `requestSnapshot` rather than
+the facilitator pushing one. Still unbuilt: acknowledged submissions with a kind-driven
+retry policy (#61) and role-asymmetric connection state (#62) — connection state is still a
+single aggregate.
+**Date:** 2026-09-15 (drafted 2026-09-12)
 **Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop"
 
 > For the current implementation plan and sequencing — which issues carry which element of

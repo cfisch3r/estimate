@@ -116,7 +116,6 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         revealed: snapshot.revealed,
         round: snapshot.round,
         roster: snapshot.roster,
-        submissionCount: snapshot.submissions.length,
         finalizedItemIds: snapshot.finalizedItemIds,
       })
       if (key === lastSnapshotKey) return
@@ -172,9 +171,10 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
                 sessionRef.current
                   ?.requestSnapshot(peerId)
                   .then((snapshot) => store.getState().applySyncState(snapshot))
-                  .catch(() => {
+                  .catch((error) => {
                     // Best-effort in #60 — no retry yet. #61 applies the shared
                     // kind-driven retry policy to this call too.
+                    console.warn('requestSnapshot pull failed:', error)
                   })
               }
             }
@@ -221,11 +221,23 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       },
       sendEstimate: (itemId, estimate, round) => {
         const { role } = useSessionStore.getState()
-        const target =
-          role === 'participant' && facilitatorPeerId !== null
-            ? facilitatorPeerId
-            : undefined
-        sessionRef.current?.sendEstimate(itemId, estimate, round, target)
+        if (role === 'participant') {
+          // Never fall back to an untargeted broadcast: that would put this
+          // estimate's values back on every other peer's wire, exactly what
+          // targeting exists to prevent (ADR-003, "Single owner"). If the
+          // facilitator's peerId isn't known yet (a narrow window right after
+          // connect/reconnect, before its announce has arrived), drop the send
+          // rather than leak it — #61's retry policy is what recovers this case.
+          if (facilitatorPeerId === null) {
+            console.warn(
+              "Dropping sendEstimate: the facilitator's peerId isn't known yet",
+            )
+            return
+          }
+          sessionRef.current?.sendEstimate(itemId, estimate, round, facilitatorPeerId)
+          return
+        }
+        sessionRef.current?.sendEstimate(itemId, estimate, round)
       },
     }
   }

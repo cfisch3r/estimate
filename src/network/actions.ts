@@ -246,6 +246,27 @@ function unwrapEstimateMessage(data: unknown): {
     : { itemId: '', payload: data, round: undefined }
 }
 
+/** Shared by the `syncState` push (`onMessage`) and the `requestSnapshot` pull
+ *  (the resolved response) — a peer's answer is just as untrusted as a broadcast,
+ *  so both paths get the same shape check and per-field tolerance/sanitization. */
+function parseSnapshot(data: unknown): SessionSnapshot | null {
+  if (!isValidSnapshotShape(data)) return null
+  return {
+    currentItem: data.currentItem,
+    // Tolerate a missing/unknown unit (e.g. a facilitator on an older build
+    // mid-deploy) rather than dropping the whole snapshot — fall back to the
+    // store default so the participant still gets the round.
+    unit: isEstimationUnit(data.unit) ? data.unit : 'days',
+    // Same tolerance for `revealed` (older builds omit it): default to false.
+    revealed: data.revealed === true,
+    // Same tolerance for `round` (older builds omit it): default to 0.
+    round: typeof data.round === 'number' ? data.round : 0,
+    roster: sanitizeRoster(data.roster),
+    submissions: sanitizeSubmissions(data.submissions),
+    finalizedItemIds: data.finalizedItemIds,
+  }
+}
+
 export function createTypedActions(room: ActionRoom): TypedActions {
   const submitEstimateAction = room.makeAction<EstimateMessage>('submitEstimate')
   const syncStateAction = room.makeAction<SessionSnapshot>('syncState')
@@ -271,27 +292,12 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   }
 
   syncStateAction.onMessage = (data, { peerId }) => {
-    if (!isValidSnapshotShape(data)) {
+    const snapshot = parseSnapshot(data)
+    if (!snapshot) {
       console.warn('Dropping malformed incoming snapshot')
       return
     }
-    syncStateSubscribable.notify(
-      {
-        currentItem: data.currentItem,
-        // Tolerate a missing/unknown unit (e.g. a facilitator on an older build
-        // mid-deploy) rather than dropping the whole snapshot — fall back to the
-        // store default so the participant still gets the round.
-        unit: isEstimationUnit(data.unit) ? data.unit : 'days',
-        // Same tolerance for `revealed` (older builds omit it): default to false.
-        revealed: data.revealed === true,
-        // Same tolerance for `round` (older builds omit it): default to 0.
-        round: typeof data.round === 'number' ? data.round : 0,
-        roster: sanitizeRoster(data.roster),
-        submissions: sanitizeSubmissions(data.submissions),
-        finalizedItemIds: data.finalizedItemIds,
-      },
-      peerId,
-    )
+    syncStateSubscribable.notify(snapshot, peerId)
   }
 
   announceAction.onMessage = (data, { peerId }) => {
@@ -316,7 +322,14 @@ export function createTypedActions(room: ActionRoom): TypedActions {
     sendSyncState: (snapshot) => syncStateAction.send(snapshot),
     sendAnnounce: (announce) => announceAction.send(announce),
     requestSnapshot: (targetPeerId) =>
-      requestSnapshotAction.request(null, { target: targetPeerId, timeoutMs: 2000 }),
+      requestSnapshotAction
+        .request(null, { target: targetPeerId, timeoutMs: 2000 })
+        .then((data) => {
+          const snapshot = parseSnapshot(data)
+          if (!snapshot)
+            throw new Error('Malformed snapshot received from requestSnapshot')
+          return snapshot
+        }),
     onEstimate: estimateSubscribable.subscribe,
     onSyncState: syncStateSubscribable.subscribe,
     onAnnounce: announceSubscribable.subscribe,

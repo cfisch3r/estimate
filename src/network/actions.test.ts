@@ -471,7 +471,41 @@ describe('createTypedActions', () => {
       target: 'facilitator-peer',
       timeoutMs: 2000,
     })
-    expect(result).toBe(snapshot)
+    expect(result).toEqual(snapshot)
+  })
+
+  it('sanitizes the roster/submissions of a pulled snapshot the same as a pushed one', async () => {
+    const { room, requestActionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    requestActionsByName.requestSnapshot!.request.mockResolvedValue({
+      currentItem: null,
+      unit: 'days',
+      revealed: false,
+      round: 0,
+      roster: [
+        { participantId: 'a', submitted: true, connected: true },
+        { participantId: 'b', submitted: 'yes', connected: true },
+      ],
+      submissions: [],
+      finalizedItemIds: [],
+    })
+
+    const result = await actions.requestSnapshot('facilitator-peer')
+
+    expect(result.roster).toEqual([
+      { participantId: 'a', submitted: true, connected: true },
+    ])
+  })
+
+  it('rejects when a requestSnapshot response is malformed, rather than handing it to the store untrusted', async () => {
+    const { room, requestActionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    requestActionsByName.requestSnapshot!.request.mockResolvedValue({
+      currentItem: { id: 42 },
+      finalizedItemIds: 'oops',
+    })
+
+    await expect(actions.requestSnapshot('facilitator-peer')).rejects.toThrow()
   })
 
   it('answers a requestSnapshot pull through the registered responder', () => {
