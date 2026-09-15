@@ -10,12 +10,14 @@ Stable client identity has landed (#50): `participantId` is a per-browser id per
 `applySyncState` resets round-local state on any round change rather than only on a
 `revealed` true→false transition. Single owner has also landed (#60): the facilitator's
 `items[]` is the sole source of truth, `SessionSnapshot` carries a values-free `roster`,
-`submitEstimate` is a targeted send to the facilitator's peerId (not yet the acknowledged
-request/response — that's still #61), `reveal`/`roundReset` are gone from the wire protocol,
-and a peer pulls the snapshot itself on connect/reconnect via `requestSnapshot` rather than
-the facilitator pushing one. Still unbuilt: acknowledged submissions with a kind-driven
-retry policy (#61) and role-asymmetric connection state (#62) — connection state is still a
-single aggregate.
+`reveal`/`roundReset` are gone from the wire protocol, and a peer pulls the snapshot itself
+on connect/reconnect via `requestSnapshot` rather than the facilitator pushing one.
+Acknowledged submissions with a kind-driven retry policy has also landed (#61):
+`submitEstimate` is a targeted request/response to the facilitator's peerId, both it and
+`requestSnapshot` retry only a `timeout` failure (kind-driven, via the shared
+`withKindDrivenRetry` helper), and a participant's roster entry — not the ack — is what a
+snapshot-driven convergence check resends against. Still unbuilt: role-asymmetric connection
+state (#62) — connection state is still a single aggregate.
 **Date:** 2026-09-15 (drafted 2026-09-12)
 **Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop"
 

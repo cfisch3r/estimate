@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ConnectionState } from './connection'
@@ -43,7 +43,7 @@ const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
     }),
     onPeerJoin: vi.fn(capture('peerJoin')),
     onPeerLeave: vi.fn(capture('peerLeave')),
-    sendEstimate: vi.fn(),
+    sendEstimate: vi.fn(() => Promise.resolve()),
     sendSyncState: vi.fn(),
     sendAnnounce: vi.fn(),
     requestSnapshot: vi.fn(() => Promise.resolve(requestSnapshotResponder?.())),
@@ -78,6 +78,7 @@ beforeEach(() => {
   fakeSession.sendSyncState.mockClear()
   fakeSession.sendAnnounce.mockClear()
   fakeSession.requestSnapshot.mockClear()
+  fakeSession.sendEstimate.mockImplementation(() => Promise.resolve())
   emitState({ status: 'connecting', peerIds: [] })
   useSessionStore.setState({
     connectionStatus: 'idle',
@@ -92,6 +93,10 @@ beforeEach(() => {
     liveRound: null,
     participantNames: {},
   })
+})
+
+afterEach(() => {
+  vi.useRealTimers()
 })
 
 describe('useNetworkSession', () => {
@@ -402,7 +407,7 @@ describe('useNetworkSession', () => {
               likely: 2,
               worst: 3,
             })
-            if (estimate.ok) sendEstimate('i1', estimate.value, 0)
+            if (estimate.ok) sendEstimate('i1', estimate.value, 0).catch(() => {})
           }}
         >
           submit
@@ -462,7 +467,7 @@ describe('useNetworkSession', () => {
               likely: 2,
               worst: 3,
             })
-            if (estimate.ok) sendEstimate('i1', estimate.value, 0)
+            if (estimate.ok) sendEstimate('i1', estimate.value, 0).catch(() => {})
           }}
         >
           submit
@@ -479,6 +484,226 @@ describe('useNetworkSession', () => {
 
     // No announce from the facilitator has arrived yet, so its peerId is unknown.
     await user.click(screen.getByText('submit'))
+
+    expect(fakeSession.sendEstimate).not.toHaveBeenCalled()
+  })
+
+  it('retries a sendEstimate that times out, and delivers on the retry', async () => {
+    vi.useFakeTimers()
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    let capturedSend: ((itemId: string, estimate: unknown, round: number) => Promise<void>) | null =
+      null
+    function Capture() {
+      const { sendEstimate } = useNetworkSession()
+      capturedSend = sendEstimate
+      return null
+    }
+    render(
+      <NetworkProvider>
+        <Capture />
+        <Consumer />
+      </NetworkProvider>,
+    )
+    act(() => screen.getByText('connect').click())
+    fakeSession.requestSnapshot.mockResolvedValue({
+      currentItem: null,
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    })
+    await act(async () => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+      await Promise.resolve()
+    })
+
+    const timeoutError = Object.assign(new Error('timed out'), { kind: 'timeout' })
+    fakeSession.sendEstimate.mockRejectedValueOnce(timeoutError).mockResolvedValueOnce()
+
+    const estimate = createEstimate({
+      participantId: 'p-self',
+      best: 1,
+      likely: 2,
+      worst: 3,
+    })
+    if (!estimate.ok) throw new Error('test fixture invalid')
+
+    let resolved = false
+    const sendPromise = capturedSend!('i1', estimate.value, 0).then(() => {
+      resolved = true
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(500)
+    })
+    await sendPromise
+
+    expect(resolved).toBe(true)
+    expect(fakeSession.sendEstimate).toHaveBeenCalledTimes(2)
+  })
+
+  it('does not retry a sendEstimate that fails as disconnected', async () => {
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    let capturedSend: ((itemId: string, estimate: unknown, round: number) => Promise<void>) | null =
+      null
+    function Capture() {
+      const { sendEstimate } = useNetworkSession()
+      capturedSend = sendEstimate
+      return null
+    }
+    render(
+      <NetworkProvider>
+        <Capture />
+        <Consumer />
+      </NetworkProvider>,
+    )
+    act(() => screen.getByText('connect').click())
+    fakeSession.requestSnapshot.mockResolvedValue({
+      currentItem: null,
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    })
+    await act(async () => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+      await Promise.resolve()
+    })
+
+    const disconnectedError = Object.assign(new Error('link is dead'), {
+      kind: 'disconnected',
+    })
+    fakeSession.sendEstimate.mockRejectedValueOnce(disconnectedError)
+
+    const estimate = createEstimate({
+      participantId: 'p-self',
+      best: 1,
+      likely: 2,
+      worst: 3,
+    })
+    if (!estimate.ok) throw new Error('test fixture invalid')
+
+    await expect(capturedSend!('i1', estimate.value, 0)).rejects.toBe(disconnectedError)
+    expect(fakeSession.sendEstimate).toHaveBeenCalledTimes(1)
+  })
+
+  it('resends this participant’s estimate when a snapshot shows it not yet in the roster', async () => {
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    act(() => screen.getByText('connect').click())
+    fakeSession.requestSnapshot.mockResolvedValue({
+      currentItem: { id: 'i1', title: 'Item', description: '' },
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    })
+    await act(async () => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+      await Promise.resolve()
+    })
+    act(() =>
+      useSessionStore.getState().submitEstimate(1, 2, 3),
+    )
+    fakeSession.sendEstimate.mockClear()
+
+    await act(async () => {
+      emit('syncState', {
+        currentItem: { id: 'i1', title: 'Item', description: '' },
+        unit: 'days',
+        revealed: false,
+        round: 0,
+        roster: [{ participantId: 'p-self', submitted: false, connected: true }],
+        submissions: [],
+        finalizedItemIds: [],
+      })
+      await Promise.resolve()
+    })
+
+    expect(fakeSession.sendEstimate).toHaveBeenCalledWith(
+      'i1',
+      expect.objectContaining({ participantId: 'p-self', best: 1, likely: 2, worst: 3 }),
+      0,
+      'peer-fac',
+    )
+  })
+
+  it('does not resend when the roster already shows this participant as submitted', async () => {
+    act(() =>
+      useSessionStore.setState({
+        mode: 'live',
+        role: 'participant',
+        participantId: 'p-self',
+        myName: 'Sam Rivera',
+      }),
+    )
+    render(
+      <NetworkProvider>
+        <Consumer />
+      </NetworkProvider>,
+    )
+    act(() => screen.getByText('connect').click())
+    fakeSession.requestSnapshot.mockResolvedValue({
+      currentItem: { id: 'i1', title: 'Item', description: '' },
+      unit: 'days' as const,
+      revealed: false,
+      round: 0,
+      roster: [],
+      submissions: [],
+      finalizedItemIds: [],
+    })
+    await act(async () => {
+      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+      await Promise.resolve()
+    })
+    act(() =>
+      useSessionStore.getState().submitEstimate(1, 2, 3),
+    )
+    fakeSession.sendEstimate.mockClear()
+
+    await act(async () => {
+      emit('syncState', {
+        currentItem: { id: 'i1', title: 'Item', description: '' },
+        unit: 'days',
+        revealed: false,
+        round: 0,
+        roster: [{ participantId: 'p-self', submitted: true, connected: true }],
+        submissions: [],
+        finalizedItemIds: [],
+      })
+      await Promise.resolve()
+    })
 
     expect(fakeSession.sendEstimate).not.toHaveBeenCalled()
   })

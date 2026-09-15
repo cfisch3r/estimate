@@ -39,26 +39,37 @@ const validEstimate = createEstimate({ participantId: 'a', best: 1, likely: 2, w
 if (!validEstimate.ok) throw new Error('test fixture invalid')
 
 describe('createTypedActions', () => {
-  it('sends an estimate (with its item id) through the submitEstimate action', () => {
-    const { room, actionsByName } = makeFakeRoom()
+  it('requests delivery of an estimate (with its item id) targeted at the given peer', async () => {
+    const { room, requestActionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
+    requestActionsByName.submitEstimate!.request.mockResolvedValue({ ok: true })
 
-    actions.sendEstimate('item-1', validEstimate.value, 2)
+    await actions.sendEstimate('item-1', validEstimate.value, 2, 'facilitator-peer')
 
-    expect(actionsByName.submitEstimate!.send).toHaveBeenCalledWith({
-      itemId: 'item-1',
-      estimate: validEstimate.value,
-      round: 2,
-    })
+    expect(requestActionsByName.submitEstimate!.request).toHaveBeenCalledWith(
+      { itemId: 'item-1', estimate: validEstimate.value, round: 2 },
+      { target: 'facilitator-peer', timeoutMs: 1000 },
+    )
   })
 
-  it('forwards a valid incoming estimate, with its item id and round, to subscribers', () => {
-    const { room, actionsByName } = makeFakeRoom()
+  it('rejects with the underlying request error when delivery fails', async () => {
+    const { room, requestActionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const error = Object.assign(new Error('timed out'), { kind: 'timeout' })
+    requestActionsByName.submitEstimate!.request.mockRejectedValue(error)
+
+    await expect(
+      actions.sendEstimate('item-1', validEstimate.value, 2, 'facilitator-peer'),
+    ).rejects.toBe(error)
+  })
+
+  it('forwards a valid incoming estimate, with its item id and round, to subscribers and acks it', () => {
+    const { room, requestActionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
     const cb = vi.fn()
     actions.onEstimate(cb)
 
-    actionsByName.submitEstimate!.onMessage?.(
+    const ack = requestActionsByName.submitEstimate!.onRequest?.(
       {
         itemId: 'item-1',
         round: 2,
@@ -73,15 +84,16 @@ describe('createTypedActions', () => {
       'peer-1',
       2,
     )
+    expect(ack).toEqual({ ok: true })
   })
 
   it('forwards an incoming estimate with round undefined when the envelope omits it', () => {
-    const { room, actionsByName } = makeFakeRoom()
+    const { room, requestActionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
     const cb = vi.fn()
     actions.onEstimate(cb)
 
-    actionsByName.submitEstimate!.onMessage?.(
+    requestActionsByName.submitEstimate!.onRequest?.(
       {
         itemId: 'item-1',
         estimate: { participantId: 'b', best: 1, likely: 2, worst: 3 },
@@ -98,12 +110,12 @@ describe('createTypedActions', () => {
   })
 
   it('accepts a bare estimate with no envelope (pre-#8 build) under an empty item id', () => {
-    const { room, actionsByName } = makeFakeRoom()
+    const { room, requestActionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
     const cb = vi.fn()
     actions.onEstimate(cb)
 
-    actionsByName.submitEstimate!.onMessage?.(
+    requestActionsByName.submitEstimate!.onRequest?.(
       { participantId: 'b', best: 1, likely: 2, worst: 3 },
       { peerId: 'peer-1' },
     )
@@ -116,45 +128,51 @@ describe('createTypedActions', () => {
     )
   })
 
-  it('drops a malformed incoming estimate instead of forwarding it', () => {
-    const { room, actionsByName } = makeFakeRoom()
+  it('throws (surfacing a failure to the sender) on a malformed incoming estimate instead of forwarding it', () => {
+    const { room, requestActionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
     const cb = vi.fn()
     actions.onEstimate(cb)
 
-    actionsByName.submitEstimate!.onMessage?.(
-      {
-        itemId: 'item-1',
-        estimate: { participantId: 'b', best: 9, likely: 2, worst: 3 },
-      },
-      { peerId: 'peer-1' },
-    )
-
+    expect(() =>
+      requestActionsByName.submitEstimate!.onRequest?.(
+        {
+          itemId: 'item-1',
+          estimate: { participantId: 'b', best: 9, likely: 2, worst: 3 },
+        },
+        { peerId: 'peer-1' },
+      ),
+    ).toThrow()
     expect(cb).not.toHaveBeenCalled()
   })
 
-  it('drops a completely malformed incoming estimate (missing fields) without throwing', () => {
-    const { room, actionsByName } = makeFakeRoom()
+  it('throws on a completely malformed incoming estimate (missing fields)', () => {
+    const { room, requestActionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
     const cb = vi.fn()
     actions.onEstimate(cb)
 
-    expect(() => {
-      actionsByName.submitEstimate!.onMessage?.({}, { peerId: 'peer-1' })
-      actionsByName.submitEstimate!.onMessage?.({ itemId: 'x' }, { peerId: 'peer-1' })
-    }).not.toThrow()
+    expect(() =>
+      requestActionsByName.submitEstimate!.onRequest?.({}, { peerId: 'peer-1' }),
+    ).toThrow()
+    expect(() =>
+      requestActionsByName.submitEstimate!.onRequest?.(
+        { itemId: 'x' },
+        { peerId: 'peer-1' },
+      ),
+    ).toThrow()
     expect(cb).not.toHaveBeenCalled()
   })
 
-  it('drops a null incoming estimate without throwing', () => {
-    const { room, actionsByName } = makeFakeRoom()
+  it('throws on a null incoming estimate', () => {
+    const { room, requestActionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
     const cb = vi.fn()
     actions.onEstimate(cb)
 
-    expect(() => {
-      actionsByName.submitEstimate!.onMessage?.(null, { peerId: 'peer-1' })
-    }).not.toThrow()
+    expect(() =>
+      requestActionsByName.submitEstimate!.onRequest?.(null, { peerId: 'peer-1' }),
+    ).toThrow()
     expect(cb).not.toHaveBeenCalled()
   })
 
@@ -426,31 +444,6 @@ describe('createTypedActions', () => {
     )
   })
 
-  it('sends a targeted estimate through the submitEstimate action', () => {
-    const { room, actionsByName } = makeFakeRoom()
-    const actions = createTypedActions(room)
-
-    actions.sendEstimate('item-1', validEstimate.value, 2, 'facilitator-peer')
-
-    expect(actionsByName.submitEstimate!.send).toHaveBeenCalledWith(
-      { itemId: 'item-1', estimate: validEstimate.value, round: 2 },
-      { target: 'facilitator-peer' },
-    )
-  })
-
-  it('sends an untargeted estimate when no target is given', () => {
-    const { room, actionsByName } = makeFakeRoom()
-    const actions = createTypedActions(room)
-
-    actions.sendEstimate('item-1', validEstimate.value, 2)
-
-    expect(actionsByName.submitEstimate!.send).toHaveBeenCalledWith({
-      itemId: 'item-1',
-      estimate: validEstimate.value,
-      round: 2,
-    })
-  })
-
   it('requests a snapshot from the given peer through the requestSnapshot action', async () => {
     const { room, requestActionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
@@ -469,7 +462,7 @@ describe('createTypedActions', () => {
 
     expect(requestActionsByName.requestSnapshot!.request).toHaveBeenCalledWith(null, {
       target: 'facilitator-peer',
-      timeoutMs: 2000,
+      timeoutMs: 1000,
     })
     expect(result).toEqual(snapshot)
   })
@@ -614,13 +607,13 @@ describe('createTypedActions', () => {
   })
 
   it('stops notifying an estimate subscriber after unsubscribe', () => {
-    const { room, actionsByName } = makeFakeRoom()
+    const { room, requestActionsByName } = makeFakeRoom()
     const actions = createTypedActions(room)
     const cb = vi.fn()
     const unsubscribe = actions.onEstimate(cb)
     unsubscribe()
 
-    actionsByName.submitEstimate!.onMessage?.(
+    requestActionsByName.submitEstimate!.onRequest?.(
       {
         itemId: 'item-1',
         estimate: { participantId: 'b', best: 1, likely: 2, worst: 3 },

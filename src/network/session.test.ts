@@ -110,18 +110,18 @@ describe('joinSession', () => {
     expect(fakeRoom.leave).toHaveBeenCalled()
   })
 
-  it('sendEstimate delegates to the underlying submitEstimate action with the item id', () => {
+  it('sendEstimate delegates to the underlying submitEstimate request action, targeted at the given peer', async () => {
     const session = joinSession('session-abc')
     const estimate = createEstimate({ participantId: 'a', best: 1, likely: 2, worst: 3 })
     if (!estimate.ok) throw new Error('test fixture invalid')
+    fakeRoom.requestActionsByName.submitEstimate!.request.mockResolvedValue({ ok: true })
 
-    session.sendEstimate('item-1', estimate.value, 2)
+    await session.sendEstimate('item-1', estimate.value, 2, 'facilitator-peer')
 
-    expect(fakeRoom.actionsByName.submitEstimate!.send).toHaveBeenCalledWith({
-      itemId: 'item-1',
-      estimate: estimate.value,
-      round: 2,
-    })
+    expect(fakeRoom.requestActionsByName.submitEstimate!.request).toHaveBeenCalledWith(
+      { itemId: 'item-1', estimate: estimate.value, round: 2 },
+      { target: 'facilitator-peer', timeoutMs: 1000 },
+    )
   })
 
   it('requestSnapshot delegates to the underlying requestSnapshot action', async () => {
@@ -141,7 +141,7 @@ describe('joinSession', () => {
 
     expect(fakeRoom.requestActionsByName.requestSnapshot!.request).toHaveBeenCalledWith(
       null,
-      { target: 'peer-1', timeoutMs: 2000 },
+      { target: 'peer-1', timeoutMs: 1000 },
     )
     expect(result).toEqual(snapshot)
   })

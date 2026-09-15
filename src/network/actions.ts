@@ -60,6 +60,14 @@ export interface EstimateMessage {
   estimate: Estimate
 }
 
+/** The facilitator's reply to a `submitEstimate` request — its only purpose is
+ *  failure attribution (a typed `error.kind` on rejection), not speed: the
+ *  roster broadcast travels the same two hops and is what a participant's
+ *  delivery actually converges on (ADR-003, "Acknowledged submissions"). */
+export interface EstimateAck {
+  ok: true
+}
+
 /** A client announcing which display name belongs to its `participantId`, so
  *  peers can label reveal rows with real names instead of "Teammate N". Kept off
  *  the pure `Estimate` wire type — names never enter `calc`. */
@@ -93,10 +101,14 @@ export interface ActionRoom {
 }
 
 export interface TypedActions {
-  /** `target` sends only to the facilitator's peerId rather than broadcasting
-   *  to the mesh — this is what keeps a participant's estimate off every other
-   *  peer's wire (ADR-003, "Single owner"). */
-  sendEstimate(itemId: string, estimate: Estimate, round: number, target?: string): void
+  /** Always targeted at the facilitator's peerId — never broadcasts to the mesh,
+   *  which is what keeps a participant's estimate off every other peer's wire
+   *  (ADR-003, "Single owner"). A request, not a fire-and-forget send: resolves
+   *  once the facilitator acknowledges receipt, or rejects with a Trystero
+   *  request error (`error.kind`: `timeout` | `disconnected` | `aborted` | a
+   *  generic rejection) that the caller applies the shared kind-driven retry
+   *  policy to (ADR-003, "Acknowledged submissions"). */
+  sendEstimate(itemId: string, estimate: Estimate, round: number, target: string): Promise<void>
   sendSyncState(snapshot: SessionSnapshot): void
   sendAnnounce(announce: ParticipantAnnounce): void
   /** A peer that just (re)connected pulls the facilitator's current snapshot
@@ -268,7 +280,10 @@ function parseSnapshot(data: unknown): SessionSnapshot | null {
 }
 
 export function createTypedActions(room: ActionRoom): TypedActions {
-  const submitEstimateAction = room.makeAction<EstimateMessage>('submitEstimate')
+  const submitEstimateAction = room.makeAction<EstimateMessage, EstimateAck>(
+    'submitEstimate',
+    { kind: 'request' },
+  )
   const syncStateAction = room.makeAction<SessionSnapshot>('syncState')
   const announceAction = room.makeAction<ParticipantAnnounce>('announce')
   const requestSnapshotAction = room.makeAction<null, SessionSnapshot>(
@@ -281,14 +296,19 @@ export function createTypedActions(room: ActionRoom): TypedActions {
   const syncStateSubscribable = createSubscribable<[SessionSnapshot, string]>()
   const announceSubscribable = createSubscribable<[ParticipantAnnounce, string]>()
 
-  submitEstimateAction.onMessage = (data, { peerId }) => {
+  submitEstimateAction.onRequest = (data, { peerId }) => {
     const { itemId, payload, round } = unwrapEstimateMessage(data)
     const result = safeCreateEstimate(payload)
-    if (result.ok) {
-      estimateSubscribable.notify(itemId, result.value, peerId, round)
-    } else {
-      console.warn('Dropping malformed incoming estimate:', result.error)
+    if (!result.ok) {
+      // Thrown from onRequest, this becomes the sender's rejection (a generic/
+      // "rejected" kind) rather than a silently dropped message — our own
+      // outbound requests are always well-formed same-version traffic, so this
+      // only ever fires on a real bug, and surfacing it beats a submission that
+      // vanishes with no failure the sender can see.
+      throw new Error(`Malformed incoming estimate: ${result.error}`)
     }
+    estimateSubscribable.notify(itemId, result.value, peerId, round)
+    return { ok: true }
   }
 
   syncStateAction.onMessage = (data, { peerId }) => {
@@ -316,14 +336,18 @@ export function createTypedActions(room: ActionRoom): TypedActions {
 
   return {
     sendEstimate: (itemId, estimate, round, target) =>
-      target
-        ? submitEstimateAction.send({ itemId, estimate, round }, { target })
-        : submitEstimateAction.send({ itemId, estimate, round }),
+      submitEstimateAction
+        .request({ itemId, estimate, round }, { target, timeoutMs: 1000 })
+        .then(() => {}),
     sendSyncState: (snapshot) => syncStateAction.send(snapshot),
     sendAnnounce: (announce) => announceAction.send(announce),
     requestSnapshot: (targetPeerId) =>
       requestSnapshotAction
-        .request(null, { target: targetPeerId, timeoutMs: 2000 })
+        // Kept in the same ~1s budget as sendEstimate: at 2 retries with
+        // 500ms/1500ms backoff, a longer per-attempt timeout here would risk
+        // outliving Trystero's 5s ICE-teardown window (ADR-003, "Acknowledged
+        // submissions").
+        .request(null, { target: targetPeerId, timeoutMs: 1000 })
         .then((data) => {
           const snapshot = parseSnapshot(data)
           if (!snapshot)

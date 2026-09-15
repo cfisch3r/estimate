@@ -32,6 +32,14 @@ import { useConnectionPhase, type ConnectionPhase } from './useConnectionPhase'
 
 type SubmitResult = { ok: true } | { ok: false; error: string }
 
+/** Where this participant's own estimate stands with the facilitator, derived
+ *  rather than tracked as its own store field: `submitted` comes straight from
+ *  the roster (the actual convergence proof, per ADR-003), so a background
+ *  resend that lands is reflected automatically with no wiring back to this
+ *  component. `sending` / `not-delivered` describe only the most recent local
+ *  send attempt. */
+type DeliveryState = 'sending' | 'submitted' | 'not-delivered'
+
 const inputStyle = {
   height: 48,
   fontSize: '1.1rem',
@@ -246,8 +254,12 @@ function WaitingPanel({
   unit,
   sessionId,
   onSubmit,
+  deliveryState,
+  connectionPhase,
 }: RoundPanelProps & {
   onSubmit: (best: number, likely: number, worst: number) => SubmitResult
+  deliveryState: DeliveryState
+  connectionPhase: ConnectionPhase
 }) {
   const [editing, setEditing] = useState(false)
   const mine = round.mySubmission!
@@ -309,6 +321,30 @@ function WaitingPanel({
             <CircleNotchIcon size={16} weight="bold" className="spin" />
             Waiting for the facilitator to reveal…
           </div>
+
+          {/* When the facilitator link is down, that banner (rendered by the
+           *  parent) already explains why nothing is arriving — this must not
+           *  stack a second alarm on top of it. */}
+          {connectionPhase !== 'lost' && deliveryState === 'sending' && (
+            <div
+              className="card-meta"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 'var(--space-2)',
+              }}
+            >
+              <CircleNotchIcon size={16} weight="bold" className="spin" />
+              Sending your estimate…
+            </div>
+          )}
+          {connectionPhase !== 'lost' && deliveryState === 'not-delivered' && (
+            <GuardNote variant="banner" headline="Not delivered yet">
+              Your estimate hasn&apos;t reached the facilitator. It will retry
+              automatically.
+            </GuardNote>
+          )}
         </>
       )}
     </Card>
@@ -443,15 +479,33 @@ export function ParticipantEstimateView() {
   // fresh tracker: keying off status alone would clear the alarm the instant
   // Reconnect is pressed, hiding a rejoin that never succeeds.
   const connectionPhase = useConnectionPhase(hasEverConnected && peerCount === 0)
+  // Tracks only the most recent local send attempt; the roster convergence
+  // check in NetworkProvider can also resend in the background, and that path
+  // is reflected below purely through the roster, without touching this flag.
+  const [deliveryFailed, setDeliveryFailed] = useState(false)
 
   function handleSubmit(best: number, likely: number, worst: number): SubmitResult {
     const result = submitEstimate(best, likely, worst)
     if (result.ok) {
-      if (liveRound) sendEstimate(liveRound.item.id, result.estimate, liveRound.round)
+      if (liveRound) {
+        setDeliveryFailed(false)
+        sendEstimate(liveRound.item.id, result.estimate, liveRound.round).catch(() => {
+          setDeliveryFailed(true)
+        })
+      }
       return { ok: true }
     }
     return result
   }
+
+  const myRosterEntry = liveRound?.roster.find(
+    (entry) => entry.participantId === participantId,
+  )
+  const deliveryState: DeliveryState = myRosterEntry?.submitted
+    ? 'submitted'
+    : deliveryFailed
+      ? 'not-delivered'
+      : 'sending'
 
   let panel
   if (!liveRound) {
@@ -480,6 +534,8 @@ export function ParticipantEstimateView() {
         unit={unit}
         sessionId={sessionId}
         onSubmit={handleSubmit}
+        deliveryState={deliveryState}
+        connectionPhase={connectionPhase}
       />
     )
   } else {
