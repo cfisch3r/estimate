@@ -68,7 +68,7 @@ export function Header() {
           className="app-header-brand app-header-brand-home"
           aria-label={
             needsConfirm && armed
-              ? 'Click again to leave the live session'
+              ? 'Click again to leave session'
               : 'Back to mode selection'
           }
           style={{ color: needsConfirm && armed ? 'var(--color-warning)' : undefined }}

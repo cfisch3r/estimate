@@ -133,12 +133,10 @@ describe('Header', () => {
     await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))
     expect(useSessionStore.getState().currentScreen).toBe('workspace')
     expect(
-      screen.getByRole('button', { name: 'Click again to leave the live session' }),
+      screen.getByRole('button', { name: 'Click again to leave session' }),
     ).toBeInTheDocument()
 
-    await user.click(
-      screen.getByRole('button', { name: 'Click again to leave the live session' }),
-    )
+    await user.click(screen.getByRole('button', { name: 'Click again to leave session' }))
     expect(useSessionStore.getState().currentScreen).toBe('mode-select')
     expect(disconnectMock).toHaveBeenCalled()
   })

@@ -1,0 +1,9 @@
+/* — header brand as home link — the clickable variant of .app-header-brand
+   (Nocturne) used when the header can route back to mode-select. Resets
+   default button chrome so it stays visually identical to the static brand. */
+.app-header-brand-home {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
