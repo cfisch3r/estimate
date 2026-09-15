@@ -17,6 +17,7 @@ import {
   Tag,
 } from '../components'
 import { SessionSidebar } from './SessionSidebar'
+import { useConfirmArm } from '../hooks/useConfirmArm'
 import { useSessionStore, type FinalizeResult } from '../state/store'
 import { useNetworkSession } from '../network'
 import {
@@ -389,6 +390,9 @@ function LiveFacilitatorPanel({
   const submittedCount = item.submissions.length
   const aggregate =
     item.revealed && submittedCount > 0 ? aggregateEstimates(item.submissions) : null
+  const { armed: reopenArmed, handleClick: armAndReopen } = useConfirmArm(() =>
+    onRetry(item.id),
+  )
 
   return (
     <ItemDetailShell
@@ -450,8 +454,24 @@ function LiveFacilitatorPanel({
       {item.revealed ? (
         item.finalResult !== null ? (
           <GuardNote variant="banner" headline="Already finalized">
-            This item has a recorded range. Late submissions are ignored — to re-estimate,
-            reopen the item.
+            <div
+              style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}
+            >
+              <span>
+                This item has a recorded range. Late submissions are ignored — to
+                re-estimate, reopen the item.
+              </span>
+              <Button
+                variant="secondary"
+                style={{
+                  alignSelf: 'flex-start',
+                  color: reopenArmed ? 'var(--color-warning)' : undefined,
+                }}
+                onClick={armAndReopen}
+              >
+                {reopenArmed ? 'Click again to reopen' : 'Reopen item'}
+              </Button>
+            </div>
           </GuardNote>
         ) : (
           <div style={{ display: 'flex', gap: 'var(--space-3)' }}>

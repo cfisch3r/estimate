@@ -335,14 +335,20 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   retryRound: (id) =>
     set((state) => ({
       // Discards the round's submissions and returns it to the waiting state.
-      // Only offered for a not-yet-finalized item — re-opening a finalized item
-      // (which would drop its recorded range) is deferred to #36's confirm flow.
-      // Bumping `round` is what lets a participant that reconnects after missing
-      // both the Reveal and this Retry tell the new round apart from the old one
-      // (ADR-003, "Versioned rounds") — see `applySyncState`.
+      // Also used, behind a confirm step in the UI, to reopen an already-finalized
+      // item — clearing `finalResult` so a stale range doesn't linger next to the
+      // new round. Bumping `round` is what lets a participant that reconnects after
+      // missing both the Reveal and this Retry tell the new round apart from the
+      // old one (ADR-003, "Versioned rounds") — see `applySyncState`.
       items: state.items.map((item) =>
         item.id === id
-          ? { ...item, submissions: [], revealed: false, round: item.round + 1 }
+          ? {
+              ...item,
+              submissions: [],
+              revealed: false,
+              round: item.round + 1,
+              finalResult: null,
+            }
           : item,
       ),
     })),
