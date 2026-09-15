@@ -1,5 +1,10 @@
 import { useSessionStore } from '../state/store'
+import type { ScreenId } from '../state/types'
+import { useConfirmArm } from '../hooks/useConfirmArm'
+import { useLeaveWorkspace } from '../hooks/useLeaveWorkspace'
 import { Tag } from './Tag'
+
+const EXIT_SCREENS = new Set<ScreenId>(['workspace', 'summary', 'history'])
 
 function BrandMark() {
   return (
@@ -47,15 +52,37 @@ function BrandMark() {
 export function Header() {
   const currentScreen = useSessionStore((s) => s.currentScreen)
   const mode = useSessionStore((s) => s.mode)
+  const peerCount = useSessionStore((s) => s.peerCount)
+  const leaveWorkspace = useLeaveWorkspace()
+  const { armed, handleClick: armAndLeave } = useConfirmArm(leaveWorkspace)
 
   const showModeTag = currentScreen !== 'mode-select' && currentScreen !== 'join'
+  const canLeave = EXIT_SCREENS.has(currentScreen)
+  const needsConfirm = mode === 'live' && peerCount > 0
 
   return (
     <header className="app-header">
-      <span className="app-header-brand">
-        <BrandMark />
-        EstiMate
-      </span>
+      {canLeave ? (
+        <button
+          type="button"
+          className="app-header-brand app-header-brand-home"
+          aria-label={
+            needsConfirm && armed
+              ? 'Click again to leave the live session'
+              : 'Back to mode selection'
+          }
+          style={{ color: needsConfirm && armed ? 'var(--color-warning)' : undefined }}
+          onClick={needsConfirm ? armAndLeave : leaveWorkspace}
+        >
+          <BrandMark />
+          {needsConfirm && armed ? 'Click again to leave session' : 'EstiMate'}
+        </button>
+      ) : (
+        <span className="app-header-brand">
+          <BrandMark />
+          EstiMate
+        </span>
+      )}
       {showModeTag &&
         (mode === 'live' ? (
           <Tag variant="accent">Live</Tag>

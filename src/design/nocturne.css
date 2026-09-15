@@ -481,6 +481,12 @@ textarea.input {
   letter-spacing: -0.01em;
   color: var(--color-text);
 }
+.app-header-brand-home {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
 .app-header-session-block {
   position: absolute;
   left: 50%;

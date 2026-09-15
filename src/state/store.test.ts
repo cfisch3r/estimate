@@ -289,6 +289,26 @@ describe('leaveLiveSession', () => {
   })
 })
 
+describe('leaveWorkspace', () => {
+  it('clears items, session name and active item on top of the live-session reset', () => {
+    useSessionStore.setState({ sessionName: 'My session' })
+    useSessionStore.getState().addItem('Item A')
+    useSessionStore.getState().startCollaborative('K7F9Q2')
+    useSessionStore.getState().setPeerCount(2)
+
+    useSessionStore.getState().leaveWorkspace()
+
+    expect(useSessionStore.getState()).toMatchObject({
+      currentScreen: 'mode-select',
+      items: [],
+      sessionName: '',
+      activeItemId: null,
+      mode: 'manual',
+      peerCount: 0,
+    })
+  })
+})
+
 describe('applyParticipantName', () => {
   it('inserts and overwrites entries without disturbing the rest of the map', () => {
     useSessionStore.getState().applyParticipantName('a', 'Ada')

@@ -56,6 +56,11 @@ interface SessionStore {
   startCollaborative: (sessionCode: string) => void
   joinLiveSession: (sessionCode: string, name: string) => void
   leaveLiveSession: () => void
+  /** Facilitator/single-user: leave the workspace entirely, back to mode-select.
+   *  Unlike `leaveLiveSession` (used by the participant-side leave flows, which
+   *  never own items), this also clears the item list and session name so the
+   *  next mode choice starts from a blank slate. */
+  leaveWorkspace: () => void
   setMode: (mode: SessionMode) => void
   setConnectionStatus: (status: LiveConnectionStatus) => void
   setPeerCount: (count: number) => void
@@ -272,6 +277,11 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
   },
 
   leaveLiveSession: () => set({ ...LIVE_SESSION_DEFAULTS, currentScreen: 'mode-select' }),
+
+  leaveWorkspace: () => {
+    get().leaveLiveSession()
+    set({ items: [], sessionName: '', activeItemId: null })
+  },
 
   setMode: (mode) => set({ mode }),
 
