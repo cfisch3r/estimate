@@ -8,7 +8,8 @@ export interface RetryOptions {
   delay?: (ms: number) => Promise<void>
 }
 
-const defaultDelay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms))
+const defaultDelay = (ms: number) =>
+  new Promise<void>((resolve) => setTimeout(resolve, ms))
 
 /** Applies ADR-003's "Acknowledged submissions" retry table to any Trystero
  *  `request(...)` call: only a `timeout` (link alive, facilitator didn't answer)
@@ -21,16 +22,17 @@ export async function withKindDrivenRetry<T>(
   attempt: () => Promise<T>,
   options: RetryOptions = {},
 ): Promise<T> {
-  const backoffMs = options.backoffMs ?? [500, 1500]
+  const backoffMs = options.backoffMs?.length ? options.backoffMs : [500, 1500]
   const retries = options.retries ?? backoffMs.length
   const delay = options.delay ?? defaultDelay
+  const lastBackoffMs = backoffMs[backoffMs.length - 1]!
   for (let attemptIndex = 0; ; attemptIndex++) {
     try {
       return await attempt()
     } catch (error) {
       const kind = (error as { kind?: unknown } | null)?.kind
       if (kind !== 'timeout' || attemptIndex >= retries) throw error
-      await delay(backoffMs[attemptIndex] ?? backoffMs[backoffMs.length - 1])
+      await delay(backoffMs[attemptIndex] ?? lastBackoffMs)
     }
   }
 }
