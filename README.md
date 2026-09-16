@@ -26,6 +26,7 @@ pnpm install
 
 pnpm dev             # start the dev server
 pnpm build           # type-check (tsc -b) and production build
+pnpm typecheck       # type-check only (tsc -b), no bundling
 pnpm preview         # serve the production build locally
 pnpm lint            # oxlint
 pnpm format          # prettier --write
@@ -36,7 +37,9 @@ pnpm test:verbose    # vitest run, every individual test name and result
 pnpm test:coverage   # vitest run --coverage
 ```
 
-Run `pnpm build`, `pnpm lint`, `pnpm format:check`, and `pnpm test` before considering any change complete.
+Run `pnpm build`, `pnpm lint`, `pnpm format:check`, and `pnpm test` before considering any
+change complete. These also run as required checks in CI (`.github/workflows/ci.yml`) on
+every PR and push to `main`.
 
 ## Docs
 

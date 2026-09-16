@@ -103,7 +103,9 @@ describe('JoinSession', () => {
     vi.useFakeTimers()
     try {
       render(<JoinSession />)
-      fireEvent.change(screen.getByLabelText('Session code'), { target: { value: 'K7F9Q2' } })
+      fireEvent.change(screen.getByLabelText('Session code'), {
+        target: { value: 'K7F9Q2' },
+      })
       fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Sam' } })
       fireEvent.click(screen.getByRole('button', { name: 'Join' }))
 
@@ -122,7 +124,9 @@ describe('JoinSession', () => {
     vi.useFakeTimers()
     try {
       render(<JoinSession />)
-      fireEvent.change(screen.getByLabelText('Session code'), { target: { value: 'K7F9Q2' } })
+      fireEvent.change(screen.getByLabelText('Session code'), {
+        target: { value: 'K7F9Q2' },
+      })
       fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Sam' } })
       fireEvent.click(screen.getByRole('button', { name: 'Join' }))
 

@@ -17,7 +17,12 @@ export interface JoinSessionOptions {
 }
 
 export interface NetworkSession {
-  sendEstimate(itemId: string, estimate: Estimate, round: number, target: string): Promise<void>
+  sendEstimate(
+    itemId: string,
+    estimate: Estimate,
+    round: number,
+    target: string,
+  ): Promise<void>
   sendSyncState(snapshot: SessionSnapshot): void
   sendAnnounce(announce: ParticipantAnnounce): void
   /** A peer that just (re)connected pulls the facilitator's current snapshot
