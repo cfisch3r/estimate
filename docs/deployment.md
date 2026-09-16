@@ -28,6 +28,29 @@ push to main
   (each carries a "please do not edit" header) — re-run the IONOS setup flow to
   regenerate them if the project configuration changes.
 
+### Reading the Actions UI: why one push shows 3 runs
+
+Unlike a single `.gitlab-ci.yml` with stages, each file under `.github/workflows/`
+is an independent workflow with its own trigger — more than one can react to the
+same push. A single push to `main` produces:
+
+1. **`Deploy Now: Deploy to IONOS`, event `push`, no jobs ran (shows as skipped).**
+   That workflow file also declares a `push` trigger just so GitHub registers it, but
+   its one job is gated `if: github.event_name == 'workflow_dispatch'` — false on a
+   plain push, so nothing runs. Harmless, fires on **every** push (docs or code),
+   not a sign anything was skipped.
+2. **`Deploy Now: Orchestration`, event `push`, runs the real build.** Its last step
+   calls the IONOS API to fire a `workflow_dispatch` event — like triggering a
+   downstream pipeline via API, not a stage transition in the same run.
+3. **`Deploy Now: Deploy to IONOS`, event `workflow_dispatch`, "Manually run by
+   ionos-deploy-now Bot".** A second, separate run of the *same* file as (1), this
+   time with the job's condition true — this is the real rsync-to-IONOS deploy.
+   GitHub labels any `workflow_dispatch` run "manually run," even when a bot's API
+   call triggered it.
+
+So on every push, expect one skipped no-op run alongside the two that actually do
+the work — that's normal, not a failure.
+
 ### SPA routing
 
 The app has no client-side router (state-driven screens via Zustand, not URL routes),
