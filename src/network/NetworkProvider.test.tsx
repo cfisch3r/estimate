@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import type { ConnectionState } from './connection'
 import { NetworkProvider } from './NetworkProvider'
 import { useNetworkSession } from './useNetworkSession'
+import type { NetworkSessionApi } from './networkSessionContext'
 import { createEstimate } from '../calc'
 import { useSessionStore } from '../state/store'
 
@@ -233,7 +234,11 @@ describe('useNetworkSession', () => {
       finalizedItemIds: [],
     })
     await act(async () => {
-      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac-2')
+      emit(
+        'announce',
+        { participantId: 'facilitator', name: 'Facilitator' },
+        'peer-fac-2',
+      )
       await Promise.resolve()
     })
     expect(fakeSession.requestSnapshot).toHaveBeenCalledWith('peer-fac-2')
@@ -604,8 +609,7 @@ describe('useNetworkSession', () => {
         myName: 'Sam Rivera',
       }),
     )
-    let capturedSend: ((itemId: string, estimate: unknown, round: number) => Promise<void>) | null =
-      null
+    let capturedSend: NetworkSessionApi['sendEstimate'] | null = null
     function Capture() {
       const { sendEstimate } = useNetworkSession()
       capturedSend = sendEstimate
@@ -666,8 +670,7 @@ describe('useNetworkSession', () => {
         myName: 'Sam Rivera',
       }),
     )
-    let capturedSend: ((itemId: string, estimate: unknown, round: number) => Promise<void>) | null =
-      null
+    let capturedSend: NetworkSessionApi['sendEstimate'] | null = null
     function Capture() {
       const { sendEstimate } = useNetworkSession()
       capturedSend = sendEstimate
@@ -739,9 +742,7 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       await Promise.resolve()
     })
-    act(() =>
-      useSessionStore.getState().submitEstimate(1, 2, 3),
-    )
+    act(() => useSessionStore.getState().submitEstimate(1, 2, 3))
     fakeSession.sendEstimate.mockClear()
 
     await act(async () => {
@@ -793,9 +794,7 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       await Promise.resolve()
     })
-    act(() =>
-      useSessionStore.getState().submitEstimate(1, 2, 3),
-    )
+    act(() => useSessionStore.getState().submitEstimate(1, 2, 3))
     fakeSession.sendEstimate.mockClear()
 
     await act(async () => {
@@ -879,8 +878,7 @@ describe('useNetworkSession', () => {
         myName: 'Sam Rivera',
       }),
     )
-    let capturedSend: ((itemId: string, estimate: unknown, round: number) => Promise<void>) | null =
-      null
+    let capturedSend: NetworkSessionApi['sendEstimate'] | null = null
     function Capture() {
       const { sendEstimate } = useNetworkSession()
       capturedSend = sendEstimate
@@ -903,7 +901,11 @@ describe('useNetworkSession', () => {
       finalizedItemIds: [],
     })
     await act(async () => {
-      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac-old')
+      emit(
+        'announce',
+        { participantId: 'facilitator', name: 'Facilitator' },
+        'peer-fac-old',
+      )
       await Promise.resolve()
     })
 
@@ -922,7 +924,11 @@ describe('useNetworkSession', () => {
 
     // The facilitator reconnects mid-retry, announcing under a new peerId.
     await act(async () => {
-      emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac-new')
+      emit(
+        'announce',
+        { participantId: 'facilitator', name: 'Facilitator' },
+        'peer-fac-new',
+      )
       await Promise.resolve()
     })
     await act(async () => {
