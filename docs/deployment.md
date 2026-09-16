@@ -51,6 +51,17 @@ same push. A single push to `main` produces:
 So on every push, expect one skipped no-op run alongside the two that actually do
 the work — that's normal, not a failure.
 
+### CI (`.github/workflows/ci.yml`) is separate from the deploy pipeline
+
+A fourth workflow, `CI`, also triggers on `push` to `main` (and on every `pull_request`)
+but is **not part of the IONOS deploy pipeline above** and does not gate it — the two
+run independently. `CI` runs `lint`, `format`, `typecheck`, `test`, and `build` as
+parallel jobs, plus a `codeql` security scan, then an aggregate `ci-passed` job (the
+only one required by branch protection) that depends on the first five. A push to
+`main` where `ci-passed` fails will still deploy via the pipeline above — CI failures
+and deploy failures are separate signals, both worth checking under **Actions** if
+something looks wrong after a push.
+
 ### SPA routing
 
 The app has no client-side router (state-driven screens via Zustand, not URL routes),
@@ -79,9 +90,10 @@ not something to rotate manually unless IONOS access is compromised.
 ## Troubleshooting
 
 - **Build fails in Actions but not locally:** `pnpm test`/`pnpm lint`/`pnpm
-  format:check` (the local gates) never run `tsc -b`, so a real type error can slip
-  past all of them and only surface when `pnpm build` runs in CI. Run `pnpm build`
-  locally before pushing if you've touched types.
+  format:check` never run `tsc -b`, so a real type error can slip past all of them.
+  Run `pnpm typecheck` locally (cheaper than a full build) if you've touched types —
+  the `CI` workflow's `typecheck` job also catches this on every PR, separately from
+  the IONOS `estimate-build.yaml` deploy build.
 - **Deploy run shows `action_required` with no jobs (only expected if a workflow
   file was just regenerated, e.g. by re-provisioning the IONOS project):** the very
   first `workflow_dispatch` run of a newly-added workflow file, when triggered by a
