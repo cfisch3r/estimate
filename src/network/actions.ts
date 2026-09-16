@@ -108,7 +108,12 @@ export interface TypedActions {
    *  request error (`error.kind`: `timeout` | `disconnected` | `aborted` | a
    *  generic rejection) that the caller applies the shared kind-driven retry
    *  policy to (ADR-003, "Acknowledged submissions"). */
-  sendEstimate(itemId: string, estimate: Estimate, round: number, target: string): Promise<void>
+  sendEstimate(
+    itemId: string,
+    estimate: Estimate,
+    round: number,
+    target: string,
+  ): Promise<void>
   sendSyncState(snapshot: SessionSnapshot): void
   sendAnnounce(announce: ParticipantAnnounce): void
   /** A peer that just (re)connected pulls the facilitator's current snapshot
