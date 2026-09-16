@@ -22,10 +22,12 @@ export async function withKindDrivenRetry<T>(
   attempt: () => Promise<T>,
   options: RetryOptions = {},
 ): Promise<T> {
-  const backoffMs = options.backoffMs?.length ? options.backoffMs : [500, 1500]
+  const backoffMs = options.backoffMs ?? [500, 1500]
   const retries = options.retries ?? backoffMs.length
   const delay = options.delay ?? defaultDelay
-  const lastBackoffMs = backoffMs[backoffMs.length - 1]!
+  // Only reached when `retries` > 0, which (absent an explicit `retries` override)
+  // implies `backoffMs` is non-empty — so the fallback here is unreachable, not unsafe.
+  const lastBackoffMs = backoffMs.length > 0 ? backoffMs[backoffMs.length - 1]! : 0
   for (let attemptIndex = 0; ; attemptIndex++) {
     try {
       return await attempt()
