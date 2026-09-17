@@ -102,7 +102,7 @@ function SidebarRow({
         ref={removeRef}
         variant="ghost"
         icon={!(isFinalized && armed)}
-        aria-label={isFinalized && armed ? 'Confirm remove' : 'Remove item'}
+        aria-label={isFinalized && armed ? 'Confirm delete' : 'Remove item'}
         style={{
           width: isFinalized && armed ? 'auto' : 24,
           height: 24,
