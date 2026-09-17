@@ -3,7 +3,7 @@ import { UserIcon } from '@phosphor-icons/react/dist/csr/User'
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree'
 import { SignInIcon } from '@phosphor-icons/react/dist/csr/SignIn'
 import { ArrowRightIcon } from '@phosphor-icons/react/dist/csr/ArrowRight'
-import { Card, CardTitle, CardMeta } from '../components'
+import { Card, CardTitle, CardMeta, Tag } from '../components'
 import { useSessionStore } from '../state/store'
 import { generateSessionCode, useNetworkSession } from '../network'
 
@@ -175,6 +175,11 @@ export function ModeSelect() {
           onClick={() => goToScreen('join')}
         />
       </div>
+
+      <CardMeta style={{ justifyContent: 'center', textAlign: 'center' }}>
+        <Tag variant="outline">Preview build</Tag>
+        Estimates aren&rsquo;t saved yet, and live mode is still in progress.
+      </CardMeta>
     </div>
   )
 }
