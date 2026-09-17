@@ -101,13 +101,17 @@ function SidebarRow({
       <Button
         ref={removeRef}
         variant="ghost"
-        icon
+        icon={!(isFinalized && armed)}
         aria-label={isFinalized && armed ? 'Confirm remove' : 'Remove item'}
         style={{
-          width: 24,
+          width: isFinalized && armed ? 'auto' : 24,
           height: 24,
           minWidth: 24,
           flex: 'none',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 'var(--space-1)',
+          padding: isFinalized && armed ? '0 var(--space-2)' : undefined,
           color: isFinalized && armed ? 'var(--color-warning)' : undefined,
         }}
         onClick={(e) => {
@@ -120,6 +124,7 @@ function SidebarRow({
         }}
       >
         <XIcon size={12} weight={isFinalized && armed ? 'bold' : 'regular'} />
+        {isFinalized && armed && 'Confirm delete'}
       </Button>
     </div>
   )
