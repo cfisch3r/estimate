@@ -390,9 +390,11 @@ function LiveFacilitatorPanel({
   const submittedCount = item.submissions.length
   const aggregate =
     item.revealed && submittedCount > 0 ? aggregateEstimates(item.submissions) : null
-  const { armed: reopenArmed, handleClick: armAndReopen } = useConfirmArm(() =>
-    onRetry(item.id),
-  )
+  const {
+    armed: reopenArmed,
+    handleClick: armAndReopen,
+    ref: reopenRef,
+  } = useConfirmArm<HTMLButtonElement>(() => onRetry(item.id))
 
   return (
     <ItemDetailShell
@@ -462,6 +464,7 @@ function LiveFacilitatorPanel({
                 re-estimate, reopen the item.
               </span>
               <Button
+                ref={reopenRef}
                 variant="secondary"
                 style={{
                   alignSelf: 'flex-start',
