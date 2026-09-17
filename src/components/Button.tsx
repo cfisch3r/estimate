@@ -1,3 +1,4 @@
+import { forwardRef } from 'react'
 import type { ButtonHTMLAttributes } from 'react'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -6,13 +7,10 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   block?: boolean
 }
 
-export function Button({
-  variant = 'secondary',
-  icon,
-  block,
-  className,
-  ...props
-}: ButtonProps) {
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  { variant = 'secondary', icon, block, className, ...props },
+  ref,
+) {
   const classes = [
     'btn',
     `btn-${variant}`,
@@ -22,5 +20,5 @@ export function Button({
   ]
     .filter(Boolean)
     .join(' ')
-  return <button className={classes} {...props} />
-}
+  return <button ref={ref} className={classes} {...props} />
+})

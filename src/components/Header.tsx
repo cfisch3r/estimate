@@ -54,7 +54,11 @@ export function Header() {
   const mode = useSessionStore((s) => s.mode)
   const peerCount = useSessionStore((s) => s.peerCount)
   const leaveWorkspace = useLeaveWorkspace()
-  const { armed, handleClick: armAndLeave } = useConfirmArm(leaveWorkspace)
+  const {
+    armed,
+    handleClick: armAndLeave,
+    ref: leaveRef,
+  } = useConfirmArm<HTMLButtonElement>(leaveWorkspace)
 
   const showModeTag = currentScreen !== 'mode-select' && currentScreen !== 'join'
   const canLeave = EXIT_SCREENS.has(currentScreen)
@@ -64,6 +68,7 @@ export function Header() {
     <header className="app-header">
       {canLeave ? (
         <button
+          ref={leaveRef}
           type="button"
           className="app-header-brand app-header-brand-home"
           aria-label={

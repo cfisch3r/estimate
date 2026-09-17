@@ -45,7 +45,11 @@ function SidebarRow({
   onDragEnd,
 }: SidebarRowProps) {
   const isFinalized = item.finalResult !== null
-  const { armed, handleClick: armAndConfirmRemove } = useConfirmArm(onRemove)
+  const {
+    armed,
+    handleClick: armAndConfirmRemove,
+    ref: removeRef,
+  } = useConfirmArm<HTMLButtonElement>(onRemove)
 
   return (
     <div
@@ -95,6 +99,7 @@ function SidebarRow({
         </span>
       </span>
       <Button
+        ref={removeRef}
         variant="ghost"
         icon
         aria-label={isFinalized && armed ? 'Confirm remove' : 'Remove item'}
