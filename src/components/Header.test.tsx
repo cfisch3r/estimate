@@ -35,6 +35,18 @@ describe('Header', () => {
     expect(screen.getByText('EstiMate')).toBeInTheDocument()
   })
 
+  it('always renders a feedback link that opens the GitHub issue template in a new tab', () => {
+    render(<Header />)
+
+    const link = screen.getByRole('link', { name: 'Send feedback' })
+    expect(link).toHaveAttribute(
+      'href',
+      'https://github.com/cfisch3r/estimate/issues/new?template=feedback.yml',
+    )
+    expect(link).toHaveAttribute('target', '_blank')
+    expect(link).toHaveAttribute('rel', 'noopener noreferrer')
+  })
+
   it('omits the mode tag on the mode-select and join screens', () => {
     render(<Header />)
     expect(screen.queryByText('Single-user')).not.toBeInTheDocument()

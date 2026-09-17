@@ -1,3 +1,4 @@
+import { ChatTeardropTextIcon } from '@phosphor-icons/react/dist/csr/ChatTeardropText'
 import { useSessionStore } from '../state/store'
 import type { ScreenId } from '../state/types'
 import { useConfirmArm } from '../hooks/useConfirmArm'
@@ -5,6 +6,8 @@ import { useLeaveWorkspace } from '../hooks/useLeaveWorkspace'
 import { Tag } from './Tag'
 
 const EXIT_SCREENS = new Set<ScreenId>(['workspace', 'summary', 'history'])
+const FEEDBACK_URL =
+  'https://github.com/cfisch3r/estimate/issues/new?template=feedback.yml'
 
 function BrandMark() {
   return (
@@ -66,28 +69,40 @@ export function Header() {
 
   return (
     <header className="app-header">
-      {canLeave ? (
-        <button
-          ref={leaveRef}
-          type="button"
-          className="app-header-brand app-header-brand-home"
-          aria-label={
-            needsConfirm && armed
-              ? 'Click again to leave session'
-              : 'Back to mode selection'
-          }
-          style={{ color: needsConfirm && armed ? 'var(--color-warning)' : undefined }}
-          onClick={needsConfirm ? armAndLeave : leaveWorkspace}
+      <div className="app-header-start">
+        {canLeave ? (
+          <button
+            ref={leaveRef}
+            type="button"
+            className="app-header-brand app-header-brand-home"
+            aria-label={
+              needsConfirm && armed
+                ? 'Click again to leave session'
+                : 'Back to mode selection'
+            }
+            style={{ color: needsConfirm && armed ? 'var(--color-warning)' : undefined }}
+            onClick={needsConfirm ? armAndLeave : leaveWorkspace}
+          >
+            <BrandMark />
+            {needsConfirm && armed ? 'Click again to leave session' : 'EstiMate'}
+          </button>
+        ) : (
+          <span className="app-header-brand">
+            <BrandMark />
+            EstiMate
+          </span>
+        )}
+        <a
+          className="app-header-feedback"
+          href={FEEDBACK_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Send feedback"
+          title="Send feedback"
         >
-          <BrandMark />
-          {needsConfirm && armed ? 'Click again to leave session' : 'EstiMate'}
-        </button>
-      ) : (
-        <span className="app-header-brand">
-          <BrandMark />
-          EstiMate
-        </span>
-      )}
+          <ChatTeardropTextIcon size={18} />
+        </a>
+      </div>
       {showModeTag &&
         (mode === 'live' ? (
           <Tag variant="accent">Live</Tag>

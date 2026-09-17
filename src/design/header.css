@@ -7,3 +7,28 @@
   padding: 0;
   cursor: pointer;
 }
+
+/* — header start group — wraps the brand and the feedback link so the
+   header's outer flex row keeps its two-item space-between layout. */
+.app-header-start {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* — feedback link — quiet icon-only link next to the brand, opens a
+   prefilled GitHub issue in a new tab. */
+.app-header-feedback {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  border-radius: 6px;
+  color: var(--color-neutral-400);
+  opacity: 0.7;
+  transition: opacity 0.15s ease;
+}
+.app-header-feedback:hover,
+.app-header-feedback:focus-visible {
+  opacity: 1;
+}
