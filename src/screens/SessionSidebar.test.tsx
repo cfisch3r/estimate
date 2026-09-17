@@ -107,9 +107,9 @@ describe('SessionSidebar', () => {
 
     await user.click(removeButton)
     expect(onRemove).not.toHaveBeenCalled()
-    expect(bRow.querySelector('button[aria-label="Confirm remove"]')).toBeInTheDocument()
+    expect(bRow.querySelector('button[aria-label="Confirm delete"]')).toBeInTheDocument()
 
-    await user.click(bRow.querySelector('button[aria-label="Confirm remove"]')!)
+    await user.click(bRow.querySelector('button[aria-label="Confirm delete"]')!)
     expect(onRemove).toHaveBeenCalledWith('2')
   })
 
@@ -123,7 +123,7 @@ describe('SessionSidebar', () => {
 
     const bRow = screen.getByText('B').closest('.session-sidebar-row')!
     await user.click(bRow.querySelector('button[aria-label="Remove item"]')!)
-    expect(bRow.querySelector('button[aria-label="Confirm remove"]')).toBeInTheDocument()
+    expect(bRow.querySelector('button[aria-label="Confirm delete"]')).toBeInTheDocument()
 
     await user.click(screen.getByText('A'))
 
