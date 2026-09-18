@@ -136,7 +136,7 @@ export function ModeSelect() {
       >
         <BrandMark />
         <div style={{ textAlign: 'center' }}>
-          <h2 style={{ margin: 0 }}>EstiMate</h2>
+          <h1 style={{ margin: 0, fontSize: 32 }}>EstiMate</h1>
           <p className="text-muted" style={{ margin: '8px 0 0', fontSize: 15 }}>
             Three-point estimation for software teams, alone or together.
           </p>

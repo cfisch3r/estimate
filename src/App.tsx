@@ -29,7 +29,9 @@ function App() {
         Skip to main content
       </a>
       <Header />
-      <main id="main-content">
+      {/* tabIndex={-1}: a plain <main> isn't focusable, so activating the skip
+          link above wouldn't move keyboard focus here in Firefox/Safari without it. */}
+      <main id="main-content" tabIndex={-1}>
         <Screen />
       </main>
     </NetworkProvider>
