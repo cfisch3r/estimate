@@ -27,5 +27,5 @@ Initial public prerelease.
   join by code, participant estimating/waiting/revealed flow, facilitator
   reveal and round control, synced session unit and display names.
 - Production deployment to IONOS Deploy Now with GitHub Actions CI
-  (lint, format, typecheck, test) gating every PR.
+  (lint, format, typecheck, test, build) gating every PR.
 - In-app feedback link and error boundary for the deployed preview build.
