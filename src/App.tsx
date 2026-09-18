@@ -25,8 +25,13 @@ function App() {
 
   return (
     <NetworkProvider>
+      <a href="#main-content" className="skip-link">
+        Skip to main content
+      </a>
       <Header />
-      <Screen />
+      <main id="main-content">
+        <Screen />
+      </main>
     </NetworkProvider>
   )
 }
