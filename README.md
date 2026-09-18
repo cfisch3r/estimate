@@ -48,7 +48,7 @@ every PR and push to `main`.
 - [docs/adr/001-live-collaboration-architecture.md](docs/adr/001-live-collaboration-architecture.md) — peer-to-peer live-collaboration architecture decision
 - [docs/adr/002-testing-strategy.md](docs/adr/002-testing-strategy.md) — layered test strategy (unit/component now; Playwright deferred until `/network` or `/persistence` are real)
 - [docs/concepts/collaboration-mode.md](docs/concepts/collaboration-mode.md) — Live mode technical concept: P2P network layer, join flow, screen wiring
-- [docs/deployment.md](docs/deployment.md) — deployment runbook: CD pipeline, secrets, troubleshooting
+- [docs/runbook.md](docs/runbook.md) — deployment & release runbook: CD pipeline, secrets, troubleshooting, versioning/releases
 - [AGENTS.md](AGENTS.md) — conventions for AI coding agents working in this repo
 
 ## License

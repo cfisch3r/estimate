@@ -1,4 +1,4 @@
-# Deployment runbook
+# Deployment & release runbook
 
 EstiMate is a static site with no backend — build once, publish the bundle. Hosting
 and CD are handled by **IONOS Deploy Now**, a GitHub-integrated static host: pushes
@@ -122,6 +122,54 @@ Revisit this if a router is ever introduced.
 
 Provisioned once via the IONOS Deploy Now dashboard when the project was created;
 not something to rotate manually unless IONOS access is compromised.
+
+## Versioning & releases
+
+EstiMate follows [Semantic Versioning](https://semver.org/), with a `-preview`
+prerelease suffix (`0.1.0-preview`) on every version until the MVP is feature-complete
+(live mode + persistence — tracked by Epic-0010 #30 and Epic-0020 #31). Once those
+land, the project moves to real semver (`1.0.0` onward) without the suffix.
+
+### How releases are cut
+
+Releases are automated by
+[release-please](https://github.com/googleapis/release-please)
+(`.github/workflows/release-please.yml`), configured in `release-please-config.json`
+and `.release-please-manifest.json`:
+
+1. **PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/)**
+   (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, etc.) — because PRs are
+   squash-merged (see [collaboration workflow](../AGENTS.md#collaboration-workflow-github)),
+   the PR title becomes the commit message on `main`, and that's what release-please
+   parses. Only `feat` and `fix` (and a `!` suffix or `BREAKING CHANGE:` footer) trigger
+   a version bump; `chore`/`docs`/`refactor`/`test`/`build`/`ci`/`style` do not.
+2. On every push to `main`, release-please computes the next version from commits
+   since the last release and opens/updates a standing **release PR** — a bot-owned,
+   self-updating branch containing only a `CHANGELOG.md` update and a `package.json`
+   version bump, no app code.
+3. Merging that PR (through the normal required-checks gate) is what cuts the release:
+   release-please tags the merge commit `vX.Y.Z[-preview]` and creates a matching
+   GitHub Release.
+4. While still pre-1.0 and in `-preview`, `feat` commits bump the `0.x.0-preview`
+   digit and `fix` commits bump `0.x.y-preview` (configured via `bump-minor-pre-major`
+   / `bump-patch-for-minor-pre-major` so pre-1.0 versions don't jump straight to a
+   major bump on a breaking change).
+
+### Bootstrap
+
+`0.1.0-preview` (the first public deploy) predates this automation and was hand-set:
+`package.json`, `CHANGELOG.md`, and `.release-please-manifest.json` were written
+directly, then the deployed commit was tagged manually
+(`git tag v0.1.0-preview <sha> && git push origin v0.1.0-preview`) rather than through
+a release-please PR, since the prior commit history isn't Conventional-Commits-formatted
+and would have produced an inaccurate auto-generated changelog. release-please only
+takes over for commits after that point.
+
+### Version string in the app
+
+The mode-select screen's "Preview build" tag shows the running version
+(`src/screens/ModeSelect.tsx`), sourced from `package.json` via a Vite `define`
+(`vite.config.ts` → `__APP_VERSION__`) so there's one place the version lives.
 
 ## Known gaps / open questions
 
