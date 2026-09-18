@@ -87,10 +87,10 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
 
 ## Collaboration workflow (GitHub)
 
-Repo is solo-maintained (Christian + Claude Code, no other human collaborators). As of 2026-08-22:
+Repo is solo-maintained (Christian + Claude Code, no other human collaborators). As of 2026-09-18:
 
-- **All changes** — from a one-line typo fix to a full issue — go through a branch + PR. `main`'s branch protection requires the `ci-passed` and PR-title-lint status checks with `enforce_admins` on and no exceptions, so direct pushes are rejected outright.
-- **Issue-sized work**: one branch per issue (`issue-<n>-<slug>`), PR opened with `Closes #n` in the description, squash-merge into `main`. A trivial/no-issue change can use any descriptive branch name and skip `Closes #n`.
+- **All changes** — from a one-line typo fix to a full issue — go through a branch + PR. `main`'s branch protection requires the `ci-passed` and PR-title-lint status checks with `enforce_admins` on, so direct pushes are rejected outright. A trivial/no-issue change can use any descriptive branch name and skip `Closes #n`.
+- **Issue-sized work**: one branch per issue (`issue-<n>-<slug>`), PR opened with `Closes #n` in the description, squash-merge into `main`.
 - **PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/)** (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, etc.) — squash-merging makes the PR title the commit message on `main`, and [release-please](docs/runbook.md#versioning--releases) parses that history to cut releases. Enforced as a required status check ([PR title lint](docs/runbook.md#how-releases-are-cut)); `pnpm install` also wires up a local `commit-msg` hook that warns (non-blocking) on individual commits.
 - **Review**: after opening the PR, run the `code-review` skill as an independent pass over the diff (medium effort by default, higher for anything touching `/network` or `/persistence`). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
 - **Merge gate**: always ask the user whether they want to personally review the PR before merging — even after the automated review comes back clean. Never auto-merge without asking.
