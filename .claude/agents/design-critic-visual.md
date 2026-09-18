@@ -1,7 +1,7 @@
 ---
 name: design-critic-visual
 description: Reviews app screens for visual/aesthetic design issues (hierarchy, spacing, typography, color, alignment) using live screenshots via Playwright. Use when asked to critique, review, or audit the app's visual design specifically, or as one half of a full design critique alongside design-critic-ux.
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, mcp__playwright
 mcpServers:
   - playwright
 model: sonnet

@@ -1,7 +1,7 @@
 ---
 name: design-critic-ux
 description: Reviews app screens for UX/usability issues (Nielsen heuristics) using live screenshots via Playwright. Use when asked to critique, review, or audit the app's UX specifically, or as one half of a full design critique alongside design-critic-visual.
-tools: Read, Grep, Glob
+tools: Read, Grep, Glob, mcp__playwright
 mcpServers:
   - playwright
 model: sonnet
