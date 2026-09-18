@@ -1,4 +1,4 @@
-# Deployment runbook
+# Deployment & release runbook
 
 EstiMate is a static site with no backend — build once, publish the bundle. Hosting
 and CD are handled by **IONOS Deploy Now**, a GitHub-integrated static host: pushes
@@ -94,6 +94,11 @@ CI's quality-gate jobs and the CodeQL scan also re-run on every push to `main`, 
 post-merge regression check — the code is already merged by this point, so `ci-passed` has no
 gating effect here (see the Pull Request flow above for where it actually blocks a merge).
 
+`release-please` (`.github/workflows/release-please.yml`) also triggers on every push to `main`,
+independently of this deploy pipeline — it's not shown in the diagram above since it doesn't
+touch the build/deploy path at all; see [Versioning & releases](#versioning--releases) below for
+what it does.
+
 | Component | Purpose | Notes |
 | --- | --- | --- |
 | Orchestration | Checks IONOS readiness, calls `build`, dispatches deploy | IONOS-generated, don't hand-edit |
@@ -119,9 +124,84 @@ Revisit this if a router is ever introduced.
 | `IONOS_API_KEY` | Authenticates all `ionos-deploy-now/*-action` steps against `api-eu.ionos.space` |
 | `IONOS_SSH_KEY` | SSH private key used to rsync the build to the IONOS webspace |
 | `IONOS_DEPLOYMENT_<id>_SSH_USERNAME` | SSH username for the specific deployment (id matches the deployment UUID in the workflow logs) |
+| `RELEASE_PLEASE_TOKEN` | A classic PAT (repo scope) used by `release-please-action` instead of the default `GITHUB_TOKEN` |
 
 Provisioned once via the IONOS Deploy Now dashboard when the project was created;
 not something to rotate manually unless IONOS access is compromised.
+
+`RELEASE_PLEASE_TOKEN` is the one secret not IONOS-provisioned: PRs opened with the
+default `GITHUB_TOKEN` don't trigger other workflows, so `ci.yml`'s required `ci-passed`
+check would never post on release-please's own release PR — and since `main`'s branch
+protection has `enforce_admins` on, that PR would be permanently unmergeable without a
+PAT. Generate a classic PAT with `repo` scope and add it as this secret before relying
+on release-please's release PRs.
+
+## Versioning & releases
+
+EstiMate follows [Semantic Versioning](https://semver.org/), with a `-preview`
+prerelease suffix (`0.1.0-preview`) on every version until the MVP is feature-complete
+(live mode + persistence — tracked by Epic-0010 #30 and Epic-0020 #31). Once those
+land, the project moves to real semver (`1.0.0` onward) without the suffix.
+
+### How releases are cut
+
+Releases are automated by
+[release-please](https://github.com/googleapis/release-please)
+(`.github/workflows/release-please.yml`), configured in `release-please-config.json`
+and `.release-please-manifest.json`:
+
+1. **PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/)**
+   (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, etc.) — because PRs are
+   squash-merged (see [collaboration workflow](../AGENTS.md#collaboration-workflow-github)),
+   the PR title becomes the commit message on `main`, and that's what release-please
+   parses. Only `feat` and `fix` (and a `!` suffix or `BREAKING CHANGE:` footer) trigger
+   a version bump; `chore`/`docs`/`refactor`/`test`/`build`/`ci`/`style` do not. This is
+   enforced two ways: the **PR title lint** workflow
+   (`.github/workflows/pr-title-lint.yml`, `amannn/action-semantic-pull-request`) checks
+   every PR title and is meant to be a required status check on `main` (see note below);
+   a local `.githooks/commit-msg` hook (wired up by `pnpm install`'s `prepare` script,
+   via `git config core.hooksPath .githooks`) warns — but doesn't block — on individual
+   commits that don't look conventional, since those get squashed away and don't matter
+   to release-please directly. The repo's **squash-merge commit title** setting is
+   pinned to "PR title" so the merge commit always matches what the lint checked,
+   regardless of how many commits are on the branch.
+
+   > `pull_request_target` workflows (needed here so the check can't be bypassed by a
+   > PR editing its own workflow file) only ever run using the copy of the workflow
+   > already on the **base** branch — so `pr-title-lint.yml` had no effect on the PR
+   > that introduced it, and only becomes a real gate for PRs opened after it lands on
+   > `main`. Making it a required status check before that would have permanently
+   > blocked this PR (a required check that can never report blocks merging forever),
+   > so it's added to branch protection as a required check in a follow-up step, once
+   > this PR is merged.
+2. On every push to `main`, release-please computes the next version from commits
+   since the last release and opens/updates a standing **release PR** — a bot-owned,
+   self-updating branch containing only a `CHANGELOG.md` update and a `package.json`
+   version bump, no app code.
+3. Merging that PR (through the normal required-checks gate) is what cuts the release:
+   release-please tags the merge commit `vX.Y.Z[-preview]` and creates a matching
+   GitHub Release.
+4. While still pre-1.0 and in `-preview`, `feat` commits bump the `0.x.0-preview`
+   digit and `fix` commits bump `0.x.y-preview` (configured via `bump-minor-pre-major`
+   / `bump-patch-for-minor-pre-major` so pre-1.0 versions don't jump straight to a
+   major bump on a breaking change).
+
+### Bootstrap
+
+`0.1.0-preview` (the first public deploy) predates this automation and was hand-set:
+`package.json`, `CHANGELOG.md`, and `.release-please-manifest.json` were written
+directly rather than generated by a release-please PR, since the prior commit history
+isn't Conventional-Commits-formatted and would have produced an inaccurate
+auto-generated changelog. **Once this change is merged and deployed, the deployed
+commit still needs a one-time manual tag** (not yet done as of this PR):
+`git tag v0.1.0-preview <sha> && git push origin v0.1.0-preview`. release-please only
+takes over for commits after that point.
+
+### Version string in the app
+
+The mode-select screen's "Preview build" tag shows the running version
+(`src/screens/ModeSelect.tsx`), sourced from `package.json` via a Vite `define`
+(`vite.config.ts` → `__APP_VERSION__`) so there's one place the version lives.
 
 ## Known gaps / open questions
 

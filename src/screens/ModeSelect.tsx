@@ -177,7 +177,7 @@ export function ModeSelect() {
       </div>
 
       <CardMeta style={{ justifyContent: 'center', textAlign: 'center' }}>
-        <Tag variant="outline">Preview build</Tag>
+        <Tag variant="outline">Preview build {__APP_VERSION__}</Tag>
         Estimates aren&rsquo;t saved yet, and live mode is still in progress.
       </CardMeta>
     </div>

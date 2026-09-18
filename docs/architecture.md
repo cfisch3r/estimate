@@ -51,7 +51,7 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 
 **State management: a single reducer/store (Zustand)** rather than scattered `useState`, since WebRTC peer events arrive asynchronously and out of order — the network and persistence layers act as adapters that dispatch into the same store, so Mode A (live) and Mode B (manual) differ only in which adapter is active, not in UI logic.
 
-**Hosting: static hosting**, currently IONOS Deploy Now (see [deployment.md](deployment.md)). No backend to provision or pay for — STUN servers and the P2P signaling network (below) are external services we don't operate.
+**Hosting: static hosting**, currently IONOS Deploy Now (see [runbook.md](runbook.md)). No backend to provision or pay for — STUN servers and the P2P signaling network (below) are external services we don't operate.
 
 ## P2P live-sync layer (Mode A)
 

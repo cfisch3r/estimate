@@ -47,8 +47,9 @@ every PR and push to `main`.
 - [docs/architecture.md](docs/architecture.md) — technical architecture, stack, module structure
 - [docs/adr/001-live-collaboration-architecture.md](docs/adr/001-live-collaboration-architecture.md) — peer-to-peer live-collaboration architecture decision
 - [docs/adr/002-testing-strategy.md](docs/adr/002-testing-strategy.md) — layered test strategy (unit/component now; Playwright deferred until `/network` or `/persistence` are real)
+- [docs/adr/003-session-reliability-model.md](docs/adr/003-session-reliability-model.md) — facilitator-authoritative round state, versioned rounds, stable client identity, and related live-session reliability decisions
 - [docs/concepts/collaboration-mode.md](docs/concepts/collaboration-mode.md) — Live mode technical concept: P2P network layer, join flow, screen wiring
-- [docs/deployment.md](docs/deployment.md) — deployment runbook: CD pipeline, secrets, troubleshooting
+- [docs/runbook.md](docs/runbook.md) — deployment & release runbook: CD pipeline, secrets, troubleshooting, versioning/releases
 - [AGENTS.md](AGENTS.md) — conventions for AI coding agents working in this repo
 
 ## License

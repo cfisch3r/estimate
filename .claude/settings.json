@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command // empty'); if printf '%s' \"$cmd\" | grep -qE 'Co-Authored-By:[[:space:]]*Claude|Generated with \\[Claude Code\\]|🤖 Generated with'; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked: this repo forbids Claude/Anthropic attribution in commit messages and PR bodies (see AGENTS.md). Remove the Co-Authored-By trailer and/or Generated-with-Claude-Code footer, then retry.\"}}'; else echo '{}'; fi"
+          }
+        ]
+      }
+    ]
+  }
+}

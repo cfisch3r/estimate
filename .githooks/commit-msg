@@ -1,0 +1,13 @@
+#!/bin/sh
+# Warn (don't block) when a commit message doesn't look like a Conventional
+# Commit. Only enforced at merge time by the "PR title lint" GitHub Action,
+# since squash-merge makes the PR title the commit message on main, not any
+# individual commit here — see docs/runbook.md#versioning--releases.
+
+msg_file="$1"
+first_line=$(head -n1 "$msg_file")
+
+if ! printf '%s\n' "$first_line" | grep -qE '^(feat|fix|chore|docs|style|refactor|perf|test|build|ci|revert)(\([a-z0-9_-]+\))?!?: .+'; then
+  echo "note: commit message doesn't look like a Conventional Commit (feat:/fix:/chore:/...)." >&2
+  echo "      not blocking — only the PR title needs to follow this (see AGENTS.md)." >&2
+fi
