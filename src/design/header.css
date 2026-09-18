@@ -1,3 +1,27 @@
+:root {
+  /* Actual rendered height of .app-header (Nocturne) — kept here, next to the
+     header's own app-specific rules, rather than in nocturne.css itself. */
+  --header-height: 54px;
+}
+
+/* — skip link — first focusable element in the app; off-screen until focused,
+   so keyboard users can jump past the header's own focusable controls (e.g.
+   the feedback link) straight to the screen's primary content. */
+.skip-link {
+  position: fixed;
+  top: -100%;
+  left: var(--space-4);
+  z-index: 20;
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+}
+.skip-link:focus-visible {
+  top: var(--space-4);
+}
+
 /* — header brand as home link — the clickable variant of .app-header-brand
    (Nocturne) used when the header can route back to mode-select. Resets
    default button chrome so it stays visually identical to the static brand. */

@@ -3,7 +3,7 @@ import { UserIcon } from '@phosphor-icons/react/dist/csr/User'
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree'
 import { SignInIcon } from '@phosphor-icons/react/dist/csr/SignIn'
 import { ArrowRightIcon } from '@phosphor-icons/react/dist/csr/ArrowRight'
-import { Card, CardTitle, CardMeta, Tag } from '../components'
+import { Card, CardTitle, CardBody, CardMeta, Tag } from '../components'
 import { useSessionStore } from '../state/store'
 import { generateSessionCode, useNetworkSession } from '../network'
 
@@ -90,11 +90,11 @@ function ModeRow({ icon, title, description, onClick }: ModeRowProps) {
       </span>
       <span style={{ flex: 1 }}>
         <CardTitle style={{ display: 'block' }}>{title}</CardTitle>
-        <CardMeta style={{ display: 'block' }}>{description}</CardMeta>
+        <CardBody style={{ display: 'block' }}>{description}</CardBody>
       </span>
       <ArrowRightIcon
         size={16}
-        style={{ color: 'var(--color-neutral-500)', flex: 'none' }}
+        style={{ color: 'var(--color-accent-300)', flex: 'none' }}
       />
     </Card>
   )
@@ -117,7 +117,7 @@ export function ModeSelect() {
       style={{
         maxWidth: 620,
         margin: '0 auto',
-        minHeight: '70vh',
+        minHeight: 'calc(100vh - var(--header-height))',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -136,11 +136,7 @@ export function ModeSelect() {
       >
         <BrandMark />
         <div style={{ textAlign: 'center' }}>
-          <div
-            style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, fontSize: 26 }}
-          >
-            EstiMate
-          </div>
+          <h1 style={{ margin: 0, fontSize: 32 }}>EstiMate</h1>
           <p className="text-muted" style={{ margin: '8px 0 0', fontSize: 15 }}>
             Three-point estimation for software teams, alone or together.
           </p>
@@ -176,9 +172,16 @@ export function ModeSelect() {
         />
       </div>
 
-      <CardMeta style={{ justifyContent: 'center', textAlign: 'center' }}>
+      <CardMeta
+        style={{
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 'var(--space-2)',
+          textAlign: 'center',
+        }}
+      >
         <Tag variant="outline">Preview build {__APP_VERSION__}</Tag>
-        Estimates aren&rsquo;t saved yet, and live mode is still in progress.
+        <span>Estimates aren&rsquo;t saved yet, and live mode is still in progress.</span>
       </CardMeta>
     </div>
   )
