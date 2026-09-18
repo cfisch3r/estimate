@@ -4,6 +4,7 @@
   "version": "0.1.0-preview",
   "type": "module",
   "scripts": {
+    "prepare": "git config core.hooksPath .githooks",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",

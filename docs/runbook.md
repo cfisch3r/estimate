@@ -155,7 +155,16 @@ and `.release-please-manifest.json`:
    squash-merged (see [collaboration workflow](../AGENTS.md#collaboration-workflow-github)),
    the PR title becomes the commit message on `main`, and that's what release-please
    parses. Only `feat` and `fix` (and a `!` suffix or `BREAKING CHANGE:` footer) trigger
-   a version bump; `chore`/`docs`/`refactor`/`test`/`build`/`ci`/`style` do not.
+   a version bump; `chore`/`docs`/`refactor`/`test`/`build`/`ci`/`style` do not. This is
+   enforced two ways: the **PR title lint** workflow
+   (`.github/workflows/pr-title-lint.yml`, `amannn/action-semantic-pull-request`) is a
+   required status check on `main`, so a non-conforming PR title can't be merged; a local
+   `.githooks/commit-msg` hook (wired up by `pnpm install`'s `prepare` script, via
+   `git config core.hooksPath .githooks`) warns — but doesn't block — on individual
+   commits that don't look conventional, since those get squashed away and don't matter
+   to release-please directly. The repo's **squash-merge commit title** setting is
+   pinned to "PR title" so the merge commit always matches what the lint checked,
+   regardless of how many commits are on the branch.
 2. On every push to `main`, release-please computes the next version from commits
    since the last release and opens/updates a standing **release PR** — a bot-owned,
    self-updating branch containing only a `CHANGELOG.md` update and a `package.json`
