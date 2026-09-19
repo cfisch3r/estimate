@@ -238,6 +238,10 @@ redesign replaced `create` / `session` with `mode-select` / `workspace`; reveal 
 longer a screen — it's Workspace states 1c/1d, #8). The diagram writes ids as
 `mode_select` / `workspace` because Mermaid state ids can't contain `-`.
 
+`history` / `SessionHistory` is slated for removal per #10 — file-based save/load
+(architecture.md's "Persistence" decision) replaces it, so this transition and screen id
+will disappear once that lands; still shipped as shown above until then.
+
 ## Connection state machine
 
 Mirrored from `src/network`'s connection tracker into `store.connectionStatus`:

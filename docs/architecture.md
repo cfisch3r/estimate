@@ -15,7 +15,7 @@ first-class, equally-supported second mode — no backend operated by the produc
 session communication.
 
 What this document covers is everything ADR-001 doesn't: the framework, how P2P signaling
-concretely works, how session history persists (a real point of tension with the PRD's
+concretely works, how a session is saved/loaded (a real point of tension with the PRD's
 "no operated server" phrasing, since ADR-001's constraint is scoped to live sync, not
 storage), styling/design-system approach, hosting, and module structure.
 

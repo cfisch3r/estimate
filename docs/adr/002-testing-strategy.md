@@ -41,8 +41,8 @@ We considered whether to introduce Playwright now, alongside the existing unit/c
 
 **Follow-ups / revisit triggers**
 - Revisit this ADR when `src/persistence/` or `src/network/` get their first real implementation — that is the trigger to add Playwright, not a fixed date.
-- When added, scope Playwright to golden-path flows only (e.g., create session → estimate items → finalize → view summary → history survives reload); keep edge cases in the calc/store/component layers.
-- If `src/screens/SessionHistory.tsx` or other screens later block on network/persistence requests, add integration tests at the component layer (mocking the network/persistence boundary) before reaching for Playwright.
+- When added, scope Playwright to golden-path flows only (e.g., create session → estimate items → finalize → view summary → save to file → load it back); keep edge cases in the calc/store/component layers.
+- If the save/load actions (or other screens) later block on network/persistence requests, add integration tests at the component layer (mocking the network/persistence boundary) before reaching for Playwright.
 
 ## Alternatives considered (summary)
 
