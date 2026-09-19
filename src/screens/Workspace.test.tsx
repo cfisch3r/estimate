@@ -79,6 +79,7 @@ describe('Workspace', () => {
 
     const row = screen.getByText('Remove me').closest('.session-sidebar-row')!
     await user.click(row.querySelector('button[aria-label="Remove item"]')!)
+    await user.click(row.querySelector('button[aria-label="Confirm delete"]')!)
 
     expect(screen.queryByText('Remove me')).not.toBeInTheDocument()
     expect(useSessionStore.getState().items).toHaveLength(1)
@@ -100,6 +101,7 @@ describe('Workspace', () => {
       r.textContent?.includes('Active pending'),
     )!
     await user.click(activeRow.querySelector('button[aria-label="Remove item"]')!)
+    await user.click(activeRow.querySelector('button[aria-label="Confirm delete"]')!)
 
     expect(useSessionStore.getState().activeItemId).toBe('2')
     expect(screen.getByRole('heading', { name: 'Other pending' })).toBeInTheDocument()

@@ -101,30 +101,26 @@ function SidebarRow({
       <Button
         ref={removeRef}
         variant="ghost"
-        icon={!(isFinalized && armed)}
-        aria-label={isFinalized && armed ? 'Confirm delete' : 'Remove item'}
+        icon={!armed}
+        aria-label={armed ? 'Confirm delete' : 'Remove item'}
         style={{
-          width: isFinalized && armed ? 'auto' : 24,
+          width: armed ? 'auto' : 24,
           height: 24,
           minWidth: 24,
           flex: 'none',
           display: 'flex',
           alignItems: 'center',
           gap: 'var(--space-1)',
-          padding: isFinalized && armed ? '0 var(--space-2)' : undefined,
-          color: isFinalized && armed ? 'var(--color-warning)' : undefined,
+          padding: armed ? '0 var(--space-2)' : undefined,
+          color: armed ? 'var(--color-warning)' : undefined,
         }}
         onClick={(e) => {
           e.stopPropagation()
-          if (isFinalized) {
-            armAndConfirmRemove()
-          } else {
-            onRemove()
-          }
+          armAndConfirmRemove()
         }}
       >
-        <XIcon size={12} weight={isFinalized && armed ? 'bold' : 'regular'} />
-        {isFinalized && armed && 'Confirm delete'}
+        <XIcon size={12} weight={armed ? 'bold' : 'regular'} />
+        {armed && 'Confirm delete'}
       </Button>
     </div>
   )
@@ -200,17 +196,10 @@ export function SessionSidebar({
           <PlusIcon size={14} />
         </Button>
       </div>
-      <a
-        href="#"
-        className={`session-sidebar-summary-link${onSummary ? ' session-sidebar-summary-link-current' : ''}`}
-        onClick={(e) => {
-          e.preventDefault()
-          onGoSummary()
-        }}
-      >
+      <Button variant={onSummary ? 'primary' : 'secondary'} block onClick={onGoSummary}>
         <NotebookIcon size={15} />
         Summary
-      </a>
+      </Button>
     </aside>
   )
 }

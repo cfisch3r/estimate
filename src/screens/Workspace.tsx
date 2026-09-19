@@ -645,44 +645,43 @@ export function Workspace() {
         />
       )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <Input
-              aria-label="Session name"
-              value={sessionName}
-              onChange={(e) => setSessionName(e.target.value)}
-              placeholder="Untitled session"
-              style={{
-                fontFamily: 'var(--font-heading)',
-                fontSize: 15,
-                fontWeight: 500,
-                border: 'none',
-                background: 'transparent',
-                padding: 0,
-                height: 'auto',
-              }}
-            />
-            <PencilSimpleIcon
-              size={13}
-              style={{ color: 'var(--color-neutral-500)', flex: 'none' }}
-            />
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span className="text-muted" style={{ fontSize: 12 }}>
-              Estimate in
-            </span>
-            <Select
-              aria-label="Estimation unit"
-              value={unit}
-              onChange={(e) => setUnit(e.target.value as EstimationUnit)}
-              style={{ height: 24, fontSize: 12, padding: '0 4px', width: 'auto' }}
-            >
-              <option value="hours">Hours</option>
-              <option value="days">Days</option>
-              <option value="weeks">Weeks</option>
-            </Select>
-          </div>
+      <Card elevation="sm" style={{ gap: 'var(--space-4)', alignSelf: 'start' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+          <Input
+            aria-label="Session name"
+            value={sessionName}
+            onChange={(e) => setSessionName(e.target.value)}
+            placeholder="Untitled session"
+            style={{
+              fontFamily: 'var(--font-heading)',
+              fontSize: 13,
+              fontWeight: 500,
+              color: 'var(--color-neutral-400)',
+              border: 'none',
+              background: 'transparent',
+              padding: 0,
+              height: 'auto',
+              flex: 1,
+              minWidth: 0,
+            }}
+          />
+          <PencilSimpleIcon
+            size={12}
+            style={{ color: 'var(--color-neutral-500)', flex: 'none' }}
+          />
+          <span className="text-muted" style={{ fontSize: 12, flex: 'none' }}>
+            ·
+          </span>
+          <Select
+            aria-label="Estimation unit"
+            value={unit}
+            onChange={(e) => setUnit(e.target.value as EstimationUnit)}
+            style={{ height: 22, fontSize: 12, padding: '0 4px', width: 'auto', flex: 'none' }}
+          >
+            <option value="hours">Hours</option>
+            <option value="days">Days</option>
+            <option value="weeks">Weeks</option>
+          </Select>
         </div>
 
         <SessionSidebar
@@ -695,7 +694,7 @@ export function Workspace() {
           onAdd={addItem}
           onGoSummary={() => goToScreen('summary')}
         />
-      </div>
+      </Card>
 
       {activeItem ? (
         isLiveFacilitator ? (
