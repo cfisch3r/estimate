@@ -81,7 +81,7 @@ describe('SessionSidebar', () => {
     expect(iconCount('Done')).toBe(iconCount('Pending') + 1)
   })
 
-  it('calls onRemove with the item id without also selecting it', async () => {
+  it('requires a second click to remove an item, and never also selects it', async () => {
     const user = userEvent.setup()
     const onRemove = vi.fn()
     const onSelect = vi.fn()
@@ -89,6 +89,9 @@ describe('SessionSidebar', () => {
 
     const bRow = screen.getByText('B').closest('.session-sidebar-row')!
     await user.click(bRow.querySelector('button[aria-label="Remove item"]')!)
+    expect(onRemove).not.toHaveBeenCalled()
+
+    await user.click(bRow.querySelector('button[aria-label="Confirm delete"]')!)
 
     expect(onRemove).toHaveBeenCalledWith('2')
     expect(onSelect).not.toHaveBeenCalled()
