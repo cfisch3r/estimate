@@ -138,10 +138,13 @@ on release-please's release PRs.
 
 ## Versioning & releases
 
-EstiMate follows [Semantic Versioning](https://semver.org/), with a `-preview`
-prerelease suffix (`0.1.0-preview`) on every version until the MVP is feature-complete
-(live mode + persistence — tracked by Epic-0010 #30 and Epic-0020 #31). Once those
-land, the project moves to real semver (`1.0.0` onward) without the suffix.
+EstiMate follows plain [Semantic Versioning](https://semver.org/) (`X.Y.Z`, no
+prerelease suffix). The initial release (`0.1.0-preview`) used a `-preview`
+prerelease suffix; that was dropped starting with the following release — see
+[Dropping the `-preview` suffix](#dropping-the--preview-suffix) below. The project
+stays in the `0.x` line (still pre-1.0) until the MVP is feature-complete (live mode +
+persistence — tracked by Epic-0010 #30 and Epic-0020 #31); that milestone is
+independent of the suffix and will eventually be marked by a `1.0.0` release.
 
 ### How releases are cut
 
@@ -179,12 +182,11 @@ and `.release-please-manifest.json`:
    self-updating branch containing only a `CHANGELOG.md` update and a `package.json`
    version bump, no app code.
 3. Merging that PR (through the normal required-checks gate) is what cuts the release:
-   release-please tags the merge commit `vX.Y.Z[-preview]` and creates a matching
-   GitHub Release.
-4. While still pre-1.0 and in `-preview`, `feat` commits bump the `0.x.0-preview`
-   digit and `fix` commits bump `0.x.y-preview` (configured via `bump-minor-pre-major`
-   / `bump-patch-for-minor-pre-major` so pre-1.0 versions don't jump straight to a
-   major bump on a breaking change).
+   release-please tags the merge commit `vX.Y.Z` and creates a matching GitHub
+   Release.
+4. While still pre-1.0, `feat` commits bump the `0.x.0` digit and `fix` commits bump
+   `0.x.y` (configured via `bump-minor-pre-major` / `bump-patch-for-minor-pre-major`
+   so pre-1.0 versions don't jump straight to a major bump on a breaking change).
 
 ### Bootstrap
 
@@ -195,6 +197,15 @@ isn't Conventional-Commits-formatted and would have produced an inaccurate
 auto-generated changelog. The deployed merge commit was tagged manually
 (`git tag v0.1.0-preview <sha> && git push origin v0.1.0-preview`) once #83 landed and
 deployed. release-please only takes over for commits after that point.
+
+### Dropping the `-preview` suffix
+
+Starting with the release after `0.1.0-preview`, the project switched to plain
+semver. `package.json` and `.release-please-manifest.json` were hand-corrected from
+`0.1.0-preview` to `0.1.0` (the same tracked version, suffix stripped — not a new
+tagged release) alongside removing `versioning`/`prerelease`/`prerelease-type` from
+`release-please-config.json`. From that point on, release-please's standing release
+PR computes plain `0.x.y` versions and tags `vX.Y.Z` with no bracketed suffix.
 
 ### Version string in the app
 
