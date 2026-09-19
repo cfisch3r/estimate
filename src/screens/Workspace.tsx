@@ -676,7 +676,13 @@ export function Workspace() {
             aria-label="Estimation unit"
             value={unit}
             onChange={(e) => setUnit(e.target.value as EstimationUnit)}
-            style={{ height: 22, fontSize: 12, padding: '0 4px', width: 'auto', flex: 'none' }}
+            style={{
+              height: 22,
+              fontSize: 12,
+              padding: '0 4px',
+              width: 'auto',
+              flex: 'none',
+            }}
           >
             <option value="hours">Hours</option>
             <option value="days">Days</option>
