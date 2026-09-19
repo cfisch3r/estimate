@@ -17,14 +17,14 @@ EstiMate applies **three-point estimation** — the method recommended in Episod
 - For each item, produce a defensible range + confidence interval instead of a single guess
 - Actively counter the known estimation biases from the source articles (symmetric ranges, underestimated worst case, false precision)
 - Give facilitators a shareable summary/report at the end of a session
-- Let teams come back to past sessions for reference
+- Let a session be saved and reopened later, so teams can come back to it for reference
 
 ## 3. Non-goals (for MVP)
 
 - Story point / velocity tracking (Method 1) — future phase
 - T-shirt sizing + timeline bridge (Method 3) — future phase
 - Jira/backlog tool import — future phase (manual entry only for MVP)
-- Formal accounts/orgs beyond what's needed for session history (see §8)
+- Formal accounts/orgs beyond what's needed for session persistence (see §8)
 
 ## 4. Primary user & core flow
 
@@ -32,7 +32,7 @@ EstiMate applies **three-point estimation** — the method recommended in Episod
 
 ### 4.1 Session modes
 
-On the entry screen, before any session setup, the facilitator picks one of two modes. Both modes produce the same output (items with min/expected/CI90/max) and share the same summary/report/history features — only how the numbers get in differs. See **ADR-001** for the reasoning behind offering both.
+On the entry screen, before any session setup, the facilitator picks one of two modes. Both modes produce the same output (items with min/expected/CI90/max) and share the same summary/report/save-and-load features — only how the numbers get in differs. See **ADR-001** for the reasoning behind offering both.
 
 **Live mode (Mode A) — live collaborative session (peer-to-peer)**
 The team estimates together in real time, each participant submitting their own numbers from their own device, connected directly browser-to-browser (see §9, ADR-001).
@@ -43,7 +43,7 @@ The team estimates together in real time, each participant submitting their own 
 4. **Reveal** — facilitator reveals once everyone has submitted (or manually). Shows each participant's three values side by side, plus the group's calculated confidence interval
 5. **Discuss & converge** — team discusses outliers; facilitator can trigger a re-estimate round for the item
 6. **Finalize item** — facilitator locks in the item's values (either the auto-calculated group range, or a manually reconciled one) and moves to the next item
-7. **Session summary** — at the end, a report of all items with their four values, exportable and saved to session history
+7. **Session summary** — at the end, a report of all items with their four values, exportable and saveable to a file for later reference
 8. **Connection fallback** — if a participant never reaches the facilitator (e.g., strict network at join time), the app tells them plainly and offers a retry; there is no in-app way to switch a single item, or the running session, to Manual mode (Mode B) mid-flight — see ADR-003, "Role-asymmetric link state"
 
 **Manual mode (Mode B) — single-user entry session**
@@ -53,7 +53,7 @@ The facilitator ran the estimation discussion elsewhere (in person, on a call, o
 2. **Enter values per item** — for each item, the facilitator types in the group's agreed Best Case / Most Likely / Worst Case directly (single set of values, no per-participant breakdown)
 3. **Bias guards still apply** — symmetric-range warning, false-precision guard all fire the same way as in live mode (§6)
 4. **Finalize item** — same as Mode A, values are locked and the app calculates min/expected/CI90/max
-5. **Session summary** — same report format as Mode A, so history and exports are consistent regardless of mode used
+5. **Session summary** — same report format as Mode A, so saving and exporting are consistent regardless of mode used
 
 ### 4.2 Mode comparison
 
@@ -114,8 +114,7 @@ When best/worst are both entered, compute the actual ratio = Worst / Best and co
 2. **Workspace** — the single working screen for both modes. Left: editable session name, estimation unit, and the item list (add / remove / reorder at any time, including mid-session); items can be renamed inline from the detail panel. Right: the active item's estimation widget, or an "add an item" prompt when nothing is selected. In collaborative mode a session-code strip (code, copy, participant count) sits above it, the facilitator sees participant submission status and a reveal control instead of direct inputs, and reveal shows the aggregated range plus each participant's values with **Finalize** / **Retry round**.
 3. **Join Session** *(collaborative only)* — enter name, join via code/link, connecting indicator while the peer connection establishes; a connection-failed state points to single-user mode as a fallback.
 4. **Participant Estimate View** *(collaborative only)* — read-only item detail, three number inputs (Best/Likely/Worst), submit; then a waiting state, then a revealed state mirroring the facilitator's aggregated range (no finalize/retry controls).
-5. **Session Summary / Report** — all finalized items with four values, export (CSV/PDF/link), save to history — same layout regardless of mode.
-6. **Session History** — list of past sessions for a team, reopen a summary, shows which mode was used per session.
+5. **Session Summary / Report** — all finalized items with four values, export (CSV/PDF/link), saveable to a file — same layout regardless of mode.
 
 ## 8. Data model (sketch)
 
@@ -128,7 +127,7 @@ When best/worst are both entered, compute the actual ratio = Worst / Best and co
 ## 9. Non-functional requirements
 
 - **Real-time sync** *(Mode A only)*: submissions and reveals sync live across participants via **peer-to-peer WebRTC connections, using public STUN servers for NAT traversal and serverless signaling** — no backend operated by the app for session communication (full reasoning in **ADR-001**)
-- **No-account joining** *(Mode A)*: participants join with just a name; only the session creator/team needs persistent identity for history
+- **No-account joining** *(Mode A)*: participants join with just a name; only the session creator/team needs persistent identity for saving and reopening sessions
 - **Graceful degradation** *(Mode A)*: if a peer connection can't be established, the app surfaces this clearly rather than failing silently, and points the facilitator toward Mode B as a fallback for that session
 - **Session persistence**: sessions and their reports are saved and retrievable later by the team, regardless of mode
 - **Export**: session summary exportable as CSV and/or shareable read-only link
@@ -137,7 +136,7 @@ When best/worst are both entered, compute the actual ratio = Worst / Best and co
 
 - % of sessions that reach a finalized range for every item (completion rate)
 - Reduction in symmetric-range warnings triggered over time per team (learning signal)
-- Sessions re-opened from history (validates the persistence feature is used)
+- Sessions reopened via a loaded file (validates the persistence feature is used)
 - Qualitative: facilitator/team feedback that ranges feel more "honest" than prior poker-point estimates
 
 ## 11. Open questions

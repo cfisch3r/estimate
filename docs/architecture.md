@@ -15,7 +15,7 @@ first-class, equally-supported second mode — no backend operated by the produc
 session communication.
 
 What this document covers is everything ADR-001 doesn't: the framework, how P2P signaling
-concretely works, how session history persists (a real point of tension with the PRD's
+concretely works, how a session is saved/loaded (a real point of tension with the PRD's
 "no operated server" phrasing, since ADR-001's constraint is scoped to live sync, not
 storage), styling/design-system approach, hosting, and module structure.
 
@@ -28,12 +28,12 @@ detail of the Live-mode layer — the
 `src/network/` component breakdown, the join sequence, the estimate round, the connection
 state machine, and the store fields it added — see [concepts/collaboration-mode.md](concepts/collaboration-mode.md);
 this document keeps the decisions and rationale, that one tracks the implementation. Still
-open: connection-fallback UX (#9) and real persistence (`src/persistence/` is still a
-placeholder — session data is in-memory only).
+open: connection-fallback UX (#9) and session save/load (`src/persistence/` is still a
+placeholder — session data is in-memory only; see #10).
 
 ## Confirmed decisions
 
-- **Persistence:** local-first only. Session/history data lives in the facilitator's browser (IndexedDB), with CSV export and a shareable read-only link for reports. No cross-device "team" sync in MVP — a session lives on the device that created it. This keeps the app at genuinely zero operated infrastructure, matching PRD §2's top-level goal, not just ADR-001's narrower live-sync text.
+- **Persistence:** local-first only, and file-based rather than an in-browser database. A session (session name, unit, and the full item list) is saved by downloading a JSON file and restored by importing one — no IndexedDB, no automatic history list (#10 supersedes the earlier IndexedDB-backed plan and the `SessionHistory` screen it assumed; that screen is slated for removal, not real persistence). Live-round-only fields (`submissions`, `revealed`, `round`) are excluded from the saved file — they're meaningless outside an in-progress live round and always reset on load. Save and Load are not symmetric across modes. Save is available to the facilitator regardless of mode — it's a one-way, read-only export of the current `items`, so it carries none of Load's desync risk. Load, though, is restricted to before a live session starts: importing a file replaces the facilitator's `items` locally without broadcasting the change, so doing it mid-live-session would desync connected participants. A facilitator can still load a saved session to resume an adjourned estimation — on the mode-select screen, before starting collaborative estimation, seeding the live session's initial `items` before anyone joins; the concrete screen flow for this is not yet designed. A participant, in either mode, never has a local item list at all — only the facilitator's broadcast round state — so Save/Load never apply to that role. CSV export and a shareable read-only link for reports (#11, #12) are separate, unblocked features. No cross-device "team" sync in MVP — a session lives on the device that created it, portable only insofar as the user moves the saved file themselves. This keeps the app at genuinely zero operated infrastructure, matching PRD §2's top-level goal, not just ADR-001's narrower live-sync text.
 - **Auth:** none. Open links only — anyone with a session link can view/edit it. Consistent with local-first persistence; revisit if/when cross-device history is ever built.
 - **Facilitator disconnect mid-session:** accepted as an MVP gap. If the facilitator's peer drops, the session stalls for remaining participants; no auto-reassignment or election. Document as a known limitation.
 - **Mode switching mid-session:** out of scope for MVP. Mode is fixed once chosen on the mode-selection screen (per PRD §4.1 flow). If P2P fails mid-session, the facilitator starts a fresh single-user session rather than converting in place.
@@ -87,7 +87,8 @@ Static SPA — no server-side rendering needed, no routes that require backend d
                   announce, requestSnapshot request/response), connection-state hooks,
                   facilitator-authoritative round state (ADR-003, #60)
   /state        — Zustand store; network and persistence are adapters dispatching into it
-  /persistence  — IndexedDB adapter, CSV export, shareable-report-link encode/decode
+  /persistence  — session save/load (JSON file export/import), CSV export,
+                  shareable-report-link encode/decode
 ```
 
 The `/calc` layer's isolation as pure, framework-free functions is the single most load-bearing structural decision — PRD §4.2 and ADR-001 both require identical calculation/bias-guard behavior across both modes, and this makes it trivially unit-testable against the PRD §5–6 formulas independent of UI or networking.
@@ -126,7 +127,7 @@ type Estimate = RawEstimateInput & { readonly [EstimateBrand]: true }
 function createEstimate(input: RawEstimateInput): Result<Estimate>
 ```
 
-The brand is compile-time only — it adds no runtime property, so `Estimate` stays plain, JSON-transparent data for network transport and IndexedDB storage — but it does make constructing one any other way (e.g. a bare `{best, likely, worst}` object literal) a type error everywhere `Estimate` is expected. This only guards against *accidental* misuse within our own code, though: TypeScript types don't exist at runtime, so they can't protect against a malformed message from an untrusted Trystero peer. The network layer therefore calls `createEstimate()` on every incoming peer message before it touches state — via `safeCreateEstimate()` in `src/network/actions.ts`, which also traps the throw path since peer input isn't guaranteed well-shaped. One shared validation function, not the ordering check re-implemented per adapter.
+The brand is compile-time only — it adds no runtime property, so `Estimate` stays plain, JSON-transparent data for network transport and file-based session storage — but it does make constructing one any other way (e.g. a bare `{best, likely, worst}` object literal) a type error everywhere `Estimate` is expected. This only guards against *accidental* misuse within our own code, though: TypeScript types don't exist at runtime, so they can't protect against a malformed message from an untrusted Trystero peer. The network layer therefore calls `createEstimate()` on every incoming peer message before it touches state — via `safeCreateEstimate()` in `src/network/actions.ts`, which also traps the throw path since peer input isn't guaranteed well-shaped. One shared validation function, not the ordering check re-implemented per adapter.
 
 **Why `AggregateStrategy` is a per-field interface, not a single toggle:** PRD §5 requires the aggregation logic itself to be configurable, but its philosophy is asymmetric on purpose — `min`/`max` for Best/Worst specifically to *preserve* outliers ("don't average away the outliers... worst case tends to get optimistically averaged down"), `median` for Likely as a robust center. A single `'min-max' | 'average'` switch couldn't express that; three independent knobs can. Currently this is only a code-level configurability point — the PRD data model has no field for *which* strategy a session uses, so it's an engineering default for now, not a facilitator-facing setting (flagged below).
 
@@ -160,7 +161,7 @@ The clickable prototype predates the `/calc` module and unit decisions above, so
 ## Open items still worth flagging (not blocking, but real)
 
 - "No accounts / open links" means anyone with a link can edit a session — acceptable for MVP given local-first + no cross-device stakes, but worth a sentence in the report/UI so facilitators understand link = access.
-- Local-first persistence means session history genuinely does not survive a cleared browser or a different device — this should be stated plainly in the product UI (e.g., on the History screen), not just assumed understood.
+- Local-first, file-based persistence means a session genuinely does not survive unless the user explicitly saves it, and it only carries over to a different browser or device if that saved file is moved there manually — this should be stated plainly in the product UI (e.g., near the Save/Load actions), not just assumed understood.
 - Trystero has no built-in room-size or message-size limits documented, but the mesh topology (direct peer connections, no SFU) means the library itself advises keeping groups small — a non-issue for typical estimation session sizes, but worth remembering if group sessions ever grow large.
 - `AggregateStrategy` is only an engineering-level default for MVP (min/median/max, not facilitator-configurable) — PRD §5 calls for it to be "configurable" but neither the data model nor the prototype exposes a UI for it. Revisit if teams actually want to change aggregation policy per session, since that needs a schema field + UI, not just the code-level flexibility already designed in.
 - `onPeerJoin`/`onPeerLeave` fire on connect/disconnect, but Trystero does not replay history to a newcomer — the late-joiner state snapshot (above) is entirely our responsibility to implement, not something the library helps with.
@@ -190,6 +191,6 @@ Remaining MVP work, tracked on the EstiMate Roadmap board:
 - **Outlier flag** — the reveal panel does not yet surface `checkOutlier()` on the
   per-participant list; the `/calc` guard exists but nothing drives a UI flag from it.
 - **#9** — connection-fallback UX for peers that can't establish a direct connection.
-- **Persistence** — `src/persistence/` (IndexedDB, CSV export, shareable report link) is
-  still a placeholder.
+- **Persistence** — `src/persistence/` (session save/load via JSON file, CSV export,
+  shareable report link) is still a placeholder; save/load is tracked as #10.
 - **PRD §12 Phase 5** — the PRD §6.1 cone-of-uncertainty guard.

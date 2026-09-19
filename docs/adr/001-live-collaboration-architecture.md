@@ -40,7 +40,7 @@ Our target usage pattern (confirmed with the product owner): participants are **
 **Why Manual Entry as a first-class mode, not just an error state:**
 - It directly covers the P2P connection-failure case: if peers can't connect, the facilitator can immediately fall back without losing the session
 - It also covers a distinct, valid use case on its own: facilitators who ran the actual estimation discussion elsewhere (in person, on a call, in Slack) and just want the calculation engine and bias guards applied to the numbers the team already agreed on — this isn't a degraded experience for them, it's the intended workflow
-- Sharing the same data model, calculation logic, and report format between modes (see PRD §4.2, §8) keeps this cheap to build and keeps session history/exports consistent regardless of which mode was used
+- Sharing the same data model, calculation logic, and report format between modes (see PRD §4.2, §8) keeps this cheap to build and keeps saving/exporting consistent regardless of which mode was used
 
 ## Consequences
 
