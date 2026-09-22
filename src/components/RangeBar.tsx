@@ -58,11 +58,16 @@ export function RangeBar({
   guidance,
 }: RangeBarProps) {
   if (!guidance) {
+    // McConnell's formula is an additive offset from "most likely," so for a
+    // narrow enough range it can mathematically exceed worst case — cap the
+    // displayed value (not just the marker's position) so the callout never
+    // shows a bigger number than the worst-case label below it.
+    const displayCi90 = Math.min(ci90, max)
     const span = max - min
     const pct = (value: number) =>
       span <= 0 ? 50 : Math.min(100, Math.max(0, ((value - min) / span) * 100))
     const expectedPct = pct(expected)
-    const ci90Pct = Math.max(expectedPct, Math.min(pct(ci90), 80))
+    const ci90Pct = Math.max(expectedPct, Math.min(pct(displayCi90), 80))
 
     return (
       <div className="range-bar">
@@ -78,7 +83,7 @@ export function RangeBar({
             className="range-bar-callout range-bar-callout--accent"
             style={{ left: `${ci90Pct}%` }}
           >
-            <div className="range-bar-callout-value">{`${formatValue(ci90)}${unitSuffix}`}</div>
+            <div className="range-bar-callout-value">{`${formatValue(displayCi90)}${unitSuffix}`}</div>
             <div className="range-bar-callout-caption">90% confidence</div>
           </div>
           <div className="range-bar-track">
@@ -165,6 +170,7 @@ function CompressedRangeBar({
   unitSuffix,
   guidanceHigh,
 }: GuidedRangeBarProps) {
+  const displayCi90 = Math.min(ci90, max)
   const span = max - min
   const pct = (value: number) =>
     span <= 0
@@ -172,7 +178,7 @@ function CompressedRangeBar({
       : Math.min(COMPRESSED_CAP, Math.max(0, ((value - min) / span) * COMPRESSED_CAP))
 
   const rawExpectedPct = pct(expected)
-  const rawCi90Pct = Math.max(rawExpectedPct, Math.min(pct(ci90), COMPRESSED_CAP))
+  const rawCi90Pct = Math.max(rawExpectedPct, Math.min(pct(displayCi90), COMPRESSED_CAP))
   const [expectedPct, ci90Pct] = pushApart(rawExpectedPct, rawCi90Pct)
 
   const worstPct = COMPRESSED_CAP
@@ -186,7 +192,7 @@ function CompressedRangeBar({
           className="range-bar-callout range-bar-callout--accent"
           style={{ left: `${ci90Pct}%` }}
         >
-          <div className="range-bar-callout-value">{`${formatValue(ci90)}${unitSuffix}`}</div>
+          <div className="range-bar-callout-value">{`${formatValue(displayCi90)}${unitSuffix}`}</div>
           <div className="range-bar-callout-caption">90% confidence</div>
         </div>
         <div className="ceiling-callout">
@@ -262,12 +268,13 @@ function FullRangeBar({
   unitSuffix,
   guidanceHigh,
 }: GuidedRangeBarProps) {
+  const displayCi90 = Math.min(ci90, max)
   const span = max - min
   const pct = (value: number) =>
     span <= 0 ? 50 : Math.min(100, Math.max(0, ((value - min) / span) * 100))
 
   const rawExpectedPct = pct(expected)
-  const rawCi90Pct = Math.max(rawExpectedPct, Math.min(pct(ci90), 100))
+  const rawCi90Pct = Math.max(rawExpectedPct, Math.min(pct(displayCi90), 100))
   const [expectedPct, ci90Pct] = pushApart(rawExpectedPct, rawCi90Pct)
 
   const likelyLabelPct = clampLikelyLabelPct(pct(expected), 100)
@@ -280,7 +287,7 @@ function FullRangeBar({
           className="range-bar-callout range-bar-callout--accent"
           style={{ left: `${ci90Pct}%` }}
         >
-          <div className="range-bar-callout-value">{`${formatValue(ci90)}${unitSuffix}`}</div>
+          <div className="range-bar-callout-value">{`${formatValue(displayCi90)}${unitSuffix}`}</div>
           <div className="range-bar-callout-caption">90% confidence</div>
         </div>
         <div className="range-bar-track">
