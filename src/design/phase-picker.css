@@ -1,0 +1,200 @@
+/* Phase Picker ("Cone Slider") — lets a participant place themselves along the
+   classic cone-of-uncertainty curve for an item (PRD §6.1). The curve shape itself
+   is fixed; only the diamond marker, ratio callout, and active label move. Ported
+   from design_handoffs/design_handoff_uncertainty_range/Cone Slider - Interactive
+   Prototype.dc.html — positional/numeric values stay inline in the component,
+   static declarations live here. */
+
+.phase-picker {
+  position: relative;
+  max-width: 640px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-lg);
+  padding: 40px 44px 20px;
+}
+
+.phase-picker-track {
+  position: relative;
+  cursor: grab;
+  touch-action: none;
+}
+
+.phase-picker-fill,
+.phase-picker-axis,
+.phase-picker-cone {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  overflow: visible;
+}
+
+.phase-picker-axis-baseline {
+  stroke: var(--color-neutral-300);
+  stroke-width: 1.5;
+  opacity: 0.7;
+}
+
+.phase-picker-axis-tick {
+  stroke: var(--color-neutral-300);
+  stroke-width: 1.5;
+  opacity: 0.5;
+}
+
+.phase-picker-cone--mirror {
+  transform: scaleY(-1);
+}
+
+.phase-picker-guideline {
+  position: absolute;
+  width: 1px;
+  background: var(--color-accent-400);
+  opacity: 0.4;
+  transform: translateX(-50%);
+  transition-property: left;
+  transition-timing-function: ease-out;
+}
+
+.phase-picker-connector {
+  position: absolute;
+  width: 1px;
+  background: var(--color-accent-700);
+  transform: translateX(-50%);
+  transition-property: left;
+  transition-timing-function: ease-out;
+}
+
+.phase-picker-callout {
+  position: absolute;
+  top: 0;
+  transform: translate(-50%, 0);
+  background: var(--color-accent-900);
+  border: 1px solid var(--color-accent-700);
+  border-radius: var(--radius-md);
+  padding: 8px 14px 10px;
+  text-align: center;
+  min-width: 130px;
+  white-space: nowrap;
+  transition-property: left;
+  transition-timing-function: ease-out;
+}
+
+.phase-picker-callout-ratio {
+  font: 700 15px var(--font-heading);
+  color: var(--color-accent-200);
+}
+
+.phase-picker-callout-bar {
+  height: 4px;
+  background: var(--color-accent-700);
+  border-radius: 2px;
+  margin: 6px 0 4px;
+  position: relative;
+  width: 100px;
+}
+
+.phase-picker-callout-bar-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: var(--color-accent-400);
+  border-radius: 2px;
+}
+
+.phase-picker-callout-range {
+  font-size: 9px;
+  color: var(--color-accent-400);
+  display: flex;
+  justify-content: space-between;
+}
+
+.phase-picker-step-dot {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-neutral-500);
+  border: none;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+
+.phase-picker-step-dot:hover {
+  background: var(--color-accent-300);
+  transform: translate(-50%, -50%) scale(1.3);
+}
+
+.phase-picker-step-dot--active {
+  background: var(--color-accent-200);
+}
+
+.phase-picker-diamond {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: var(--color-accent-200);
+  border: 1.5px solid var(--color-accent-900);
+  border-radius: 4px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  box-shadow: 0 0 0 4px var(--color-surface);
+  transition-property: left;
+  transition-timing-function: ease-out;
+}
+
+.phase-picker-nudge {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 1px solid var(--color-accent-700);
+  color: var(--color-accent-300);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition:
+    opacity 0.15s,
+    background 0.15s;
+  transform: translateY(-50%);
+}
+
+.phase-picker-nudge:hover {
+  background: var(--color-accent-900);
+}
+
+.phase-picker-nudge--hidden {
+  opacity: 0 !important;
+  pointer-events: none;
+}
+
+.phase-picker:hover .phase-picker-nudge:not(.phase-picker-nudge--hidden) {
+  opacity: 1;
+}
+
+.phase-picker-labels {
+  position: absolute;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  text-align: center;
+}
+
+.phase-picker-label {
+  flex: 1 1 90px;
+  min-width: 0;
+  color: var(--color-neutral-500);
+  font-weight: 400;
+}
+
+.phase-picker-label--active {
+  color: var(--color-accent-300);
+  font-weight: 600;
+}
