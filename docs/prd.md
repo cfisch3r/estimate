@@ -85,27 +85,30 @@ These come directly from Tips #4–9 and are what make this more than a poker cl
 | **Symmetric range warning** | `(Likely − Best) ≈ (Worst − Likely)` within a tolerance | Gentle nudge: "Your range looks symmetric — worst case in software usually has more room than best case. Double check." |
 | **False precision guard** | Non-round input in a context where rounding is expected (e.g., "3.7 days") | Soft suggestion to round to meaningful granularity |
 | **Outlier flag at reveal** | A participant's value is far from the group median | Highlight (not hide) the outlier to prompt discussion, not silently average it out |
-| **Uncertainty-range guard** | Facilitator has selected an uncertainty level for the item and entered best/worst | If the entered range is narrower than the guidance range for that level, nudge: "Your range looks narrow for [level] — teams at this stage typically see a wider spread. Double check." (see §6.1) |
+| **Uncertainty-range guard** | A participant has selected an uncertainty level for the item (for their own view) and entered best/worst | If the entered range is narrower than the guidance range for that level, nudge: "Your range looks narrow for [level] — teams at this stage typically see a wider spread. Double check." If the range already meets or exceeds guidance, show a calm confirmation instead of a nudge. (see §6.1) |
 
 These are nudges, not hard blocks — never prevent submission.
 
 ### 6.1 Cone-of-uncertainty guidance
 
-Per item, the facilitator optionally selects an **uncertainty level** from 5 phases (based on the classic Cone of Uncertainty), each with its Agile-equivalent subtext:
+Per item, each participant optionally selects an **uncertainty level** from 5 phases (based on the classic Cone of Uncertainty), each with its Agile-equivalent subtext, via a Phase Picker control:
 
-| Level | Agile equivalent | Low mult. | High mult. | Range ratio |
-|---|---|---|---|---|
-| Initial Concept | Product Vision | 0.25x | 4x | 16x |
-| Approved Product Definition | Backlog w/ Epics | 0.5x | 2x | 4x |
-| Requirements Complete | Refined Stories | 0.67x | 1.5x | 2.25x |
-| UI Complete | Sprint Planning I | 0.8x | 1.25x | 1.6x |
-| Detailed Design Complete | Sprint Planning II | 0.9x | 1.10x | 1.2x |
+| Level | Agile equivalent | Low mult. | High mult. |
+|---|---|---|---|
+| Initial Concept | Product Vision | 0.25x | 4x |
+| Approved Product Definition | Backlog w/ Epics | 0.5x | 2x |
+| Requirements Complete | Refined Stories | 0.67x | 1.5x |
+| UI Complete | Sprint Planning I | 0.8x | 1.25x |
+| Detailed Design Complete | Sprint Planning II | 0.9x | 1.10x |
 
-Each level's multipliers are relative to Most Likely (e.g., at "Initial Concept," Best Case is expected to land around 0.25× Most Likely and Worst Case around 4× Most Likely). The **Range ratio** column is shown for readability (rounded to the source article's published values) but is not itself a stored threshold — implementations must derive the guidance ratio as `High mult. / Low mult.` from the two multiplier columns, since rounding makes a couple of the displayed Range ratio values (e.g. UI Complete's 1.6x vs. the exact 1.25/0.8 = 1.5625x) diverge slightly from that division.
+**The multipliers are anchored to Best Case, not Most Likely** — e.g. at "Initial Concept," Worst Case is expected to land around 4× (High mult. / Low mult. = 16x) the Best Case, not 4× Most Likely. This is the basis both the guard and the range-bar guidance ceiling use: `guidanceHigh = bestCase × (High mult. / Low mult.)` is the ceiling value shown on the range bar.
 
-When best/worst are both entered, compute the actual ratio = Worst / Best and compare it to the selected level's guidance ratio (`High mult. / Low mult.`, computed from the table above). If the actual ratio is smaller than the guidance ratio, the guard fires — the declared range is suspiciously narrow for how early/uncertain the item is.
+The guidance ratio is always derived as `High mult. / Low mult.` from the two multiplier columns above, computed at implementation time — it is not itself stored or displayed as a separate "Range ratio" column, since a rounded display value can drift out of sync with the exact division (e.g. UI Complete's 1.25/0.8 = 1.5625x doesn't round cleanly to the source article's published 1.6x).
 
-- Level is optional and set **per item**, not per session — a backlog mixes items of different maturity.
+When best/worst are both entered, compute the actual ratio = Worst / Best and compare it to the selected level's guidance ratio (`High mult. / Low mult.`, computed from the table above). If the actual ratio is smaller than the guidance ratio, the guard fires — the declared range is suspiciously narrow for how early/uncertain the item is. If the actual ratio already meets or exceeds the guidance ratio, show a calm confirmation instead (e.g. "Your worst case already covers this phase's guidance ceiling") — never a nudge in that case.
+
+- Level is optional and set **per item, per participant** — each participant sets their own level for an item, affecting only their own range-bar view, not a shared value seen by everyone. A backlog mixes items of different maturity, and different participants may reasonably assess the same item's maturity differently.
+- Not networked/synced state — local to each participant's own client, like their in-progress best/likely/worst draft values, not part of the broadcast Estimate/submission payload.
 - Soft nudge only — never blocks Finalize, consistent with every other §6 guard.
 
 ## 7. Screens (MVP)
