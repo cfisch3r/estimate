@@ -13,7 +13,9 @@ import {
   Select,
   Textarea,
   GuardNote,
+  ConfirmNote,
   RangeBar,
+  PhasePicker,
   Tag,
 } from '../components'
 import { SessionSidebar } from './SessionSidebar'
@@ -25,13 +27,21 @@ import {
   checkAscendingOrder,
   checkSymmetricRange,
   checkFalsePrecision,
+  checkUncertaintyRange,
   computeCI90,
   createEstimate,
   UNIT_GRANULARITY,
   UNIT_SUFFIX,
+  UNCERTAINTY_LEVELS,
+  UNCERTAINTY_GUIDANCE,
+  DEFAULT_UNCERTAINTY_INDEX,
 } from '../calc'
 import type { EstimationUnit } from '../calc'
 import type { Item, LiveConnectionStatus } from '../state/types'
+
+function formatGuidanceValue(value: number): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(1)
+}
 
 interface EditableTitleProps {
   value: string
@@ -181,6 +191,7 @@ function ActiveItemPanel({
     item.finalResult ? String(item.finalResult.expected) : '',
   )
   const [worst, setWorst] = useState(item.finalResult ? String(item.finalResult.max) : '')
+  const [phaseIndex, setPhaseIndex] = useState(DEFAULT_UNCERTAINTY_INDEX)
 
   const allFilled = best !== '' && likely !== '' && worst !== ''
   const bestNum = Number(best)
@@ -213,6 +224,13 @@ function ActiveItemPanel({
   const likelyPrecision =
     likely !== '' ? checkFalsePrecision(likelyNum, granularity) : null
   const worstPrecision = worst !== '' ? checkFalsePrecision(worstNum, granularity) : null
+
+  const level = UNCERTAINTY_LEVELS[phaseIndex]
+  const { lowMult, highMult } = UNCERTAINTY_GUIDANCE[level]
+  const guidanceHigh = bestNum * (highMult / lowMult)
+  const uncertaintyGuard = allFilled
+    ? checkUncertaintyRange(bestNum, worstNum, level)
+    : null
 
   function handleFinalize() {
     onFinalize(item.id, bestNum, likelyNum, worstNum)
@@ -285,6 +303,8 @@ function ActiveItemPanel({
         </Field>
       </div>
 
+      <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
+
       {allFilled && !Number.isNaN(bestNum + likelyNum + worstNum) && (
         <RangeBar
           min={bestNum}
@@ -292,7 +312,22 @@ function ActiveItemPanel({
           expected={likelyNum}
           ci90={computeCI90(likelyNum, bestNum, worstNum)}
           unitSuffix={UNIT_SUFFIX[unit]}
+          guidance={{ level }}
         />
+      )}
+
+      {allFilled && worstNum >= guidanceHigh && (
+        <ConfirmNote>
+          Your worst case ({formatGuidanceValue(worstNum)}
+          {UNIT_SUFFIX[unit]}) already covers this phase&rsquo;s guidance ceiling of{' '}
+          {formatGuidanceValue(guidanceHigh)}
+          {UNIT_SUFFIX[unit]}.
+        </ConfirmNote>
+      )}
+      {uncertaintyGuard?.fired && (
+        <GuardNote variant="banner" headline="Narrow range for this phase">
+          Teams at this stage typically see a wider spread between best and worst case.
+        </GuardNote>
       )}
 
       {symmetricGuard?.fired && (
