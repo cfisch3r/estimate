@@ -277,6 +277,7 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
             fill="none"
             stroke="var(--color-neutral-400)"
             strokeWidth={1.5}
+            transform={`translate(0 ${PATH_SHIFT})`}
           />
         </svg>
         <svg
@@ -290,6 +291,7 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
             fill="none"
             stroke="var(--color-neutral-400)"
             strokeWidth={1.5}
+            transform={`translate(0 ${PATH_SHIFT})`}
           />
         </svg>
 
