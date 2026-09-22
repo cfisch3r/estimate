@@ -4,8 +4,9 @@ import {
   checkFalsePrecision,
   checkOutlier,
   checkAscendingOrder,
+  checkUncertaintyRange,
 } from './guards'
-import { UNIT_GRANULARITY } from './types'
+import { UNIT_GRANULARITY, UNCERTAINTY_GUIDANCE } from './types'
 import { est } from './testHelpers'
 
 describe('checkSymmetricRange', () => {
@@ -132,5 +133,43 @@ describe('checkAscendingOrder', () => {
 
   it('does not fire for a fully ascending triple', () => {
     expect(checkAscendingOrder(2, 5, 8).fired).toBe(false)
+  })
+})
+
+describe('checkUncertaintyRange', () => {
+  it('fires when the actual ratio is narrower than the phase guidance ratio', () => {
+    // Requirements Complete: highMult/lowMult = 1.5/0.67 ≈ 2.2388; best=10,worst=15 -> ratio 1.5
+    const result = checkUncertaintyRange(10, 15, 'requirements-complete')
+    expect(result.fired).toBe(true)
+  })
+
+  it('does not fire when the actual ratio exactly equals the guidance ratio', () => {
+    const { lowMult, highMult } = UNCERTAINTY_GUIDANCE['requirements-complete']
+    const ratio = highMult / lowMult
+    expect(checkUncertaintyRange(10, 10 * ratio, 'requirements-complete').fired).toBe(
+      false,
+    )
+  })
+
+  it('does not fire when the actual ratio exceeds the guidance ratio', () => {
+    expect(checkUncertaintyRange(10, 100, 'requirements-complete').fired).toBe(false)
+  })
+
+  it('fires more readily for an early phase (wide guidance) than a late one (narrow guidance)', () => {
+    // a 2x actual ratio is well short of Initial Concept's 16x (4/0.25) guidance...
+    expect(checkUncertaintyRange(10, 20, 'initial-concept').fired).toBe(true)
+    // ...but already exceeds Detailed Design Complete's ~1.222x (1.10/0.9) guidance
+    expect(checkUncertaintyRange(10, 20, 'detailed-design-complete').fired).toBe(false)
+  })
+
+  it('does not fire for a non-positive best case (nothing meaningful to form a ratio from)', () => {
+    expect(checkUncertaintyRange(0, 10, 'requirements-complete').fired).toBe(false)
+    expect(checkUncertaintyRange(-5, 10, 'requirements-complete').fired).toBe(false)
+  })
+
+  it('computes deviationPct as how far short of the guidance ratio the actual ratio falls', () => {
+    // guidance ratio 1.5/0.67 ≈ 2.2388, actual ratio 15/10 = 1.5 -> 1 - 1.5/2.2388 ≈ 0.33
+    const result = checkUncertaintyRange(10, 15, 'requirements-complete')
+    expect(result.deviationPct).toBeCloseTo(0.33, 2)
   })
 })
