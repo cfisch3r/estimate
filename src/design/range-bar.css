@@ -116,3 +116,107 @@
   font-size: 11px;
   color: var(--color-neutral-400);
 }
+
+/* Guidance-aware states (PRD §6.1) — the below-track label row used whenever a
+   guidance ceiling is shown, plus the compressed "ghost tail" and full-width tick
+   treatments for the ceiling itself. */
+
+.range-bar-ends-guided {
+  position: relative;
+  height: 34px;
+  margin-top: 16px;
+}
+
+.range-bar-end-guided {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.range-bar-end-guided--right {
+  align-items: flex-end;
+  transform: translateX(-100%);
+}
+
+.range-bar-mid-guided {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translateX(-50%);
+}
+
+.ghost-segment {
+  height: 100%;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--color-neutral-700) 0 4px,
+    transparent 4px 8px
+  );
+}
+
+.break-gap {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  background: var(--color-surface);
+  transform: translateX(-50%);
+  z-index: 2;
+}
+
+.ceiling-callout {
+  position: absolute;
+  top: -52px;
+  right: 0;
+  text-align: right;
+  white-space: nowrap;
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  background: var(--color-accent-900);
+  border: 1px solid var(--color-accent-700);
+}
+
+.ceiling-tick {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 22px;
+  background: var(--color-accent-400);
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+}
+
+.ceiling-tick-label {
+  position: absolute;
+  bottom: -20px;
+  transform: translateX(-50%);
+  font-size: 10px;
+  color: var(--color-accent-400);
+  white-space: nowrap;
+  text-align: center;
+}
+
+.confirm-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--color-neutral-300);
+  line-height: 1.4;
+}
+
+.confirm-note svg {
+  flex: none;
+  color: var(--color-accent-400);
+  margin-top: 1px;
+}
