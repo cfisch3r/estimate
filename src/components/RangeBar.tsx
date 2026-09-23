@@ -28,12 +28,23 @@ const MIN_SEP_BELOW = 14
  *  matter how extreme the guidance ratio gets. */
 const COMPRESSED_CAP = 78
 
-function pushApart(expectedPct: number, ci90Pct: number): [number, number] {
+/** Pushes the two markers apart around their midpoint when they'd collide, then
+ *  clamps back into [0, cap] — re-centering alone can otherwise push a marker
+ *  past either edge when the pair sits close to 0% or cap%. */
+function pushApart(expectedPct: number, ci90Pct: number, cap: number): [number, number] {
   if (ci90Pct - expectedPct >= MIN_GAP_PCT) {
     return [expectedPct, ci90Pct]
   }
   const mid = (ci90Pct + expectedPct) / 2
-  return [mid - MIN_GAP_PCT / 2, mid + MIN_GAP_PCT / 2]
+  const pushedExpected = mid - MIN_GAP_PCT / 2
+  const pushedCi90 = mid + MIN_GAP_PCT / 2
+  if (pushedExpected < 0) {
+    return [0, MIN_GAP_PCT]
+  }
+  if (pushedCi90 > cap) {
+    return [cap - MIN_GAP_PCT, cap]
+  }
+  return [pushedExpected, pushedCi90]
 }
 
 function clampLikelyLabelPct(pct: number, worstPct: number): number {
@@ -195,7 +206,7 @@ function CompressedRangeBar({
 
   const rawExpectedPct = pct(expected)
   const rawCi90Pct = Math.max(rawExpectedPct, Math.min(pct(ci90), COMPRESSED_CAP))
-  const [expectedPct, ci90Pct] = pushApart(rawExpectedPct, rawCi90Pct)
+  const [expectedPct, ci90Pct] = pushApart(rawExpectedPct, rawCi90Pct, COMPRESSED_CAP)
 
   const worstPct = COMPRESSED_CAP
   const breakPct = worstPct + 3
@@ -296,7 +307,7 @@ function FullRangeBar({
 
   const rawExpectedPct = pct(expected)
   const rawCi90Pct = Math.max(rawExpectedPct, Math.min(pct(ci90), 100))
-  const [expectedPct, ci90Pct] = pushApart(rawExpectedPct, rawCi90Pct)
+  const [expectedPct, ci90Pct] = pushApart(rawExpectedPct, rawCi90Pct, 100)
 
   const likelyLabelPct = clampLikelyLabelPct(pct(expected), 100)
   const ceilingPct = pct(guidanceHigh)

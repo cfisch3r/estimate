@@ -182,6 +182,50 @@ describe('RangeBar with guidance', () => {
     expect(ci90Left - expectedLeft).toBeCloseTo((90 / 560) * 100, 5)
   })
 
+  it('clamps the pushed-apart markers back to 0% instead of going negative near the left edge', () => {
+    // expected=2, ci90=4 land only 2% apart pre-adjustment; naively re-centering around
+    // their midpoint (3%) would push expected to 3 - 8.04 ≈ -5%, off the left edge.
+    render(
+      <RangeBar
+        min={0}
+        max={100}
+        expected={2}
+        ci90={4}
+        unitSuffix="d"
+        guidance={{ level: 'requirements-complete' }}
+      />,
+    )
+
+    const minGapPct = (90 / 560) * 100
+    expect(screen.getByTestId('range-bar-marker-expected')).toHaveStyle({ left: '0%' })
+    expect(screen.getByTestId('range-bar-marker-ci90')).toHaveStyle({
+      left: `${minGapPct}%`,
+    })
+  })
+
+  it('clamps the pushed-apart markers back to cap instead of overshooting near the right edge', () => {
+    // detailed-design-complete: guidanceHigh = 50 * (1.10/0.9) ≈ 61.1, worst=60 stays
+    // under it, so this renders compressed (cap=78) — and ci90 (59.9) stays below worst
+    // (60) so the marker isn't hidden. expected=59/ci90=59.9 land close enough to the
+    // cap that naively re-centering around their midpoint would push ci90 past 78%.
+    render(
+      <RangeBar
+        min={50}
+        max={60}
+        expected={59}
+        ci90={59.9}
+        unitSuffix="d"
+        guidance={{ level: 'detailed-design-complete' }}
+      />,
+    )
+
+    const minGapPct = (90 / 560) * 100
+    expect(screen.getByTestId('range-bar-marker-ci90')).toHaveStyle({ left: '78%' })
+    expect(screen.getByTestId('range-bar-marker-expected')).toHaveStyle({
+      left: `${78 - minGapPct}%`,
+    })
+  })
+
   it('clamps the below-track "most likely" label to stay at least 14% from either edge', () => {
     // expected sits at 2% of the span -> label would collide with the best-case label
     render(

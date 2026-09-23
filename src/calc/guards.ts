@@ -87,13 +87,16 @@ export function checkOutlier(
  *  uncertainty phase — i.e. the declared range is suspiciously tight for how early/
  *  uncertain the item is. Anchored to Best Case, matching the guidance ceiling shown
  *  on the range bar (guidanceHigh = bestCase * highMult/lowMult). Meets-or-exceeds
- *  guidance does not fire — that case gets a calm confirmation instead, not a nudge. */
+ *  guidance does not fire — that case gets a calm confirmation instead, not a nudge.
+ *  A non-positive best case or worst < best is a validation error, not a narrow-range
+ *  signal, so this doesn't fire for either — checkAscendingOrder/createEstimate own
+ *  flagging those. */
 export function checkUncertaintyRange(
   best: number,
   worst: number,
   level: UncertaintyLevel,
 ): GuardResult {
-  if (best <= 0) {
+  if (best <= 0 || worst < best) {
     return { fired: false }
   }
   const { lowMult, highMult } = UNCERTAINTY_GUIDANCE[level]

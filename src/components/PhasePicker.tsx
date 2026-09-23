@@ -126,11 +126,23 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
   const [snapping, setSnapping] = useState(false)
   const trackRef = useRef<HTMLDivElement>(null)
   const snapTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const activeDragRef = useRef<{
+    move: (ev: PointerEvent) => void
+    up: () => void
+  } | null>(null)
 
   useEffect(() => {
     return () => {
       if (snapTimeoutRef.current) {
         clearTimeout(snapTimeoutRef.current)
+      }
+      // A drag can outlive this component (e.g. the panel remounts mid-drag via
+      // Workspace's key={activeItem.id}) — drop the stale listeners so a later
+      // pointerup elsewhere on the page can't call back into an unmounted instance.
+      if (activeDragRef.current) {
+        window.removeEventListener('pointermove', activeDragRef.current.move)
+        window.removeEventListener('pointerup', activeDragRef.current.up)
+        activeDragRef.current = null
       }
     }
   }, [])
@@ -162,6 +174,7 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
     const up = () => {
       window.removeEventListener('pointermove', move)
       window.removeEventListener('pointerup', up)
+      activeDragRef.current = null
       setDragPct((currentDragPct) => {
         if (currentDragPct != null) {
           snapTo(Math.round(currentDragPct / 25))
@@ -169,6 +182,7 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
         return null
       })
     }
+    activeDragRef.current = { move, up }
     window.addEventListener('pointermove', move)
     window.addEventListener('pointerup', up)
     move(e.nativeEvent)

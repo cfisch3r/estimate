@@ -175,22 +175,23 @@ function EstimateForm({
       <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
 
       {validation?.ok && (
-        <RangeBar
-          min={bestNum}
-          max={worstNum}
-          expected={likelyNum}
-          ci90={computeCI90(likelyNum, bestNum, worstNum)}
-          unitSuffix={UNIT_SUFFIX[unit]}
-          guidance={guidanceHigh !== null ? { level } : undefined}
-        />
+        <>
+          <RangeBar
+            min={bestNum}
+            max={worstNum}
+            expected={likelyNum}
+            ci90={computeCI90(likelyNum, bestNum, worstNum)}
+            unitSuffix={UNIT_SUFFIX[unit]}
+            guidance={guidanceHigh !== null ? { level } : undefined}
+          />
+          <UncertaintyGuidanceNotes
+            guidanceHigh={guidanceHigh}
+            worst={worstNum}
+            unitSuffix={UNIT_SUFFIX[unit]}
+            uncertaintyGuard={uncertaintyGuard}
+          />
+        </>
       )}
-
-      <UncertaintyGuidanceNotes
-        guidanceHigh={guidanceHigh}
-        worst={worstNum}
-        unitSuffix={UNIT_SUFFIX[unit]}
-        uncertaintyGuard={uncertaintyGuard}
-      />
 
       {symmetricGuard?.fired && (
         <GuardNote variant="banner" headline="Symmetric range">

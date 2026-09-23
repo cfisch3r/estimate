@@ -167,6 +167,15 @@ describe('checkUncertaintyRange', () => {
     expect(checkUncertaintyRange(-5, 10, 'requirements-complete').fired).toBe(false)
   })
 
+  it('does not fire when worst is below best (an ordering error, not a narrow-range signal)', () => {
+    expect(checkUncertaintyRange(10, 5, 'requirements-complete').fired).toBe(false)
+    expect(checkUncertaintyRange(10, 0, 'requirements-complete').fired).toBe(false)
+  })
+
+  it('fires for a zero-width range (worst equals best — degenerate but not an ordering error)', () => {
+    expect(checkUncertaintyRange(10, 10, 'requirements-complete').fired).toBe(true)
+  })
+
   it('computes deviationPct as how far short of the guidance ratio the actual ratio falls', () => {
     // guidance ratio 1.5/0.67 ≈ 2.2388, actual ratio 15/10 = 1.5 -> 1 - 1.5/2.2388 ≈ 0.33
     const result = checkUncertaintyRange(10, 15, 'requirements-complete')

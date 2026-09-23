@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { PhasePicker } from './PhasePicker'
 
@@ -59,5 +59,20 @@ describe('PhasePicker', () => {
       'false',
     )
     expect(screen.getByLabelText('Next phase')).toHaveAttribute('aria-disabled', 'true')
+  })
+
+  it('does not call onChange from a drag that outlives the component (unmount removes the stale window listeners)', () => {
+    const onChange = vi.fn()
+    const { container, unmount } = render(<PhasePicker index={2} onChange={onChange} />)
+    const track = container.querySelector('.phase-picker-track')
+    if (!track) {
+      throw new Error('expected a .phase-picker-track element')
+    }
+
+    fireEvent.pointerDown(track, { clientX: 10 })
+    unmount()
+    fireEvent(window, new Event('pointerup'))
+
+    expect(onChange).not.toHaveBeenCalled()
   })
 })
