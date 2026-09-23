@@ -8,7 +8,7 @@ import {
 
 /** The subset of an item a participant needs to render the read-only detail —
  *  broadcast by the facilitator so participants never hold the full item list. */
-export interface SnapshotItem {
+interface SnapshotItem {
   id: string
   title: string
   description: string
@@ -51,7 +51,7 @@ export interface SessionSnapshot {
 /** A participant's estimate plus the item it belongs to. The item id keeps a
  *  straggler (or peer-join re-broadcast) submission for a just-finalized item
  *  from being recorded against whatever item became active next. */
-export interface EstimateMessage {
+interface EstimateMessage {
   itemId: string
   /** The round this submission was made for. A missing value (older build, or a
    *  bare pre-#8 estimate) bypasses the facilitator's round check rather than
@@ -64,7 +64,7 @@ export interface EstimateMessage {
  *  failure attribution (a typed `error.kind` on rejection), not speed: the
  *  roster broadcast travels the same two hops and is what a participant's
  *  delivery actually converges on (ADR-003, "Acknowledged submissions"). */
-export interface EstimateAck {
+interface EstimateAck {
   ok: true
 }
 

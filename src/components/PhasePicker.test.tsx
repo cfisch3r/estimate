@@ -22,6 +22,10 @@ describe('PhasePicker', () => {
 
     await user.click(screen.getByLabelText('Detailed Design Complete'))
 
+    // Call count matters as much as the arg here: the step dot sits inside the
+    // drag track, so a click's pointerdown bubbling into the drag handler would
+    // double-fire onChange even while still landing on the right index.
+    expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledWith(4)
   })
 
@@ -32,6 +36,7 @@ describe('PhasePicker', () => {
 
     await user.click(screen.getByLabelText('Next phase'))
 
+    expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledWith(3)
   })
 
@@ -42,6 +47,7 @@ describe('PhasePicker', () => {
 
     await user.click(screen.getByLabelText('Previous phase'))
 
+    expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenCalledWith(1)
   })
 
