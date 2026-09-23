@@ -12,6 +12,8 @@ import {
   Input,
   GuardNote,
   RangeBar,
+  PhasePicker,
+  UncertaintyGuidanceNotes,
 } from '../components'
 import {
   checkAscendingOrder,
@@ -26,6 +28,7 @@ import {
 import type { EstimationUnit } from '../calc'
 import { useSessionStore } from '../state/store'
 import { useNetworkSession } from '../network'
+import { usePhaseGuidance } from '../hooks/usePhaseGuidance'
 import type { LiveRound } from '../state/types'
 import { useLeaveLiveSession } from './useLeaveLiveSession'
 import { useConnectionPhase, type ConnectionPhase } from './useConnectionPhase'
@@ -102,6 +105,12 @@ function EstimateForm({
   const precisionNote = (raw: string) =>
     raw !== '' ? checkFalsePrecision(Number(raw), granularity) : null
 
+  const { phaseIndex, setPhaseIndex, guidanceHigh, uncertaintyGuard } = usePhaseGuidance(
+    bestNum,
+    worstNum,
+    allFilled,
+  )
+
   function handleSubmit() {
     const result = onSubmit(bestNum, likelyNum, worstNum)
     setSubmitError(result.ok ? null : result.error)
@@ -166,14 +175,25 @@ function EstimateForm({
         Would you stake your job this won&apos;t be exceeded?
       </p>
 
+      <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
+
       {validation?.ok && (
-        <RangeBar
-          min={bestNum}
-          max={worstNum}
-          expected={likelyNum}
-          ci90={computeCI90(likelyNum, bestNum, worstNum)}
-          unitSuffix={UNIT_SUFFIX[unit]}
-        />
+        <>
+          <RangeBar
+            min={bestNum}
+            max={worstNum}
+            expected={likelyNum}
+            ci90={computeCI90(likelyNum, bestNum, worstNum)}
+            unitSuffix={UNIT_SUFFIX[unit]}
+            guidance={guidanceHigh !== null ? { guidanceHigh } : undefined}
+          />
+          <UncertaintyGuidanceNotes
+            guidanceHigh={guidanceHigh}
+            worst={worstNum}
+            unitSuffix={UNIT_SUFFIX[unit]}
+            uncertaintyGuard={uncertaintyGuard}
+          />
+        </>
       )}
 
       {symmetricGuard?.fired && (
@@ -239,6 +259,7 @@ function EstimatingPanel({
         <CardBody className="card-body--authored">{round.item.description}</CardBody>
       )}
       <EstimateForm
+        key={round.item.id}
         unit={unit}
         initial={null}
         submitLabel="Submit estimate"
@@ -275,6 +296,7 @@ function WaitingPanel({
 
       {editing ? (
         <EstimateForm
+          key={round.item.id}
           unit={unit}
           initial={mine}
           submitLabel="Update estimate"

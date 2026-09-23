@@ -1,6 +1,7 @@
-import type { GuardResult } from './types'
+import type { GuardResult, UncertaintyLevel } from './types'
 import type { Estimate } from './estimate'
 import { median } from './aggregate'
+import { UNCERTAINTY_GUIDANCE } from './types'
 
 /** PRD §6 "symmetric range" nudge: fires when (Likely-Best) and (Worst-Likely) are
  *  close to equal, which usually means the worst case hasn't been given the extra
@@ -79,4 +80,30 @@ export function checkOutlier(
   const othersMedianLikely = median(others.map((e) => e.likely))
   const deviationPct = Math.abs(estimate.likely - othersMedianLikely) / othersSpread
   return { fired: noOverlap || deviationPct > thresholdPct, deviationPct }
+}
+
+/** PRD §6.1 "uncertainty range" nudge: fires when the entered range (worst/best) is
+ *  narrower than the guidance ratio (highMult/lowMult) for the selected cone-of-
+ *  uncertainty phase — i.e. the declared range is suspiciously tight for how early/
+ *  uncertain the item is. Anchored to Best Case, matching the guidance ceiling shown
+ *  on the range bar (guidanceHigh = bestCase * highMult/lowMult). Meets-or-exceeds
+ *  guidance does not fire — that case gets a calm confirmation instead, not a nudge.
+ *  A non-positive best case or worst < best is a validation error, not a narrow-range
+ *  signal, so this doesn't fire for either — checkAscendingOrder/createEstimate own
+ *  flagging those. */
+export function checkUncertaintyRange(
+  best: number,
+  worst: number,
+  level: UncertaintyLevel,
+): GuardResult {
+  if (best <= 0 || worst < best) {
+    return { fired: false }
+  }
+  const { lowMult, highMult } = UNCERTAINTY_GUIDANCE[level]
+  const guidanceRatio = highMult / lowMult
+  const actualRatio = worst / best
+  return {
+    fired: actualRatio < guidanceRatio,
+    deviationPct: 1 - actualRatio / guidanceRatio,
+  }
 }

@@ -14,10 +14,13 @@ import {
   Textarea,
   GuardNote,
   RangeBar,
+  PhasePicker,
+  UncertaintyGuidanceNotes,
   Tag,
 } from '../components'
 import { SessionSidebar } from './SessionSidebar'
 import { useConfirmArm } from '../hooks/useConfirmArm'
+import { usePhaseGuidance } from '../hooks/usePhaseGuidance'
 import { useSessionStore, type FinalizeResult } from '../state/store'
 import { useNetworkSession } from '../network'
 import {
@@ -214,6 +217,12 @@ function ActiveItemPanel({
     likely !== '' ? checkFalsePrecision(likelyNum, granularity) : null
   const worstPrecision = worst !== '' ? checkFalsePrecision(worstNum, granularity) : null
 
+  const { phaseIndex, setPhaseIndex, guidanceHigh, uncertaintyGuard } = usePhaseGuidance(
+    bestNum,
+    worstNum,
+    allFilled,
+  )
+
   function handleFinalize() {
     onFinalize(item.id, bestNum, likelyNum, worstNum)
   }
@@ -285,14 +294,25 @@ function ActiveItemPanel({
         </Field>
       </div>
 
-      {allFilled && !Number.isNaN(bestNum + likelyNum + worstNum) && (
-        <RangeBar
-          min={bestNum}
-          max={worstNum}
-          expected={likelyNum}
-          ci90={computeCI90(likelyNum, bestNum, worstNum)}
-          unitSuffix={UNIT_SUFFIX[unit]}
-        />
+      <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
+
+      {validation?.ok && (
+        <>
+          <RangeBar
+            min={bestNum}
+            max={worstNum}
+            expected={likelyNum}
+            ci90={computeCI90(likelyNum, bestNum, worstNum)}
+            unitSuffix={UNIT_SUFFIX[unit]}
+            guidance={guidanceHigh !== null ? { guidanceHigh } : undefined}
+          />
+          <UncertaintyGuidanceNotes
+            guidanceHigh={guidanceHigh}
+            worst={worstNum}
+            unitSuffix={UNIT_SUFFIX[unit]}
+            uncertaintyGuard={uncertaintyGuard}
+          />
+        </>
       )}
 
       {symmetricGuard?.fired && (

@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <meta name="design_doc_mode" content="canvas">
+  <link rel="stylesheet" href="_ds/nocturne-a669f585-f3fe-40ab-a191-bf5c3b3d887c/styles.css">
+  <script src="_ds/nocturne-a669f585-f3fe-40ab-a191-bf5c3b3d887c/_ds_bundle.js"></script>
+  <style>
+    body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); }
+
+    .range-bar { position: relative; padding: 56px 4px 24px; }
+    .range-bar-track-box { position: relative; height: 14px; }
+    .range-bar-track { position: absolute; inset: 0; border-radius: 7px; overflow: hidden; background: var(--color-neutral-800); display: flex; }
+    .range-bar-segment { height: 100%; }
+    .range-bar-segment--uncertain { background: var(--color-accent-800); }
+    .range-bar-segment--likely { background: var(--color-accent-600); }
+    .range-bar-segment--confident { background: var(--color-accent); }
+    .range-bar-marker { position: absolute; top: 50%; width: 18px; height: 18px; border-radius: 3px; background: var(--color-accent); box-shadow: 0 0 0 3px var(--color-bg); transform: translate(-50%, -50%) rotate(45deg); }
+    .range-bar-callout { position: absolute; top: -52px; transform: translateX(-50%); white-space: nowrap; text-align: center; border-radius: var(--radius-sm); padding: 5px 10px; }
+    .range-bar-callout--accent { background: var(--color-accent-900); border: 1px solid var(--color-accent-700); }
+    .range-bar-callout-value { font: 600 14px/1 var(--font-heading); color: var(--color-text); }
+    .range-bar-callout--accent .range-bar-callout-value { font: 700 15px/1 var(--font-heading); color: var(--color-accent-300); }
+    .range-bar-callout-caption { font-size: 10px; color: var(--color-neutral-400); margin-top: 2px; }
+    .range-bar-callout--accent .range-bar-callout-caption { color: var(--color-accent-400); }
+    .range-bar-end-guided { position: absolute; top: 0; display: flex; flex-direction: column; gap: 2px; }
+    .range-bar-end-guided--right { align-items: flex-end; transform: translateX(-100%); }
+    .range-bar-mid-guided { position: absolute; top: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; transform: translateX(-50%); }
+    .range-bar-end-value { font: 600 16px/1 var(--font-heading); color: var(--color-text); }
+    .range-bar-end-caption { font-size: 11px; color: var(--color-neutral-400); }
+    .range-bar-ends-guided { position: relative; height: 34px; margin-top: 16px; }
+
+    .ghost-segment { height: 100%; background: repeating-linear-gradient(45deg, var(--color-neutral-700) 0 4px, transparent 4px 8px); }
+    .break-gap { position: absolute; top: 0; bottom: 0; width: 6px; background: var(--color-surface); transform: translateX(-50%); z-index: 2; }
+    .ceiling-callout { position: absolute; top: -52px; right: 0; text-align: right; white-space: nowrap; border-radius: var(--radius-sm); padding: 5px 10px; background: var(--color-accent-900); border: 1px solid var(--color-accent-700); }
+    .ceiling-tick { position: absolute; top: 50%; width: 2px; height: 22px; background: var(--color-accent-400); transform: translate(-50%, -50%); border-radius: 1px; }
+    .ceiling-tick-label { position: absolute; bottom: -20px; transform: translateX(-50%); font-size: 10px; color: var(--color-accent-400); white-space: nowrap; text-align: center; }
+    .cleared-note { display: flex; align-items: flex-start; gap: 8px; margin-top: 14px; padding: 10px 12px; background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--radius-sm); font-size: 12px; color: var(--color-neutral-300); line-height: 1.4; }
+
+    .opt-badge { display: inline-flex; width: fit-content; align-items: center; font: 600 12px var(--font-heading); color: var(--color-accent-300); background: var(--color-accent-900); border: 1px solid var(--color-accent-700); border-radius: var(--radius-sm); padding: 2px 8px; margin-bottom: 10px; }
+    .opt-name { display: block; width: fit-content; white-space: nowrap; font: 500 15px var(--font-heading); color: var(--color-text); background: var(--color-bg); border: 1px solid var(--color-divider); border-radius: var(--radius-sm); padding: 4px 10px; margin-bottom: 16px; }
+    .opt-caption { display: inline-block; font-size: 12px; color: var(--color-neutral-400); background: var(--color-bg); border: 1px solid var(--color-divider); border-radius: var(--radius-sm); padding: 8px 12px; margin-top: 10px; }
+  </style>
+</helmet>
+
+<section style="display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; padding: 48px; max-width: 1400px;">
+
+  <div id="9a" style="flex: 1; min-width: 480px; max-width: 560px;">
+    <div class="opt-badge">9a</div>
+    <div class="opt-name">Worst case narrower than guidance</div>
+    <div class="card elev-sm">
+      <div class="range-bar" style="padding-top: 56px;">
+        <div class="range-bar-track-box">
+          <div class="range-bar-callout range-bar-callout--accent" style="left: {{ aCi90Pct }}%;">
+            <div class="range-bar-callout-value">{{ aCi90Display }}d</div>
+            <div class="range-bar-callout-caption">90% confidence</div>
+          </div>
+          <div class="ceiling-callout">
+            <div class="range-bar-callout-value">{{ aGuidanceHighDisplay }}d</div>
+            <div class="range-bar-callout-caption">guidance ceiling</div>
+          </div>
+          <div class="range-bar-track">
+            <div class="range-bar-segment range-bar-segment--uncertain" style="width: {{ aExpectedPct }}%;"></div>
+            <div class="range-bar-segment range-bar-segment--likely" style="width: {{ aLikelySegWidth }}%;"></div>
+            <div class="range-bar-segment range-bar-segment--confident" style="width: {{ aConfidentSegWidth }}%;"></div>
+            <div class="ghost-segment" style="width: {{ aGhostWidth }}%;"></div>
+          </div>
+          <div class="break-gap" style="left: {{ aBreakPct }}%;"></div>
+          <div class="range-bar-marker" style="left: 0%;"></div>
+          <div class="range-bar-marker" style="left: {{ aExpectedPct }}%;"></div>
+          <div class="range-bar-marker" style="left: {{ aCi90Pct }}%;"></div>
+          <div class="range-bar-marker" style="left: {{ aWorstPct }}%;"></div>
+        </div>
+        <div class="range-bar-ends-guided">
+          <div class="range-bar-end-guided" style="left: 0%;">
+            <span class="range-bar-end-value">{{ aMinDisplay }}d</span>
+            <span class="range-bar-end-caption">best case</span>
+          </div>
+          <div class="range-bar-mid-guided" style="left: {{ aLikelyLabelPct }}%;">
+            <span class="range-bar-end-value">{{ aExpectedDisplay }}d</span>
+            <span class="range-bar-end-caption">most likely</span>
+          </div>
+          <div class="range-bar-end-guided range-bar-end-guided--right" style="left: {{ aWorstPct }}%;">
+            <span class="range-bar-end-value">{{ aMaxDisplay }}d</span>
+            <span class="range-bar-end-caption">worst case</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="opt-caption">Entered range fills a fixed 78% of the track; a break gap plus compressed ghost tail carries the guidance ceiling. Best, most likely and worst all share the same plain label style below the track; only computed values (90% confidence, ceiling) are boxed above it.</p>
+  </div>
+
+  <div id="9b" style="flex: 1; min-width: 480px; max-width: 560px;">
+    <div class="opt-badge">9b</div>
+    <div class="opt-name">Worst case exceeds guidance</div>
+    <div class="card elev-sm">
+      <div class="range-bar" style="padding-top: 56px;">
+        <div class="range-bar-track-box">
+          <div class="range-bar-callout range-bar-callout--accent" style="left: {{ bCi90Pct }}%;">
+            <div class="range-bar-callout-value">{{ bCi90Display }}d</div>
+            <div class="range-bar-callout-caption">90% confidence</div>
+          </div>
+          <div class="range-bar-track">
+            <div class="range-bar-segment range-bar-segment--uncertain" style="width: {{ bExpectedPct }}%;"></div>
+            <div class="range-bar-segment range-bar-segment--likely" style="width: {{ bLikelySegWidth }}%;"></div>
+            <div class="range-bar-segment range-bar-segment--confident" style="width: {{ bConfidentSegWidth }}%;"></div>
+          </div>
+          <div class="ceiling-tick" style="left: {{ bCeilingPct }}%;"></div>
+          <div class="ceiling-tick-label" style="left: {{ bCeilingPct }}%;">{{ bGuidanceHighDisplay }}d ceiling</div>
+          <div class="range-bar-marker" style="left: 0%;"></div>
+          <div class="range-bar-marker" style="left: {{ bExpectedPct }}%;"></div>
+          <div class="range-bar-marker" style="left: {{ bCi90Pct }}%;"></div>
+          <div class="range-bar-marker" style="left: 100%;"></div>
+        </div>
+        <div class="range-bar-ends-guided">
+          <div class="range-bar-end-guided" style="left: 0%;">
+            <span class="range-bar-end-value">{{ bMinDisplay }}d</span>
+            <span class="range-bar-end-caption">best case</span>
+          </div>
+          <div class="range-bar-mid-guided" style="left: {{ bLikelyLabelPct }}%;">
+            <span class="range-bar-end-value">{{ bExpectedDisplay }}d</span>
+            <span class="range-bar-end-caption">most likely</span>
+          </div>
+          <div class="range-bar-end-guided range-bar-end-guided--right" style="left: 100%; white-space: nowrap;">
+            <span class="range-bar-end-value">{{ bMaxDisplay }}d</span>
+            <span class="range-bar-end-caption">worst case</span>
+          </div>
+        </div>
+      </div>
+      <div class="cleared-note">
+        <i class="ph ph-check-circle" style="font-size: 16px; flex: none; color: var(--color-accent-400);"></i>
+        <span>Your worst case ({{ bMaxDisplay }}d) already covers this phase's guidance ceiling of <strong>{{ bGuidanceHighDisplay }}d</strong>.</span>
+      </div>
+    </div>
+    <p class="opt-caption">No ghost, no break: the entered range already spans past the guidance ceiling, so the bar uses its full width at full resolution. The ceiling becomes a plain tick inside the track (in the confident segment here) instead of an edge label, with a positive note replacing the earlier warning.</p>
+  </div>
+
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{
+  &quot;aMin&quot;: {&quot;editor&quot;: &quot;float&quot;, &quot;default&quot;: 5.4, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;9a — worst &lt; guidance&quot;},
+  &quot;aMax&quot;: {&quot;editor&quot;: &quot;float&quot;, &quot;default&quot;: 6.9, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;9a — worst &lt; guidance&quot;},
+  &quot;aExpected&quot;: {&quot;editor&quot;: &quot;float&quot;, &quot;default&quot;: 6, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;9a — worst &lt; guidance&quot;},
+  &quot;aPhase&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;Requirements Complete&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;Initial Concept&quot;, &quot;Approved Product Definition&quot;, &quot;Requirements Complete&quot;, &quot;UI Complete&quot;, &quot;Detailed Design Complete&quot;], &quot;section&quot;: &quot;9a — worst &lt; guidance&quot;},
+  &quot;bMin&quot;: {&quot;editor&quot;: &quot;float&quot;, &quot;default&quot;: 5, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;9b — worst &gt; guidance&quot;},
+  &quot;bMax&quot;: {&quot;editor&quot;: &quot;float&quot;, &quot;default&quot;: 13, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;9b — worst &gt; guidance&quot;},
+  &quot;bExpected&quot;: {&quot;editor&quot;: &quot;float&quot;, &quot;default&quot;: 7, &quot;tsType&quot;: &quot;number&quot;, &quot;section&quot;: &quot;9b — worst &gt; guidance&quot;},
+  &quot;bPhase&quot;: {&quot;editor&quot;: &quot;enum&quot;, &quot;default&quot;: &quot;Requirements Complete&quot;, &quot;tsType&quot;: &quot;string&quot;, &quot;options&quot;: [&quot;Initial Concept&quot;, &quot;Approved Product Definition&quot;, &quot;Requirements Complete&quot;, &quot;UI Complete&quot;, &quot;Detailed Design Complete&quot;], &quot;section&quot;: &quot;9b — worst &gt; guidance&quot;}
+}">
+class Component extends DCLogic {
+  phases = {
+    "Initial Concept": { low: 0.25, high: 4 },
+    "Approved Product Definition": { low: 0.5, high: 2 },
+    "Requirements Complete": { low: 0.67, high: 1.5 },
+    "UI Complete": { low: 0.8, high: 1.25 },
+    "Detailed Design Complete": { low: 0.9, high: 1.10 },
+  };
+
+  fmt = n => (Number.isInteger(n) ? String(n) : n.toFixed(1));
+  ci90Of = (expected, max) => expected + 0.5375 * (max - expected);
+  minGapPct = (90 / 560) * 100;
+
+  computeCompressed(min, max, expected, phaseName) {
+    const fmt = this.fmt;
+    const phase = this.phases[phaseName] ?? this.phases["Requirements Complete"];
+    const ratio = phase.high / phase.low;
+    const guidanceHigh = min * ratio;
+    const cap = 78;
+    const span = max - min;
+    const pct = v => (span <= 0 ? 50 : Math.min(cap, Math.max(0, ((v - min) / span) * cap)));
+    let expectedPct = pct(expected);
+    const ci90 = this.ci90Of(expected, max);
+    let ci90Pct = Math.max(expectedPct, Math.min(pct(ci90), cap));
+    if (ci90Pct - expectedPct < this.minGapPct) {
+      const mid = (ci90Pct + expectedPct) / 2;
+      expectedPct = mid - this.minGapPct / 2;
+      ci90Pct = mid + this.minGapPct / 2;
+    }
+    const worstPct = cap;
+    const breakPct = worstPct + 3;
+    let likelyLabelPct = pct(expected);
+    const minSepBelow = 14;
+    if (likelyLabelPct < minSepBelow) likelyLabelPct = minSepBelow;
+    if (worstPct - likelyLabelPct < minSepBelow) likelyLabelPct = worstPct - minSepBelow;
+
+    return {
+      minDisplay: fmt(min), maxDisplay: fmt(max), expectedDisplay: fmt(expected), ci90Display: fmt(ci90),
+      guidanceHighDisplay: fmt(guidanceHigh),
+      expectedPct: fmt(expectedPct), ci90Pct: fmt(ci90Pct), worstPct: fmt(worstPct), breakPct: fmt(breakPct),
+      likelySegWidth: fmt(ci90Pct - expectedPct), confidentSegWidth: fmt(worstPct - ci90Pct),
+      ghostWidth: fmt(100 - worstPct), likelyLabelPct: fmt(likelyLabelPct),
+    };
+  }
+
+  computeFull(min, max, expected, phaseName) {
+    const fmt = this.fmt;
+    const phase = this.phases[phaseName] ?? this.phases["Requirements Complete"];
+    const ratio = phase.high / phase.low;
+    const guidanceHigh = min * ratio;
+    const span = max - min;
+    const pct = v => (span <= 0 ? 50 : Math.min(100, Math.max(0, ((v - min) / span) * 100)));
+    let expectedPct = pct(expected);
+    const ci90 = this.ci90Of(expected, max);
+    let ci90Pct = Math.max(expectedPct, Math.min(pct(ci90), 100));
+    if (ci90Pct - expectedPct < this.minGapPct) {
+      const mid = (ci90Pct + expectedPct) / 2;
+      expectedPct = mid - this.minGapPct / 2;
+      ci90Pct = mid + this.minGapPct / 2;
+    }
+    let likelyLabelPct = pct(expected);
+    const minSepBelow = 14;
+    if (likelyLabelPct < minSepBelow) likelyLabelPct = minSepBelow;
+    if (100 - likelyLabelPct < minSepBelow) likelyLabelPct = 100 - minSepBelow;
+
+    return {
+      minDisplay: fmt(min), maxDisplay: fmt(max), expectedDisplay: fmt(expected), ci90Display: fmt(ci90),
+      guidanceHighDisplay: fmt(guidanceHigh),
+      expectedPct: fmt(expectedPct), ci90Pct: fmt(ci90Pct), ceilingPct: fmt(pct(guidanceHigh)),
+      likelySegWidth: fmt(ci90Pct - expectedPct), confidentSegWidth: fmt(100 - ci90Pct),
+      likelyLabelPct: fmt(likelyLabelPct),
+    };
+  }
+
+  renderVals() {
+    const a = this.computeCompressed(this.props.aMin ?? 5.4, this.props.aMax ?? 6.9, this.props.aExpected ?? 6, this.props.aPhase ?? "Requirements Complete");
+    const b = this.computeFull(this.props.bMin ?? 5, this.props.bMax ?? 13, this.props.bExpected ?? 7, this.props.bPhase ?? "Requirements Complete");
+
+    return {
+      aMinDisplay: a.minDisplay, aMaxDisplay: a.maxDisplay, aExpectedDisplay: a.expectedDisplay, aCi90Display: a.ci90Display,
+      aGuidanceHighDisplay: a.guidanceHighDisplay,
+      aExpectedPct: a.expectedPct, aCi90Pct: a.ci90Pct, aWorstPct: a.worstPct, aBreakPct: a.breakPct,
+      aLikelySegWidth: a.likelySegWidth, aConfidentSegWidth: a.confidentSegWidth, aGhostWidth: a.ghostWidth,
+      aLikelyLabelPct: a.likelyLabelPct,
+
+      bMinDisplay: b.minDisplay, bMaxDisplay: b.maxDisplay, bExpectedDisplay: b.expectedDisplay, bCi90Display: b.ci90Display,
+      bGuidanceHighDisplay: b.guidanceHighDisplay,
+      bExpectedPct: b.expectedPct, bCi90Pct: b.ci90Pct, bCeilingPct: b.ceilingPct,
+      bLikelySegWidth: b.likelySegWidth, bConfidentSegWidth: b.confidentSegWidth,
+      bLikelyLabelPct: b.likelyLabelPct,
+    };
+  }
+}
+</script>
+</body>
+</html>

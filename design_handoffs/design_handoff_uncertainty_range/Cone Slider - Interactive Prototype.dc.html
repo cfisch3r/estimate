@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="_ds/nocturne-a669f585-f3fe-40ab-a191-bf5c3b3d887c/styles.css">
+  <script src="_ds/nocturne-a669f585-f3fe-40ab-a191-bf5c3b3d887c/_ds_bundle.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/@phosphor-icons/web@2.1.1/src/regular/style.css">
+  <style>
+    body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); }
+    .step-dot { position: absolute; width: 8px; height: 8px; border-radius: 50%; background: var(--color-neutral-500); transform: translate(-50%, -50%); cursor: pointer; transition: background 0.15s, transform 0.15s; }
+    .step-dot:hover { background: var(--color-accent-300); transform: translate(-50%, -50%) scale(1.3); }
+    .step-dot--active { background: var(--color-accent-200); }
+    .nudge-arrow { position: absolute; top: 200px; width: 28px; height: 28px; border-radius: 50%; background: var(--color-surface); border: 1px solid var(--color-accent-700); color: var(--color-accent-300); display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; transition: opacity 0.15s, background 0.15s; transform: translateY(-50%); }
+    .nudge-arrow:hover { background: var(--color-accent-900); }
+    .nudge-arrow--disabled { opacity: 0 !important; pointer-events: none; }
+    .cone-hoverzone:hover .nudge-arrow:not(.nudge-arrow--disabled) { opacity: 1; }
+  </style>
+</helmet>
+
+<div style="max-width: 640px; margin: 48px auto;">
+  <div class="cone-hoverzone" style="background: var(--color-surface); border: 1px solid var(--color-divider); border-radius: var(--radius-lg); padding: 40px 44px 20px; position: relative;">
+    <div ref="{{ trackRef }}" style="position: relative; height: {{ containerHeight }}px; cursor: grab; touch-action: none;" onPointerDown="{{ onDragStart }}">
+      <svg viewBox="0 0 560 {{ fillSvgHeight }}" preserveAspectRatio="none" style="position: absolute; left: 0; top: {{ fillSvgTop }}px; width: 100%; height: {{ fillSvgHeight }}px; overflow: visible;">
+        <defs>
+          <linearGradient id="gradInt" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="var(--color-accent)" stop-opacity="0.16"></stop>
+            <stop offset="100%" stop-color="var(--color-accent)" stop-opacity="0.62"></stop>
+          </linearGradient>
+        </defs>
+        <path d="{{ fillPath }}" fill="url(#gradInt)" stroke="var(--color-accent-700)" stroke-width="1"></path>
+      </svg>
+      <div style="position: absolute; left: {{ tickPercent }}%; top: {{ fillSvgTop }}px; width: 1px; height: {{ fillSvgHeight }}px; background: var(--color-accent-400); opacity: 0.4; transform: translateX(-50%); transition: left {{ transitionMs }}ms ease-out;"></div>
+      <div style="position: absolute; left: {{ tickPercent }}%; top: 0; transform: translate(-50%, 0); background: var(--color-accent-900); border: 1px solid var(--color-accent-700); border-radius: var(--radius-md); padding: 8px 14px 10px; text-align: center; min-width: 130px; white-space: nowrap; transition: left {{ transitionMs }}ms ease-out;">
+        <div style="font: 700 15px var(--font-heading); color: var(--color-accent-200);">&times;{{ ratioDisplay }}</div>
+        <div style="height: 4px; background: var(--color-accent-700); border-radius: 2px; margin: 6px 0 4px; position: relative; width: 100px;">
+          <div style="position: absolute; left: {{ barLeft }}%; right: {{ barRight }}%; top: 0; bottom: 0; background: var(--color-accent-400); border-radius: 2px;"></div>
+        </div>
+        <div style="font-size: 9px; color: var(--color-accent-400); display: flex; justify-content: space-between;">
+          <span>{{ lowMultDisplay }}&times;</span><span>{{ highMultDisplay }}&times;</span>
+        </div>
+      </div>
+      <div style="position: absolute; left: {{ tickPercent }}%; top: 35px; width: 1px; height: {{ connectorHeightLarge }}px; background: var(--color-accent-700); transform: translateX(-50%); transition: left {{ transitionMs }}ms ease-out;"></div>
+      <svg viewBox="0 0 560 90" preserveAspectRatio="none" style="position: absolute; left: 0; top: {{ svgTopLarge }}px; width: 100%; height: 90px; overflow: visible;">
+        <line x1="0" y1="90" x2="560" y2="90" stroke="var(--color-neutral-300)" stroke-width="1.5" opacity="0.7"></line>
+        <line x1="0" y1="80" x2="0" y2="100" stroke="var(--color-neutral-300)" stroke-width="1.5" opacity="0.5"></line>
+        <line x1="140" y1="80" x2="140" y2="100" stroke="var(--color-neutral-300)" stroke-width="1.5" opacity="0.5"></line>
+        <line x1="280" y1="80" x2="280" y2="100" stroke="var(--color-neutral-300)" stroke-width="1.5" opacity="0.5"></line>
+        <line x1="420" y1="80" x2="420" y2="100" stroke="var(--color-neutral-300)" stroke-width="1.5" opacity="0.5"></line>
+        <line x1="560" y1="80" x2="560" y2="100" stroke="var(--color-neutral-300)" stroke-width="1.5" opacity="0.5"></line>
+      </svg>
+      <svg viewBox="0 0 560 90" preserveAspectRatio="none" style="position: absolute; left: 0; top: {{ upperCurveTop }}px; width: 100%; height: 90px; overflow: visible;">
+        <path d="{{ conePathLarge }}" fill="none" stroke="var(--color-neutral-400)" stroke-width="1.5" transform="translate(0 {{ pathShift }})"></path>
+      </svg>
+      <svg viewBox="0 0 560 90" preserveAspectRatio="none" style="position: absolute; left: 0; top: {{ mirrorTop }}px; width: 100%; height: 90px; overflow: visible; transform: scaleY(-1);">
+        <path d="{{ conePathLarge }}" fill="none" stroke="var(--color-neutral-400)" stroke-width="1.5" transform="translate(0 {{ pathShift }})"></path>
+      </svg>
+      <sc-for list="{{ positions }}" as="pos" hint-placeholder-count="5">
+        <div class="step-dot {{ pos.activeClass }}" style="left: {{ pos.pct }}%; top: {{ diamondTopLarge }}px;" onClick="{{ pos.onSelect }}" title="{{ pos.name }}"></div>
+      </sc-for>
+      <div style="position: absolute; left: {{ tickPercent }}%; top: {{ diamondTopLarge }}px; width: 16px; height: 16px; background: var(--color-accent-200); border: 1.5px solid var(--color-accent-900); border-radius: 4px; transform: translate(-50%, -50%) rotate(45deg); box-shadow: 0 0 0 4px var(--color-surface); transition: left {{ transitionMs }}ms ease-out;"></div>
+    </div>
+    <button class="nudge-arrow {{ prevDisabledClass }}" style="left: 6px;" onClick="{{ onPrev }}" aria-label="Previous phase">
+      <i class="ph ph-caret-left"></i>
+    </button>
+    <button class="nudge-arrow {{ nextDisabledClass }}" style="right: 6px;" onClick="{{ onNext }}" aria-label="Next phase">
+      <i class="ph ph-caret-right"></i>
+    </button>
+    <div style="position: absolute; left: 0; right: 0; top: {{ axisLabelTop }}px; display: flex; justify-content: space-between; font-size: 11px; text-align: center;">
+      <span style="flex: 1 1 90px; min-width: 0; {{ tickStyle0 }}">Product Vision</span>
+      <span style="flex: 1 1 90px; min-width: 0; {{ tickStyle1 }}">Backlog w/ Epics</span>
+      <span style="flex: 1 1 90px; min-width: 0; {{ tickStyle2 }}">Refined Stories</span>
+      <span style="flex: 1 1 90px; min-width: 0; {{ tickStyle3 }}">Sprint Planning I</span>
+      <span style="flex: 1 1 90px; min-width: 0; {{ tickStyle4 }}">Sprint Planning II</span>
+    </div>
+  </div>
+  <p style="font-size: 12px; color: var(--color-neutral-400); margin-top: 14px;">Built on 4d's fill/guide-line/marker treatment. Drag and release to snap to the nearest phase; click a dot to jump directly; hover to reveal step arrows (hidden at the ends).</p>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  state = { idx: 2, dragPct: null, snapping: false };
+
+  phases = [
+    { name: "Initial Concept — Product Vision", low: 0.25, high: 4 },
+    { name: "Approved Product Definition — Backlog w/ Epics", low: 0.5, high: 2 },
+    { name: "Requirements Complete — Refined Stories", low: 0.67, high: 1.5 },
+    { name: "UI Complete — Sprint Planning I", low: 0.8, high: 1.25 },
+    { name: "Detailed Design Complete — Sprint Planning II", low: 0.9, high: 1.10 },
+  ];
+
+  trackEl = null;
+  setTrackRef = (el) => { this.trackEl = el; };
+
+  onDragStart = (e) => {
+    e.preventDefault();
+    const rect = this.trackEl.getBoundingClientRect();
+    const move = (ev) => {
+      const pct = Math.max(0, Math.min(100, ((ev.clientX - rect.left) / rect.width) * 100));
+      this.setState({ dragPct: pct, snapping: false });
+    };
+    const up = () => {
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      const pct = this.state.dragPct;
+      if (pct != null) {
+        const nearest = Math.round(pct / 25);
+        this.setState({ idx: Math.max(0, Math.min(4, nearest)), dragPct: null, snapping: true });
+        setTimeout(() => this.setState({ snapping: false }), 260);
+      }
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    move(e);
+  };
+
+  goTo = (i) => { this.setState({ idx: i, snapping: true }); setTimeout(() => this.setState({ snapping: false }), 260); };
+
+  renderVals() {
+    const idx = this.state.idx;
+    const svgTopLarge = 110;
+    const vPos = -36;
+    const pathShift = (vPos - 50) * 0.6;
+    const connectorHeightLarge = 165;
+    const diamondTopLarge = 200;
+    const p = this.phases[idx];
+    const ratio = p.high / p.low;
+    const fmt = n => (Math.round(n * 100) / 100).toString();
+
+    const curveHeight = 1.5;
+    const ex = 0.41 * 560;
+    const scaleX = (oldX, base) => oldX <= base ? oldX * (ex / base) : ex + (oldX - base) * (560 - ex) / (560 - base);
+    const sx = x => Math.round(scaleX(x, 180) * 100) / 100;
+
+    const anchors = (baseH) => [
+      { p0: { x: 0, y: 2 }, p1: { x: 0, y: 2 }, p2: { x: sx(180), y: 2 + (baseH - 2) * 0.756 }, p3: { x: sx(180), y: 2 + (baseH - 2) * 0.756 } },
+      { p0: { x: sx(180), y: 2 + (baseH - 2) * 0.756 }, p1: { x: sx(220), y: 2 + (baseH - 2) * 0.889 }, p2: { x: sx(260), y: 2 + (baseH - 2) * 0.933 }, p3: { x: 560, y: baseH } },
+    ];
+    const pathString = (baseH) => `M0,2 L${sx(180)},${2 + (baseH - 2) * 0.756} C${sx(220)},${2 + (baseH - 2) * 0.889} ${sx(260)},${2 + (baseH - 2) * 0.933} 560,${baseH}`;
+    const cubicPt = (p0, p1, p2, p3, t) => {
+      const mt = 1 - t;
+      return {
+        x: mt ** 3 * p0.x + 3 * mt ** 2 * t * p1.x + 3 * mt * t ** 2 * p2.x + t ** 3 * p3.x,
+        y: mt ** 3 * p0.y + 3 * mt ** 2 * t * p1.y + 3 * mt * t ** 2 * p2.y + t ** 3 * p3.y,
+      };
+    };
+    const samplePoints = (baseH, steps = 24) => {
+      const segs = anchors(baseH);
+      const pts = [];
+      segs.forEach(seg => {
+        for (let i = 0; i <= steps; i++) {
+          const pt = cubicPt(seg.p0, seg.p1, seg.p2, seg.p3, i / steps);
+          pts.push({ x: pt.x, y: pt.y + pathShift });
+        }
+      });
+      return pts;
+    };
+
+    const conePathLarge = pathString(90 * curveHeight);
+    const gap = 54;
+    const labelVPos = 52;
+    const upperCurveTop = svgTopLarge - gap / 2;
+    const mirrorTop = svgTopLarge + 90 + gap / 2;
+    const axisLabelTop = svgTopLarge + 90 + labelVPos;
+    const containerHeight = Math.max(320, mirrorTop + 90 + 40, axisLabelTop + 40);
+    const fillSvgTop = upperCurveTop;
+    const fillSvgHeight = mirrorTop + 90 - upperCurveTop;
+
+    const buildFillPath = (baseH) => {
+      const pts = samplePoints(baseH);
+      const topY = y => y;
+      const botY = y => (mirrorTop - upperCurveTop) + (90 - y);
+      let d = `M0,${fmt(topY(pts[0].y))}`;
+      pts.forEach(pt => { d += ` L${fmt(pt.x)},${fmt(topY(pt.y))}`; });
+      d += ` L560,${fmt(botY(pts[pts.length - 1].y))}`;
+      for (let i = pts.length - 1; i >= 0; i--) { d += ` L${fmt(pts[i].x)},${fmt(botY(pts[i].y))}`; }
+      d += " Z";
+      return d;
+    };
+    const fillPath = buildFillPath(90 * curveHeight);
+
+    const tickPercent = this.state.dragPct != null ? this.state.dragPct : idx * 25;
+    const tickStyle = i => i === idx
+      ? "color: var(--color-accent-300); font-weight: 600;"
+      : "color: var(--color-neutral-500); font-weight: 400;";
+
+    return {
+      trackRef: this.setTrackRef,
+      onDragStart: this.onDragStart,
+      tickPercent: fmt(tickPercent),
+      transitionMs: (this.state.dragPct != null) ? 0 : (this.state.snapping ? 220 : 0),
+      svgTopLarge, connectorHeightLarge, diamondTopLarge, pathShift,
+      upperCurveTop, mirrorTop, axisLabelTop, containerHeight, fillSvgTop, fillSvgHeight, fillPath,
+      ratioDisplay: fmt(ratio),
+      lowMultDisplay: fmt(p.low),
+      highMultDisplay: fmt(p.high),
+      barLeft: fmt(Math.max(0, (Math.log(p.low) - Math.log(0.2)) / (Math.log(5) - Math.log(0.2)) * 100)),
+      barRight: fmt(Math.max(0, 100 - (Math.log(p.high) - Math.log(0.2)) / (Math.log(5) - Math.log(0.2)) * 100)),
+      phaseName: p.name.split(" — ")[0],
+      positions: this.phases.map((ph, i) => ({
+        pct: i * 25,
+        name: ph.name,
+        activeClass: i === idx ? "step-dot--active" : "",
+        onSelect: () => this.goTo(i),
+      })),
+      onPrev: () => idx > 0 && this.goTo(idx - 1),
+      onNext: () => idx < 4 && this.goTo(idx + 1),
+      prevDisabledClass: idx === 0 ? "nudge-arrow--disabled" : "",
+      nextDisabledClass: idx === 4 ? "nudge-arrow--disabled" : "",
+      tickStyle0: tickStyle(0), tickStyle1: tickStyle(1), tickStyle2: tickStyle(2), tickStyle3: tickStyle(3), tickStyle4: tickStyle(4),
+      conePathLarge,
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -15,6 +15,7 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/runbook.md` — deployment & release runbook: the IONOS Deploy Now CD pipeline, secrets, troubleshooting, and versioning/release process
 - `design_handoff_estimate_app/` — the original design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
 - `design_handoffs/epic-0010-screen-design-review/` — the Epic-0010 redesign handoff; **supersedes the entry flow** of the original handoff (mode-selection screen + unified Workspace) and is the source of truth for the participant estimating and facilitator reveal flows.
+- `design_handoffs/design_handoff_uncertainty_range/` — the Phase Picker + guidance-aware Range Bar handoff for PRD §6.1's cone-of-uncertainty guard; high-fidelity design reference, not literal production code (see its README for known implementation deviations).
 
 ## Picking the next task
 
