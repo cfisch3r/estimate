@@ -105,8 +105,11 @@ function EstimateForm({
   const precisionNote = (raw: string) =>
     raw !== '' ? checkFalsePrecision(Number(raw), granularity) : null
 
-  const { phaseIndex, setPhaseIndex, level, guidanceHigh, uncertaintyGuard } =
-    usePhaseGuidance(bestNum, worstNum, allFilled)
+  const { phaseIndex, setPhaseIndex, guidanceHigh, uncertaintyGuard } = usePhaseGuidance(
+    bestNum,
+    worstNum,
+    allFilled,
+  )
 
   function handleSubmit() {
     const result = onSubmit(bestNum, likelyNum, worstNum)
@@ -182,7 +185,7 @@ function EstimateForm({
             expected={likelyNum}
             ci90={computeCI90(likelyNum, bestNum, worstNum)}
             unitSuffix={UNIT_SUFFIX[unit]}
-            guidance={guidanceHigh !== null ? { level } : undefined}
+            guidance={guidanceHigh !== null ? { guidanceHigh } : undefined}
           />
           <UncertaintyGuidanceNotes
             guidanceHigh={guidanceHigh}

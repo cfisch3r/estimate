@@ -1,4 +1,3 @@
-import { UNCERTAINTY_GUIDANCE, type UncertaintyLevel } from '../calc'
 import { formatValue } from './format'
 import { GuardNote } from './GuardNote'
 
@@ -8,10 +7,12 @@ interface RangeBarProps {
   expected: number
   ci90: number
   unitSuffix: string
-  /** When set, the bar also shows the cone-of-uncertainty guidance ceiling for the
-   *  selected phase (PRD §6.1), anchored to Best Case: guidanceHigh = min * (highMult
-   *  / lowMult). Omitted entirely, the bar renders exactly as it always has. */
-  guidance?: { level: UncertaintyLevel }
+  /** When set, the bar also shows the cone-of-uncertainty guidance ceiling (PRD
+   *  §6.1) — the caller computes it (`bestCase * highMult/lowMult`, anchored to
+   *  Best Case) once via `usePhaseGuidance` and passes the number through, so the
+   *  formula lives in exactly one place. Omitted entirely, the bar renders exactly
+   *  as it always has. */
+  guidance?: { guidanceHigh: number }
 }
 
 /** Minimum gap (as a % of track width) kept between the expected and 90%-confidence
@@ -152,17 +153,14 @@ export function RangeBar({
     )
   }
 
-  const { lowMult, highMult } = UNCERTAINTY_GUIDANCE[guidance.level]
-  const guidanceHigh = min * (highMult / lowMult)
-
-  return max < guidanceHigh ? (
+  return max < guidance.guidanceHigh ? (
     <CompressedRangeBar
       min={min}
       max={max}
       expected={expected}
       ci90={ci90}
       unitSuffix={unitSuffix}
-      guidanceHigh={guidanceHigh}
+      guidanceHigh={guidance.guidanceHigh}
     />
   ) : (
     <FullRangeBar
@@ -171,7 +169,7 @@ export function RangeBar({
       expected={expected}
       ci90={ci90}
       unitSuffix={unitSuffix}
-      guidanceHigh={guidanceHigh}
+      guidanceHigh={guidance.guidanceHigh}
     />
   )
 }
@@ -185,32 +183,34 @@ interface GuidedRangeBarProps {
   guidanceHigh: number
 }
 
-/** Worst case narrower than guidance: the track caps its rendered width at a fixed
- *  78%, with the remaining 22% shown as a compressed "ghost" segment out to the
- *  guidance ceiling — see design_handoffs/design_handoff_uncertainty_range/README.md
- *  screen 2, state 9a. */
-function CompressedRangeBar({
+/** Shared rendering for both guided states — they differ only in where the track
+ *  caps out (`compressed` narrows it to COMPRESSED_CAP with a ghost tail; the full
+ *  state uses the true 0-100% scale) and how the ceiling itself is drawn (a boxed
+ *  callout vs. a plain in-track tick). See
+ *  design_handoffs/design_handoff_uncertainty_range/README.md screen 2, states 9a/9b. */
+function GuidedRangeBar({
   min,
   max,
   expected,
   ci90,
   unitSuffix,
   guidanceHigh,
-}: GuidedRangeBarProps) {
+  compressed,
+}: GuidedRangeBarProps & { compressed: boolean }) {
+  const cap = compressed ? COMPRESSED_CAP : 100
   const ci90ExceedsWorst = ci90 >= max
   const span = max - min
   const pct = (value: number) =>
-    span <= 0
-      ? 50
-      : Math.min(COMPRESSED_CAP, Math.max(0, ((value - min) / span) * COMPRESSED_CAP))
+    span <= 0 ? 50 : Math.min(cap, Math.max(0, ((value - min) / span) * cap))
 
   const rawExpectedPct = pct(expected)
-  const rawCi90Pct = Math.max(rawExpectedPct, Math.min(pct(ci90), COMPRESSED_CAP))
-  const [expectedPct, ci90Pct] = pushApart(rawExpectedPct, rawCi90Pct, COMPRESSED_CAP)
+  const rawCi90Pct = Math.max(rawExpectedPct, Math.min(pct(ci90), cap))
+  const [expectedPct, ci90Pct] = pushApart(rawExpectedPct, rawCi90Pct, cap)
 
-  const worstPct = COMPRESSED_CAP
+  const worstPct = cap
   const breakPct = worstPct + 3
   const likelyLabelPct = clampLikelyLabelPct(pct(expected), worstPct)
+  const ceilingPct = pct(guidanceHigh)
 
   return (
     <div className="range-bar">
@@ -224,10 +224,12 @@ function CompressedRangeBar({
             <div className="range-bar-callout-caption">90% confidence</div>
           </div>
         )}
-        <div className="ceiling-callout">
-          <div className="range-bar-callout-value">{`${formatValue(guidanceHigh)}${unitSuffix}`}</div>
-          <div className="range-bar-callout-caption">guidance ceiling</div>
-        </div>
+        {compressed && (
+          <div className="ceiling-callout">
+            <div className="range-bar-callout-value">{`${formatValue(guidanceHigh)}${unitSuffix}`}</div>
+            <div className="range-bar-callout-caption">guidance ceiling</div>
+          </div>
+        )}
         <div className="range-bar-track">
           <div
             className="range-bar-segment range-bar-segment--uncertain"
@@ -241,9 +243,19 @@ function CompressedRangeBar({
             className="range-bar-segment range-bar-segment--confident"
             style={{ width: `${worstPct - ci90Pct}%` }}
           />
-          <div className="ghost-segment" style={{ width: `${100 - worstPct}%` }} />
+          {compressed && (
+            <div className="ghost-segment" style={{ width: `${100 - worstPct}%` }} />
+          )}
         </div>
-        <div className="break-gap" style={{ left: `${breakPct}%` }} />
+        {compressed && <div className="break-gap" style={{ left: `${breakPct}%` }} />}
+        {!compressed && (
+          <>
+            <div className="ceiling-tick" style={{ left: `${ceilingPct}%` }} />
+            <div className="ceiling-tick-label" style={{ left: `${ceilingPct}%` }}>
+              {`${formatValue(guidanceHigh)}${unitSuffix} ceiling`}
+            </div>
+          </>
+        )}
         <div
           data-testid="range-bar-marker-best"
           className="range-bar-marker"
@@ -289,100 +301,16 @@ function CompressedRangeBar({
   )
 }
 
+/** Worst case narrower than guidance: the track caps its rendered width at a fixed
+ *  78%, with the remaining 22% shown as a compressed "ghost" segment out to the
+ *  guidance ceiling — design handoff state 9a. */
+function CompressedRangeBar(props: GuidedRangeBarProps) {
+  return <GuidedRangeBar {...props} compressed />
+}
+
 /** Worst case already meets/exceeds guidance: the track uses its full 0-100% width
- *  at true scale, with the ceiling shown as a plain tick wherever it falls — see
- *  design_handoffs/design_handoff_uncertainty_range/README.md screen 2, state 9b. */
-function FullRangeBar({
-  min,
-  max,
-  expected,
-  ci90,
-  unitSuffix,
-  guidanceHigh,
-}: GuidedRangeBarProps) {
-  const ci90ExceedsWorst = ci90 >= max
-  const span = max - min
-  const pct = (value: number) =>
-    span <= 0 ? 50 : Math.min(100, Math.max(0, ((value - min) / span) * 100))
-
-  const rawExpectedPct = pct(expected)
-  const rawCi90Pct = Math.max(rawExpectedPct, Math.min(pct(ci90), 100))
-  const [expectedPct, ci90Pct] = pushApart(rawExpectedPct, rawCi90Pct, 100)
-
-  const likelyLabelPct = clampLikelyLabelPct(pct(expected), 100)
-  const ceilingPct = pct(guidanceHigh)
-
-  return (
-    <div className="range-bar">
-      <div className="range-bar-track-box">
-        {!ci90ExceedsWorst && (
-          <div
-            className="range-bar-callout range-bar-callout--accent"
-            style={{ left: `${ci90Pct}%` }}
-          >
-            <div className="range-bar-callout-value">{`${formatValue(ci90)}${unitSuffix}`}</div>
-            <div className="range-bar-callout-caption">90% confidence</div>
-          </div>
-        )}
-        <div className="range-bar-track">
-          <div
-            className="range-bar-segment range-bar-segment--uncertain"
-            style={{ width: `${expectedPct}%` }}
-          />
-          <div
-            className="range-bar-segment range-bar-segment--likely"
-            style={{ width: `${ci90Pct - expectedPct}%` }}
-          />
-          <div
-            className="range-bar-segment range-bar-segment--confident"
-            style={{ width: `${100 - ci90Pct}%` }}
-          />
-        </div>
-        <div className="ceiling-tick" style={{ left: `${ceilingPct}%` }} />
-        <div className="ceiling-tick-label" style={{ left: `${ceilingPct}%` }}>
-          {`${formatValue(guidanceHigh)}${unitSuffix} ceiling`}
-        </div>
-        <div
-          data-testid="range-bar-marker-best"
-          className="range-bar-marker"
-          style={{ left: '0%' }}
-        />
-        <div
-          data-testid="range-bar-marker-expected"
-          className="range-bar-marker"
-          style={{ left: `${expectedPct}%` }}
-        />
-        {!ci90ExceedsWorst && (
-          <div
-            data-testid="range-bar-marker-ci90"
-            className="range-bar-marker"
-            style={{ left: `${ci90Pct}%` }}
-          />
-        )}
-        <div
-          data-testid="range-bar-marker-worst"
-          className="range-bar-marker"
-          style={{ left: '100%' }}
-        />
-      </div>
-      <div className="range-bar-ends-guided">
-        <div className="range-bar-end-guided" style={{ left: '0%' }}>
-          <span className="range-bar-end-value">{`${formatValue(min)}${unitSuffix}`}</span>
-          <span className="range-bar-end-caption">best case</span>
-        </div>
-        <div className="range-bar-mid-guided" style={{ left: `${likelyLabelPct}%` }}>
-          <span className="range-bar-end-value">{`${formatValue(expected)}${unitSuffix}`}</span>
-          <span className="range-bar-end-caption">most likely</span>
-        </div>
-        <div
-          className="range-bar-end-guided range-bar-end-guided--right"
-          style={{ right: '0%' }}
-        >
-          <span className="range-bar-end-value">{`${formatValue(max)}${unitSuffix}`}</span>
-          <span className="range-bar-end-caption">worst case</span>
-        </div>
-      </div>
-      {ci90ExceedsWorst && <Ci90ExceedsWorstWarning />}
-    </div>
-  )
+ *  at true scale, with the ceiling shown as a plain tick wherever it falls —
+ *  design handoff state 9b. */
+function FullRangeBar(props: GuidedRangeBarProps) {
+  return <GuidedRangeBar {...props} compressed={false} />
 }

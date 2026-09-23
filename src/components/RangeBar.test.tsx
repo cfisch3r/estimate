@@ -68,7 +68,7 @@ describe('RangeBar with guidance', () => {
         expected={6}
         ci90={6.5}
         unitSuffix="d"
-        guidance={{ level: 'requirements-complete' }}
+        guidance={{ guidanceHigh: 5.4 * (1.5 / 0.67) }}
       />,
     )
 
@@ -86,7 +86,7 @@ describe('RangeBar with guidance', () => {
         expected={6}
         ci90={6.64}
         unitSuffix="d"
-        guidance={{ level: 'requirements-complete' }}
+        guidance={{ guidanceHigh: 5 * (1.5 / 0.67) }}
       />,
     )
 
@@ -107,7 +107,7 @@ describe('RangeBar with guidance', () => {
         expected={7}
         ci90={10.2}
         unitSuffix="d"
-        guidance={{ level: 'requirements-complete' }}
+        guidance={{ guidanceHigh: 5 * (1.5 / 0.67) }}
       />,
     )
 
@@ -126,7 +126,7 @@ describe('RangeBar with guidance', () => {
         expected={9.5}
         ci90={10.35}
         unitSuffix="d"
-        guidance={{ level: 'detailed-design-complete' }}
+        guidance={{ guidanceHigh: 8 * (1.1 / 0.9) }}
       />,
     )
 
@@ -140,6 +140,7 @@ describe('RangeBar with guidance', () => {
 
   it('positions the ceiling tick at the guidance ceiling value within the full-width track', () => {
     // min=5, highMult/lowMult = 1.5/0.67 -> guidanceHigh ≈ 11.194; span 5..13 -> pct ≈ 77.4%
+    const guidanceHigh = 5 * (1.5 / 0.67)
     render(
       <RangeBar
         min={5}
@@ -147,11 +148,10 @@ describe('RangeBar with guidance', () => {
         expected={7}
         ci90={10.2}
         unitSuffix="d"
-        guidance={{ level: 'requirements-complete' }}
+        guidance={{ guidanceHigh }}
       />,
     )
 
-    const guidanceHigh = 5 * (1.5 / 0.67)
     const expectedPct = ((guidanceHigh - 5) / (13 - 5)) * 100
     const tick = screen.getByText(/ceiling/).closest('div')
     expect(tick).toHaveStyle({ left: `${expectedPct}%` })
@@ -166,7 +166,7 @@ describe('RangeBar with guidance', () => {
         expected={50}
         ci90={51}
         unitSuffix="d"
-        guidance={{ level: 'requirements-complete' }}
+        guidance={{ guidanceHigh: 0 }}
       />,
     )
 
@@ -192,7 +192,7 @@ describe('RangeBar with guidance', () => {
         expected={2}
         ci90={4}
         unitSuffix="d"
-        guidance={{ level: 'requirements-complete' }}
+        guidance={{ guidanceHigh: 0 }}
       />,
     )
 
@@ -215,7 +215,7 @@ describe('RangeBar with guidance', () => {
         expected={59}
         ci90={59.9}
         unitSuffix="d"
-        guidance={{ level: 'detailed-design-complete' }}
+        guidance={{ guidanceHigh: 50 * (1.1 / 0.9) }}
       />,
     )
 
@@ -235,7 +235,7 @@ describe('RangeBar with guidance', () => {
         expected={2}
         ci90={90}
         unitSuffix="d"
-        guidance={{ level: 'requirements-complete' }}
+        guidance={{ guidanceHigh: 0 }}
       />,
     )
 
