@@ -7,7 +7,6 @@
 
 .phase-picker {
   position: relative;
-  max-width: 640px;
   background: var(--color-surface);
   border: 1px solid var(--color-divider);
   border-radius: var(--radius-lg);

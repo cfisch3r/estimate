@@ -267,7 +267,7 @@ function CompressedRangeBar({
         </div>
         <div
           className="range-bar-end-guided range-bar-end-guided--right"
-          style={{ left: `${worstPct}%` }}
+          style={{ right: `${100 - worstPct}%` }}
         >
           <span className="range-bar-end-value">{`${formatValue(max)}${unitSuffix}`}</span>
           <span className="range-bar-end-caption">worst case</span>
@@ -365,7 +365,7 @@ function FullRangeBar({
         </div>
         <div
           className="range-bar-end-guided range-bar-end-guided--right"
-          style={{ left: '100%' }}
+          style={{ right: '0%' }}
         >
           <span className="range-bar-end-value">{`${formatValue(max)}${unitSuffix}`}</span>
           <span className="range-bar-end-caption">worst case</span>

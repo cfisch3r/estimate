@@ -7,7 +7,11 @@
 
 .range-bar {
   position: relative;
-  padding: 56px 4px 24px;
+  /* Horizontal padding needs to clear the diamond markers' own half-width (9px)
+     so they don't overhang past the same edge Field/Input content sits at —
+     otherwise the bar reads as sitting closer to the card border than every
+     other control. */
+  padding: 56px var(--space-6) 24px;
 }
 
 .range-bar-track-box {
@@ -136,8 +140,10 @@
 }
 
 .range-bar-end-guided--right {
+  /* Positioned via `right` (not `left` + translateX(-100%)) — at left:100% the
+     shrink-to-fit width available to an absolutely positioned box collapses to
+     zero, which was wrapping "worst case" onto two lines. */
   align-items: flex-end;
-  transform: translateX(-100%);
 }
 
 .range-bar-mid-guided {
