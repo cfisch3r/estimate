@@ -256,7 +256,7 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
           viewBox="0 0 560 90"
           preserveAspectRatio="none"
           className="phase-picker-axis"
-          style={{ top: SVG_TOP_LARGE }}
+          style={{ top: SVG_TOP_LARGE, height: 90 }}
         >
           <line x1={0} y1={90} x2={560} y2={90} className="phase-picker-axis-baseline" />
           <line x1={0} y1={80} x2={0} y2={100} className="phase-picker-axis-tick" />
@@ -270,7 +270,7 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
           viewBox="0 0 560 90"
           preserveAspectRatio="none"
           className="phase-picker-cone"
-          style={{ top: UPPER_CURVE_TOP }}
+          style={{ top: UPPER_CURVE_TOP, height: 90 }}
         >
           <path
             d={CONE_PATH_LARGE}
@@ -284,7 +284,7 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
           viewBox="0 0 560 90"
           preserveAspectRatio="none"
           className="phase-picker-cone phase-picker-cone--mirror"
-          style={{ top: MIRROR_TOP }}
+          style={{ top: MIRROR_TOP, height: 90 }}
         >
           <path
             d={CONE_PATH_LARGE}
