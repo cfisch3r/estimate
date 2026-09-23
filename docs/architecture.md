@@ -66,11 +66,13 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 ```
 /src
   /design       — nocturne.css (verbatim Nocturne port) + composed-pattern CSS built from
-                  its primitives: radio-tile.css, range-bar.css, session-sidebar.css.
-                  radio-tile.css is unused since the #34 mode-select rebuild removed the
-                  RadioTile mode picker — kept for a possible reuse in the estimate form.
-  /components   — Button, Card, Field, GuardNote, Header, RadioTile, RangeBar, Tag — thin
-                  wrappers / compositions over Nocturne classes. RadioTile is currently
+                  its primitives: radio-tile.css, range-bar.css, session-sidebar.css,
+                  phase-picker.css. radio-tile.css is unused since the #34 mode-select
+                  rebuild removed the RadioTile mode picker — kept for a possible reuse
+                  in the estimate form.
+  /components   — Button, Card, Field, GuardNote, ConfirmNote, Header, PhasePicker,
+                  RadioTile, RangeBar, Tag, UncertaintyGuidanceNotes — thin wrappers /
+                  compositions over Nocturne classes. RadioTile is currently
                   unreferenced (see /design note) but retained as a design-system primitive.
   /screens      — roughly one per PRD §7 screen (ModeSelect, Workspace, Join, Participant
                   Estimate View, Summary, History), plus shared screen-level pieces

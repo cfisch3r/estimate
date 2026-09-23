@@ -121,3 +121,8 @@ Same token set as Screen 1, plus `var(--color-neutral-700/800)` for the ghost ha
 ## Not yet in scope / open questions for engineering
 - The formula for `ci90` should be verified against the app's real calculation, not assumed from this mockup.
 - No decision has been made yet on whether "most likely exceeds guidance" gets any positive-confirmation copy elsewhere in the flow, or whether the calm note in 9b should be dismissible/persistent.
+
+## Known implementation deviations
+- **Phase Picker width**: the mockup's card has a fixed `max-width: 640px`. The shipped component stretches to fill its parent card's full width (matching its sibling inputs, ~940px in the app's layout) instead of staying capped — the cone-curve SVGs and axis scale up accordingly.
+- **Ratio callout at the first/last phase**: not covered by the mockup. The callout is horizontally centered on the selected tick, which would overflow past the card border at Initial Concept (0%) or Detailed Design Complete (100%). The shipped version clamps the callout's position to stay within the card at either edge, while the diamond/guideline/connector stay on the exact tick position.
+- **ci90 reaching or exceeding worst case**: not covered by the mockup (the reference `ci90` approximation can't produce this). The app's real PERT-based `ci90` can mathematically land at or past worst case when most likely sits close to worst for a narrow spread. Rather than clamping the displayed value, the shipped `RangeBar` hides the 90%-confidence marker/callout in that case and shows a warning explaining that most likely is too close to worst case for the entered spread.

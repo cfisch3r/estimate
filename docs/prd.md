@@ -91,7 +91,7 @@ These are nudges, not hard blocks — never prevent submission.
 
 ### 6.1 Cone-of-uncertainty guidance
 
-Per item, each participant optionally selects an **uncertainty level** from 5 phases (based on the classic Cone of Uncertainty), each with its Agile-equivalent subtext, via a Phase Picker control:
+Per item, each participant selects an **uncertainty level** from 5 phases (based on the classic Cone of Uncertainty), each with its Agile-equivalent subtext, via a Phase Picker control. A level is always preselected (defaulting to "Requirements Complete," the middle phase) so guidance is visible as soon as best/worst are entered — the participant can move the picker to a different phase at any time:
 
 | Level | Agile equivalent | Low mult. | High mult. |
 |---|---|---|---|
@@ -107,7 +107,7 @@ The guidance ratio is always derived as `High mult. / Low mult.` from the two mu
 
 When best/worst are both entered, compute the actual ratio = Worst / Best and compare it to the selected level's guidance ratio (`High mult. / Low mult.`, computed from the table above). If the actual ratio is smaller than the guidance ratio, the guard fires — the declared range is suspiciously narrow for how early/uncertain the item is. If the actual ratio already meets or exceeds the guidance ratio, show a calm confirmation instead (e.g. "Your worst case already covers this phase's guidance ceiling") — never a nudge in that case.
 
-- Level is optional and set **per item, per participant** — each participant sets their own level for an item, affecting only their own range-bar view, not a shared value seen by everyone. A backlog mixes items of different maturity, and different participants may reasonably assess the same item's maturity differently.
+- Level defaults to "Requirements Complete" and is adjustable **per item, per participant** — each participant sets their own level for an item, affecting only their own range-bar view, not a shared value seen by everyone. A backlog mixes items of different maturity, and different participants may reasonably assess the same item's maturity differently.
 - Not networked/synced state — local to each participant's own client, like their in-progress best/likely/worst draft values, not part of the broadcast Estimate/submission payload.
 - Soft nudge only — never blocks Finalize, consistent with every other §6 guard.
 

@@ -14,7 +14,6 @@ export {
   UNCERTAINTY_LEVELS,
   UNCERTAINTY_GUIDANCE,
   DEFAULT_UNCERTAINTY_INDEX,
-  isUncertaintyLevel,
 } from './types'
 export type { Estimate, RawEstimateInput, Result } from './estimate'
 export { createEstimate } from './estimate'

@@ -59,11 +59,6 @@ export const UNCERTAINTY_LEVELS = [
 
 export type UncertaintyLevel = (typeof UNCERTAINTY_LEVELS)[number]
 
-/** Runtime guard, mirroring isEstimationUnit. */
-export function isUncertaintyLevel(value: unknown): value is UncertaintyLevel {
-  return (UNCERTAINTY_LEVELS as readonly unknown[]).includes(value)
-}
-
 /** Cone-of-uncertainty guidance table (PRD §6.1). `lowMult`/`highMult` are both
  *  anchored to Best Case, not Most Likely: `guidanceHigh = bestCase * (highMult /
  *  lowMult)`. The ratio itself is deliberately not a stored field here — always
