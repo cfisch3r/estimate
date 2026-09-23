@@ -1,4 +1,5 @@
 import { UNCERTAINTY_GUIDANCE, type UncertaintyLevel } from '../calc'
+import { formatValue } from './format'
 import { GuardNote } from './GuardNote'
 
 interface RangeBarProps {
@@ -11,10 +12,6 @@ interface RangeBarProps {
    *  selected phase (PRD §6.1), anchored to Best Case: guidanceHigh = min * (highMult
    *  / lowMult). Omitted entirely, the bar renders exactly as it always has. */
   guidance?: { level: UncertaintyLevel }
-}
-
-function formatValue(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(1)
 }
 
 /** Minimum gap (as a % of track width) kept between the expected and 90%-confidence
