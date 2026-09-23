@@ -166,6 +166,50 @@ describe('ParticipantEstimateView', () => {
     expect(submit).toBeDisabled()
   })
 
+  it('resets the Phase Picker selection when the round advances to a different item (regression for the missing key that let it leak between items)', async () => {
+    const user = userEvent.setup()
+    const itemB = { id: 'item-2', title: 'Second item', description: '' }
+    useSessionStore.setState({
+      liveRound: {
+        item,
+        submissions: [],
+        revealed: false,
+        round: 0,
+        roster: [{ participantId: 'me-123', submitted: false, connected: true }],
+        mySubmission: null,
+      },
+    })
+    const { rerender } = render(<ParticipantEstimateView />)
+
+    expect(screen.getByText('Requirements Complete')).toHaveClass(
+      'phase-picker-label--active',
+    )
+    await user.click(screen.getByLabelText('Next phase'))
+    expect(screen.getByText('UI Complete')).toHaveClass('phase-picker-label--active')
+
+    act(() => {
+      useSessionStore.setState({
+        liveRound: {
+          item: itemB,
+          submissions: [],
+          revealed: false,
+          round: 0,
+          roster: [{ participantId: 'me-123', submitted: false, connected: true }],
+          mySubmission: null,
+        },
+      })
+    })
+    rerender(<ParticipantEstimateView />)
+
+    expect(screen.getByText('Second item')).toBeInTheDocument()
+    expect(screen.getByText('Requirements Complete')).toHaveClass(
+      'phase-picker-label--active',
+    )
+    expect(screen.queryByText('UI Complete')).not.toHaveClass(
+      'phase-picker-label--active',
+    )
+  })
+
   it('submits a valid estimate, broadcasts it, and moves to the waiting state', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({
