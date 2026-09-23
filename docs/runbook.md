@@ -184,9 +184,17 @@ and `.release-please-manifest.json`:
 3. Merging that PR (through the normal required-checks gate) is what cuts the release:
    release-please tags the merge commit `vX.Y.Z` and creates a matching GitHub
    Release.
-4. While still pre-1.0, `feat` commits bump the `0.x.0` digit and `fix` commits bump
-   `0.x.y` (configured via `bump-minor-pre-major` / `bump-patch-for-minor-pre-major`
-   so pre-1.0 versions don't jump straight to a major bump on a breaking change).
+4. While still pre-1.0 (major stays `0`), `release-please-config.json` sets both
+   `bump-minor-pre-major` and `bump-patch-for-minor-pre-major`, which together collapse
+   the usual three-tier bump to two:
+   - `fix` commits bump patch (`0.x.y`) — plain semver, unaffected by either flag.
+   - `feat` commits *also* bump patch (`0.x.y`) pre-1.0: `bump-patch-for-minor-pre-major`
+     redirects what would normally be a minor bump down to patch.
+   - A breaking change (`feat!`/`BREAKING CHANGE:` footer) bumps minor (`0.x.0`)
+     instead of major: `bump-minor-pre-major` redirects what would normally be a major
+     bump down to minor.
+   - Once the project cuts `1.0.0`, both flags stop applying and plain semver resumes
+     (`feat` → minor, breaking change → major).
 
 ### Bootstrap
 
