@@ -138,11 +138,12 @@ interface GuardResult { fired: boolean; deviationPct?: number }
 function checkSymmetricRange(best: number, likely: number, worst: number, tolerance = 0.15): GuardResult
 function checkFalsePrecision(value: number, granularity: number): GuardResult
 function checkOutlier(estimate: Estimate, allEstimates: Estimate[], thresholdPct = 0.4): GuardResult
+function checkUncertaintyRange(best: number, worst: number, level: UncertaintyLevel): GuardResult
 ```
 
 `src/calc/guards.ts` also exports `checkAscendingOrder` — a form-input ordering nudge (best ≤ likely ≤ worst) for the in-progress estimate form, not one of PRD §6's bias guards.
 
-A further guard, the PRD §6.1 uncertainty-range check, is planned (see PRD §12 Phase 5) but not yet implemented.
+The PRD §6.1 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`src/components/PhasePicker.tsx`), local to their own view (`src/hooks/usePhaseGuidance.ts`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
 
 **Tunable constants, not settled numbers:** the symmetric-range tolerance (proposed 15%) and outlier threshold (proposed: no range overlap, or `likely` deviates >40% of group spread) are UX-tuning parameters PRD leaves vague ("within a tolerance," "far from the group median") — ship as named constants, expect to retune after real sessions rather than treating these as final.
 
@@ -184,7 +185,9 @@ dispatches inbound `onEstimate` / `onSyncState` / `onAnnounce`, answers a peer's
 (now carrying a values-free `roster`) on every real change. The epic-0010 screen review
 (#34) rebuilt the entry flow to a mode-selection screen plus the unified Workspace. (#39,
 the session unit on the wire, is done — `unit` on `SessionSnapshot`, broadcast on change,
-adopted by `applySyncState`.)
+adopted by `applySyncState`.) The PRD §6.1 cone-of-uncertainty guard (issue #17) is also
+done — `checkUncertaintyRange`, the Phase Picker, and the guidance-aware `RangeBar` states,
+wired into both the Workspace's own-estimate panel and the Participant Estimate View.
 
 Remaining MVP work, tracked on the EstiMate Roadmap board:
 
@@ -193,4 +196,3 @@ Remaining MVP work, tracked on the EstiMate Roadmap board:
 - **#9** — connection-fallback UX for peers that can't establish a direct connection.
 - **Persistence** — `src/persistence/` (session save/load via JSON file, CSV export,
   shareable report link) is still a placeholder; save/load is tracked as #10.
-- **PRD §12 Phase 5** — the PRD §6.1 cone-of-uncertainty guard.

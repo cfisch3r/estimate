@@ -155,7 +155,8 @@ When best/worst are both entered, compute the actual ratio = Worst / Best and co
 - **Phase 2**: Story Point + velocity tracking (Method 1) — teams with stable history skip live three-point sessions and use velocity-derived ranges instead
 - **Phase 3**: T-shirt sizing for epics with bridge-to-three-point workflow (Method 3)
 - **Phase 4**: Backlog tool import (Jira, Linear, etc.)
-- **Phase 5**: Cone-of-uncertainty guidance — suggest expected range width based on declared project phase (see §6.1)
+
+Cone-of-uncertainty guidance (§6.1) shipped as part of the MVP guard set, not a future phase — moved out of this list accordingly.
 
 ## 13. Related decisions
 
