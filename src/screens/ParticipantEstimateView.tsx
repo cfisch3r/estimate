@@ -259,6 +259,7 @@ function EstimatingPanel({
         <CardBody className="card-body--authored">{round.item.description}</CardBody>
       )}
       <EstimateForm
+        key={round.item.id}
         unit={unit}
         initial={null}
         submitLabel="Submit estimate"
@@ -295,6 +296,7 @@ function WaitingPanel({
 
       {editing ? (
         <EstimateForm
+          key={round.item.id}
           unit={unit}
           initial={mine}
           submitLabel="Update estimate"

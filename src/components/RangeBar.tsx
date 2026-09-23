@@ -205,7 +205,9 @@ function GuidedRangeBar({
 
   const rawExpectedPct = pct(expected)
   const rawCi90Pct = Math.max(rawExpectedPct, Math.min(pct(ci90), cap))
-  const [expectedPct, ci90Pct] = pushApart(rawExpectedPct, rawCi90Pct, cap)
+  const [expectedPct, ci90Pct] = ci90ExceedsWorst
+    ? [rawExpectedPct, rawCi90Pct]
+    : pushApart(rawExpectedPct, rawCi90Pct, cap)
 
   const worstPct = cap
   const breakPct = worstPct + 3

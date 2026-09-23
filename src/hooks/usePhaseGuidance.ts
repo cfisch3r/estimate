@@ -12,9 +12,9 @@ interface PhaseGuidance {
   phaseIndex: number
   setPhaseIndex: (index: number) => void
   level: UncertaintyLevel
-  /** null when best/worst aren't both filled, or best isn't positive — the
-   *  guidance ratio (highMult/lowMult) has nothing meaningful to anchor to
-   *  at that point (PRD §6.1: anchored to Best Case). */
+  /** null when best/worst aren't both filled, best isn't positive, or worst is
+   *  below best — the guidance ratio (highMult/lowMult) has nothing meaningful
+   *  to anchor to at that point (PRD §6.1: anchored to Best Case). */
   guidanceHigh: number | null
   uncertaintyGuard: GuardResult | null
 }
@@ -29,8 +29,8 @@ export function usePhaseGuidance(
   allFilled: boolean,
 ): PhaseGuidance {
   const [phaseIndex, setPhaseIndex] = useState(DEFAULT_UNCERTAINTY_INDEX)
-  const level = UNCERTAINTY_LEVELS[phaseIndex]
-  const hasValidGuidance = allFilled && best > 0
+  const level = UNCERTAINTY_LEVELS[phaseIndex]!
+  const hasValidGuidance = allFilled && best > 0 && worst >= best
 
   if (!hasValidGuidance) {
     return {

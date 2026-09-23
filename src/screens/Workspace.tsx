@@ -296,7 +296,7 @@ function ActiveItemPanel({
 
       <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
 
-      {allFilled && !Number.isNaN(bestNum + likelyNum + worstNum) && (
+      {validation?.ok && (
         <>
           <RangeBar
             min={bestNum}

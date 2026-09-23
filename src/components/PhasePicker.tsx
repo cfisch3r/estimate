@@ -100,13 +100,13 @@ function buildFillPath(baseH: number): string {
   const pts = samplePoints(baseH)
   const topY = (y: number) => y
   const botY = (y: number) => MIRROR_TOP - UPPER_CURVE_TOP + (90 - y)
-  let d = `M0,${fmt(topY(pts[0].y))}`
+  let d = `M0,${fmt(topY(pts[0]!.y))}`
   pts.forEach((pt) => {
     d += ` L${fmt(pt.x)},${fmt(topY(pt.y))}`
   })
-  d += ` L560,${fmt(botY(pts[pts.length - 1].y))}`
+  d += ` L560,${fmt(botY(pts[pts.length - 1]!.y))}`
   for (let i = pts.length - 1; i >= 0; i--) {
-    d += ` L${fmt(pts[i].x)},${fmt(botY(pts[i].y))}`
+    d += ` L${fmt(pts[i]!.x)},${fmt(botY(pts[i]!.y))}`
   }
   d += ' Z'
   return d
@@ -188,7 +188,7 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
     move(e.nativeEvent)
   }
 
-  const phase = PHASES[index]
+  const phase = PHASES[index]!
   const ratio = phase.highMult / phase.lowMult
   const tickPercent = dragPct ?? index * 25
   const transitionMs = dragPct != null ? 0 : snapping ? SNAP_TRANSITION_MS : 0
@@ -320,8 +320,9 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
               .filter(Boolean)
               .join(' ')}
             style={{ left: `${i * 25}%`, top: DIAMOND_TOP_LARGE }}
+            onPointerDown={(e) => e.stopPropagation()}
             onClick={() => snapTo(i)}
-            aria-label={PHASES[i].label}
+            aria-label={PHASES[i]!.label}
           />
         ))}
 
