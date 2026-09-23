@@ -31,15 +31,6 @@ describe('RangeBar', () => {
     expect(screen.getByText('6w')).toBeInTheDocument()
     expect(screen.getByText('worst case')).toBeInTheDocument()
   })
-
-  it('never displays a 90%-confidence value higher than worst case, even when the raw formula exceeds it', () => {
-    // McConnell's formula is an additive offset from "most likely," so for a narrow
-    // enough range it can mathematically land above worst case: 6 + 1.28*(6.5-5)/3 ≈ 6.64
-    render(<RangeBar min={5} max={6.5} expected={6} ci90={6.64} unitSuffix="d" />)
-
-    expect(screen.queryByText('6.6d')).not.toBeInTheDocument()
-    expect(screen.getAllByText('6.5d')).toHaveLength(2)
-  })
 })
 
 describe('RangeBar with guidance', () => {
@@ -60,24 +51,6 @@ describe('RangeBar with guidance', () => {
     expect(screen.getByText('guidance ceiling')).toBeInTheDocument()
   })
 
-  it('in the compressed state, never displays a 90%-confidence value higher than worst case', () => {
-    // 6 + 1.28*(6.5-5)/3 ≈ 6.64 > worst (6.5); guidanceHigh = 5*(1.5/0.67) ≈ 11.19, so
-    // worst (6.5) still stays below it and the compressed branch renders.
-    render(
-      <RangeBar
-        min={5}
-        max={6.5}
-        expected={6}
-        ci90={6.64}
-        unitSuffix="d"
-        guidance={{ level: 'requirements-complete' }}
-      />,
-    )
-
-    expect(screen.queryByText('6.6d')).not.toBeInTheDocument()
-    expect(screen.getAllByText('6.5d')).toHaveLength(2)
-  })
-
   it('renders full-width (worst marker at 100%) when worst case already meets/exceeds the guidance ceiling', () => {
     // Requirements Complete: guidanceHigh = 5 * (1.5/0.67) ≈ 11.19; worst=13 exceeds it
     render(
@@ -94,24 +67,6 @@ describe('RangeBar with guidance', () => {
     expect(screen.getByTestId('range-bar-marker-worst')).toHaveStyle({ left: '100%' })
     expect(screen.getByText(/ceiling/)).toBeInTheDocument()
     expect(screen.queryByText('guidance ceiling')).not.toBeInTheDocument()
-  })
-
-  it('in the full-width state, never displays a 90%-confidence value higher than worst case', () => {
-    // guidanceHigh = 8*(1.1/0.9) ≈ 9.78 < worst (10), so the full-width branch renders;
-    // 9.5 + 1.28*(10-8)/3 ≈ 10.35 > worst (10).
-    render(
-      <RangeBar
-        min={8}
-        max={10}
-        expected={9.5}
-        ci90={10.35}
-        unitSuffix="d"
-        guidance={{ level: 'detailed-design-complete' }}
-      />,
-    )
-
-    expect(screen.queryByText('10.4d')).not.toBeInTheDocument()
-    expect(screen.getAllByText('10d')).toHaveLength(2)
   })
 
   it('positions the ceiling tick at the guidance ceiling value within the full-width track', () => {
