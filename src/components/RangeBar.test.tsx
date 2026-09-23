@@ -17,7 +17,7 @@ describe('RangeBar', () => {
   })
 
   it('never places the 90%-confidence marker left of the expected marker, even when expected itself is past 80%', () => {
-    render(<RangeBar min={0} max={10} expected={9} ci90={13.27} unitSuffix="w" />)
+    render(<RangeBar min={0} max={10} expected={9} ci90={9.5} unitSuffix="w" />)
 
     expect(screen.getByTestId('range-bar-marker-expected')).toHaveStyle({ left: '90%' })
     expect(screen.getByTestId('range-bar-marker-ci90')).toHaveStyle({ left: '90%' })
@@ -30,6 +30,31 @@ describe('RangeBar', () => {
     expect(screen.getByText('best case')).toBeInTheDocument()
     expect(screen.getByText('6w')).toBeInTheDocument()
     expect(screen.getByText('worst case')).toBeInTheDocument()
+  })
+
+  it('hides the 90%-confidence marker and callout, and shows a warning, when it reaches or exceeds worst case', () => {
+    // McConnell's formula is an additive offset from "most likely," so for a narrow
+    // enough range it can mathematically reach worst case: 6 + 1.28*(6.5-5)/3 ≈ 6.64
+    render(<RangeBar min={5} max={6.5} expected={6} ci90={6.64} unitSuffix="d" />)
+
+    expect(screen.queryByTestId('range-bar-marker-ci90')).not.toBeInTheDocument()
+    expect(screen.queryByText('90% confidence')).not.toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '90% confidence reaches or exceeds worst case — this range may be too narrow.',
+      ),
+    ).toBeInTheDocument()
+  })
+
+  it('still shows the 90%-confidence marker when it is below worst case', () => {
+    render(<RangeBar min={5} max={10} expected={6} ci90={8} unitSuffix="d" />)
+
+    expect(screen.getByTestId('range-bar-marker-ci90')).toBeInTheDocument()
+    expect(
+      screen.queryByText(
+        '90% confidence reaches or exceeds worst case — this range may be too narrow.',
+      ),
+    ).not.toBeInTheDocument()
   })
 })
 
@@ -51,6 +76,28 @@ describe('RangeBar with guidance', () => {
     expect(screen.getByText('guidance ceiling')).toBeInTheDocument()
   })
 
+  it('in the compressed state, hides the 90%-confidence marker and warns when it reaches or exceeds worst case', () => {
+    // 6 + 1.28*(6.5-5)/3 ≈ 6.64 > worst (6.5); guidanceHigh = 5*(1.5/0.67) ≈ 11.19, so
+    // worst (6.5) still stays below it and the compressed branch renders.
+    render(
+      <RangeBar
+        min={5}
+        max={6.5}
+        expected={6}
+        ci90={6.64}
+        unitSuffix="d"
+        guidance={{ level: 'requirements-complete' }}
+      />,
+    )
+
+    expect(screen.queryByTestId('range-bar-marker-ci90')).not.toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '90% confidence reaches or exceeds worst case — this range may be too narrow.',
+      ),
+    ).toBeInTheDocument()
+  })
+
   it('renders full-width (worst marker at 100%) when worst case already meets/exceeds the guidance ceiling', () => {
     // Requirements Complete: guidanceHigh = 5 * (1.5/0.67) ≈ 11.19; worst=13 exceeds it
     render(
@@ -67,6 +114,28 @@ describe('RangeBar with guidance', () => {
     expect(screen.getByTestId('range-bar-marker-worst')).toHaveStyle({ left: '100%' })
     expect(screen.getByText(/ceiling/)).toBeInTheDocument()
     expect(screen.queryByText('guidance ceiling')).not.toBeInTheDocument()
+  })
+
+  it('in the full-width state, hides the 90%-confidence marker and warns when it reaches or exceeds worst case', () => {
+    // guidanceHigh = 8*(1.1/0.9) ≈ 9.78 < worst (10), so the full-width branch renders;
+    // 9.5 + 1.28*(10-8)/3 ≈ 10.35 > worst (10).
+    render(
+      <RangeBar
+        min={8}
+        max={10}
+        expected={9.5}
+        ci90={10.35}
+        unitSuffix="d"
+        guidance={{ level: 'detailed-design-complete' }}
+      />,
+    )
+
+    expect(screen.queryByTestId('range-bar-marker-ci90')).not.toBeInTheDocument()
+    expect(
+      screen.getByText(
+        '90% confidence reaches or exceeds worst case — this range may be too narrow.',
+      ),
+    ).toBeInTheDocument()
   })
 
   it('positions the ceiling tick at the guidance ceiling value within the full-width track', () => {
