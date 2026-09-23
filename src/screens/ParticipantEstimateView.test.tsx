@@ -166,7 +166,7 @@ describe('ParticipantEstimateView', () => {
     expect(submit).toBeDisabled()
   })
 
-  it('resets the Phase Picker selection when the round advances to a different item (regression for the missing key that let it leak between items)', async () => {
+  it('resets the Phase Picker selection when the round advances to a different item (guards the existing key={round.item.id} against a future regression)', async () => {
     const user = userEvent.setup()
     const itemB = { id: 'item-2', title: 'Second item', description: '' }
     useSessionStore.setState({

@@ -152,7 +152,7 @@ describe('Workspace', () => {
     expect(screen.getByText('Waiting for participants…')).toBeInTheDocument()
   })
 
-  it('resets the Phase Picker selection when switching to a different item (regression for the missing key that let it leak between items)', async () => {
+  it('resets the Phase Picker selection when switching to a different item (guards the existing key={activeItem.id} against a future regression)', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({
       items: [item({ id: '1', title: 'First' }), item({ id: '2', title: 'Second' })],
