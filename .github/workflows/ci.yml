@@ -75,7 +75,11 @@ jobs:
           node-version: 22.x
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test
+      # Runs with coverage (rather than a separate `pnpm test` + `pnpm test:coverage`
+      # job pair) so the suite executes once per CI run, not twice; the /calc
+      # threshold in vite.config.ts still fails this job the same way it would a
+      # dedicated one.
+      - run: pnpm test:coverage
 
   build:
     name: build
@@ -93,6 +97,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
+  deadcode:
+    name: deadcode
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.3.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm deadcode
+
   codeql:
     name: codeql
     runs-on: ubuntu-latest
@@ -108,7 +128,7 @@ jobs:
 
   ci-passed:
     name: ci-passed
-    needs: [lint, format, typecheck, test, build]
+    needs: [lint, format, typecheck, test, build, deadcode]
     runs-on: ubuntu-latest
     steps:
       - run: exit 0

@@ -152,6 +152,32 @@ describe('Workspace', () => {
     expect(screen.getByText('Waiting for participants…')).toBeInTheDocument()
   })
 
+  it('resets the Phase Picker selection when switching to a different item (guards the existing key={activeItem.id} against a future regression)', async () => {
+    const user = userEvent.setup()
+    useSessionStore.setState({
+      items: [item({ id: '1', title: 'First' }), item({ id: '2', title: 'Second' })],
+      activeItemId: '1',
+    })
+    const { rerender } = render(<Workspace />)
+
+    expect(screen.getByText('Requirements Complete')).toHaveClass(
+      'phase-picker-label--active',
+    )
+    await user.click(screen.getByLabelText('Next phase'))
+    expect(screen.getByText('UI Complete')).toHaveClass('phase-picker-label--active')
+
+    useSessionStore.setState({ activeItemId: '2' })
+    rerender(<Workspace />)
+
+    expect(screen.getByRole('heading', { name: 'Second' })).toBeInTheDocument()
+    expect(screen.getByText('Requirements Complete')).toHaveClass(
+      'phase-picker-label--active',
+    )
+    expect(screen.queryByText('UI Complete')).not.toHaveClass(
+      'phase-picker-label--active',
+    )
+  })
+
   it('tells "everyone left" apart from "nobody has joined yet" in the session strip', () => {
     useSessionStore.setState({
       mode: 'live',

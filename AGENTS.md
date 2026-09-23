@@ -58,13 +58,14 @@ pnpm format:check     # prettier --check
 pnpm test             # vitest run, summary output
 pnpm test:watch       # vitest in watch mode
 pnpm test:verbose     # vitest run, every individual test name and result
-pnpm test:coverage    # vitest run --coverage
+pnpm test:coverage    # vitest run --coverage; also enforces the /calc 100% threshold below
+pnpm deadcode         # knip — unused exports/files/dependencies
 ```
 
-Run `pnpm build`, `pnpm lint`, `pnpm format:check`, and `pnpm test` before considering any
-change complete. These also run as required checks in CI (`.github/workflows/ci.yml`) on
-every PR and push to `main` — running them locally first is a courtesy that catches failures
-before you push, not the only gate.
+Run `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm test:coverage`, and
+`pnpm deadcode` before considering any change complete. These also run as required checks in
+CI (`.github/workflows/ci.yml`) on every PR and push to `main` — running them locally first is
+a courtesy that catches failures before you push, not the only gate.
 
 Project-owned Claude Code tooling lives in `.claude/` (versioned):
 
@@ -77,9 +78,10 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
 
 - **TypeScript strict mode** (`strict: true`, `noUncheckedIndexedAccess: true`) — don't loosen these.
 - **Domain types with invariants are self-validating value types, not bare interfaces.** If a type has a constraint between its fields (e.g. an ordering, a required relationship), it should only be constructible through a factory that enforces the constraint, so illegal states can't be represented — see `src/calc/estimate.ts`'s `createEstimate()` for the pattern (a `Result`-returning factory plus a compile-time-only phantom brand, so the type stays plain, JSON-transparent data). Don't reintroduce a bare structurally-typed interface for a concept that has a real invariant.
-- **`/calc` is pure and framework-free** — no React, no I/O, no network/storage imports. Functions there should be thoroughly unit-tested (the module currently sits at 100% statement/branch coverage on its real surface — test helpers' defensive-throw branches are the one deliberate exception).
+- **`/calc` is pure and framework-free** — no React, no I/O, no network/storage imports. Functions there should be thoroughly unit-tested (100% coverage — statements, branches, functions, and lines — is enforced in CI via `pnpm test:coverage`'s `vite.config.ts` threshold; `testHelpers.ts` is excluded from that threshold wholesale, since its only content today is one deliberately-untested defensive-throw branch). `pnpm deadcode` (knip) also runs in CI to catch exported-but-uncalled code anywhere in `src/` before it can hide from that threshold behind a barrel re-export.
 - **Nocturne's `src/design/nocturne.css` is a verbatim, unmodified port** of the design system's canonical stylesheet — don't edit it to add app-specific styling. New composed patterns built from Nocturne primitives (e.g. `radio-tile.css`) live in their own file instead, so `nocturne.css` stays a clean diff against its source if the design system is ever re-pulled.
 - Guard/validation functions return structured results (`{fired, deviationPct}`, `{ok, value/error}`) rather than throwing or returning bare booleans, so callers can access the reasoning, not just the verdict.
+- **A test asserting a callback fired in response to one simulated user action should assert `toHaveBeenCalledTimes(1)` alongside `toHaveBeenCalledWith(...)`, not the latter alone.** `toHaveBeenCalledWith` passes whether the callback fired once correctly or twice (once right, once wrong) — it can't tell a clean single fire apart from a double-fire bug (e.g. a click handler that also triggers a parent's pointerdown listener via bubbling). See `PhasePicker.test.tsx`'s step-dot/nudge-arrow tests for the pattern.
 
 ## Commit conventions
 
