@@ -193,11 +193,8 @@ and `.release-please-manifest.json`:
    - A breaking change (`feat!`/`BREAKING CHANGE:` footer) bumps minor (`0.x.0`)
      instead of major: `bump-minor-pre-major` redirects what would normally be a major
      bump down to minor.
-
-   In other words, pre-1.0, `feat` and `fix` are indistinguishable in the version
-   number — both only move the patch digit. Only an explicit breaking-change marker
-   moves the minor digit. Once the project cuts `1.0.0`, both flags stop applying and
-   plain semver resumes (`feat` → minor, breaking change → major).
+   - Once the project cuts `1.0.0`, both flags stop applying and plain semver resumes
+     (`feat` → minor, breaking change → major).
 
 ### Bootstrap
 
