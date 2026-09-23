@@ -38,6 +38,11 @@ const FILL_SVG_HEIGHT = MIRROR_TOP + 90 - UPPER_CURVE_TOP
 
 const SNAP_TRANSITION_MS = 220
 
+/** Half of `.phase-picker-callout`'s `min-width` (130px) — the callout is
+ *  horizontally centered on the tick via `translateX(-50%)`, so left of this
+ *  it would overflow the card's edge at the first/last phase. */
+const CALLOUT_HALF_WIDTH = 65
+
 const fmt = (n: number) => (Math.round(n * 100) / 100).toString()
 
 interface Point {
@@ -241,7 +246,10 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
 
         <div
           className="phase-picker-callout"
-          style={{ left: `${tickPercent}%`, transitionDuration: `${transitionMs}ms` }}
+          style={{
+            left: `clamp(${CALLOUT_HALF_WIDTH}px, ${tickPercent}%, calc(100% - ${CALLOUT_HALF_WIDTH}px))`,
+            transitionDuration: `${transitionMs}ms`,
+          }}
         >
           <div className="phase-picker-callout-ratio">{`×${fmt(ratio)}`}</div>
           <div className="phase-picker-callout-bar">
