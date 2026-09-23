@@ -41,7 +41,7 @@ describe('RangeBar', () => {
     expect(screen.queryByText('90% confidence')).not.toBeInTheDocument()
     expect(
       screen.getByText(
-        '90% confidence reaches or exceeds worst case — this range may be too narrow.',
+        'Can\u2019t compute 90% confidence — most likely is too close to worst case for this spread. Try lowering most likely or giving worst case more room.',
       ),
     ).toBeInTheDocument()
   })
@@ -52,7 +52,7 @@ describe('RangeBar', () => {
     expect(screen.getByTestId('range-bar-marker-ci90')).toBeInTheDocument()
     expect(
       screen.queryByText(
-        '90% confidence reaches or exceeds worst case — this range may be too narrow.',
+        'Can\u2019t compute 90% confidence — most likely is too close to worst case for this spread. Try lowering most likely or giving worst case more room.',
       ),
     ).not.toBeInTheDocument()
   })
@@ -93,7 +93,7 @@ describe('RangeBar with guidance', () => {
     expect(screen.queryByTestId('range-bar-marker-ci90')).not.toBeInTheDocument()
     expect(
       screen.getByText(
-        '90% confidence reaches or exceeds worst case — this range may be too narrow.',
+        'Can\u2019t compute 90% confidence — most likely is too close to worst case for this spread. Try lowering most likely or giving worst case more room.',
       ),
     ).toBeInTheDocument()
   })
@@ -133,7 +133,7 @@ describe('RangeBar with guidance', () => {
     expect(screen.queryByTestId('range-bar-marker-ci90')).not.toBeInTheDocument()
     expect(
       screen.getByText(
-        '90% confidence reaches or exceeds worst case — this range may be too narrow.',
+        'Can\u2019t compute 90% confidence — most likely is too close to worst case for this spread. Try lowering most likely or giving worst case more room.',
       ),
     ).toBeInTheDocument()
   })

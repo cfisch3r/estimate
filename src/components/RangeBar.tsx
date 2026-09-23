@@ -50,15 +50,19 @@ function clampLikelyLabelPct(pct: number, worstPct: number): number {
   return result
 }
 
-/** McConnell's formula (expected + 1.28*(worst-best)/3) is an additive offset from
- *  "most likely," not inherently bounded by worst case — for a narrow enough range
- *  it can mathematically reach or exceed it. That number isn't meaningful to show
- *  on the bar at that point, so the marker/callout are hidden and this note takes
- *  their place. */
+/** McConnell's formula treats (worst-best)/3 as the distribution's standard
+ *  deviation and adds 1.28 of it — the 90th-percentile z-score — on top of "most
+ *  likely," assuming most likely sits closer to best than to worst (the usual
+ *  positive skew for software tasks). If most likely sits close to worst instead,
+ *  that offset can push past worst case: not a formula bug, but the formula
+ *  flagging that most likely is too high for the declared spread to support a P90
+ *  point inside it. That number isn't meaningful to show on the bar at that point,
+ *  so the marker/callout are hidden and this note takes their place. */
 function Ci90ExceedsWorstWarning() {
   return (
     <GuardNote>
-      90% confidence reaches or exceeds worst case — this range may be too narrow.
+      Can&rsquo;t compute 90% confidence — most likely is too close to worst case for this
+      spread. Try lowering most likely or giving worst case more room.
     </GuardNote>
   )
 }
