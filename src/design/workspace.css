@@ -1,0 +1,140 @@
+/* Composed from Nocturne tokens for the redesigned Workspace screens (single-user,
+   facilitator live mode, participant estimate view): the merged session card, its
+   top bar / body grid / nav row, and the bordered info-icon groups shared by the
+   three-point-estimate / phase / range sections. Kept separate so nocturne.css
+   stays a verbatim, unmodified port. */
+
+.workspace-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.workspace-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.workspace-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.workspace-body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  align-items: stretch;
+}
+
+.workspace-sidebar-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  border-right: 1px solid var(--color-divider);
+  min-width: 0;
+}
+
+.workspace-detail-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  min-width: 0;
+}
+
+.workspace-empty-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+}
+
+.workspace-navrow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+@media (max-width: 720px) {
+  .workspace-body {
+    grid-template-columns: 1fr;
+  }
+  .workspace-sidebar-col {
+    border-right: none;
+    border-bottom: 1px solid var(--color-divider);
+  }
+}
+
+/* Bordered field groups (three-point estimate / phase / range / participant
+   estimates), each with a heading and an optional click-to-open info icon. */
+.group-box {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--color-neutral-800);
+  border-radius: var(--radius-md);
+}
+
+.group-box-label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-neutral-400);
+}
+
+.info-popover {
+  position: relative;
+  display: inline-flex;
+}
+
+.info-popover-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid var(--color-neutral-600);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-neutral-500);
+  cursor: pointer;
+}
+
+.info-popover-trigger:hover,
+.info-popover-trigger[aria-expanded='true'] {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.info-popover-panel {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  z-index: 5;
+  width: 240px;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-neutral-900);
+  box-shadow: var(--shadow-sm);
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--color-text);
+}

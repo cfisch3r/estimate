@@ -26,6 +26,10 @@ export interface RosterEntry {
 
 export interface SessionSnapshot {
   currentItem: SnapshotItem | null
+  /** The facilitator's session name, so a participant's kicker can show "Sprint 42
+   *  estimates (7F QK 2M)" instead of the join code alone. Tolerated as missing
+   *  (defaults to '') the same way `unit`/`revealed` are, for an older peer. */
+  sessionName: string
   /** The unit the facilitator is estimating in, so participant forms and bars
    *  label values with the session's unit rather than their local default. */
   unit: EstimationUnit
@@ -270,6 +274,9 @@ function parseSnapshot(data: unknown): SessionSnapshot | null {
   if (!isValidSnapshotShape(data)) return null
   return {
     currentItem: data.currentItem,
+    // Tolerate a missing sessionName (older facilitator build): fall back to ''
+    // so the participant kicker's own fallback (join code alone) kicks in.
+    sessionName: typeof data.sessionName === 'string' ? data.sessionName : '',
     // Tolerate a missing/unknown unit (e.g. a facilitator on an older build
     // mid-deploy) rather than dropping the whole snapshot — fall back to the
     // store default so the participant still gets the round.

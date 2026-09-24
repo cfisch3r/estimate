@@ -21,6 +21,26 @@
   font-size: 13px;
   color: var(--color-neutral-400);
 }
+/* A long backlog scrolls within its own fixed-height region instead of growing
+   the whole card — the progress label above and the add-item row below stay
+   outside it (see Workspace's redesign handoff). */
+.session-sidebar-scroll {
+  position: relative;
+  height: 360px;
+  overflow-y: auto;
+}
+
+.session-sidebar-scroll::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 26px;
+  background: linear-gradient(to bottom, transparent, var(--color-surface));
+  pointer-events: none;
+}
+
 .session-sidebar-rows {
   display: flex;
   flex-direction: column;

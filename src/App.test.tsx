@@ -61,12 +61,10 @@ describe('Single-user end-to-end flow', () => {
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
     await user.type(screen.getByLabelText('Worst case (days)'), '8')
 
-    await user.click(screen.getByRole('button', { name: 'Finalize item' }))
-
-    // the single item is finalized, so no item stays active
-    expect(screen.getByText('All items finalized')).toBeInTheDocument()
-
-    await user.click(screen.getByText('Summary'))
+    // Only (and so also last) item in the list — the primary button folds the
+    // finalize-then-advance into one action and, being the last item, goes
+    // straight to the summary rather than leaving an empty workspace behind.
+    await user.click(screen.getByRole('button', { name: 'Finalize & view summary' }))
 
     const table = screen.getByRole('table')
     const row = within(table).getByRole('row', { name: /Migrate auth service/ })
@@ -106,7 +104,11 @@ describe('Single-user end-to-end flow', () => {
     await user.type(screen.getByLabelText('Worst case (days)'), '15')
 
     expect(screen.queryByText(/best must be/i)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Finalize item' })).toBeEnabled()
+    // Once valid, the button's label switches from the disabled-state
+    // "Finalize item" to the finalize-and-advance label.
+    expect(
+      screen.getByRole('button', { name: 'Finalize & view summary' }),
+    ).toBeEnabled()
   })
 
   it('keeps the estimate inputs from stepping below zero via the spinner arrows', async () => {

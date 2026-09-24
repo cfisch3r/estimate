@@ -17,6 +17,9 @@ interface SessionSidebarProps {
   onRemove: (id: string) => void
   onAdd: (title: string) => void
   onGoSummary: () => void
+  /** Workspace's merged top bar carries its own Summary button now, so it hides
+   *  this one; SessionSummary (which has no top bar) still uses the built-in one. */
+  hideSummaryButton?: boolean
 }
 
 interface SidebarRowProps {
@@ -135,6 +138,7 @@ export function SessionSidebar({
   onRemove,
   onAdd,
   onGoSummary,
+  hideSummaryButton = false,
 }: SessionSidebarProps) {
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
@@ -157,33 +161,35 @@ export function SessionSidebar({
           {finalizedCount}/{items.length} finalized
         </span>
       </div>
-      <div className="session-sidebar-rows">
-        {items.map((item, index) => (
-          <SidebarRow
-            key={item.id}
-            item={item}
-            isActive={!onSummary && item.id === activeItemId}
-            isDragged={dragIndex === index}
-            isDropTarget={dragOverIndex === index && dragIndex !== index}
-            onSelect={() => onSelect(item.id)}
-            onRemove={() => onRemove(item.id)}
-            onDragStart={() => setDragIndex(index)}
-            onDragOver={() => setDragOverIndex(index)}
-            onDrop={() => {
-              if (dragIndex !== null && dragIndex !== index) {
-                onReorder(dragIndex, index)
-              }
-              setDragIndex(null)
-              setDragOverIndex(null)
-            }}
-            onDragEnd={() => {
-              setDragIndex(null)
-              setDragOverIndex(null)
-            }}
-          />
-        ))}
+      <div className="session-sidebar-scroll">
+        <div className="session-sidebar-rows">
+          {items.map((item, index) => (
+            <SidebarRow
+              key={item.id}
+              item={item}
+              isActive={!onSummary && item.id === activeItemId}
+              isDragged={dragIndex === index}
+              isDropTarget={dragOverIndex === index && dragIndex !== index}
+              onSelect={() => onSelect(item.id)}
+              onRemove={() => onRemove(item.id)}
+              onDragStart={() => setDragIndex(index)}
+              onDragOver={() => setDragOverIndex(index)}
+              onDrop={() => {
+                if (dragIndex !== null && dragIndex !== index) {
+                  onReorder(dragIndex, index)
+                }
+                setDragIndex(null)
+                setDragOverIndex(null)
+              }}
+              onDragEnd={() => {
+                setDragIndex(null)
+                setDragOverIndex(null)
+              }}
+            />
+          ))}
+        </div>
       </div>
-      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+      <div style={{ display: 'flex', gap: 'var(--space-2)', flex: 'none' }}>
         <Input
           value={newItemTitle}
           onChange={(e) => setNewItemTitle(e.target.value)}
@@ -196,10 +202,12 @@ export function SessionSidebar({
           <PlusIcon size={14} />
         </Button>
       </div>
-      <Button variant={onSummary ? 'primary' : 'secondary'} block onClick={onGoSummary}>
-        <NotebookIcon size={15} />
-        Summary
-      </Button>
+      {!hideSummaryButton && (
+        <Button variant={onSummary ? 'primary' : 'secondary'} block onClick={onGoSummary}>
+          <NotebookIcon size={15} />
+          Summary
+        </Button>
+      )}
     </aside>
   )
 }
