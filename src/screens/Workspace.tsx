@@ -24,6 +24,7 @@ import {
   Markdown,
   MarkdownToolbar,
 } from '../components'
+import { continueListOnEnter, indentListLine } from '../components/markdownListEditing'
 import { PHASE_INFO, RANGE_INFO, PARTICIPANT_ESTIMATES_INFO } from '../copy/groupInfo'
 import { SessionSidebar } from './SessionSidebar'
 import { useConfirmArm } from '../hooks/useConfirmArm'
@@ -168,6 +169,22 @@ function DescriptionField({ value, onChange }: DescriptionFieldProps) {
             rows={3}
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onKeyDown={(e) => {
+              const textarea = e.currentTarget
+              if (e.key === 'Enter') {
+                const next = continueListOnEnter(textarea, value)
+                if (next !== null) {
+                  e.preventDefault()
+                  onChange(next)
+                }
+              } else if (e.key === 'Tab') {
+                const next = indentListLine(textarea, value, e.shiftKey)
+                if (next !== null) {
+                  e.preventDefault()
+                  onChange(next)
+                }
+              }
+            }}
           />
         </>
       ) : value ? (
