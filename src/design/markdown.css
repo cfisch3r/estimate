@@ -40,6 +40,40 @@
   border-radius: var(--radius-sm);
   background: color-mix(in srgb, var(--color-text) 10%, transparent);
 }
+/* Headings stay well below the real item title (17-22px) — otherwise a
+   facilitator's `#` heading renders large enough to look like a second,
+   competing title rather than part of the description. */
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.markdown h1 {
+  font-size: 16px;
+}
+.markdown h2 {
+  font-size: 15px;
+}
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  font-size: 14px;
+}
+
+/* The scrollable box a rendered description sits in — the write-mode
+   textarea's read-only counterpart. `position: relative` anchors the
+   overflow hint below. `className` (`markdown-preview`, and for the
+   participant view `card-body` alongside it) supplies the actual box
+   styling/cap; this rule is just the positioning context every usage needs. */
+.markdown-box {
+  position: relative;
+}
 
 /* Facilitator-side preview: mirrors .input's box so toggling between the
    textarea and its rendered preview doesn't shift the surrounding layout. */
@@ -54,12 +88,34 @@
   overflow-y: auto;
 }
 
-/* The participant-facing rendered description (`.card-body.markdown`) gets
-   the same cap as the facilitator's textarea/preview, so the box is a
-   consistent size everywhere a description is shown. */
-.card-body.markdown {
-  max-height: var(--description-max-height);
-  overflow-y: auto;
+/* Participant view: same scrollable box, but sized like the rest of the
+   card's text rather than the facilitator's input font. */
+.card-body.markdown-preview {
+  font-size: 13px;
+}
+
+/* "There's more below" cue for a capped, scrolled box — a scrollbar alone
+   doesn't announce overflow, especially on macOS where scrollbars stay
+   hidden until touched. Positioned (not scrolled) against .markdown-box, so
+   it stays pinned to the visible bottom edge regardless of scroll position;
+   Markdown.tsx only renders it when the content actually overflows. */
+.markdown-overflow-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 28px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 3px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--color-surface) 65%
+  );
+  color: var(--color-neutral-500);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
 .markdown-toolbar {
