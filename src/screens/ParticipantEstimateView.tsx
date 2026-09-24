@@ -16,11 +16,7 @@ import {
   PhasePicker,
   UncertaintyGuidanceNotes,
 } from '../components'
-import {
-  THREE_POINT_ESTIMATE_INFO,
-  PHASE_INFO,
-  RANGE_INFO,
-} from '../copy/groupInfo'
+import { THREE_POINT_ESTIMATE_INFO, PHASE_INFO, RANGE_INFO } from '../copy/groupInfo'
 import { useSingleInfoPopover } from '../hooks/useSingleInfoPopover'
 import {
   checkAscendingOrder,
@@ -117,9 +113,11 @@ function EstimateForm({
     worstNum,
     allFilled,
   )
-  const { openKey: infoOpen, open: openInfo, close: closeInfo } = useSingleInfoPopover<
-    'estimate' | 'phase' | 'range'
-  >()
+  const {
+    openKey: infoOpen,
+    open: openInfo,
+    close: closeInfo,
+  } = useSingleInfoPopover<'estimate' | 'phase' | 'range'>()
 
   function handleSubmit() {
     const result = onSubmit(bestNum, likelyNum, worstNum)
@@ -425,9 +423,11 @@ function RevealedPanel({
   const suffix = UNIT_SUFFIX[unit]
   const aggregate =
     round.submissions.length > 0 ? aggregateEstimates(round.submissions) : null
-  const { openKey: infoOpen, open: openInfo, close: closeInfo } = useSingleInfoPopover<
-    'range'
-  >()
+  const {
+    openKey: infoOpen,
+    open: openInfo,
+    close: closeInfo,
+  } = useSingleInfoPopover<'range'>()
 
   return (
     <Card elevation="sm">
@@ -505,7 +505,13 @@ interface LobbyProps {
   connectionPhase: ConnectionPhase
 }
 
-function Lobby({ sessionId, sessionName, myName, connectionStatus, connectionPhase }: LobbyProps) {
+function Lobby({
+  sessionId,
+  sessionName,
+  myName,
+  connectionStatus,
+  connectionPhase,
+}: LobbyProps) {
   // While the connection is down, the spinner or banner below owns the
   // explanation — the card must not also claim to be "Establishing the peer
   // connection", which reads as a first join that never happened.

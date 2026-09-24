@@ -106,9 +106,7 @@ describe('Single-user end-to-end flow', () => {
     expect(screen.queryByText(/best must be/i)).not.toBeInTheDocument()
     // Once valid, the button's label switches from the disabled-state
     // "Finalize item" to the finalize-and-advance label.
-    expect(
-      screen.getByRole('button', { name: 'Finalize & view summary' }),
-    ).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Finalize & view summary' })).toBeEnabled()
   })
 
   it('keeps the estimate inputs from stepping below zero via the spinner arrows', async () => {

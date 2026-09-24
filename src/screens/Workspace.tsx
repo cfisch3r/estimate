@@ -228,9 +228,11 @@ function ActiveItemPanel({
     item.finalResult ? String(item.finalResult.expected) : '',
   )
   const [worst, setWorst] = useState(item.finalResult ? String(item.finalResult.max) : '')
-  const { openKey: infoOpen, open: openInfo, close: closeInfo } = useSingleInfoPopover<
-    'estimate' | 'phase' | 'range'
-  >()
+  const {
+    openKey: infoOpen,
+    open: openInfo,
+    close: closeInfo,
+  } = useSingleInfoPopover<'estimate' | 'phase' | 'range'>()
 
   const allFilled = best !== '' && likely !== '' && worst !== ''
   const bestNum = Number(best)
@@ -510,9 +512,11 @@ function LiveFacilitatorPanel({
   const aggregate =
     item.revealed && submittedCount > 0 ? aggregateEstimates(item.submissions) : null
   const isFinalized = item.finalResult !== null
-  const { openKey: infoOpen, open: openInfo, close: closeInfo } = useSingleInfoPopover<
-    'estimate' | 'range'
-  >()
+  const {
+    openKey: infoOpen,
+    open: openInfo,
+    close: closeInfo,
+  } = useSingleInfoPopover<'estimate' | 'range'>()
   const {
     armed: reopenArmed,
     handleClick: armAndReopen,
@@ -605,8 +609,8 @@ function LiveFacilitatorPanel({
       ) : isFinalized ? (
         <>
           <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
-            This item has a recorded range. Late submissions are ignored —
-            to re-estimate, reopen the item.
+            This item has a recorded range. Late submissions are ignored — to re-estimate,
+            reopen the item.
           </p>
           <NavRow isFirst={isFirst} onNavigatePrev={onNavigatePrev}>
             <Button
@@ -639,7 +643,11 @@ function LiveFacilitatorPanel({
           >
             {isLast ? 'Finalize & view summary' : 'Finalize & next →'}
           </Button>
-          <Button variant="secondary" style={{ flex: 'none' }} onClick={() => onRetry(item.id)}>
+          <Button
+            variant="secondary"
+            style={{ flex: 'none' }}
+            onClick={() => onRetry(item.id)}
+          >
             Retry round
           </Button>
         </NavRow>
@@ -788,7 +796,13 @@ export function Workspace() {
   }
 
   return (
-    <div style={{ maxWidth: 1280, margin: '0 auto', padding: 'var(--space-6) var(--space-4)' }}>
+    <div
+      style={{
+        maxWidth: 1280,
+        margin: '0 auto',
+        padding: 'var(--space-6) var(--space-4)',
+      }}
+    >
       <Card elevation="sm" className="workspace-card">
         {mode === 'live' && sessionId && (
           <LiveSessionStrip

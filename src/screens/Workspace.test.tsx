@@ -146,7 +146,7 @@ describe('Workspace', () => {
     expect(useSessionStore.getState().activeItemId).toBeNull()
   })
 
-  it('switches between info popovers instead of closing both when a different group\'s icon is clicked while one is open', async () => {
+  it("switches between info popovers instead of closing both when a different group's icon is clicked while one is open", async () => {
     const user = userEvent.setup()
     useSessionStore.setState({
       items: [item({ id: '1', title: 'Only item' })],
@@ -155,18 +155,14 @@ describe('Workspace', () => {
     render(<Workspace />)
 
     await user.click(screen.getByRole('button', { name: 'About phase' }))
-    expect(
-      screen.getByText(/Where you are in the project lifecycle/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Where you are in the project lifecycle/)).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'About three-point estimate' }))
 
     expect(
       screen.queryByText(/Where you are in the project lifecycle/),
     ).not.toBeInTheDocument()
-    expect(
-      screen.getByText(/McConnell's three-point estimation/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/McConnell's three-point estimation/)).toBeInTheDocument()
   })
 
   it('renames the active item through the click-to-edit title', async () => {

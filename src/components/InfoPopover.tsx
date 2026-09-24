@@ -13,7 +13,13 @@ interface InfoPopoverProps {
 /** Click-to-open (not hover) info popover, anchored to its trigger icon.
  *  Closes on an outside click or Escape. Open/closed state is owned by the
  *  caller so a screen can keep at most one popover open at a time. */
-export function InfoPopover({ label, open, onOpen, onClose, children }: InfoPopoverProps) {
+export function InfoPopover({
+  label,
+  open,
+  onOpen,
+  onClose,
+  children,
+}: InfoPopoverProps) {
   const containerRef = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
