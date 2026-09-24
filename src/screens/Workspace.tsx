@@ -19,14 +19,10 @@ import {
   RangeBar,
   PhasePicker,
   UncertaintyGuidanceNotes,
+  ThreePointEstimateFields,
   Tag,
 } from '../components'
-import {
-  THREE_POINT_ESTIMATE_INFO,
-  PHASE_INFO,
-  RANGE_INFO,
-  PARTICIPANT_ESTIMATES_INFO,
-} from '../copy/groupInfo'
+import { PHASE_INFO, RANGE_INFO, PARTICIPANT_ESTIMATES_INFO } from '../copy/groupInfo'
 import { SessionSidebar } from './SessionSidebar'
 import { useConfirmArm } from '../hooks/useConfirmArm'
 import { usePhaseGuidance } from '../hooks/usePhaseGuidance'
@@ -35,12 +31,9 @@ import { useSessionStore, type FinalizeResult } from '../state/store'
 import { useNetworkSession } from '../network'
 import {
   aggregateEstimates,
-  checkAscendingOrder,
   checkSymmetricRange,
-  checkFalsePrecision,
   computeCI90,
   createEstimate,
-  UNIT_GRANULARITY,
   UNIT_SUFFIX,
 } from '../calc'
 import type { EstimationUnit } from '../calc'
@@ -238,10 +231,6 @@ function ActiveItemPanel({
   const bestNum = Number(best)
   const likelyNum = Number(likely)
   const worstNum = Number(worst)
-  const bestOrNull = best === '' ? null : bestNum
-  const likelyOrNull = likely === '' ? null : likelyNum
-  const worstOrNull = worst === '' ? null : worstNum
-  const granularity = UNIT_GRANULARITY[unit]
 
   const validation = allFilled
     ? createEstimate({
@@ -252,19 +241,10 @@ function ActiveItemPanel({
       })
     : null
   const validationError = validation && !validation.ok ? validation.error : null
-  const ascendingGuard = checkAscendingOrder(bestOrNull, likelyOrNull, worstOrNull)
-  const orderingWarning =
-    !validationError && ascendingGuard.fired
-      ? 'Values should ascend: best ≤ likely ≤ worst.'
-      : null
 
   const symmetricGuard = allFilled
     ? checkSymmetricRange(bestNum, likelyNum, worstNum)
     : null
-  const bestPrecision = best !== '' ? checkFalsePrecision(bestNum, granularity) : null
-  const likelyPrecision =
-    likely !== '' ? checkFalsePrecision(likelyNum, granularity) : null
-  const worstPrecision = worst !== '' ? checkFalsePrecision(worstNum, granularity) : null
 
   const { phaseIndex, setPhaseIndex, guidanceHigh, uncertaintyGuard } = usePhaseGuidance(
     bestNum,
@@ -302,78 +282,19 @@ function ActiveItemPanel({
         <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
       </GroupBox>
 
-      <GroupBox
-        label="Three-point estimate"
-        info={THREE_POINT_ESTIMATE_INFO}
+      <ThreePointEstimateFields
+        unit={unit}
+        best={best}
+        likely={likely}
+        worst={worst}
+        onBestChange={setBest}
+        onLikelyChange={setLikely}
+        onWorstChange={setWorst}
+        validationError={validationError}
         infoOpen={infoOpen === 'estimate'}
         onInfoOpen={() => openInfo('estimate')}
         onInfoClose={closeInfo}
-      >
-        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-          <Field style={{ flex: 1 }}>
-            <FieldLabel htmlFor="best">{`Best case (${unit})`}</FieldLabel>
-            <Input
-              id="best"
-              type="number"
-              min={0}
-              value={best}
-              onChange={(e) => setBest(e.target.value)}
-              style={{
-                height: 48,
-                fontSize: '1.1rem',
-                textAlign: 'center',
-                borderRadius: 'var(--radius-lg)',
-              }}
-            />
-            {bestPrecision?.fired && (
-              <GuardNote>Consider rounding to a meaningful value.</GuardNote>
-            )}
-          </Field>
-          <Field style={{ flex: 1 }}>
-            <FieldLabel htmlFor="likely">{`Most likely (${unit})`}</FieldLabel>
-            <Input
-              id="likely"
-              type="number"
-              min={0}
-              value={likely}
-              onChange={(e) => setLikely(e.target.value)}
-              style={{
-                height: 48,
-                fontSize: '1.1rem',
-                textAlign: 'center',
-                borderRadius: 'var(--radius-lg)',
-              }}
-            />
-            {likelyPrecision?.fired && (
-              <GuardNote>Consider rounding to a meaningful value.</GuardNote>
-            )}
-          </Field>
-          <Field style={{ flex: 1 }}>
-            <FieldLabel htmlFor="worst">{`Worst case (${unit})`}</FieldLabel>
-            <Input
-              id="worst"
-              type="number"
-              min={0}
-              value={worst}
-              onChange={(e) => setWorst(e.target.value)}
-              style={{
-                height: 48,
-                fontSize: '1.1rem',
-                textAlign: 'center',
-                borderRadius: 'var(--radius-lg)',
-              }}
-            />
-            {worstPrecision?.fired && (
-              <GuardNote>Consider rounding to a meaningful value.</GuardNote>
-            )}
-          </Field>
-        </div>
-        {orderingWarning && (
-          <GuardNote variant="banner" headline="Out of order">
-            {orderingWarning}
-          </GuardNote>
-        )}
-      </GroupBox>
+      />
 
       <GroupBox
         label="Range"
