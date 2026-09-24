@@ -422,7 +422,7 @@ function ActiveItemPanel({
           disabled={!validation?.ok}
           onClick={handleFinalize}
         >
-          {validation?.ok ? primaryLabel : 'Finalize item'}
+          {validation?.ok ? primaryLabel : isEdit ? 'Update item' : 'Finalize item'}
         </Button>
       </NavRow>
     </ItemDetailShell>
@@ -603,22 +603,32 @@ function LiveFacilitatorPanel({
             : `Reveal estimates (${submittedCount} submitted)`}
         </Button>
       ) : isFinalized ? (
-        <NavRow isFirst={isFirst} onNavigatePrev={onNavigatePrev}>
-          <Button variant="primary" style={{ flex: 1 }} onClick={handleFinalizeAndAdvance}>
-            {isLast ? 'Update & view summary' : 'Update & next →'}
-          </Button>
-          <Button
-            ref={reopenRef}
-            variant="ghost"
-            style={{
-              flex: 'none',
-              color: reopenArmed ? 'var(--color-warning)' : undefined,
-            }}
-            onClick={armAndReopen}
-          >
-            {reopenArmed ? 'Click again to reopen' : 'Reopen item'}
-          </Button>
-        </NavRow>
+        <>
+          <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+            This item has a recorded range. Late submissions are ignored —
+            to re-estimate, reopen the item.
+          </p>
+          <NavRow isFirst={isFirst} onNavigatePrev={onNavigatePrev}>
+            <Button
+              variant="primary"
+              style={{ flex: 1 }}
+              onClick={handleFinalizeAndAdvance}
+            >
+              {isLast ? 'Update & view summary' : 'Update & next →'}
+            </Button>
+            <Button
+              ref={reopenRef}
+              variant="ghost"
+              style={{
+                flex: 'none',
+                color: reopenArmed ? 'var(--color-warning)' : undefined,
+              }}
+              onClick={armAndReopen}
+            >
+              {reopenArmed ? 'Click again to reopen' : 'Reopen item'}
+            </Button>
+          </NavRow>
+        </>
       ) : (
         <NavRow isFirst={isFirst} onNavigatePrev={onNavigatePrev}>
           <Button
@@ -759,6 +769,18 @@ export function Workspace() {
   function handleAdvance() {
     if (activeIndex === -1) return
     if (activeIndex === items.length - 1) {
+      // The item at activeIndex was just (re-)finalized by the caller — every
+      // *other* item's finalResult already reflects its pre-click state, so
+      // this check doesn't need a fresh read from the store.
+      const allFinalizedNow = items.every(
+        (item, idx) => idx === activeIndex || item.finalResult !== null,
+      )
+      if (allFinalizedNow) {
+        // Nothing left to work on — clear the selection so returning to the
+        // workspace (e.g. via Summary's "Back to item") shows the "all items
+        // finalized" empty state instead of reopening this now-done item.
+        selectItem(null)
+      }
       goToScreen('summary')
     } else {
       selectItem(items[activeIndex + 1]!.id)

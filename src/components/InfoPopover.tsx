@@ -30,10 +30,15 @@ export function InfoPopover({ label, open, onOpen, onClose, children }: InfoPopo
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === 'Escape') onClose()
     }
-    document.addEventListener('click', handleOutsideClick)
+    // Capture phase, not bubble: clicking a *different* group's trigger while
+    // this one is open must close this one before that trigger's own (bubble-
+    // phase, React-attached) click handler opens the other — otherwise this
+    // still-mounted listener fires after and nulls out the key the other
+    // trigger just set, closing both instead of switching.
+    document.addEventListener('click', handleOutsideClick, true)
     document.addEventListener('keydown', handleKeyDown)
     return () => {
-      document.removeEventListener('click', handleOutsideClick)
+      document.removeEventListener('click', handleOutsideClick, true)
       document.removeEventListener('keydown', handleKeyDown)
     }
   }, [open, onClose])

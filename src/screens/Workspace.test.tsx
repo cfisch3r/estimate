@@ -127,6 +127,48 @@ describe('Workspace', () => {
     expect(screen.getByText('Select an item to estimate')).toBeInTheDocument()
   })
 
+  it('clears the active item once the last pending item is finalized, so returning to Workspace shows the all-finalized state', async () => {
+    const user = userEvent.setup()
+    useSessionStore.setState({
+      items: [item({ id: '1', title: 'Only item' })],
+      activeItemId: '1',
+    })
+    render(<Workspace />)
+
+    await user.type(screen.getByLabelText(/Best case/), '2')
+    await user.type(screen.getByLabelText(/Most likely/), '5')
+    await user.type(screen.getByLabelText(/Worst case/), '8')
+    await user.click(screen.getByRole('button', { name: 'Finalize & view summary' }))
+
+    // Not just "navigated to summary" — the selection itself must be cleared,
+    // otherwise navigating back to Workspace re-opens this now-finalized item
+    // instead of showing "All items finalized".
+    expect(useSessionStore.getState().activeItemId).toBeNull()
+  })
+
+  it('switches between info popovers instead of closing both when a different group\'s icon is clicked while one is open', async () => {
+    const user = userEvent.setup()
+    useSessionStore.setState({
+      items: [item({ id: '1', title: 'Only item' })],
+      activeItemId: '1',
+    })
+    render(<Workspace />)
+
+    await user.click(screen.getByRole('button', { name: 'About phase' }))
+    expect(
+      screen.getByText(/Where you are in the project lifecycle/),
+    ).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: 'About three-point estimate' }))
+
+    expect(
+      screen.queryByText(/Where you are in the project lifecycle/),
+    ).not.toBeInTheDocument()
+    expect(
+      screen.getByText(/McConnell's three-point estimation/),
+    ).toBeInTheDocument()
+  })
+
   it('renames the active item through the click-to-edit title', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({
@@ -297,6 +339,7 @@ describe('Workspace — live facilitator reveal flow', () => {
     expect(
       screen.queryByRole('button', { name: 'Finalize & view summary' }),
     ).not.toBeInTheDocument()
+    expect(screen.getByText(/Late submissions are ignored/)).toBeInTheDocument()
   })
 
   it('reopens a finalized item only after a second confirming click', async () => {

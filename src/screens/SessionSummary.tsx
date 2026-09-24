@@ -40,6 +40,7 @@ export function SessionSummary() {
         onRemove={removeItem}
         onAdd={addItem}
         onGoSummary={() => goToScreen('summary')}
+        scrollableList={false}
       />
 
       <div className="card" style={{ padding: 'var(--space-6)', gap: 'var(--space-5)' }}>

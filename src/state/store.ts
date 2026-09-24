@@ -64,7 +64,9 @@ interface SessionStore {
   setMode: (mode: SessionMode) => void
   setConnectionStatus: (status: LiveConnectionStatus) => void
   setPeerCount: (count: number) => void
-  selectItem: (id: string) => void
+  /** Passing null clears the selection (e.g. after finalizing the last item
+   *  that still needed one), showing the "all items finalized" empty state. */
+  selectItem: (id: string | null) => void
   setItemNotes: (id: string, notes: string) => void
   setItemDescription: (id: string, description: string) => void
   finalizeItem: (
