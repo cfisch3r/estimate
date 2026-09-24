@@ -96,27 +96,33 @@
   font-size: 13px;
 }
 
-/* "There's more below" cue for a capped, scrolled box — a scrollbar alone
+/* "There's more this way" cue for a capped, scrolled box — a scrollbar alone
    doesn't announce overflow, especially on macOS where scrollbars stay
    hidden until touched. Positioned (not scrolled) against .markdown-box, so
-   it stays pinned to the visible bottom edge regardless of scroll position;
-   Markdown.tsx only renders it when the content actually overflows. */
+   each stays pinned to its edge regardless of scroll position; Markdown.tsx
+   only renders the top one once scrolled down, and the bottom one while
+   content remains below. */
 .markdown-overflow-hint {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
   height: 28px;
   display: flex;
-  align-items: flex-end;
   justify-content: center;
-  padding-bottom: 3px;
-  background: linear-gradient(
-    to bottom,
-    transparent,
-    var(--color-surface) 65%
-  );
   color: var(--color-neutral-500);
+}
+.markdown-overflow-hint--top {
+  top: 0;
+  align-items: flex-start;
+  padding-top: 3px;
+  background: linear-gradient(to top, transparent, var(--color-surface) 65%);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.markdown-overflow-hint--bottom {
+  bottom: 0;
+  align-items: flex-end;
+  padding-bottom: 3px;
+  background: linear-gradient(to bottom, transparent, var(--color-surface) 65%);
   border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 

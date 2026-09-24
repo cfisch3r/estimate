@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { marked } from 'marked'
 import DOMPurify from 'dompurify'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/csr/CaretDown'
+import { CaretUpIcon } from '@phosphor-icons/react/dist/csr/CaretUp'
 
 interface MarkdownProps {
   content: string
@@ -21,11 +22,11 @@ marked.setOptions({ breaks: true })
  *  Three nested elements, not one: an outer `markdown-wrap` (just a
  *  positioning context), the scrollable `markdown-box` (`className` — e.g.
  *  `markdown-preview` — styles this one), and the inner `markdown` div with
- *  the actual HTML. The "there's more below" hint has to live in the outer
- *  wrap, *not* inside the scrolling box: an absolutely positioned element
- *  scrolls right along with its scrolling containing block, so putting it
- *  inside `markdown-box` made it drift up through the content as the box
- *  scrolled instead of staying pinned to the visible bottom edge. */
+ *  the actual HTML. The "more content this way" hints have to live in the
+ *  outer wrap, *not* inside the scrolling box: an absolutely positioned
+ *  element scrolls right along with its scrolling containing block, so
+ *  putting them inside `markdown-box` made them drift through the content as
+ *  the box scrolled instead of staying pinned to the visible edge. */
 export function Markdown({ content, className }: MarkdownProps) {
   const html = useMemo(() => {
     const parsed = marked.parse(content, { async: false })
@@ -33,17 +34,19 @@ export function Markdown({ content, className }: MarkdownProps) {
   }, [content])
 
   const boxRef = useRef<HTMLDivElement>(null)
-  const [showHint, setShowHint] = useState(false)
+  const [hideTopHint, setHideTopHint] = useState(true)
+  const [hideBottomHint, setHideBottomHint] = useState(true)
 
   useEffect(() => {
     const box = boxRef.current
     if (!box) return
 
-    // Only a cue for content still hidden below the fold — once scrolled to
-    // the bottom there's nothing left to hint at.
+    // A cue only for content actually hidden past that edge — no top hint
+    // at the very start, no bottom hint once scrolled to the actual end.
     const update = () => {
+      setHideTopHint(box.scrollTop <= 1)
       const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 1
-      setShowHint(box.scrollHeight > box.clientHeight + 1 && !atBottom)
+      setHideBottomHint(box.scrollHeight <= box.clientHeight + 1 || atBottom)
     }
     update()
     box.addEventListener('scroll', update)
@@ -66,8 +69,16 @@ export function Markdown({ content, className }: MarkdownProps) {
       <div ref={boxRef} className={['markdown-box', className].filter(Boolean).join(' ')}>
         <div className="markdown" dangerouslySetInnerHTML={{ __html: html }} />
       </div>
-      {showHint && (
-        <div className="markdown-overflow-hint" aria-hidden="true">
+      {!hideTopHint && (
+        <div className="markdown-overflow-hint markdown-overflow-hint--top" aria-hidden="true">
+          <CaretUpIcon size={12} weight="bold" />
+        </div>
+      )}
+      {!hideBottomHint && (
+        <div
+          className="markdown-overflow-hint markdown-overflow-hint--bottom"
+          aria-hidden="true"
+        >
           <CaretDownIcon size={12} weight="bold" />
         </div>
       )}
