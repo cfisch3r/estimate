@@ -1,3 +1,4 @@
+import { forwardRef } from 'react'
 import type {
   ChangeEvent,
   ClipboardEvent,
@@ -86,14 +87,18 @@ export function Input({
   )
 }
 
-export function Textarea({
-  className,
-  ...props
-}: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export const Textarea = forwardRef<
+  HTMLTextAreaElement,
+  TextareaHTMLAttributes<HTMLTextAreaElement>
+>(function Textarea({ className, ...props }, ref) {
   return (
-    <textarea className={['input', className].filter(Boolean).join(' ')} {...props} />
+    <textarea
+      ref={ref}
+      className={['input', className].filter(Boolean).join(' ')}
+      {...props}
+    />
   )
-}
+})
 
 export function Select({ className, ...props }: SelectHTMLAttributes<HTMLSelectElement>) {
   return <select className={['input', className].filter(Boolean).join(' ')} {...props} />

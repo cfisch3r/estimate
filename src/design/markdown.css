@@ -1,0 +1,50 @@
+/* Rendered markdown (facilitator-authored `description`, sanitized via
+   DOMPurify before reaching this markup) — shared by the participant view's
+   .card-body and the facilitator's own preview toggle. Block-level margins
+   collapse at the top/bottom edge so it drops into a flex layout cleanly. */
+.markdown > :first-child {
+  margin-top: 0;
+}
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+.markdown p {
+  margin: 0 0 var(--space-2);
+}
+.markdown ul,
+.markdown ol {
+  margin: 0 0 var(--space-2);
+  padding-left: 1.25em;
+}
+.markdown li + li {
+  margin-top: 2px;
+}
+.markdown a {
+  color: var(--color-accent);
+}
+.markdown strong {
+  font-weight: 600;
+}
+.markdown code {
+  font-size: 0.9em;
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+}
+
+/* Facilitator-side preview: mirrors .input's box so toggling between the
+   textarea and its rendered preview doesn't shift the surrounding layout. */
+.markdown-preview {
+  min-height: 90px;
+  padding: 6px 10px;
+  font-size: 14px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+}
+
+.markdown-toolbar {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}

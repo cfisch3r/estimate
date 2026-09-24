@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { NotebookIcon } from '@phosphor-icons/react/dist/csr/Notebook'
@@ -21,6 +21,8 @@ import {
   UncertaintyGuidanceNotes,
   ThreePointEstimateFields,
   Tag,
+  Markdown,
+  MarkdownToolbar,
 } from '../components'
 import { PHASE_INFO, RANGE_INFO, PARTICIPANT_ESTIMATES_INFO } from '../copy/groupInfo'
 import { SessionSidebar } from './SessionSidebar'
@@ -111,6 +113,74 @@ function EditableTitle({ value, onCommit }: EditableTitleProps) {
   )
 }
 
+interface DescriptionFieldProps {
+  value: string
+  onChange: (next: string) => void
+}
+
+/** The description field's write/preview toggle. Preview renders through the
+ *  same `Markdown` component the participant view uses, so what the
+ *  facilitator sees here is exactly what participants will see — no separate
+ *  rendering path to drift out of sync. */
+function DescriptionField({ value, onChange }: DescriptionFieldProps) {
+  const [mode, setMode] = useState<'write' | 'preview'>('write')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  return (
+    <Field>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: 'var(--space-2)',
+        }}
+      >
+        <FieldLabel htmlFor="description">Description</FieldLabel>
+        <div className="seg" style={{ flex: 'none' }}>
+          <label className="seg-opt">
+            <input
+              type="radio"
+              name="description-mode"
+              checked={mode === 'write'}
+              onChange={() => setMode('write')}
+            />
+            Write
+          </label>
+          <label className="seg-opt">
+            <input
+              type="radio"
+              name="description-mode"
+              checked={mode === 'preview'}
+              onChange={() => setMode('preview')}
+            />
+            Preview
+          </label>
+        </div>
+      </div>
+
+      {mode === 'write' ? (
+        <>
+          <MarkdownToolbar textareaRef={textareaRef} value={value} onChange={onChange} />
+          <Textarea
+            id="description"
+            ref={textareaRef}
+            rows={3}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </>
+      ) : value ? (
+        <Markdown content={value} className="markdown-preview" />
+      ) : (
+        <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+          Nothing to preview yet.
+        </p>
+      )}
+    </Field>
+  )
+}
+
 interface ItemDetailShellProps {
   item: Item
   onNotesChange: (id: string, notes: string) => void
@@ -136,22 +206,15 @@ function ItemDetailShell({
         value={item.title}
         onCommit={(next) => onTitleChange(item.id, next)}
       />
-      <Field>
-        <FieldLabel htmlFor="description">Description (Markdown supported)</FieldLabel>
-        <Textarea
-          id="description"
-          rows={3}
-          value={item.description}
-          onChange={(e) => onDescriptionChange(item.id, e.target.value)}
-        />
-      </Field>
+      <DescriptionField
+        value={item.description}
+        onChange={(next) => onDescriptionChange(item.id, next)}
+      />
 
       {children}
 
       <Field style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <FieldLabel htmlFor="notes">
-          Notes (captured during discussion, Markdown supported)
-        </FieldLabel>
+        <FieldLabel htmlFor="notes">Notes (captured during discussion)</FieldLabel>
         <Textarea
           id="notes"
           rows={8}
