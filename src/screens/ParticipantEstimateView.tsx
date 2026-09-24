@@ -186,18 +186,6 @@ function EstimateForm({
         )}
       </GroupBox>
 
-      <p
-        style={{
-          margin: 0,
-          fontStyle: 'italic',
-          fontSize: 14,
-          color: 'var(--color-accent)',
-          textAlign: 'center',
-        }}
-      >
-        Would you stake your job this won&apos;t be exceeded?
-      </p>
-
       <GroupBox
         label="Phase"
         info={PHASE_INFO}
