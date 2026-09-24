@@ -1,3 +1,12 @@
+:root {
+  /* Shared cap for the description field across all three places it's shown
+     — the write-mode textarea, the facilitator's own preview, and the
+     participant's rendered card — so a long description scrolls inside a
+     consistently sized box instead of pushing the rest of the form (or a
+     participant's phone screen) down an unbounded amount. */
+  --description-max-height: 280px;
+}
+
 /* Rendered markdown (facilitator-authored `description`, sanitized via
    DOMPurify before reaching this markup) — shared by the participant view's
    .card-body and the facilitator's own preview toggle. Block-level margins
@@ -41,10 +50,31 @@
   border: 1px solid var(--color-divider);
   border-radius: var(--radius-md);
   background: var(--color-surface);
+  max-height: var(--description-max-height);
+  overflow-y: auto;
+}
+
+/* The participant-facing rendered description (`.card-body.markdown`) gets
+   the same cap as the facilitator's textarea/preview, so the box is a
+   consistent size everywhere a description is shown. */
+.card-body.markdown {
+  max-height: var(--description-max-height);
+  overflow-y: auto;
 }
 
 .markdown-toolbar {
   display: flex;
   gap: var(--space-1);
   margin-bottom: var(--space-2);
+}
+
+/* Description textarea: grows with content (see DescriptionField's autosize
+   effect in Workspace.tsx) instead of the default drag handle, up to the
+   same shared cap, then scrolls like the rendered views above. The element
+   selector matches nocturne.css's `textarea.input` specificity so `resize:
+   none` actually overrides that rule's `resize: vertical`. */
+textarea.textarea-autosize {
+  resize: none;
+  max-height: var(--description-max-height);
+  overflow-y: auto;
 }

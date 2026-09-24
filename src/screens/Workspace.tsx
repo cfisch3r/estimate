@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { NotebookIcon } from '@phosphor-icons/react/dist/csr/Notebook'
@@ -127,6 +127,18 @@ function DescriptionField({ value, onChange }: DescriptionFieldProps) {
   const [mode, setMode] = useState<'write' | 'preview'>('write')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
+  // Grows the textarea to fit its content (up to the CSS max-height, past
+  // which it scrolls) rather than a fixed row count — re-measuring on every
+  // value change, and whenever the field becomes visible again after a
+  // Preview round-trip, so switching back to Write always shows the full
+  // text sized correctly rather than the write-mode default.
+  useEffect(() => {
+    const textarea = textareaRef.current
+    if (mode !== 'write' || !textarea) return
+    textarea.style.height = 'auto'
+    textarea.style.height = `${textarea.scrollHeight}px`
+  }, [value, mode])
+
   return (
     <Field>
       <div
@@ -166,6 +178,7 @@ function DescriptionField({ value, onChange }: DescriptionFieldProps) {
           <Textarea
             id="description"
             ref={textareaRef}
+            className="textarea-autosize"
             rows={3}
             value={value}
             onChange={(e) => onChange(e.target.value)}
