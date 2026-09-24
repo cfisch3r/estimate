@@ -291,6 +291,16 @@ function ActiveItemPanel({
       onTitleChange={onTitleChange}
     >
       <GroupBox
+        label="Phase"
+        info={PHASE_INFO}
+        infoOpen={infoOpen === 'phase'}
+        onInfoOpen={() => openInfo('phase')}
+        onInfoClose={closeInfo}
+      >
+        <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
+      </GroupBox>
+
+      <GroupBox
         label="Three-point estimate"
         info={THREE_POINT_ESTIMATE_INFO}
         infoOpen={infoOpen === 'estimate'}
@@ -361,16 +371,6 @@ function ActiveItemPanel({
             {orderingWarning}
           </GuardNote>
         )}
-      </GroupBox>
-
-      <GroupBox
-        label="Phase"
-        info={PHASE_INFO}
-        infoOpen={infoOpen === 'phase'}
-        onInfoOpen={() => openInfo('phase')}
-        onInfoClose={closeInfo}
-      >
-        <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
       </GroupBox>
 
       <GroupBox
