@@ -7,25 +7,20 @@ import {
   CardBody,
   CardKicker,
   CardTitle,
-  Field,
-  FieldLabel,
-  Input,
   GuardNote,
   GroupBox,
   RangeBar,
   PhasePicker,
   UncertaintyGuidanceNotes,
+  ThreePointEstimateFields,
 } from '../components'
-import { THREE_POINT_ESTIMATE_INFO, PHASE_INFO, RANGE_INFO } from '../copy/groupInfo'
+import { PHASE_INFO, RANGE_INFO } from '../copy/groupInfo'
 import { useSingleInfoPopover } from '../hooks/useSingleInfoPopover'
 import {
-  checkAscendingOrder,
-  checkFalsePrecision,
   checkSymmetricRange,
   computeCI90,
   createEstimate,
   aggregateEstimates,
-  UNIT_GRANULARITY,
   UNIT_SUFFIX,
 } from '../calc'
 import type { EstimationUnit } from '../calc'
@@ -45,13 +40,6 @@ type SubmitResult = { ok: true } | { ok: false; error: string }
  *  component. `sending` / `not-delivered` describe only the most recent local
  *  send attempt. */
 type DeliveryState = 'sending' | 'submitted' | 'not-delivered'
-
-const inputStyle = {
-  height: 48,
-  fontSize: '1.1rem',
-  textAlign: 'center' as const,
-  borderRadius: 'var(--radius-lg)',
-}
 
 interface EstimateFormProps {
   unit: EstimationUnit
@@ -80,7 +68,6 @@ function EstimateForm({
   const bestNum = Number(best)
   const likelyNum = Number(likely)
   const worstNum = Number(worst)
-  const granularity = UNIT_GRANULARITY[unit]
 
   const validation = allFilled
     ? createEstimate({
@@ -92,21 +79,9 @@ function EstimateForm({
     : null
   const validationError = validation && !validation.ok ? validation.error : null
 
-  const ascendingGuard = checkAscendingOrder(
-    best === '' ? null : bestNum,
-    likely === '' ? null : likelyNum,
-    worst === '' ? null : worstNum,
-  )
-  const orderingWarning =
-    !validationError && ascendingGuard.fired
-      ? 'Values should ascend: best ≤ likely ≤ worst.'
-      : null
-
   const symmetricGuard = allFilled
     ? checkSymmetricRange(bestNum, likelyNum, worstNum)
     : null
-  const precisionNote = (raw: string) =>
-    raw !== '' ? checkFalsePrecision(Number(raw), granularity) : null
 
   const { phaseIndex, setPhaseIndex, guidanceHigh, uncertaintyGuard } = usePhaseGuidance(
     bestNum,
@@ -136,63 +111,19 @@ function EstimateForm({
         <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
       </GroupBox>
 
-      <GroupBox
-        label="Three-point estimate"
-        info={THREE_POINT_ESTIMATE_INFO}
+      <ThreePointEstimateFields
+        unit={unit}
+        best={best}
+        likely={likely}
+        worst={worst}
+        onBestChange={setBest}
+        onLikelyChange={setLikely}
+        onWorstChange={setWorst}
+        validationError={validationError}
         infoOpen={infoOpen === 'estimate'}
         onInfoOpen={() => openInfo('estimate')}
         onInfoClose={closeInfo}
-      >
-        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-          <Field style={{ flex: 1 }}>
-            <FieldLabel htmlFor="best">{`Best case (${unit})`}</FieldLabel>
-            <Input
-              id="best"
-              type="number"
-              min={0}
-              value={best}
-              onChange={(e) => setBest(e.target.value)}
-              style={inputStyle}
-            />
-            {precisionNote(best)?.fired && (
-              <GuardNote>Consider rounding to a meaningful value.</GuardNote>
-            )}
-          </Field>
-          <Field style={{ flex: 1 }}>
-            <FieldLabel htmlFor="likely">{`Most likely (${unit})`}</FieldLabel>
-            <Input
-              id="likely"
-              type="number"
-              min={0}
-              value={likely}
-              onChange={(e) => setLikely(e.target.value)}
-              style={inputStyle}
-            />
-            {precisionNote(likely)?.fired && (
-              <GuardNote>Consider rounding to a meaningful value.</GuardNote>
-            )}
-          </Field>
-          <Field style={{ flex: 1 }}>
-            <FieldLabel htmlFor="worst">{`Worst case (${unit})`}</FieldLabel>
-            <Input
-              id="worst"
-              type="number"
-              min={0}
-              value={worst}
-              onChange={(e) => setWorst(e.target.value)}
-              style={inputStyle}
-            />
-            {precisionNote(worst)?.fired && (
-              <GuardNote>Consider rounding to a meaningful value.</GuardNote>
-            )}
-          </Field>
-        </div>
-        {orderingWarning && (
-          <GuardNote variant="banner" headline="Out of order">
-            {orderingWarning}
-          </GuardNote>
-        )}
-      </GroupBox>
+      />
 
       <GroupBox
         label="Range"
