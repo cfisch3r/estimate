@@ -66,12 +66,14 @@
   font-size: 14px;
 }
 
-/* The scrollable box a rendered description sits in — the write-mode
-   textarea's read-only counterpart. `position: relative` anchors the
-   overflow hint below. `className` (`markdown-preview`, and for the
-   participant view `card-body` alongside it) supplies the actual box
-   styling/cap; this rule is just the positioning context every usage needs. */
-.markdown-box {
+/* `markdown-wrap` is the positioning context for the overflow hint — it must
+   NOT be the scrolling element itself (`markdown-box`), or the hint would
+   scroll along with the content instead of staying pinned to the visible
+   bottom edge. `markdown-box` is the scrollable box a rendered description
+   sits in — the write-mode textarea's read-only counterpart. `className`
+   (`markdown-preview`, and for the participant view `card-body` alongside
+   it) supplies its actual box styling/cap. */
+.markdown-wrap {
   position: relative;
 }
 

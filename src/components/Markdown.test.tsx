@@ -29,10 +29,12 @@ describe('Markdown', () => {
     expect(container.querySelector('img')?.getAttribute('onerror')).toBeNull()
   })
 
-  it('merges a custom className onto the scroll box, keeping the inner content div plain', () => {
+  it('merges a custom className onto the scroll box, keeping the wrap and content div plain', () => {
     const { container } = render(<Markdown content="hi" className="card-body" />)
 
-    expect(container.firstChild).toHaveClass('markdown-box', 'card-body')
+    expect(container.firstChild).toHaveClass('markdown-wrap')
+    expect(container.firstChild).not.toHaveClass('card-body')
+    expect(container.querySelector('.markdown-box')).toHaveClass('card-body')
     expect(container.querySelector('.markdown')).not.toHaveClass('card-body')
   })
 })

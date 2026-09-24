@@ -18,13 +18,14 @@ marked.setOptions({ breaks: true })
  *  own preview toggle, so what the facilitator sees while authoring is exactly
  *  what participants receive.
  *
- *  `className` (e.g. `markdown-preview`, which caps the height and scrolls)
- *  goes on the outer, scrollable box; the inner div always carries the base
- *  `markdown` class that the typography rules in markdown.css target. Kept as
- *  two elements so a "there's more below" hint can sit alongside the content
- *  without being replaced by `dangerouslySetInnerHTML` on every render — a
- *  scrollbar alone doesn't say a box is scrollable, especially on macOS where
- *  scrollbars stay hidden until you touch them. */
+ *  Three nested elements, not one: an outer `markdown-wrap` (just a
+ *  positioning context), the scrollable `markdown-box` (`className` — e.g.
+ *  `markdown-preview` — styles this one), and the inner `markdown` div with
+ *  the actual HTML. The "there's more below" hint has to live in the outer
+ *  wrap, *not* inside the scrolling box: an absolutely positioned element
+ *  scrolls right along with its scrolling containing block, so putting it
+ *  inside `markdown-box` made it drift up through the content as the box
+ *  scrolled instead of staying pinned to the visible bottom edge. */
 export function Markdown({ content, className }: MarkdownProps) {
   const html = useMemo(() => {
     const parsed = marked.parse(content, { async: false })
@@ -32,25 +33,40 @@ export function Markdown({ content, className }: MarkdownProps) {
   }, [content])
 
   const boxRef = useRef<HTMLDivElement>(null)
-  const [overflowing, setOverflowing] = useState(false)
+  const [showHint, setShowHint] = useState(false)
 
   useEffect(() => {
     const box = boxRef.current
     if (!box) return
-    const check = () => setOverflowing(box.scrollHeight > box.clientHeight + 1)
-    check()
-    // jsdom (tests) has no ResizeObserver — the one-off check above still
-    // runs there, it just won't react to later layout changes.
-    if (typeof ResizeObserver === 'undefined') return
-    const observer = new ResizeObserver(check)
+
+    // Only a cue for content still hidden below the fold — once scrolled to
+    // the bottom there's nothing left to hint at.
+    const update = () => {
+      const atBottom = box.scrollTop + box.clientHeight >= box.scrollHeight - 1
+      setShowHint(box.scrollHeight > box.clientHeight + 1 && !atBottom)
+    }
+    update()
+    box.addEventListener('scroll', update)
+
+    // jsdom (tests) has no ResizeObserver — the listener above still catches
+    // scrolling there, it just won't react to later layout-only changes.
+    if (typeof ResizeObserver === 'undefined') {
+      return () => box.removeEventListener('scroll', update)
+    }
+    const observer = new ResizeObserver(update)
     observer.observe(box)
-    return () => observer.disconnect()
+    return () => {
+      box.removeEventListener('scroll', update)
+      observer.disconnect()
+    }
   }, [html])
 
   return (
-    <div ref={boxRef} className={['markdown-box', className].filter(Boolean).join(' ')}>
-      <div className="markdown" dangerouslySetInnerHTML={{ __html: html }} />
-      {overflowing && (
+    <div className="markdown-wrap">
+      <div ref={boxRef} className={['markdown-box', className].filter(Boolean).join(' ')}>
+        <div className="markdown" dangerouslySetInnerHTML={{ __html: html }} />
+      </div>
+      {showHint && (
         <div className="markdown-overflow-hint" aria-hidden="true">
           <CaretDownIcon size={12} weight="bold" />
         </div>
