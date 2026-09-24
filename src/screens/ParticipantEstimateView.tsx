@@ -11,10 +11,13 @@ import {
   FieldLabel,
   Input,
   GuardNote,
+  GroupBox,
   RangeBar,
   PhasePicker,
   UncertaintyGuidanceNotes,
 } from '../components'
+import { THREE_POINT_ESTIMATE_INFO, PHASE_INFO, RANGE_INFO } from '../copy/groupInfo'
+import { useSingleInfoPopover } from '../hooks/useSingleInfoPopover'
 import {
   checkAscendingOrder,
   checkFalsePrecision,
@@ -110,6 +113,11 @@ function EstimateForm({
     worstNum,
     allFilled,
   )
+  const {
+    openKey: infoOpen,
+    open: openInfo,
+    close: closeInfo,
+  } = useSingleInfoPopover<'estimate' | 'phase' | 'range'>()
 
   function handleSubmit() {
     const result = onSubmit(bestNum, likelyNum, worstNum)
@@ -118,83 +126,104 @@ function EstimateForm({
 
   return (
     <>
-      <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-        <Field style={{ flex: 1 }}>
-          <FieldLabel htmlFor="best">{`Best case (${unit})`}</FieldLabel>
-          <Input
-            id="best"
-            type="number"
-            min={0}
-            value={best}
-            onChange={(e) => setBest(e.target.value)}
-            style={inputStyle}
-          />
-          {precisionNote(best)?.fired && (
-            <GuardNote>Consider rounding to a meaningful value.</GuardNote>
-          )}
-        </Field>
-        <Field style={{ flex: 1 }}>
-          <FieldLabel htmlFor="likely">{`Most likely (${unit})`}</FieldLabel>
-          <Input
-            id="likely"
-            type="number"
-            min={0}
-            value={likely}
-            onChange={(e) => setLikely(e.target.value)}
-            style={inputStyle}
-          />
-          {precisionNote(likely)?.fired && (
-            <GuardNote>Consider rounding to a meaningful value.</GuardNote>
-          )}
-        </Field>
-        <Field style={{ flex: 1 }}>
-          <FieldLabel htmlFor="worst">{`Worst case (${unit})`}</FieldLabel>
-          <Input
-            id="worst"
-            type="number"
-            min={0}
-            value={worst}
-            onChange={(e) => setWorst(e.target.value)}
-            style={inputStyle}
-          />
-          {precisionNote(worst)?.fired && (
-            <GuardNote>Consider rounding to a meaningful value.</GuardNote>
-          )}
-        </Field>
-      </div>
-
-      <p
-        style={{
-          margin: 0,
-          fontStyle: 'italic',
-          fontSize: 14,
-          color: 'var(--color-accent)',
-          textAlign: 'center',
-        }}
+      <GroupBox
+        label="Phase"
+        info={PHASE_INFO}
+        infoOpen={infoOpen === 'phase'}
+        onInfoOpen={() => openInfo('phase')}
+        onInfoClose={closeInfo}
       >
-        Would you stake your job this won&apos;t be exceeded?
-      </p>
+        <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
+      </GroupBox>
 
-      <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
+      <GroupBox
+        label="Three-point estimate"
+        info={THREE_POINT_ESTIMATE_INFO}
+        infoOpen={infoOpen === 'estimate'}
+        onInfoOpen={() => openInfo('estimate')}
+        onInfoClose={closeInfo}
+      >
+        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
+          <Field style={{ flex: 1 }}>
+            <FieldLabel htmlFor="best">{`Best case (${unit})`}</FieldLabel>
+            <Input
+              id="best"
+              type="number"
+              min={0}
+              value={best}
+              onChange={(e) => setBest(e.target.value)}
+              style={inputStyle}
+            />
+            {precisionNote(best)?.fired && (
+              <GuardNote>Consider rounding to a meaningful value.</GuardNote>
+            )}
+          </Field>
+          <Field style={{ flex: 1 }}>
+            <FieldLabel htmlFor="likely">{`Most likely (${unit})`}</FieldLabel>
+            <Input
+              id="likely"
+              type="number"
+              min={0}
+              value={likely}
+              onChange={(e) => setLikely(e.target.value)}
+              style={inputStyle}
+            />
+            {precisionNote(likely)?.fired && (
+              <GuardNote>Consider rounding to a meaningful value.</GuardNote>
+            )}
+          </Field>
+          <Field style={{ flex: 1 }}>
+            <FieldLabel htmlFor="worst">{`Worst case (${unit})`}</FieldLabel>
+            <Input
+              id="worst"
+              type="number"
+              min={0}
+              value={worst}
+              onChange={(e) => setWorst(e.target.value)}
+              style={inputStyle}
+            />
+            {precisionNote(worst)?.fired && (
+              <GuardNote>Consider rounding to a meaningful value.</GuardNote>
+            )}
+          </Field>
+        </div>
+        {orderingWarning && (
+          <GuardNote variant="banner" headline="Out of order">
+            {orderingWarning}
+          </GuardNote>
+        )}
+      </GroupBox>
 
-      {validation?.ok && (
-        <>
-          <RangeBar
-            min={bestNum}
-            max={worstNum}
-            expected={likelyNum}
-            ci90={computeCI90(likelyNum, bestNum, worstNum)}
-            unitSuffix={UNIT_SUFFIX[unit]}
-            guidance={guidanceHigh !== null ? { guidanceHigh } : undefined}
-          />
-          <UncertaintyGuidanceNotes
-            guidanceHigh={guidanceHigh}
-            worst={worstNum}
-            unitSuffix={UNIT_SUFFIX[unit]}
-            uncertaintyGuard={uncertaintyGuard}
-          />
-        </>
-      )}
+      <GroupBox
+        label="Range"
+        info={RANGE_INFO}
+        infoOpen={infoOpen === 'range'}
+        onInfoOpen={() => openInfo('range')}
+        onInfoClose={closeInfo}
+      >
+        {validation?.ok ? (
+          <>
+            <RangeBar
+              min={bestNum}
+              max={worstNum}
+              expected={likelyNum}
+              ci90={computeCI90(likelyNum, bestNum, worstNum)}
+              unitSuffix={UNIT_SUFFIX[unit]}
+              guidance={guidanceHigh !== null ? { guidanceHigh } : undefined}
+            />
+            <UncertaintyGuidanceNotes
+              guidanceHigh={guidanceHigh}
+              worst={worstNum}
+              unitSuffix={UNIT_SUFFIX[unit]}
+              uncertaintyGuard={uncertaintyGuard}
+            />
+          </>
+        ) : (
+          <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+            Enter best, most likely and worst case above to see the range.
+          </p>
+        )}
+      </GroupBox>
 
       {symmetricGuard?.fired && (
         <GuardNote variant="banner" headline="Symmetric range">
@@ -204,11 +233,6 @@ function EstimateForm({
       {(validationError || submitError) && (
         <GuardNote variant="banner" headline="Check your estimate">
           {validationError ?? submitError}
-        </GuardNote>
-      )}
-      {orderingWarning && (
-        <GuardNote variant="banner" headline="Out of order">
-          {orderingWarning}
         </GuardNote>
       )}
 
@@ -228,16 +252,27 @@ function EstimateForm({
   )
 }
 
+/** "{sessionName} ({sessionId})" once the facilitator's session name has
+ *  reached this client (see the sync protocol's `sessionName` field) — falls
+ *  back to the join code alone (today's kicker) while it hasn't, e.g. an old
+ *  facilitator build, or the brief window before the first snapshot lands. */
+function formatSessionKicker(sessionName: string, sessionId: string | null): string {
+  const trimmed = sessionName.trim()
+  return trimmed ? `${trimmed} (${sessionId})` : `Session ${sessionId}`
+}
+
 interface RoundPanelProps {
   round: LiveRound
   unit: EstimationUnit
   sessionId: string | null
+  sessionName: string
 }
 
 function EstimatingPanel({
   round,
   unit,
   sessionId,
+  sessionName,
   onSubmit,
 }: RoundPanelProps & {
   onSubmit: (best: number, likely: number, worst: number) => SubmitResult
@@ -253,7 +288,7 @@ function EstimatingPanel({
 
   return (
     <Card elevation="sm">
-      <CardKicker>Session {sessionId}</CardKicker>
+      <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
       <CardTitle>{round.item.title}</CardTitle>
       {round.item.description && (
         <CardBody className="card-body--authored">{round.item.description}</CardBody>
@@ -274,6 +309,7 @@ function WaitingPanel({
   round,
   unit,
   sessionId,
+  sessionName,
   onSubmit,
   deliveryState,
   connectionPhase,
@@ -288,7 +324,7 @@ function WaitingPanel({
 
   return (
     <Card elevation="sm">
-      <CardKicker>Session {sessionId}</CardKicker>
+      <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
       <CardTitle>{round.item.title}</CardTitle>
       {round.item.description && (
         <CardBody className="card-body--authored">{round.item.description}</CardBody>
@@ -377,6 +413,7 @@ function RevealedPanel({
   round,
   unit,
   sessionId,
+  sessionName,
   participantId,
   participantNames,
 }: RoundPanelProps & {
@@ -386,23 +423,36 @@ function RevealedPanel({
   const suffix = UNIT_SUFFIX[unit]
   const aggregate =
     round.submissions.length > 0 ? aggregateEstimates(round.submissions) : null
+  const {
+    openKey: infoOpen,
+    open: openInfo,
+    close: closeInfo,
+  } = useSingleInfoPopover<'range'>()
 
   return (
     <Card elevation="sm">
-      <CardKicker>Session {sessionId}</CardKicker>
+      <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
       <CardTitle>{round.item.title}</CardTitle>
       {round.item.description && (
         <CardBody className="card-body--authored">{round.item.description}</CardBody>
       )}
 
       {aggregate ? (
-        <RangeBar
-          min={aggregate.min}
-          max={aggregate.max}
-          expected={aggregate.expected}
-          ci90={aggregate.ci90}
-          unitSuffix={suffix}
-        />
+        <GroupBox
+          label="Range (aggregated)"
+          info={RANGE_INFO}
+          infoOpen={infoOpen === 'range'}
+          onInfoOpen={() => openInfo('range')}
+          onInfoClose={closeInfo}
+        >
+          <RangeBar
+            min={aggregate.min}
+            max={aggregate.max}
+            expected={aggregate.expected}
+            ci90={aggregate.ci90}
+            unitSuffix={suffix}
+          />
+        </GroupBox>
       ) : (
         <CardBody>No estimates were submitted before the reveal.</CardBody>
       )}
@@ -449,19 +499,26 @@ function RevealedPanel({
 
 interface LobbyProps {
   sessionId: string | null
+  sessionName: string
   myName: string
   connectionStatus: string
   connectionPhase: ConnectionPhase
 }
 
-function Lobby({ sessionId, myName, connectionStatus, connectionPhase }: LobbyProps) {
+function Lobby({
+  sessionId,
+  sessionName,
+  myName,
+  connectionStatus,
+  connectionPhase,
+}: LobbyProps) {
   // While the connection is down, the spinner or banner below owns the
   // explanation — the card must not also claim to be "Establishing the peer
   // connection", which reads as a first join that never happened.
   if (connectionPhase !== 'ok') {
     return (
       <Card elevation="sm">
-        <CardKicker>Session {sessionId}</CardKicker>
+        <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
         <CardTitle>Session interrupted</CardTitle>
         <CardBody>You were in the session; the connection dropped.</CardBody>
       </Card>
@@ -470,7 +527,7 @@ function Lobby({ sessionId, myName, connectionStatus, connectionPhase }: LobbyPr
 
   return (
     <Card elevation="sm">
-      <CardKicker>Session {sessionId}</CardKicker>
+      <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
       <CardTitle>
         {connectionStatus === 'connected' ? `You're in, ${myName}` : 'Connecting…'}
       </CardTitle>
@@ -485,6 +542,7 @@ function Lobby({ sessionId, myName, connectionStatus, connectionPhase }: LobbyPr
 
 export function ParticipantEstimateView() {
   const sessionId = useSessionStore((s) => s.sessionId)
+  const sessionName = useSessionStore((s) => s.sessionName)
   const myName = useSessionStore((s) => s.myName)
   const connectionStatus = useSessionStore((s) => s.connectionStatus)
   const hasEverConnected = useSessionStore((s) => s.hasEverConnected)
@@ -534,6 +592,7 @@ export function ParticipantEstimateView() {
     panel = (
       <Lobby
         sessionId={sessionId}
+        sessionName={sessionName}
         myName={myName}
         connectionStatus={connectionStatus}
         connectionPhase={connectionPhase}
@@ -545,6 +604,7 @@ export function ParticipantEstimateView() {
         round={liveRound}
         unit={unit}
         sessionId={sessionId}
+        sessionName={sessionName}
         participantId={participantId}
         participantNames={participantNames}
       />
@@ -555,6 +615,7 @@ export function ParticipantEstimateView() {
         round={liveRound}
         unit={unit}
         sessionId={sessionId}
+        sessionName={sessionName}
         onSubmit={handleSubmit}
         deliveryState={deliveryState}
         connectionPhase={connectionPhase}
@@ -566,6 +627,7 @@ export function ParticipantEstimateView() {
         round={liveRound}
         unit={unit}
         sessionId={sessionId}
+        sessionName={sessionName}
         onSubmit={handleSubmit}
       />
     )

@@ -121,29 +121,21 @@ describe('finalizeItem', () => {
     expect(useSessionStore.getState().items[0]!.finalResult).toBeNull()
   })
 
-  it('records the aggregated result and advances to the next pending item', () => {
+  it('records the aggregated result and leaves navigation to the caller', () => {
     const { addItem, startSingleUser, finalizeItem } = useSessionStore.getState()
     addItem('First')
     addItem('Second')
     startSingleUser()
-    const [first, second] = useSessionStore.getState().items
+    const [first] = useSessionStore.getState().items
 
     const result = finalizeItem(first!.id, 2, 5, 8)
     expect(result.ok).toBe(true)
 
     const state = useSessionStore.getState()
     expect(state.items[0]!.finalResult).toMatchObject({ min: 2, expected: 5, max: 8 })
-    expect(state.activeItemId).toBe(second!.id)
-  })
-
-  it('clears activeItemId once every item is finalized', () => {
-    const { addItem, startSingleUser, finalizeItem } = useSessionStore.getState()
-    addItem('Only item')
-    startSingleUser()
-    const id = useSessionStore.getState().items[0]!.id
-
-    finalizeItem(id, 2, 5, 8)
-    expect(useSessionStore.getState().activeItemId).toBeNull()
+    // Workspace (not the store) decides where to move next — adjacent-item nav,
+    // not "next pending" — so activeItemId is untouched by finalize itself.
+    expect(state.activeItemId).toBe(first!.id)
   })
 })
 
@@ -244,6 +236,7 @@ describe('leaveLiveSession', () => {
     useSessionStore.getState().setPeerCount(3)
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
+      sessionName: '',
       unit: 'weeks',
       revealed: false,
       round: 0,
@@ -350,6 +343,7 @@ describe('applySyncState', () => {
   it('creates a live round from the facilitator snapshot and adopts its unit', () => {
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
+      sessionName: '',
       unit: 'weeks',
       revealed: false,
       round: 0,
@@ -382,6 +376,7 @@ describe('applySyncState', () => {
 
     useSessionStore.getState().applySyncState({
       currentItem: null,
+      sessionName: '',
       unit: 'hours',
       revealed: false,
       round: 0,
@@ -408,6 +403,7 @@ describe('applySyncState', () => {
 
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
+      sessionName: '',
       unit: 'days',
       revealed: false,
       round: 0,
@@ -436,6 +432,7 @@ describe('applySyncState', () => {
 
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
+      sessionName: '',
       unit: 'days',
       revealed: true,
       round: 0,
@@ -466,6 +463,7 @@ describe('applySyncState', () => {
 
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
+      sessionName: '',
       unit: 'days',
       revealed: false,
       round: 1,
@@ -499,6 +497,7 @@ describe('applySyncState', () => {
 
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
+      sessionName: '',
       unit: 'days',
       revealed: false,
       round: 1,
@@ -517,6 +516,7 @@ describe('applySyncState', () => {
 
     useSessionStore.getState().applySyncState({
       currentItem: snapshotItem,
+      sessionName: '',
       unit: 'days',
       revealed: true,
       round: 0,
@@ -546,6 +546,7 @@ describe('applySyncState', () => {
     const nextItem = { id: 'item-2', title: 'Next', description: '' }
     useSessionStore.getState().applySyncState({
       currentItem: nextItem,
+      sessionName: '',
       unit: 'days',
       revealed: false,
       round: 0,
@@ -708,7 +709,7 @@ describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
     expect(useSessionStore.getState().items[0]!.finalResult).toBeNull()
   })
 
-  it('finalizeLiveItem aggregates submissions and advances to the next pending item', () => {
+  it('finalizeLiveItem aggregates submissions and leaves navigation to the caller', () => {
     seed({
       revealed: true,
       submissions: [
@@ -725,7 +726,9 @@ describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
       expected: 5,
       max: 12,
     })
-    expect(useSessionStore.getState().activeItemId).toBe('i2')
+    // Workspace (not the store) decides where to move next — adjacent-item nav,
+    // not "next pending" — so activeItemId is untouched by finalize itself.
+    expect(useSessionStore.getState().activeItemId).toBe('i1')
   })
 
   it('finalizeLiveItem fails when no submissions have arrived', () => {

@@ -126,6 +126,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       )
       return {
         currentItem,
+        sessionName: state.sessionName,
         unit: state.unit,
         revealed,
         round,
@@ -145,6 +146,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       const snapshot = computeSnapshot()
       const key = JSON.stringify({
         currentItem: snapshot.currentItem,
+        sessionName: snapshot.sessionName,
         unit: snapshot.unit,
         revealed: snapshot.revealed,
         round: snapshot.round,

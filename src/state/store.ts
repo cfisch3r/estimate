@@ -64,7 +64,9 @@ interface SessionStore {
   setMode: (mode: SessionMode) => void
   setConnectionStatus: (status: LiveConnectionStatus) => void
   setPeerCount: (count: number) => void
-  selectItem: (id: string) => void
+  /** Passing null clears the selection (e.g. after finalizing the last item
+   *  that still needed one), showing the "all items finalized" empty state. */
+  selectItem: (id: string | null) => void
   setItemNotes: (id: string, notes: string) => void
   setItemDescription: (id: string, description: string) => void
   finalizeItem: (
@@ -125,20 +127,18 @@ function firstPendingItemId(items: Item[], excludeId?: string): string | null {
 }
 
 /** Shared body of `finalizeItem` / `finalizeLiveItem`: record `finalResult` on
- *  `id` and, unless it was already finalized (a re-finalize/edit), advance the
- *  active item to the next pending one. */
+ *  `id`. Navigation to another item is the caller's concern (Workspace moves
+ *  to the adjacent item, or to the summary on the last one) — the store just
+ *  records the result and leaves `activeItemId` untouched. */
 function recordFinalResult(
   state: Pick<SessionStore, 'items'>,
   id: string,
   finalResult: AggregateResult,
-): Pick<SessionStore, 'items' | 'activeItemId'> {
-  const wasAlreadyFinalized =
-    state.items.find((item) => item.id === id)?.finalResult !== null
+): Pick<SessionStore, 'items'> {
   const items = state.items.map((item) =>
     item.id === id ? { ...item, finalResult } : item,
   )
-  const activeItemId = wasAlreadyFinalized ? id : firstPendingItemId(items, id)
-  return { items, activeItemId }
+  return { items }
 }
 
 const LIVE_SESSION_DEFAULTS = {
@@ -367,9 +367,15 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   applySyncState: (snapshot) =>
     set((state) => {
+      // Only a participant ever receives another client's broadcast (the
+      // facilitator is the sole sender — see broadcastFacilitatorState); guarding
+      // on role keeps a stray/self-received snapshot from ever overwriting the
+      // facilitator's own sessionName field with an echo.
+      const sessionNameUpdate =
+        state.role === 'participant' ? { sessionName: snapshot.sessionName } : {}
       // Participants estimate in the facilitator's unit, not their local default.
       if (snapshot.currentItem === null) {
-        return { liveRound: null, unit: snapshot.unit }
+        return { liveRound: null, unit: snapshot.unit, ...sessionNameUpdate }
       }
       const prev = state.liveRound
       const sameItem = prev?.item.id === snapshot.currentItem.id
@@ -389,6 +395,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
         : []
       return {
         unit: snapshot.unit,
+        ...sessionNameUpdate,
         liveRound: {
           item: snapshot.currentItem,
           submissions,

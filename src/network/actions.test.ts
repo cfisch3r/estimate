@@ -183,6 +183,7 @@ describe('createTypedActions', () => {
     const actions = createTypedActions(room)
     const snapshot = {
       currentItem: item,
+      sessionName: 'Sprint 42',
       unit: 'weeks' as const,
       revealed: false,
       round: 3,
@@ -219,6 +220,7 @@ describe('createTypedActions', () => {
     expect(cb).toHaveBeenCalledWith(
       {
         currentItem: item,
+        sessionName: '',
         unit: 'days',
         revealed: false,
         round: 1,
@@ -250,6 +252,7 @@ describe('createTypedActions', () => {
     expect(cb).toHaveBeenCalledWith(
       {
         currentItem: item,
+        sessionName: '',
         unit: 'days',
         revealed: false,
         round: 1,
@@ -390,6 +393,7 @@ describe('createTypedActions', () => {
     expect(cb).toHaveBeenCalledWith(
       {
         currentItem: null,
+        sessionName: '',
         unit: 'days',
         revealed: false,
         round: 0,
@@ -420,6 +424,7 @@ describe('createTypedActions', () => {
       1,
       {
         currentItem: item,
+        sessionName: '',
         unit: 'days',
         revealed: false,
         round: 0,
@@ -433,6 +438,7 @@ describe('createTypedActions', () => {
       2,
       {
         currentItem: item,
+        sessionName: '',
         unit: 'days',
         revealed: false,
         round: 0,
@@ -449,6 +455,7 @@ describe('createTypedActions', () => {
     const actions = createTypedActions(room)
     const snapshot = {
       currentItem: null,
+      sessionName: '',
       unit: 'days' as const,
       revealed: false,
       round: 0,
@@ -506,6 +513,7 @@ describe('createTypedActions', () => {
     const actions = createTypedActions(room)
     const snapshot = {
       currentItem: null,
+      sessionName: '',
       unit: 'days' as const,
       revealed: false,
       round: 0,

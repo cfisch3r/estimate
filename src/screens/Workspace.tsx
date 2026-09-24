@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react'
 import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
+import { NotebookIcon } from '@phosphor-icons/react/dist/csr/Notebook'
+import { CaretLeftIcon } from '@phosphor-icons/react/dist/csr/CaretLeft'
 import { ListChecksIcon } from '@phosphor-icons/react/dist/csr/ListChecks'
 import {
   Button,
@@ -13,14 +15,22 @@ import {
   Select,
   Textarea,
   GuardNote,
+  GroupBox,
   RangeBar,
   PhasePicker,
   UncertaintyGuidanceNotes,
   Tag,
 } from '../components'
+import {
+  THREE_POINT_ESTIMATE_INFO,
+  PHASE_INFO,
+  RANGE_INFO,
+  PARTICIPANT_ESTIMATES_INFO,
+} from '../copy/groupInfo'
 import { SessionSidebar } from './SessionSidebar'
 import { useConfirmArm } from '../hooks/useConfirmArm'
 import { usePhaseGuidance } from '../hooks/usePhaseGuidance'
+import { useSingleInfoPopover } from '../hooks/useSingleInfoPopover'
 import { useSessionStore, type FinalizeResult } from '../state/store'
 import { useNetworkSession } from '../network'
 import {
@@ -116,10 +126,10 @@ interface ItemDetailShellProps {
   children: ReactNode
 }
 
-/** The chrome shared by every active-item panel: the elevated card, the
- *  click-to-edit title, the description field, and the discussion-notes field.
- *  `children` is the mode-specific middle (manual inputs, or the facilitator
- *  reveal flow). */
+/** The chrome shared by every active-item panel: the click-to-edit title, the
+ *  description field, and the discussion-notes field. `children` is the
+ *  mode-specific middle (manual inputs, or the facilitator reveal flow). Sits
+ *  flush inside Workspace's merged card — no card/shadow of its own. */
 function ItemDetailShell({
   item,
   onNotesChange,
@@ -128,7 +138,7 @@ function ItemDetailShell({
   children,
 }: ItemDetailShellProps) {
   return (
-    <Card elevation="sm" style={{ flex: 1 }}>
+    <>
       <EditableTitle
         value={item.title}
         onCommit={(next) => onTitleChange(item.id, next)}
@@ -157,14 +167,44 @@ function ItemDetailShell({
           style={{ flex: 1, minHeight: 0, resize: 'vertical' }}
         />
       </Field>
-    </Card>
+    </>
+  )
+}
+
+interface NavRowProps {
+  isFirst: boolean
+  onNavigatePrev: () => void
+  children: ReactNode
+}
+
+/** The "← + primary advance action" row shared by both facilitator-side
+ *  panels: ← only ever navigates to the adjacent item (never a finalize side
+ *  effect), the primary button (passed as `children`) does the finalize/advance. */
+function NavRow({ isFirst, onNavigatePrev, children }: NavRowProps) {
+  return (
+    <div className="workspace-navrow">
+      <Button
+        icon
+        variant="secondary"
+        aria-label="Previous item"
+        disabled={isFirst}
+        onClick={onNavigatePrev}
+      >
+        <CaretLeftIcon size={16} />
+      </Button>
+      {children}
+    </div>
   )
 }
 
 interface ActiveItemPanelProps {
   item: Item
   unit: EstimationUnit
+  isFirst: boolean
+  isLast: boolean
   onFinalize: (id: string, best: number, likely: number, worst: number) => FinalizeResult
+  onAdvance: () => void
+  onNavigatePrev: () => void
   onNotesChange: (id: string, notes: string) => void
   onDescriptionChange: (id: string, description: string) => void
   onTitleChange: (id: string, title: string) => void
@@ -173,7 +213,11 @@ interface ActiveItemPanelProps {
 function ActiveItemPanel({
   item,
   unit,
+  isFirst,
+  isLast,
   onFinalize,
+  onAdvance,
+  onNavigatePrev,
   onNotesChange,
   onDescriptionChange,
   onTitleChange,
@@ -184,6 +228,11 @@ function ActiveItemPanel({
     item.finalResult ? String(item.finalResult.expected) : '',
   )
   const [worst, setWorst] = useState(item.finalResult ? String(item.finalResult.max) : '')
+  const {
+    openKey: infoOpen,
+    open: openInfo,
+    close: closeInfo,
+  } = useSingleInfoPopover<'estimate' | 'phase' | 'range'>()
 
   const allFilled = best !== '' && likely !== '' && worst !== ''
   const bestNum = Number(best)
@@ -224,8 +273,17 @@ function ActiveItemPanel({
   )
 
   function handleFinalize() {
-    onFinalize(item.id, bestNum, likelyNum, worstNum)
+    const result = onFinalize(item.id, bestNum, likelyNum, worstNum)
+    if (result.ok) onAdvance()
   }
+
+  const primaryLabel = isEdit
+    ? isLast
+      ? 'Update & view summary'
+      : 'Update & next →'
+    : isLast
+      ? 'Finalize & view summary'
+      : 'Finalize & next →'
 
   return (
     <ItemDetailShell
@@ -234,86 +292,119 @@ function ActiveItemPanel({
       onDescriptionChange={onDescriptionChange}
       onTitleChange={onTitleChange}
     >
-      <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
-        <Field style={{ flex: 1 }}>
-          <FieldLabel htmlFor="best">{`Best case (${unit})`}</FieldLabel>
-          <Input
-            id="best"
-            type="number"
-            min={0}
-            value={best}
-            onChange={(e) => setBest(e.target.value)}
-            style={{
-              height: 48,
-              fontSize: '1.1rem',
-              textAlign: 'center',
-              borderRadius: 'var(--radius-lg)',
-            }}
-          />
-          {bestPrecision?.fired && (
-            <GuardNote>Consider rounding to a meaningful value.</GuardNote>
-          )}
-        </Field>
-        <Field style={{ flex: 1 }}>
-          <FieldLabel htmlFor="likely">{`Most likely (${unit})`}</FieldLabel>
-          <Input
-            id="likely"
-            type="number"
-            min={0}
-            value={likely}
-            onChange={(e) => setLikely(e.target.value)}
-            style={{
-              height: 48,
-              fontSize: '1.1rem',
-              textAlign: 'center',
-              borderRadius: 'var(--radius-lg)',
-            }}
-          />
-          {likelyPrecision?.fired && (
-            <GuardNote>Consider rounding to a meaningful value.</GuardNote>
-          )}
-        </Field>
-        <Field style={{ flex: 1 }}>
-          <FieldLabel htmlFor="worst">{`Worst case (${unit})`}</FieldLabel>
-          <Input
-            id="worst"
-            type="number"
-            min={0}
-            value={worst}
-            onChange={(e) => setWorst(e.target.value)}
-            style={{
-              height: 48,
-              fontSize: '1.1rem',
-              textAlign: 'center',
-              borderRadius: 'var(--radius-lg)',
-            }}
-          />
-          {worstPrecision?.fired && (
-            <GuardNote>Consider rounding to a meaningful value.</GuardNote>
-          )}
-        </Field>
-      </div>
+      <GroupBox
+        label="Phase"
+        info={PHASE_INFO}
+        infoOpen={infoOpen === 'phase'}
+        onInfoOpen={() => openInfo('phase')}
+        onInfoClose={closeInfo}
+      >
+        <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
+      </GroupBox>
 
-      <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
+      <GroupBox
+        label="Three-point estimate"
+        info={THREE_POINT_ESTIMATE_INFO}
+        infoOpen={infoOpen === 'estimate'}
+        onInfoOpen={() => openInfo('estimate')}
+        onInfoClose={closeInfo}
+      >
+        <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
+          <Field style={{ flex: 1 }}>
+            <FieldLabel htmlFor="best">{`Best case (${unit})`}</FieldLabel>
+            <Input
+              id="best"
+              type="number"
+              min={0}
+              value={best}
+              onChange={(e) => setBest(e.target.value)}
+              style={{
+                height: 48,
+                fontSize: '1.1rem',
+                textAlign: 'center',
+                borderRadius: 'var(--radius-lg)',
+              }}
+            />
+            {bestPrecision?.fired && (
+              <GuardNote>Consider rounding to a meaningful value.</GuardNote>
+            )}
+          </Field>
+          <Field style={{ flex: 1 }}>
+            <FieldLabel htmlFor="likely">{`Most likely (${unit})`}</FieldLabel>
+            <Input
+              id="likely"
+              type="number"
+              min={0}
+              value={likely}
+              onChange={(e) => setLikely(e.target.value)}
+              style={{
+                height: 48,
+                fontSize: '1.1rem',
+                textAlign: 'center',
+                borderRadius: 'var(--radius-lg)',
+              }}
+            />
+            {likelyPrecision?.fired && (
+              <GuardNote>Consider rounding to a meaningful value.</GuardNote>
+            )}
+          </Field>
+          <Field style={{ flex: 1 }}>
+            <FieldLabel htmlFor="worst">{`Worst case (${unit})`}</FieldLabel>
+            <Input
+              id="worst"
+              type="number"
+              min={0}
+              value={worst}
+              onChange={(e) => setWorst(e.target.value)}
+              style={{
+                height: 48,
+                fontSize: '1.1rem',
+                textAlign: 'center',
+                borderRadius: 'var(--radius-lg)',
+              }}
+            />
+            {worstPrecision?.fired && (
+              <GuardNote>Consider rounding to a meaningful value.</GuardNote>
+            )}
+          </Field>
+        </div>
+        {orderingWarning && (
+          <GuardNote variant="banner" headline="Out of order">
+            {orderingWarning}
+          </GuardNote>
+        )}
+      </GroupBox>
 
-      {validation?.ok && (
-        <>
-          <RangeBar
-            min={bestNum}
-            max={worstNum}
-            expected={likelyNum}
-            ci90={computeCI90(likelyNum, bestNum, worstNum)}
-            unitSuffix={UNIT_SUFFIX[unit]}
-            guidance={guidanceHigh !== null ? { guidanceHigh } : undefined}
-          />
-          <UncertaintyGuidanceNotes
-            guidanceHigh={guidanceHigh}
-            worst={worstNum}
-            unitSuffix={UNIT_SUFFIX[unit]}
-            uncertaintyGuard={uncertaintyGuard}
-          />
-        </>
-      )}
+      <GroupBox
+        label="Range"
+        info={RANGE_INFO}
+        infoOpen={infoOpen === 'range'}
+        onInfoOpen={() => openInfo('range')}
+        onInfoClose={closeInfo}
+      >
+        {validation?.ok ? (
+          <>
+            <RangeBar
+              min={bestNum}
+              max={worstNum}
+              expected={likelyNum}
+              ci90={computeCI90(likelyNum, bestNum, worstNum)}
+              unitSuffix={UNIT_SUFFIX[unit]}
+              guidance={guidanceHigh !== null ? { guidanceHigh } : undefined}
+            />
+            <UncertaintyGuidanceNotes
+              guidanceHigh={guidanceHigh}
+              worst={worstNum}
+              unitSuffix={UNIT_SUFFIX[unit]}
+              uncertaintyGuard={uncertaintyGuard}
+            />
+          </>
+        ) : (
+          <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+            Enter best, most likely and worst case above to see the range.
+          </p>
+        )}
+      </GroupBox>
 
       {symmetricGuard?.fired && (
         <GuardNote variant="banner" headline="Symmetric range">
@@ -325,15 +416,17 @@ function ActiveItemPanel({
           {validationError}
         </GuardNote>
       )}
-      {orderingWarning && (
-        <GuardNote variant="banner" headline="Out of order">
-          {orderingWarning}
-        </GuardNote>
-      )}
 
-      <Button variant="primary" disabled={!validation?.ok} onClick={handleFinalize}>
-        {isEdit ? 'Update estimate' : 'Finalize item'}
-      </Button>
+      <NavRow isFirst={isFirst} onNavigatePrev={onNavigatePrev}>
+        <Button
+          variant="primary"
+          style={{ flex: 1 }}
+          disabled={!validation?.ok}
+          onClick={handleFinalize}
+        >
+          {validation?.ok ? primaryLabel : isEdit ? 'Update item' : 'Finalize item'}
+        </Button>
+      </NavRow>
     </ItemDetailShell>
   )
 }
@@ -382,10 +475,14 @@ function buildRoster(
 interface LiveFacilitatorPanelProps {
   item: Item
   unit: EstimationUnit
+  isFirst: boolean
+  isLast: boolean
   participantNames: Record<string, string>
   onReveal: (id: string) => void
   onRetry: (id: string) => void
   onFinalize: (id: string) => FinalizeResult
+  onAdvance: () => void
+  onNavigatePrev: () => void
   onNotesChange: (id: string, notes: string) => void
   onDescriptionChange: (id: string, description: string) => void
   onTitleChange: (id: string, title: string) => void
@@ -397,10 +494,14 @@ interface LiveFacilitatorPanelProps {
 function LiveFacilitatorPanel({
   item,
   unit,
+  isFirst,
+  isLast,
   participantNames,
   onReveal,
   onRetry,
   onFinalize,
+  onAdvance,
+  onNavigatePrev,
   onNotesChange,
   onDescriptionChange,
   onTitleChange,
@@ -410,11 +511,22 @@ function LiveFacilitatorPanel({
   const submittedCount = item.submissions.length
   const aggregate =
     item.revealed && submittedCount > 0 ? aggregateEstimates(item.submissions) : null
+  const isFinalized = item.finalResult !== null
+  const {
+    openKey: infoOpen,
+    open: openInfo,
+    close: closeInfo,
+  } = useSingleInfoPopover<'estimate' | 'range'>()
   const {
     armed: reopenArmed,
     handleClick: armAndReopen,
     ref: reopenRef,
   } = useConfirmArm<HTMLButtonElement>(() => onRetry(item.id))
+
+  function handleFinalizeAndAdvance() {
+    const result = onFinalize(item.id)
+    if (result.ok) onAdvance()
+  }
 
   return (
     <ItemDetailShell
@@ -423,20 +535,13 @@ function LiveFacilitatorPanel({
       onDescriptionChange={onDescriptionChange}
       onTitleChange={onTitleChange}
     >
-      {item.revealed && aggregate && (
-        <RangeBar
-          min={aggregate.min}
-          max={aggregate.max}
-          expected={aggregate.expected}
-          ci90={aggregate.ci90}
-          unitSuffix={suffix}
-        />
-      )}
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-        <FieldLabel>
-          {item.revealed ? 'Participant estimates' : 'Participants'}
-        </FieldLabel>
+      <GroupBox
+        label={item.revealed ? 'Participant estimates' : 'Participants'}
+        info={PARTICIPANT_ESTIMATES_INFO}
+        infoOpen={infoOpen === 'estimate'}
+        onInfoOpen={() => openInfo('estimate')}
+        onInfoClose={closeInfo}
+      >
         {roster.length === 0 ? (
           <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
             No participants have joined yet.
@@ -471,51 +576,27 @@ function LiveFacilitatorPanel({
             ))}
           </ul>
         )}
-      </div>
+      </GroupBox>
 
-      {item.revealed ? (
-        item.finalResult !== null ? (
-          <GuardNote variant="banner" headline="Already finalized">
-            <div
-              style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}
-            >
-              <span>
-                This item has a recorded range. Late submissions are ignored — to
-                re-estimate, reopen the item.
-              </span>
-              <Button
-                ref={reopenRef}
-                variant="secondary"
-                style={{
-                  alignSelf: 'flex-start',
-                  color: reopenArmed ? 'var(--color-warning)' : undefined,
-                }}
-                onClick={armAndReopen}
-              >
-                {reopenArmed ? 'Click again to reopen' : 'Reopen item'}
-              </Button>
-            </div>
-          </GuardNote>
-        ) : (
-          <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-            <Button
-              variant="primary"
-              style={{ flex: 1 }}
-              disabled={submittedCount === 0}
-              onClick={() => onFinalize(item.id)}
-            >
-              Finalize item
-            </Button>
-            <Button
-              variant="secondary"
-              style={{ flex: 1 }}
-              onClick={() => onRetry(item.id)}
-            >
-              Retry — start new round
-            </Button>
-          </div>
-        )
-      ) : (
+      {item.revealed && aggregate && (
+        <GroupBox
+          label="Range (aggregated)"
+          info={RANGE_INFO}
+          infoOpen={infoOpen === 'range'}
+          onInfoOpen={() => openInfo('range')}
+          onInfoClose={closeInfo}
+        >
+          <RangeBar
+            min={aggregate.min}
+            max={aggregate.max}
+            expected={aggregate.expected}
+            ci90={aggregate.ci90}
+            unitSuffix={suffix}
+          />
+        </GroupBox>
+      )}
+
+      {!item.revealed ? (
         <Button
           variant="primary"
           disabled={submittedCount === 0}
@@ -525,6 +606,51 @@ function LiveFacilitatorPanel({
             ? 'Reveal estimates'
             : `Reveal estimates (${submittedCount} submitted)`}
         </Button>
+      ) : isFinalized ? (
+        <>
+          <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+            This item has a recorded range. Late submissions are ignored — to re-estimate,
+            reopen the item.
+          </p>
+          <NavRow isFirst={isFirst} onNavigatePrev={onNavigatePrev}>
+            <Button
+              variant="primary"
+              style={{ flex: 1 }}
+              onClick={handleFinalizeAndAdvance}
+            >
+              {isLast ? 'Update & view summary' : 'Update & next →'}
+            </Button>
+            <Button
+              ref={reopenRef}
+              variant="ghost"
+              style={{
+                flex: 'none',
+                color: reopenArmed ? 'var(--color-warning)' : undefined,
+              }}
+              onClick={armAndReopen}
+            >
+              {reopenArmed ? 'Click again to reopen' : 'Reopen item'}
+            </Button>
+          </NavRow>
+        </>
+      ) : (
+        <NavRow isFirst={isFirst} onNavigatePrev={onNavigatePrev}>
+          <Button
+            variant="primary"
+            style={{ flex: 1 }}
+            disabled={submittedCount === 0}
+            onClick={handleFinalizeAndAdvance}
+          >
+            {isLast ? 'Finalize & view summary' : 'Finalize & next →'}
+          </Button>
+          <Button
+            variant="secondary"
+            style={{ flex: 'none' }}
+            onClick={() => onRetry(item.id)}
+          >
+            Retry round
+          </Button>
+        </NavRow>
       )}
     </ItemDetailShell>
   )
@@ -564,17 +690,7 @@ function LiveSessionStrip({
           : { variant: 'neutral' as const, label: 'Waiting for participants…' }
 
   return (
-    <div
-      style={{
-        gridColumn: '1 / -1',
-        display: 'flex',
-        alignItems: 'center',
-        gap: 'var(--space-4)',
-        padding: 'var(--space-3) var(--space-4)',
-        border: '1px solid var(--color-divider)',
-        borderRadius: 'var(--radius-lg)',
-      }}
-    >
+    <div className="workspace-strip">
       <span className="text-muted">Session code</span>
       <strong style={{ fontSize: '1.1rem', letterSpacing: '0.08em' }}>{sessionId}</strong>
       <Button
@@ -640,33 +756,65 @@ export function Workspace() {
     retryRound(id)
   }
 
-  const activeItem = items.find((item) => item.id === activeItemId) ?? null
+  const activeIndex = items.findIndex((item) => item.id === activeItemId)
+  const activeItem = activeIndex === -1 ? null : items[activeIndex]!
+  const isFirst = activeIndex <= 0
+  const isLast = activeIndex === items.length - 1
   const allFinalized =
     items.length > 0 && items.every((item) => item.finalResult !== null)
+
+  // Both the "←" control and the primary button's advance side effect move to
+  // whichever item is adjacent in the sidebar's list order — not the next
+  // *pending* item. A first pass through a fresh backlog is unaffected (items
+  // are pending in list order anyway); revisiting an already-finalized item
+  // (via a direct click in the sidebar) and hitting "next" just moves to
+  // whatever's adjacent, with no separate "skip finalized" logic needed.
+  function handleNavigatePrev() {
+    if (activeIndex <= 0) return
+    selectItem(items[activeIndex - 1]!.id)
+  }
+
+  function handleAdvance() {
+    if (activeIndex === -1) return
+    if (activeIndex === items.length - 1) {
+      // The item at activeIndex was just (re-)finalized by the caller — every
+      // *other* item's finalResult already reflects its pre-click state, so
+      // this check doesn't need a fresh read from the store.
+      const allFinalizedNow = items.every(
+        (item, idx) => idx === activeIndex || item.finalResult !== null,
+      )
+      if (allFinalizedNow) {
+        // Nothing left to work on — clear the selection so returning to the
+        // workspace (e.g. via Summary's "Back to item") shows the "all items
+        // finalized" empty state instead of reopening this now-done item.
+        selectItem(null)
+      }
+      goToScreen('summary')
+    } else {
+      selectItem(items[activeIndex + 1]!.id)
+    }
+  }
 
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: '300px 1fr',
-        gap: 'var(--space-6)',
         maxWidth: 1280,
         margin: '0 auto',
         padding: 'var(--space-6) var(--space-4)',
       }}
     >
-      {mode === 'live' && sessionId && (
-        <LiveSessionStrip
-          sessionId={sessionId}
-          connectionStatus={connectionStatus}
-          peerCount={peerCount}
-          hasEverConnected={hasEverConnected}
-          onReconnect={() => connect(sessionId)}
-        />
-      )}
+      <Card elevation="sm" className="workspace-card">
+        {mode === 'live' && sessionId && (
+          <LiveSessionStrip
+            sessionId={sessionId}
+            connectionStatus={connectionStatus}
+            peerCount={peerCount}
+            hasEverConnected={hasEverConnected}
+            onReconnect={() => connect(sessionId)}
+          />
+        )}
 
-      <Card elevation="sm" style={{ gap: 'var(--space-4)', alignSelf: 'start' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+        <div className="workspace-topbar">
           <Input
             aria-label="Session name"
             value={sessionName}
@@ -674,15 +822,15 @@ export function Workspace() {
             placeholder="Untitled session"
             style={{
               fontFamily: 'var(--font-heading)',
-              fontSize: 13,
+              fontSize: 15,
               fontWeight: 500,
-              color: 'var(--color-neutral-400)',
               border: 'none',
               background: 'transparent',
               padding: 0,
               height: 'auto',
-              flex: 1,
-              minWidth: 0,
+              flex: 'none',
+              width: 'auto',
+              minWidth: 120,
             }}
           />
           <PencilSimpleIcon
@@ -708,77 +856,88 @@ export function Workspace() {
             <option value="days">Days</option>
             <option value="weeks">Weeks</option>
           </Select>
+          <span style={{ flex: 1 }} />
+          <Button variant="ghost" onClick={() => goToScreen('summary')}>
+            <NotebookIcon size={15} />
+            Summary
+          </Button>
         </div>
 
-        <SessionSidebar
-          items={items}
-          activeItemId={activeItemId}
-          currentScreen={currentScreen}
-          onSelect={selectItem}
-          onReorder={reorderItems}
-          onRemove={removeItem}
-          onAdd={addItem}
-          onGoSummary={() => goToScreen('summary')}
-        />
-      </Card>
+        <div className="workspace-body">
+          <div className="workspace-sidebar-col">
+            <SessionSidebar
+              items={items}
+              activeItemId={activeItemId}
+              currentScreen={currentScreen}
+              onSelect={selectItem}
+              onReorder={reorderItems}
+              onRemove={removeItem}
+              onAdd={addItem}
+              onGoSummary={() => goToScreen('summary')}
+              hideSummaryButton
+            />
+          </div>
 
-      {activeItem ? (
-        isLiveFacilitator ? (
-          <LiveFacilitatorPanel
-            key={activeItem.id}
-            item={activeItem}
-            unit={unit}
-            participantNames={participantNames}
-            onReveal={handleReveal}
-            onRetry={handleRetry}
-            onFinalize={finalizeLiveItem}
-            onNotesChange={setItemNotes}
-            onDescriptionChange={setItemDescription}
-            onTitleChange={(id, title) =>
-              updateItem(id, { title, description: activeItem.description })
-            }
-          />
-        ) : (
-          <ActiveItemPanel
-            key={activeItem.id}
-            item={activeItem}
-            unit={unit}
-            onFinalize={finalizeItem}
-            onNotesChange={setItemNotes}
-            onDescriptionChange={setItemDescription}
-            onTitleChange={(id, title) =>
-              updateItem(id, { title, description: activeItem.description })
-            }
-          />
-        )
-      ) : (
-        <Card
-          elevation="sm"
-          style={{
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-            textAlign: 'center',
-            gap: 'var(--space-2)',
-          }}
-        >
-          <ListChecksIcon size={28} style={{ color: 'var(--color-neutral-500)' }} />
-          <CardTitle style={{ marginTop: 'var(--space-2)' }}>
-            {items.length === 0
-              ? 'Add an item to get started'
-              : allFinalized
-                ? 'All items finalized'
-                : 'Select an item to estimate'}
-          </CardTitle>
-          <CardBody style={{ maxWidth: 320 }}>
-            {items.length === 0
-              ? "Everything you're estimating lives in the list on the left. Add one, then select it here to record a best / likely / worst range."
-              : allFinalized
-                ? 'Every item has a recorded range — open the summary from the sidebar, or add another item.'
-                : 'Pick an item from the list on the left to record its best / likely / worst range.'}
-          </CardBody>
-        </Card>
-      )}
+          <div className="workspace-detail-col">
+            {activeItem ? (
+              isLiveFacilitator ? (
+                <LiveFacilitatorPanel
+                  key={activeItem.id}
+                  item={activeItem}
+                  unit={unit}
+                  isFirst={isFirst}
+                  isLast={isLast}
+                  participantNames={participantNames}
+                  onReveal={handleReveal}
+                  onRetry={handleRetry}
+                  onFinalize={finalizeLiveItem}
+                  onAdvance={handleAdvance}
+                  onNavigatePrev={handleNavigatePrev}
+                  onNotesChange={setItemNotes}
+                  onDescriptionChange={setItemDescription}
+                  onTitleChange={(id, title) =>
+                    updateItem(id, { title, description: activeItem.description })
+                  }
+                />
+              ) : (
+                <ActiveItemPanel
+                  key={activeItem.id}
+                  item={activeItem}
+                  unit={unit}
+                  isFirst={isFirst}
+                  isLast={isLast}
+                  onFinalize={finalizeItem}
+                  onAdvance={handleAdvance}
+                  onNavigatePrev={handleNavigatePrev}
+                  onNotesChange={setItemNotes}
+                  onDescriptionChange={setItemDescription}
+                  onTitleChange={(id, title) =>
+                    updateItem(id, { title, description: activeItem.description })
+                  }
+                />
+              )
+            ) : (
+              <div className="workspace-empty-col">
+                <ListChecksIcon size={28} style={{ color: 'var(--color-neutral-500)' }} />
+                <CardTitle style={{ marginTop: 'var(--space-2)' }}>
+                  {items.length === 0
+                    ? 'Add an item to get started'
+                    : allFinalized
+                      ? 'All items finalized'
+                      : 'Select an item to estimate'}
+                </CardTitle>
+                <CardBody style={{ maxWidth: 320 }}>
+                  {items.length === 0
+                    ? "Everything you're estimating lives in the list on the left. Add one, then select it here to record a best / likely / worst range."
+                    : allFinalized
+                      ? 'Every item has a recorded range — open the summary from the sidebar, or add another item.'
+                      : 'Pick an item from the list on the left to record its best / likely / worst range.'}
+                </CardBody>
+              </div>
+            )}
+          </div>
+        </div>
+      </Card>
     </div>
   )
 }

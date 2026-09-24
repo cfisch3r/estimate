@@ -128,6 +128,7 @@ describe('joinSession', () => {
     const session = joinSession('session-abc')
     const snapshot = {
       currentItem: null,
+      sessionName: '',
       unit: 'days' as const,
       revealed: false,
       round: 0,
@@ -150,6 +151,7 @@ describe('joinSession', () => {
     const session = joinSession('session-abc')
     const snapshot = {
       currentItem: null,
+      sessionName: '',
       unit: 'days' as const,
       revealed: false,
       round: 0,

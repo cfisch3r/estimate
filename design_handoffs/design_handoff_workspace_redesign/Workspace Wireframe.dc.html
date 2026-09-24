@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<style>
+  body{margin:0;background:#f0eee9;font-family:'Comic Sans MS','Segoe Print',cursive,sans-serif}
+  .dv-turn{padding:40px 44px 32px}
+  .dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+  .dv-tid{font:600 10px ui-monospace,Menlo,monospace;padding:3px 7px;background:#1a1a1a;color:#fff;border-radius:4px;text-decoration:none}
+  .dv-tname{font:600 13px/1.2 system-ui,sans-serif;color:#1a1a1a}
+  .dv-opts{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+  .dv-opt{flex:none;display:flex;flex-direction:column;gap:9px}
+  .dv-oid{font:600 10.5px ui-monospace,Menlo,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#1a1a1a;border-radius:5px;text-decoration:none}
+  .dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 11px/1.3 system-ui,sans-serif;color:rgba(0,0,0,.55)}
+  .dv-card{background:#fff;border:2px solid #1a1a1a;box-shadow:3px 3px 0 rgba(0,0,0,.15);overflow:hidden}
+  .dv-next{margin:22px 0 0;font:12px/1.5 system-ui,sans-serif;color:rgba(0,0,0,.5)}
+
+  .wf{width:1180px;box-sizing:border-box}
+  .wf-box{border:1.5px dashed #444;box-sizing:border-box}
+  .wf-solid{border:2px solid #1a1a1a;box-sizing:border-box}
+  .wf-lbl{font-size:11px;color:#666;font-family:system-ui,sans-serif;letter-spacing:.02em}
+  .wf-txt{font-size:14px;color:#111}
+  .wf-hand{font-family:'Comic Sans MS','Segoe Print',cursive,sans-serif}
+
+  .wf-header{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;border-bottom:2px solid #1a1a1a}
+  .wf-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px}
+  .wf-tag{border:1.5px solid #1a1a1a;border-radius:20px;padding:3px 10px;font-size:11px}
+
+  .wf-body{display:grid;grid-template-columns:260px 1fr;gap:20px;padding:24px}
+
+  .wf-sidebar{display:flex;flex-direction:column;gap:14px;padding:16px}
+  .wf-row{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;border:1px solid #999;border-radius:4px;font-size:13px}
+  .wf-row.active{border:2px solid #1a1a1a;background:#eee}
+
+  .wf-panel{display:flex;flex-direction:column;gap:16px;padding:20px}
+  .wf-inputs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .wf-input-box{border:1.5px solid #444;border-radius:6px;height:50px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#888}
+
+  .wf-cone{position:relative;height:150px;border:1.5px dashed #444;border-radius:6px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+  .wf-cone svg{position:absolute;top:8px;left:8px;right:8px;bottom:8px;width:calc(100% - 16px);height:calc(100% - 16px)}
+  .wf-phaselabels{display:flex;justify-content:space-between;font-size:10px;color:#777;margin-top:6px}
+
+  .wf-rangebar{border:1.5px dashed #444;border-radius:6px;padding:24px 16px 10px;position:relative}
+  .wf-rb-track{height:8px;background:linear-gradient(to right,#ddd,#bbb,#ddd);border-radius:4px;position:relative}
+  .wf-rb-marker{position:absolute;top:-18px;font-size:10px;color:#555;transform:translateX(-50%)}
+  .wf-rb-marker::after{content:'▼';display:block;text-align:center;font-size:9px;margin-top:2px}
+  .wf-rb-ends{display:flex;justify-content:space-between;margin-top:6px;font-size:10px;color:#777}
+
+  .wf-btn{border:2px solid #1a1a1a;border-radius:5px;padding:9px;text-align:center;font-size:13px;font-weight:600}
+  .wf-btn.ghost{border-style:dashed;font-weight:400;color:#666}
+
+  .wf-annot{position:absolute;font-size:11px;color:#b23b2e;font-family:'Comic Sans MS','Segoe Print',cursive,sans-serif;max-width:150px;line-height:1.3}
+
+  .wf-outer{border:2px solid #1a1a1a;box-sizing:border-box}
+  .wf-topbar{display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1.5px dashed #444}
+  .wf-topbar-2row{display:flex;flex-direction:column;gap:10px;padding:14px 20px;border-bottom:1.5px dashed #444}
+  .wf-topbar-row{display:flex;align-items:center;gap:14px}
+  .wf-inner-body{display:grid;grid-template-columns:260px 1fr}
+  .wf-inner-left{padding:16px;display:flex;flex-direction:column;gap:10px;border-right:1.5px dashed #444}
+  .wf-inner-right{padding:20px;display:flex;flex-direction:column;gap:16px}
+  .wf-group{border:1.5px solid #999;border-radius:6px;padding:12px;display:flex;flex-direction:column;gap:10px}
+  .wf-grouplbl{display:flex;align-items:center;gap:6px;font-size:12px;color:#444;font-weight:600}
+  .wf-info{width:15px;height:15px;border:1.5px solid #666;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;color:#666;flex:none;font-style:italic;font-family:Georgia,serif}
+  .wf-popover{position:absolute;background:#fff;border:2px solid #1a1a1a;border-radius:6px;padding:10px 12px;font-size:11px;color:#333;box-shadow:3px 3px 0 rgba(0,0,0,.15);z-index:5}
+  .wf-stripbar{display:flex;align-items:center;gap:10px;padding:8px 20px;border-bottom:1.5px dashed #444;font-size:12px}
+  .wf-pill{border:1px solid #999;border-radius:12px;padding:2px 9px;font-size:10px;color:#555}
+  .wf-navrow{display:flex;align-items:center;gap:10px}
+  .wf-navarrow{border:1.5px solid #444;border-radius:5px;width:40px;height:40px;flex:none;display:flex;align-items:center;justify-content:center;font-size:16px}
+  .wf-scroll-fade{position:relative;overflow-y:auto;flex:none;height:340px;border-radius:4px}
+  .wf-scroll-fade::after{content:'';position:absolute;left:0;right:0;bottom:0;height:26px;background:linear-gradient(to bottom,rgba(255,255,255,0),rgba(255,255,255,.95));pointer-events:none}
+</style>
+</helmet>
+
+<section class="dv-turn" id="t7">
+  <div class="dv-thd"><a class="dv-tid" href="#t7">7</a><span class="dv-tname">Same redesign applied to the participant (join-session) view</span></div>
+  <div class="dv-opts">
+
+    <div class="dv-opt" id="7a">
+      <div class="dv-olabel"><a class="dv-oid" href="#7a">7a</a>Grouped fields + info icons on the single estimate card — shown in the "estimating" state</div>
+      <div class="dv-card wf" style="width:480px;padding:24px;display:flex;flex-direction:column;gap:16px">
+        <div class="wf-lbl">SPRINT 42 ESTIMATES <span style="opacity:.5;text-transform:none">(7F QK 2M)</span></div>
+        <div class="wf-hand wf-txt" style="font-size:18px;font-weight:700">Payment retries</div>
+        <div class="wf-box" style="height:40px;font-size:12px;color:#777;display:flex;align-items:center;padding:0 8px">Add automatic retry with backoff for failed payment captures.</div>
+
+        <div class="wf-group">
+          <div class="wf-grouplbl">THREE-POINT ESTIMATE <span class="wf-info">i</span></div>
+          <div class="wf-inputs">
+            <div><div class="wf-lbl">BEST CASE</div><div class="wf-input-box">4</div></div>
+            <div><div class="wf-lbl">MOST LIKELY</div><div class="wf-input-box">8</div></div>
+            <div><div class="wf-lbl">WORST CASE</div><div class="wf-input-box">20</div></div>
+          </div>
+        </div>
+
+        <div class="wf-hand" style="text-align:center;font-size:13px;color:#b23b2e;font-style:italic">Would you stake your job this won't be exceeded?</div>
+
+        <div class="wf-group">
+          <div class="wf-grouplbl">PHASE <span class="wf-info">i</span></div>
+          <div class="wf-cone" style="height:110px">
+            <svg viewBox="0 0 100 40" preserveAspectRatio="none">
+              <path d="M2,20 C30,4 70,4 98,20" fill="none" stroke="#999" stroke-width="1"/>
+              <path d="M2,20 C30,36 70,36 98,20" fill="none" stroke="#999" stroke-width="1"/>
+              <line x1="35" y1="6" x2="35" y2="34" stroke="#1a1a1a" stroke-width="1.5"/>
+              <circle cx="35" cy="20" r="2.5" fill="#1a1a1a"/>
+            </svg>
+          </div>
+        </div>
+
+        <div class="wf-group">
+          <div class="wf-grouplbl">RANGE <span class="wf-info">i</span></div>
+          <div class="wf-box" style="height:44px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">range bar — expected / 90% confidence</div>
+        </div>
+
+        <div class="wf-btn">Submit estimate</div>
+        <div class="wf-lbl" style="text-align:center">2 of 4 teammates have submitted so far.</div>
+      </div>
+      <div class="dv-olabel">no item list, no top bar, no prev/next here — this screen only ever shows the ONE item the facilitator has open, so the session-card/list-merge and nav-arrow changes don't have an equivalent on this screen. What carries over is the field grouping + info icons: three-point estimate, phase and range each get the same bordered group + "i" as <a href="#3a">3a</a>. The "waiting" state (after you submit) and "revealed" state (aggregate range across teammates) get the same treatment on their own range group.</div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "go with 7a" · "show the waiting and revealed states too" · "drop the 'stake your job' line"</p>
+</section>
+
+<section class="dv-turn" id="t6">
+  <div class="dv-thd"><a class="dv-tid" href="#t6">6</a><span class="dv-tname">Same redesign applied to the facilitator (live-mode) view</span></div>
+  <div class="dv-opts">
+
+    <div class="dv-opt" id="6a">
+      <div class="dv-olabel"><a class="dv-oid" href="#6a">6a</a>Session card, grouped roster/range with info icons, fixed-height scroll list (<a class="dv-oid" href="#5a">5a</a>), prev/finalize nav — shown in the "revealed, ready to finalize" state</div>
+      <div class="dv-card wf wf-outer">
+        <div class="wf-topbar">
+          <span class="wf-hand wf-txt">✎ Sprint 42 estimates</span>
+          <span class="wf-lbl">Hours ▾</span>
+          <span style="flex:1"></span>
+          <span class="wf-lbl" style="border:1px dashed #999;border-radius:4px;padding:4px 10px">☰ Summary</span>
+        </div>
+        <div class="wf-stripbar">
+          <span class="wf-lbl">Session code</span>
+          <strong class="wf-hand">7F QK 2M</strong>
+          <span style="opacity:.4">⧉ copy</span>
+          <span style="flex:1"></span>
+          <span class="wf-pill" style="border-color:#1a1a1a;color:#1a1a1a">4 participants connected</span>
+        </div>
+        <div class="wf-inner-body">
+          <div class="wf-inner-left">
+            <div class="wf-lbl" style="display:flex;justify-content:space-between;flex:none">ITEMS <span>2/6 finalized</span></div>
+            <div class="wf-scroll-fade" style="height:280px">
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div class="wf-row"><span>⠿ ✓ Login redesign</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row active"><span>⠿ ▷ Payment retries</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Notification prefs</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ ✓ CSV export</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Bulk delete</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Rate limiting</span><span style="opacity:.3">✕</span></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex:none">
+              <div class="wf-box" style="flex:1;height:30px;display:flex;align-items:center;padding-left:8px;font-size:12px;color:#999">+ Add an item</div>
+              <div class="wf-box" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center">+</div>
+            </div>
+          </div>
+
+          <div class="wf-inner-right">
+            <div class="wf-hand wf-txt" style="text-align:center;font-size:18px;font-weight:700">✎ Payment retries</div>
+            <div><div class="wf-lbl">DESCRIPTION</div><div class="wf-box" style="height:40px"></div></div>
+
+            <div class="wf-group">
+              <div class="wf-grouplbl">PARTICIPANT ESTIMATES <span class="wf-info">i</span></div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <div class="wf-row" style="cursor:default"><span>Alicia</span><span class="wf-hand">4h / 8h / 18h</span></div>
+                <div class="wf-row" style="cursor:default"><span>Devon</span><span class="wf-hand">5h / 9h / 20h</span></div>
+                <div class="wf-row" style="cursor:default"><span>Teammate 3</span><span class="wf-hand">3h / 7h / 15h</span></div>
+                <div class="wf-row" style="cursor:default"><span>Priya</span><span style="opacity:.4">No response</span></div>
+              </div>
+            </div>
+
+            <div class="wf-group">
+              <div class="wf-grouplbl">RANGE (AGGREGATED) <span class="wf-info">i</span></div>
+              <div class="wf-box" style="height:44px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">range bar — expected / 90% confidence, from the 3 submitted estimates</div>
+            </div>
+
+            <div><div class="wf-lbl">NOTES</div><div class="wf-box" style="height:44px"></div></div>
+
+            <div class="wf-navrow">
+              <div class="wf-navarrow">←</div>
+              <div class="wf-btn" style="flex:1">Finalize &amp; next →</div>
+              <div class="wf-btn ghost" style="flex:none;padding:0 16px">Retry round</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dv-olabel">before reveal: the roster shows Submitted/Waiting tags instead of values, and the nav row's center button reads "Reveal estimates (N submitted)" with no Retry button yet. Once already finalized: roster stays, center button becomes "Update &amp; next →", Retry hidden. Facilitator never types best/likely/worst — that group is replaced by the roster, so there's no three-point-estimate box on this screen.</div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "go with 6a" · "show the not-revealed state as its own card" · "drop the Retry button, put it behind a menu"</p>
+</section>
+
+<section class="dv-turn" id="t5">
+  <div class="dv-thd"><a class="dv-tid" href="#t5">5</a><span class="dv-tname">Long item list — independent scroll on <a class="dv-oid" href="#4a">4a</a>'s left column, header/add-row pinned</span></div>
+  <div class="dv-opts">
+
+    <div class="dv-opt" id="5a">
+      <div class="dv-olabel"><a class="dv-oid" href="#5a">5a</a>Outer card height capped to viewport; only the row list scrolls</div>
+      <div class="dv-card wf wf-outer">
+        <div class="wf-topbar">
+          <span class="wf-hand wf-txt">✎ Sprint 42 estimates</span>
+          <span class="wf-lbl">Hours ▾</span>
+          <span style="flex:1"></span>
+          <span class="wf-lbl" style="border:1px dashed #999;border-radius:4px;padding:4px 10px">☰ Summary</span>
+        </div>
+        <div class="wf-inner-body" style="align-items:start">
+          <div class="wf-inner-left">
+            <div class="wf-lbl" style="display:flex;justify-content:space-between;flex:none">ITEMS <span>4/19 finalized</span></div>
+
+            <div class="wf-scroll-fade">
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div class="wf-row"><span>⠿ ✓ Login redesign</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row active"><span>⠿ ▷ Payment retries</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Notification prefs</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ ✓ CSV export</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Bulk delete</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ ✓ Rate limiting</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ SSO login</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ ✓ Audit log</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Dark mode</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Webhooks</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Mobile nav</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Password reset flow</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ ✓ Rate card export</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Team invites</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Slack integration</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ ✓ Billing page</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Onboarding checklist</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ API rate limits v2</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Search reindexing</span><span style="opacity:.3">✕</span></div>
+              </div>
+            </div>
+
+            <div style="display:flex;gap:8px;flex:none">
+              <div class="wf-box" style="flex:1;height:30px;display:flex;align-items:center;padding-left:8px;font-size:12px;color:#999">+ Add an item</div>
+              <div class="wf-box" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center">+</div>
+            </div>
+          </div>
+          <div class="wf-inner-right">
+            <div class="wf-hand wf-txt" style="text-align:center;font-size:18px;font-weight:700">✎ Payment retries</div>
+            <div><div class="wf-lbl">DESCRIPTION</div><div class="wf-box" style="height:40px"></div></div>
+            <div class="wf-group">
+              <div class="wf-grouplbl">THREE-POINT ESTIMATE <span class="wf-info">i</span></div>
+              <div class="wf-inputs">
+                <div><div class="wf-lbl">BEST CASE</div><div class="wf-input-box">4</div></div>
+                <div><div class="wf-lbl">MOST LIKELY</div><div class="wf-input-box">8</div></div>
+                <div><div class="wf-lbl">WORST CASE</div><div class="wf-input-box">20</div></div>
+              </div>
+            </div>
+            <div class="wf-group">
+              <div class="wf-grouplbl">PHASE <span class="wf-info">i</span></div>
+              <div class="wf-box" style="height:50px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">cone-of-uncertainty slider</div>
+            </div>
+            <div class="wf-group">
+              <div class="wf-grouplbl">RANGE <span class="wf-info">i</span></div>
+              <div class="wf-box" style="height:44px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">range bar — expected / 90% confidence</div>
+            </div>
+            <div><div class="wf-lbl">NOTES</div><div class="wf-box" style="height:44px"></div></div>
+            <div class="wf-navrow">
+              <div class="wf-navarrow">←</div>
+              <div class="wf-btn" style="flex:1">Finalize &amp; next →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dv-olabel">the row list itself has a fixed height with its own real scrollbar (fade hints more below); progress label and add-row stay outside it, unaffected. Right panel is no longer forced to match the list's height — it just sizes to its own content, so it doesn't scroll unless a single item's content is unusually tall.</div>
+    </div>
+
+    <div class="dv-opt" id="5b">
+      <div class="dv-olabel"><a class="dv-oid" href="#5b">5b</a>Left column height dynamically matches the right panel's natural height</div>
+      <div class="dv-card wf wf-outer">
+        <div class="wf-topbar">
+          <span class="wf-hand wf-txt">✎ Sprint 42 estimates</span>
+          <span class="wf-lbl">Hours ▾</span>
+          <span style="flex:1"></span>
+          <span class="wf-lbl" style="border:1px dashed #999;border-radius:4px;padding:4px 10px">☰ Summary</span>
+        </div>
+        <div class="wf-inner-body">
+          <div class="wf-inner-left">
+            <div class="wf-lbl" style="display:flex;justify-content:space-between;flex:none">ITEMS <span>4/19 finalized</span></div>
+            <div class="wf-scroll-fade" style="flex:1;min-height:0;height:auto">
+              <div style="display:flex;flex-direction:column;gap:10px">
+                <div class="wf-row"><span>⠿ ✓ Login redesign</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row active"><span>⠿ ▷ Payment retries</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Notification prefs</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ ✓ CSV export</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Bulk delete</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ ✓ Rate limiting</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ SSO login</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ ✓ Audit log</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Dark mode</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Webhooks</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Mobile nav</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Password reset flow</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ ✓ Rate card export</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Team invites</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Slack integration</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ ✓ Billing page</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Onboarding checklist</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ API rate limits v2</span><span style="opacity:.3">✕</span></div>
+                <div class="wf-row"><span>⠿ Search reindexing</span><span style="opacity:.3">✕</span></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:8px;flex:none">
+              <div class="wf-box" style="flex:1;height:30px;display:flex;align-items:center;padding-left:8px;font-size:12px;color:#999">+ Add an item</div>
+              <div class="wf-box" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center">+</div>
+            </div>
+          </div>
+          <div class="wf-inner-right">
+            <div class="wf-hand wf-txt" style="text-align:center;font-size:18px;font-weight:700">✎ Payment retries</div>
+            <div><div class="wf-lbl">DESCRIPTION</div><div class="wf-box" style="height:40px"></div></div>
+            <div class="wf-group">
+              <div class="wf-grouplbl">THREE-POINT ESTIMATE <span class="wf-info">i</span></div>
+              <div class="wf-inputs">
+                <div><div class="wf-lbl">BEST CASE</div><div class="wf-input-box">4</div></div>
+                <div><div class="wf-lbl">MOST LIKELY</div><div class="wf-input-box">8</div></div>
+                <div><div class="wf-lbl">WORST CASE</div><div class="wf-input-box">20</div></div>
+              </div>
+            </div>
+            <div class="wf-group">
+              <div class="wf-grouplbl">PHASE <span class="wf-info">i</span></div>
+              <div class="wf-box" style="height:50px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">cone-of-uncertainty slider</div>
+            </div>
+            <div class="wf-group">
+              <div class="wf-grouplbl">RANGE <span class="wf-info">i</span></div>
+              <div class="wf-box" style="height:44px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">range bar — expected / 90% confidence</div>
+            </div>
+            <div><div class="wf-lbl">NOTES</div><div class="wf-box" style="height:44px"></div></div>
+            <div class="wf-navrow">
+              <div class="wf-navarrow">←</div>
+              <div class="wf-btn" style="flex:1">Finalize &amp; next →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dv-olabel">grid row stretches both columns to the right panel's natural height (no fixed number here); the list's scroll region fills whatever that turns out to be. Switching to an item with a shorter/longer description or notes will grow or shrink how many rows show before scrolling.</div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "go with 5a" · "go with 5b" · "also collapse finalized items into a group" · "add a filter/search field above the list"</p>
+</section>
+
+<section class="dv-turn" id="t4">
+  <div class="dv-thd"><a class="dv-tid" href="#t4">4</a><span class="dv-tname">Prev/next arrows integrated with Finalize, replacing the button row on <a class="dv-oid" href="#3a">3a</a></span></div>
+  <div class="dv-opts">
+
+    <div class="dv-opt" id="4a">
+      <div class="dv-olabel"><a class="dv-oid" href="#4a">4a</a>← always navigates · center button finalizes + advances once valid</div>
+      <div class="dv-card wf wf-outer">
+        <div class="wf-topbar">
+          <span class="wf-hand wf-txt">✎ Sprint 42 estimates</span>
+          <span class="wf-lbl">Hours ▾</span>
+          <span style="flex:1"></span>
+          <span class="wf-lbl" style="border:1px dashed #999;border-radius:4px;padding:4px 10px">☰ Summary</span>
+        </div>
+        <div class="wf-inner-body">
+          <div class="wf-inner-left">
+            <div class="wf-lbl" style="display:flex;justify-content:space-between">ITEMS <span>2/4 finalized</span></div>
+            <div class="wf-row"><span>⠿ ✓ Login redesign</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row active"><span>⠿ ▷ Payment retries</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row"><span>⠿ Notification prefs</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row"><span>⠿ ✓ CSV export</span><span style="opacity:.3">✕</span></div>
+            <div style="display:flex;gap:8px">
+              <div class="wf-box" style="flex:1;height:30px;display:flex;align-items:center;padding-left:8px;font-size:12px;color:#999">+ Add an item</div>
+              <div class="wf-box" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center">+</div>
+            </div>
+          </div>
+          <div class="wf-inner-right">
+            <div class="wf-hand wf-txt" style="text-align:center;font-size:18px;font-weight:700">✎ Payment retries</div>
+            <div><div class="wf-lbl">DESCRIPTION</div><div class="wf-box" style="height:40px"></div></div>
+
+            <div class="wf-group">
+              <div class="wf-grouplbl">THREE-POINT ESTIMATE <span class="wf-info">i</span></div>
+              <div class="wf-inputs">
+                <div><div class="wf-lbl">BEST CASE</div><div class="wf-input-box">4</div></div>
+                <div><div class="wf-lbl">MOST LIKELY</div><div class="wf-input-box">8</div></div>
+                <div><div class="wf-lbl">WORST CASE</div><div class="wf-input-box">20</div></div>
+              </div>
+            </div>
+
+            <div class="wf-group">
+              <div class="wf-grouplbl">PHASE <span class="wf-info">i</span></div>
+              <div class="wf-box" style="height:50px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">cone-of-uncertainty slider</div>
+            </div>
+
+            <div class="wf-group">
+              <div class="wf-grouplbl">RANGE <span class="wf-info">i</span></div>
+              <div class="wf-box" style="height:44px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">range bar — expected / 90% confidence</div>
+            </div>
+
+            <div><div class="wf-lbl">NOTES</div><div class="wf-box" style="height:44px"></div></div>
+
+            <div class="wf-navrow">
+              <div class="wf-navarrow">←</div>
+              <div class="wf-btn" style="flex:1">Finalize &amp; next →</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="dv-olabel">on the last item: center button reads "Finalize &amp; view summary", no next arrow needed — it becomes the forward action. Center button stays disabled (as today) until best/likely/worst are valid; already-finalized item shows "Update &amp; next →".</div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "go with 4a" · "keep next as a separate arrow next to Finalize instead of merging" · "show the last-item state as its own card"</p>
+</section>
+
+<section class="dv-turn" id="t3">
+  <div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">Grouping the estimate fields + info icons, on top of <a class="dv-oid" href="#2a">2a</a></span></div>
+  <div class="dv-opts">
+
+    <div class="dv-opt" id="3a">
+      <div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Bordered group for the three fields; info icons on group label, phase picker and range bar (click-to-open popover)</div>
+      <div class="dv-card wf wf-outer" style="position:relative">
+        <div class="wf-topbar">
+          <span class="wf-hand wf-txt">✎ Sprint 42 estimates</span>
+          <span class="wf-lbl">Hours ▾</span>
+          <span style="flex:1"></span>
+          <span class="wf-lbl" style="border:1px dashed #999;border-radius:4px;padding:4px 10px">☰ Summary</span>
+        </div>
+        <div class="wf-inner-body">
+          <div class="wf-inner-left">
+            <div class="wf-lbl" style="display:flex;justify-content:space-between">ITEMS <span>2/4 finalized</span></div>
+            <div class="wf-row"><span>⠿ ✓ Login redesign</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row active"><span>⠿ ▷ Payment retries</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row"><span>⠿ Notification prefs</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row"><span>⠿ ✓ CSV export</span><span style="opacity:.3">✕</span></div>
+            <div style="display:flex;gap:8px">
+              <div class="wf-box" style="flex:1;height:30px;display:flex;align-items:center;padding-left:8px;font-size:12px;color:#999">+ Add an item</div>
+              <div class="wf-box" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center">+</div>
+            </div>
+          </div>
+          <div class="wf-inner-right">
+            <div class="wf-hand wf-txt" style="text-align:center;font-size:18px;font-weight:700">✎ Payment retries</div>
+            <div><div class="wf-lbl">DESCRIPTION</div><div class="wf-box" style="height:40px"></div></div>
+
+            <div class="wf-group">
+              <div class="wf-grouplbl">THREE-POINT ESTIMATE <span class="wf-info">i</span></div>
+              <div class="wf-inputs">
+                <div><div class="wf-lbl">BEST CASE</div><div class="wf-input-box">4</div></div>
+                <div><div class="wf-lbl">MOST LIKELY</div><div class="wf-input-box">8</div></div>
+                <div><div class="wf-lbl">WORST CASE</div><div class="wf-input-box">20</div></div>
+              </div>
+            </div>
+
+            <div class="wf-group">
+              <div class="wf-grouplbl">PHASE <span class="wf-info">i</span></div>
+              <div class="wf-box" style="height:50px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">cone-of-uncertainty slider</div>
+            </div>
+
+            <div class="wf-group">
+              <div class="wf-grouplbl">RANGE <span class="wf-info">i</span></div>
+              <div class="wf-box" style="height:44px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">range bar — expected / 90% confidence</div>
+            </div>
+
+            <div><div class="wf-lbl">NOTES</div><div class="wf-box" style="height:44px"></div></div>
+            <div class="wf-btn">Finalize item</div>
+          </div>
+        </div>
+
+        <div class="wf-popover" style="top:600px;left:1200px;width:230px">
+          <strong>90% confidence (CI90)</strong><br>
+          Best/likely/worst are combined (McConnell's three-point formula) into an expected value and a range wide enough to cover this estimate 90% of the time.
+        </div>
+        <div class="wf-annot wf-hand" style="top:576px;left:1200px;color:#b23b2e;max-width:230px">click "i" → popover, anchored beside the icon (shown here pushed outside the card just to keep it clear of everything else in this sketch)</div>
+      </div>
+      <div class="dv-olabel">popover shown open on the RANGE group's icon as an example of the click interaction</div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "go with 3a" · "move the info icons inline with each field's own label instead of the group" · "write real copy for each popover"</p>
+</section>
+
+<section class="dv-turn" id="t2">
+  <div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">One outer session card — merging <a class="dv-oid" href="#1a">1a</a>'s two columns, session name/unit/Summary moved to a shared top bar</span></div>
+  <div class="dv-opts">
+
+    <div class="dv-opt" id="2a">
+      <div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>One row — name · unit · spacer · Summary</div>
+      <div class="dv-card wf wf-outer">
+        <div class="wf-topbar">
+          <span class="wf-hand wf-txt">✎ Sprint 42 estimates</span>
+          <span class="wf-lbl">Hours ▾</span>
+          <span style="flex:1"></span>
+          <span class="wf-lbl" style="border:1px dashed #999;border-radius:4px;padding:4px 10px">☰ Summary</span>
+        </div>
+        <div class="wf-inner-body">
+          <div class="wf-inner-left">
+            <div class="wf-lbl" style="display:flex;justify-content:space-between">ITEMS <span>2/4 finalized</span></div>
+            <div class="wf-row"><span>⠿ ✓ Login redesign</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row active"><span>⠿ ▷ Payment retries</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row"><span>⠿ Notification prefs</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row"><span>⠿ ✓ CSV export</span><span style="opacity:.3">✕</span></div>
+            <div style="display:flex;gap:8px">
+              <div class="wf-box" style="flex:1;height:30px;display:flex;align-items:center;padding-left:8px;font-size:12px;color:#999">+ Add an item</div>
+              <div class="wf-box" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center">+</div>
+            </div>
+          </div>
+          <div class="wf-inner-right">
+            <div class="wf-hand wf-txt" style="text-align:center;font-size:18px;font-weight:700">✎ Payment retries</div>
+            <div><div class="wf-lbl">DESCRIPTION</div><div class="wf-box" style="height:40px"></div></div>
+            <div class="wf-inputs">
+              <div><div class="wf-lbl">BEST CASE</div><div class="wf-input-box">4</div></div>
+              <div><div class="wf-lbl">MOST LIKELY</div><div class="wf-input-box">8</div></div>
+              <div><div class="wf-lbl">WORST CASE</div><div class="wf-input-box">20</div></div>
+            </div>
+            <div class="wf-box" style="height:50px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">phase picker</div>
+            <div class="wf-box" style="height:44px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">range bar</div>
+            <div><div class="wf-lbl">NOTES</div><div class="wf-box" style="height:44px"></div></div>
+            <div class="wf-btn">Finalize item</div>
+          </div>
+        </div>
+      </div>
+      <div class="dv-olabel">no inner card shadow/border — panels sit flush, split by one dashed rule; single outer edge carries all the elevation</div>
+    </div>
+
+    <div class="dv-opt" id="2b">
+      <div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Two rows — name+unit on row 1, Summary right-aligned on row 2</div>
+      <div class="dv-card wf wf-outer">
+        <div class="wf-topbar-2row">
+          <div class="wf-topbar-row">
+            <span class="wf-hand wf-txt">✎ Sprint 42 estimates</span>
+            <span class="wf-lbl">Hours ▾</span>
+          </div>
+          <div class="wf-topbar-row" style="justify-content:flex-end">
+            <span class="wf-lbl" style="border:1px dashed #999;border-radius:4px;padding:4px 10px">☰ Summary</span>
+          </div>
+        </div>
+        <div class="wf-inner-body">
+          <div class="wf-inner-left">
+            <div class="wf-lbl" style="display:flex;justify-content:space-between">ITEMS <span>2/4 finalized</span></div>
+            <div class="wf-row"><span>⠿ ✓ Login redesign</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row active"><span>⠿ ▷ Payment retries</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row"><span>⠿ Notification prefs</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row"><span>⠿ ✓ CSV export</span><span style="opacity:.3">✕</span></div>
+            <div style="display:flex;gap:8px">
+              <div class="wf-box" style="flex:1;height:30px;display:flex;align-items:center;padding-left:8px;font-size:12px;color:#999">+ Add an item</div>
+              <div class="wf-box" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center">+</div>
+            </div>
+          </div>
+          <div class="wf-inner-right">
+            <div class="wf-hand wf-txt" style="text-align:center;font-size:18px;font-weight:700">✎ Payment retries</div>
+            <div><div class="wf-lbl">DESCRIPTION</div><div class="wf-box" style="height:40px"></div></div>
+            <div class="wf-inputs">
+              <div><div class="wf-lbl">BEST CASE</div><div class="wf-input-box">4</div></div>
+              <div><div class="wf-lbl">MOST LIKELY</div><div class="wf-input-box">8</div></div>
+              <div><div class="wf-lbl">WORST CASE</div><div class="wf-input-box">20</div></div>
+            </div>
+            <div class="wf-box" style="height:50px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">phase picker</div>
+            <div class="wf-box" style="height:44px;display:flex;align-items:center;justify-content:center;color:#999;font-size:11px">range bar</div>
+            <div><div class="wf-lbl">NOTES</div><div class="wf-box" style="height:44px"></div></div>
+            <div class="wf-btn">Finalize item</div>
+          </div>
+        </div>
+      </div>
+      <div class="dv-olabel">same flat-panel fix; Summary reads more like its own action, less crowded next to name/unit</div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "go with 2a" · "go with 2b but keep Summary as a full button, not ghost" · "add a subtle vertical divider color instead of dashed"</p>
+</section>
+
+<section class="dv-turn" id="t1">
+  <div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">Current state — Single-user Workspace screen, from source</span></div>
+  <div class="dv-opts">
+
+    <div class="dv-opt" id="1a">
+      <div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Structure as it exists today (Workspace.tsx + SessionSidebar.tsx)</div>
+      <div class="dv-card wf" style="position:relative">
+
+        <div class="wf-header">
+          <div class="wf-brand"><span>╫</span> EstiMate <span style="font-size:14px;opacity:.5">💬</span></div>
+          <div class="wf-tag">Single-user</div>
+        </div>
+
+        <div class="wf-body">
+          <div class="wf-box wf-sidebar">
+            <div class="wf-lbl">SESSION NAME (click to edit) · UNIT DROPDOWN</div>
+            <div class="wf-hand wf-txt" style="display:flex;justify-content:space-between;align-items:center">
+              <span>✎ Sprint 42 estimates</span>
+              <span class="wf-lbl">Hours ▾</span>
+            </div>
+
+            <div class="wf-lbl" style="margin-top:6px;display:flex;justify-content:space-between">ITEMS <span>2/4 finalized</span></div>
+            <div class="wf-row"><span>⠿ ✓ Login redesign</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row active"><span>⠿ ▷ Payment retries</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row"><span>⠿ Notification prefs</span><span style="opacity:.3">✕</span></div>
+            <div class="wf-row"><span>⠿ ✓ CSV export</span><span style="opacity:.3">✕</span></div>
+
+            <div style="display:flex;gap:8px">
+              <div class="wf-box" style="flex:1;height:30px;display:flex;align-items:center;padding-left:8px;font-size:12px;color:#999">+ Add an item</div>
+              <div class="wf-box" style="width:30px;height:30px;display:flex;align-items:center;justify-content:center">+</div>
+            </div>
+            <div class="wf-btn ghost">☰ Summary</div>
+          </div>
+
+          <div class="wf-box wf-panel">
+            <div class="wf-hand wf-txt" style="text-align:center;font-size:18px;font-weight:700">✎ Payment retries</div>
+
+            <div>
+              <div class="wf-lbl">DESCRIPTION (markdown) — textarea, 3 rows</div>
+              <div class="wf-box" style="height:44px"></div>
+            </div>
+
+            <div class="wf-inputs">
+              <div><div class="wf-lbl">BEST CASE (hrs)</div><div class="wf-input-box">4</div></div>
+              <div><div class="wf-lbl">MOST LIKELY (hrs)</div><div class="wf-input-box">8</div></div>
+              <div><div class="wf-lbl">WORST CASE (hrs)</div><div class="wf-input-box">20</div></div>
+            </div>
+
+            <div>
+              <div class="wf-lbl">PHASE PICKER — cone-of-uncertainty slider, drag or click dots/arrows</div>
+              <div class="wf-cone">
+                <svg viewBox="0 0 100 40" preserveAspectRatio="none">
+                  <path d="M2,20 C30,4 70,4 98,20" fill="none" stroke="#999" stroke-width="1"/>
+                  <path d="M2,20 C30,36 70,36 98,20" fill="none" stroke="#999" stroke-width="1"/>
+                  <line x1="35" y1="6" x2="35" y2="34" stroke="#1a1a1a" stroke-width="1.5"/>
+                  <circle cx="35" cy="20" r="2.5" fill="#1a1a1a"/>
+                </svg>
+              </div>
+              <div class="wf-phaselabels">
+                <span>Initial Concept</span><span>Approved Def.</span><span>Reqs Complete</span><span>UI Complete</span><span>Detailed Design</span>
+              </div>
+            </div>
+
+            <div>
+              <div class="wf-lbl">RANGE BAR — segmented track with callouts</div>
+              <div class="wf-rangebar" style="margin-top:12px">
+                <div class="wf-rb-marker" style="left:35%">8h likely</div>
+                <div class="wf-rb-marker" style="left:68%">14h · 90% conf.</div>
+                <div class="wf-rb-track"></div>
+                <div class="wf-rb-ends"><span>4h best case</span><span>20h worst case</span></div>
+              </div>
+            </div>
+
+            <div class="wf-box" style="border-style:dotted;padding:6px 10px;font-size:11px;color:#777">⚑ Guard notes appear here conditionally — symmetric range, false precision, out-of-order, narrow-for-phase</div>
+
+            <div>
+              <div class="wf-lbl">NOTES (discussion, markdown) — textarea, flexes to fill</div>
+              <div class="wf-box" style="height:70px"></div>
+            </div>
+
+            <div class="wf-btn">Finalize item</div>
+          </div>
+        </div>
+
+        <div class="wf-annot" style="top:70px;left:-165px">two-column grid<br>300px sidebar + flexible panel, max-width 1280</div>
+        <div class="wf-annot" style="top:340px;right:-165px">right panel swaps per selection: empty state / single-user form / live-facilitator roster</div>
+      </div>
+    </div>
+
+  </div>
+  <p class="dv-next">Try next: "simplify the phase picker" · "make the sidebar a top rail instead" · "show me 3 redesign directions for this screen"</p>
+</section>
+
+</x-dc>
+</body>
+</html>
