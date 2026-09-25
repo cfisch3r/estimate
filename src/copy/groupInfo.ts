@@ -1,7 +1,11 @@
-/** Copy for the click-to-open info popovers on the three-point-estimate / phase /
- *  range / participant-estimates groups — shared by every screen that renders one
- *  of these groups (Workspace's ActiveItemPanel and LiveFacilitatorPanel,
- *  ParticipantEstimateView's EstimateForm and RevealedPanel). */
+/** Copy for the click-to-open info popovers on the description / three-point-
+ *  estimate / phase / range / participant-estimates groups — shared by every
+ *  screen that renders one of these groups (Workspace's ActiveItemPanel and
+ *  LiveFacilitatorPanel, ParticipantEstimateView's EstimateForm and
+ *  RevealedPanel). */
+
+export const DESCRIPTION_INFO =
+  'Give the item context participants will see while estimating — write it here in Markdown and use Preview to check how it will render for them.'
 
 export const THREE_POINT_ESTIMATE_INFO =
   "Best, most likely, and worst case are combined using McConnell's three-point estimation to produce an expected value and a range wide enough to be right 90% of the time."

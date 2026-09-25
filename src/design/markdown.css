@@ -1,0 +1,208 @@
+:root {
+  /* Shared cap for the description field across all three places it's shown
+     — the write-mode textarea, the facilitator's own preview, and the
+     participant's rendered card — so a long description scrolls inside a
+     consistently sized box instead of pushing the rest of the form (or a
+     participant's phone screen) down an unbounded amount. */
+  --description-max-height: 280px;
+}
+
+/* Rendered markdown (facilitator-authored `description`, sanitized via
+   DOMPurify before reaching this markup) — shared by the participant view's
+   .card-body and the facilitator's own preview toggle. Block-level margins
+   collapse at the top/bottom edge so it drops into a flex layout cleanly. */
+.markdown > :first-child {
+  margin-top: 0;
+}
+.markdown > :last-child {
+  margin-bottom: 0;
+}
+.markdown p {
+  margin: 0 0 var(--space-2);
+}
+.markdown ul,
+.markdown ol {
+  margin: 0 0 var(--space-2);
+  padding-left: 1.25em;
+}
+.markdown li + li {
+  margin-top: 2px;
+}
+.markdown a {
+  color: var(--color-accent);
+}
+.markdown strong {
+  font-weight: 600;
+}
+.markdown code {
+  font-size: 0.9em;
+  padding: 1px 4px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--color-text) 10%, transparent);
+}
+/* Headings stay well below the real item title (17-22px) — otherwise a
+   facilitator's `#` heading renders large enough to look like a second,
+   competing title rather than part of the description. */
+.markdown h1,
+.markdown h2,
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  margin: 0 0 var(--space-2);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.markdown h1 {
+  font-size: 16px;
+}
+.markdown h2 {
+  font-size: 15px;
+}
+.markdown h3,
+.markdown h4,
+.markdown h5,
+.markdown h6 {
+  font-size: 14px;
+}
+
+/* `markdown-wrap` is the positioning context for the overflow hint — it must
+   NOT be the scrolling element itself (`markdown-box`), or the hint would
+   scroll along with the content instead of staying pinned to the visible
+   bottom edge. `markdown-box` is the scrollable box a rendered description
+   sits in — the write-mode textarea's read-only counterpart. `className`
+   (`markdown-preview`, and for the participant view `card-body` alongside
+   it) supplies its actual box styling/cap. */
+.markdown-wrap {
+  position: relative;
+}
+
+/* Facilitator-side preview: mirrors .input's box so toggling between the
+   textarea and its rendered preview doesn't shift the surrounding layout. */
+.markdown-preview {
+  min-height: 90px;
+  padding: 6px 10px;
+  font-size: 14px;
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  max-height: var(--description-max-height);
+  overflow-y: auto;
+}
+
+/* Participant view: same scrollable box, but sized like the rest of the
+   card's text rather than the facilitator's input font. */
+.card-body.markdown-preview {
+  font-size: 13px;
+}
+
+/* "There's more this way" cue for a capped, scrolled box — a scrollbar alone
+   doesn't announce overflow, especially on macOS where scrollbars stay
+   hidden until touched. Positioned (not scrolled) against .markdown-box, so
+   each stays pinned to its edge regardless of scroll position; Markdown.tsx
+   only renders the top one once scrolled down, and the bottom one while
+   content remains below. */
+.markdown-overflow-hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 28px;
+  display: flex;
+  justify-content: center;
+  color: var(--color-neutral-500);
+}
+.markdown-overflow-hint--top {
+  top: 0;
+  align-items: flex-start;
+  padding-top: 3px;
+  background: linear-gradient(to top, transparent, var(--color-surface) 65%);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+.markdown-overflow-hint--bottom {
+  bottom: 0;
+  align-items: flex-end;
+  padding-bottom: 3px;
+  background: linear-gradient(to bottom, transparent, var(--color-surface) 65%);
+  border-radius: 0 0 var(--radius-md) var(--radius-md);
+}
+
+.markdown-toolbar {
+  display: flex;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+}
+
+/* Write/Preview as tabs attached to the panel below them, rather than a
+   segmented toggle floating in the corner with no visual tie to what it
+   controls. `md-tabs` cancels GroupBox's flex `gap` so it sits flush against
+   `md-panel` — the classic "folder tab" technique needs zero space between
+   them: the active tab's bottom edge matches the panel's background and
+   overlaps its top border by 1px (negative margin-bottom), painting over
+   that border exactly where the tab sits, so the tab reads as fused to the
+   panel while the inactive tab stays visually separate above the line. */
+.md-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: calc(-1 * var(--space-3));
+}
+.md-tab {
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-neutral-500);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom-color: var(--color-divider);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.md-tab:hover {
+  color: var(--color-text);
+}
+.md-tab:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+.md-tab--active {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-color: var(--color-divider) var(--color-divider) var(--color-surface);
+}
+
+.md-panel {
+  border: 1px solid var(--color-divider);
+  border-top-left-radius: 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);
+  background: var(--color-surface);
+  padding: var(--space-2);
+}
+/* The panel now supplies the box (border/background/padding) that
+   .textarea-autosize and .markdown-preview each already carry on their own
+   elsewhere (e.g. the participant view's card) — stripped here so tabbed
+   mode doesn't show a border-in-a-border. */
+.md-panel .textarea-autosize,
+.md-panel .markdown-preview {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+/* Without the textarea's own border, the toolbar had nothing separating it
+   from the text below — this line does that job instead. */
+.md-panel .markdown-toolbar {
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+/* Description textarea: grows with content (see DescriptionField's autosize
+   effect in Workspace.tsx) instead of the default drag handle, up to the
+   same shared cap, then scrolls like the rendered views above. The element
+   selector matches nocturne.css's `textarea.input` specificity so `resize:
+   none` actually overrides that rule's `resize: vertical`. */
+textarea.textarea-autosize {
+  resize: none;
+  max-height: var(--description-max-height);
+  overflow-y: auto;
+}

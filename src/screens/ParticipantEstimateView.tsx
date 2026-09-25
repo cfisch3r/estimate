@@ -13,6 +13,7 @@ import {
   PhasePicker,
   UncertaintyGuidanceNotes,
   ThreePointEstimateFields,
+  Markdown,
 } from '../components'
 import { PHASE_INFO, RANGE_INFO } from '../copy/groupInfo'
 import { useSingleInfoPopover } from '../hooks/useSingleInfoPopover'
@@ -222,7 +223,10 @@ function EstimatingPanel({
       <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
       <CardTitle>{round.item.title}</CardTitle>
       {round.item.description && (
-        <CardBody className="card-body--authored">{round.item.description}</CardBody>
+        <Markdown
+          content={round.item.description}
+          className="card-body markdown-preview"
+        />
       )}
       <EstimateForm
         key={round.item.id}
@@ -258,7 +262,10 @@ function WaitingPanel({
       <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
       <CardTitle>{round.item.title}</CardTitle>
       {round.item.description && (
-        <CardBody className="card-body--authored">{round.item.description}</CardBody>
+        <Markdown
+          content={round.item.description}
+          className="card-body markdown-preview"
+        />
       )}
 
       {editing ? (
@@ -365,7 +372,10 @@ function RevealedPanel({
       <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
       <CardTitle>{round.item.title}</CardTitle>
       {round.item.description && (
-        <CardBody className="card-body--authored">{round.item.description}</CardBody>
+        <Markdown
+          content={round.item.description}
+          className="card-body markdown-preview"
+        />
       )}
 
       {aggregate ? (

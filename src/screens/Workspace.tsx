@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { NotebookIcon } from '@phosphor-icons/react/dist/csr/Notebook'
@@ -21,8 +21,16 @@ import {
   UncertaintyGuidanceNotes,
   ThreePointEstimateFields,
   Tag,
+  Markdown,
+  MarkdownToolbar,
 } from '../components'
-import { PHASE_INFO, RANGE_INFO, PARTICIPANT_ESTIMATES_INFO } from '../copy/groupInfo'
+import { continueListOnEnter, indentListLine } from '../components/markdownListEditing'
+import {
+  DESCRIPTION_INFO,
+  PHASE_INFO,
+  RANGE_INFO,
+  PARTICIPANT_ESTIMATES_INFO,
+} from '../copy/groupInfo'
 import { SessionSidebar } from './SessionSidebar'
 import { useConfirmArm } from '../hooks/useConfirmArm'
 import { usePhaseGuidance } from '../hooks/usePhaseGuidance'
@@ -111,11 +119,123 @@ function EditableTitle({ value, onCommit }: EditableTitleProps) {
   )
 }
 
+interface DescriptionFieldProps {
+  value: string
+  onChange: (next: string) => void
+  infoOpen: boolean
+  onInfoOpen: () => void
+  onInfoClose: () => void
+}
+
+/** The description field's write/preview toggle. Preview renders through the
+ *  same `Markdown` component the participant view uses, so what the
+ *  facilitator sees here is exactly what participants will see — no separate
+ *  rendering path to drift out of sync. A `GroupBox` like Phase/Range/etc.
+ *  rather than a plain `Field`, so it reads as one of the item's sections
+ *  instead of sitting apart from them. */
+function DescriptionField({
+  value,
+  onChange,
+  infoOpen,
+  onInfoOpen,
+  onInfoClose,
+}: DescriptionFieldProps) {
+  const [mode, setMode] = useState<'write' | 'preview'>('write')
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  // Grows the textarea to fit its content (up to the CSS max-height, past
+  // which it scrolls) rather than a fixed row count — re-measuring on every
+  // value change, and whenever the field becomes visible again after a
+  // Preview round-trip, so switching back to Write always shows the full
+  // text sized correctly rather than the write-mode default.
+  useEffect(() => {
+    const textarea = textareaRef.current
+    if (mode !== 'write' || !textarea) return
+    textarea.style.height = 'auto'
+    textarea.style.height = `${textarea.scrollHeight}px`
+  }, [value, mode])
+
+  return (
+    <GroupBox
+      label="Description"
+      info={DESCRIPTION_INFO}
+      infoOpen={infoOpen}
+      onInfoOpen={onInfoOpen}
+      onInfoClose={onInfoClose}
+    >
+      <div className="md-tabs">
+        <button
+          type="button"
+          className={['md-tab', mode === 'write' && 'md-tab--active']
+            .filter(Boolean)
+            .join(' ')}
+          onClick={() => setMode('write')}
+        >
+          Write
+        </button>
+        <button
+          type="button"
+          className={['md-tab', mode === 'preview' && 'md-tab--active']
+            .filter(Boolean)
+            .join(' ')}
+          onClick={() => setMode('preview')}
+        >
+          Preview
+        </button>
+      </div>
+      <div className="md-panel">
+        {mode === 'write' ? (
+          <>
+            <MarkdownToolbar
+              textareaRef={textareaRef}
+              value={value}
+              onChange={onChange}
+            />
+            <Textarea
+              aria-label="Description"
+              ref={textareaRef}
+              className="textarea-autosize"
+              rows={3}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => {
+                const textarea = e.currentTarget
+                if (e.key === 'Enter') {
+                  const next = continueListOnEnter(textarea, value)
+                  if (next !== null) {
+                    e.preventDefault()
+                    onChange(next)
+                  }
+                } else if (e.key === 'Tab') {
+                  const next = indentListLine(textarea, value, e.shiftKey)
+                  if (next !== null) {
+                    e.preventDefault()
+                    onChange(next)
+                  }
+                }
+              }}
+            />
+          </>
+        ) : value ? (
+          <Markdown content={value} className="markdown-preview" />
+        ) : (
+          <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+            Nothing to preview yet.
+          </p>
+        )}
+      </div>
+    </GroupBox>
+  )
+}
+
 interface ItemDetailShellProps {
   item: Item
   onNotesChange: (id: string, notes: string) => void
   onDescriptionChange: (id: string, description: string) => void
   onTitleChange: (id: string, title: string) => void
+  descriptionInfoOpen: boolean
+  onDescriptionInfoOpen: () => void
+  onDescriptionInfoClose: () => void
   children: ReactNode
 }
 
@@ -128,6 +248,9 @@ function ItemDetailShell({
   onNotesChange,
   onDescriptionChange,
   onTitleChange,
+  descriptionInfoOpen,
+  onDescriptionInfoOpen,
+  onDescriptionInfoClose,
   children,
 }: ItemDetailShellProps) {
   return (
@@ -136,22 +259,18 @@ function ItemDetailShell({
         value={item.title}
         onCommit={(next) => onTitleChange(item.id, next)}
       />
-      <Field>
-        <FieldLabel htmlFor="description">Description (Markdown supported)</FieldLabel>
-        <Textarea
-          id="description"
-          rows={3}
-          value={item.description}
-          onChange={(e) => onDescriptionChange(item.id, e.target.value)}
-        />
-      </Field>
+      <DescriptionField
+        value={item.description}
+        onChange={(next) => onDescriptionChange(item.id, next)}
+        infoOpen={descriptionInfoOpen}
+        onInfoOpen={onDescriptionInfoOpen}
+        onInfoClose={onDescriptionInfoClose}
+      />
 
       {children}
 
       <Field style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        <FieldLabel htmlFor="notes">
-          Notes (captured during discussion, Markdown supported)
-        </FieldLabel>
+        <FieldLabel htmlFor="notes">Notes (captured during discussion)</FieldLabel>
         <Textarea
           id="notes"
           rows={8}
@@ -225,7 +344,7 @@ function ActiveItemPanel({
     openKey: infoOpen,
     open: openInfo,
     close: closeInfo,
-  } = useSingleInfoPopover<'estimate' | 'phase' | 'range'>()
+  } = useSingleInfoPopover<'description' | 'estimate' | 'phase' | 'range'>()
 
   const allFilled = best !== '' && likely !== '' && worst !== ''
   const bestNum = Number(best)
@@ -271,6 +390,9 @@ function ActiveItemPanel({
       onNotesChange={onNotesChange}
       onDescriptionChange={onDescriptionChange}
       onTitleChange={onTitleChange}
+      descriptionInfoOpen={infoOpen === 'description'}
+      onDescriptionInfoOpen={() => openInfo('description')}
+      onDescriptionInfoClose={closeInfo}
     >
       <GroupBox
         label="Phase"
@@ -437,7 +559,7 @@ function LiveFacilitatorPanel({
     openKey: infoOpen,
     open: openInfo,
     close: closeInfo,
-  } = useSingleInfoPopover<'estimate' | 'range'>()
+  } = useSingleInfoPopover<'description' | 'estimate' | 'range'>()
   const {
     armed: reopenArmed,
     handleClick: armAndReopen,
@@ -455,6 +577,9 @@ function LiveFacilitatorPanel({
       onNotesChange={onNotesChange}
       onDescriptionChange={onDescriptionChange}
       onTitleChange={onTitleChange}
+      descriptionInfoOpen={infoOpen === 'description'}
+      onDescriptionInfoOpen={() => openInfo('description')}
+      onDescriptionInfoClose={closeInfo}
     >
       <GroupBox
         label={item.revealed ? 'Participant estimates' : 'Participants'}
