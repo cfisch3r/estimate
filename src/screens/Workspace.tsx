@@ -25,7 +25,12 @@ import {
   MarkdownToolbar,
 } from '../components'
 import { continueListOnEnter, indentListLine } from '../components/markdownListEditing'
-import { PHASE_INFO, RANGE_INFO, PARTICIPANT_ESTIMATES_INFO } from '../copy/groupInfo'
+import {
+  DESCRIPTION_INFO,
+  PHASE_INFO,
+  RANGE_INFO,
+  PARTICIPANT_ESTIMATES_INFO,
+} from '../copy/groupInfo'
 import { SessionSidebar } from './SessionSidebar'
 import { useConfirmArm } from '../hooks/useConfirmArm'
 import { usePhaseGuidance } from '../hooks/usePhaseGuidance'
@@ -117,13 +122,24 @@ function EditableTitle({ value, onCommit }: EditableTitleProps) {
 interface DescriptionFieldProps {
   value: string
   onChange: (next: string) => void
+  infoOpen: boolean
+  onInfoOpen: () => void
+  onInfoClose: () => void
 }
 
 /** The description field's write/preview toggle. Preview renders through the
  *  same `Markdown` component the participant view uses, so what the
  *  facilitator sees here is exactly what participants will see — no separate
- *  rendering path to drift out of sync. */
-function DescriptionField({ value, onChange }: DescriptionFieldProps) {
+ *  rendering path to drift out of sync. A `GroupBox` like Phase/Range/etc.
+ *  rather than a plain `Field`, so it reads as one of the item's sections
+ *  instead of sitting apart from them. */
+function DescriptionField({
+  value,
+  onChange,
+  infoOpen,
+  onInfoOpen,
+  onInfoClose,
+}: DescriptionFieldProps) {
   const [mode, setMode] = useState<'write' | 'preview'>('write')
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
@@ -140,43 +156,39 @@ function DescriptionField({ value, onChange }: DescriptionFieldProps) {
   }, [value, mode])
 
   return (
-    <Field>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 'var(--space-2)',
-        }}
-      >
-        <FieldLabel htmlFor="description">Description</FieldLabel>
-        <div className="seg" style={{ flex: 'none' }}>
-          <label className="seg-opt">
-            <input
-              type="radio"
-              name="description-mode"
-              checked={mode === 'write'}
-              onChange={() => setMode('write')}
-            />
-            Write
-          </label>
-          <label className="seg-opt">
-            <input
-              type="radio"
-              name="description-mode"
-              checked={mode === 'preview'}
-              onChange={() => setMode('preview')}
-            />
-            Preview
-          </label>
-        </div>
+    <GroupBox
+      label="Description"
+      info={DESCRIPTION_INFO}
+      infoOpen={infoOpen}
+      onInfoOpen={onInfoOpen}
+      onInfoClose={onInfoClose}
+    >
+      <div className="seg" style={{ alignSelf: 'flex-end' }}>
+        <label className="seg-opt">
+          <input
+            type="radio"
+            name="description-mode"
+            checked={mode === 'write'}
+            onChange={() => setMode('write')}
+          />
+          Write
+        </label>
+        <label className="seg-opt">
+          <input
+            type="radio"
+            name="description-mode"
+            checked={mode === 'preview'}
+            onChange={() => setMode('preview')}
+          />
+          Preview
+        </label>
       </div>
 
       {mode === 'write' ? (
         <>
           <MarkdownToolbar textareaRef={textareaRef} value={value} onChange={onChange} />
           <Textarea
-            id="description"
+            aria-label="Description"
             ref={textareaRef}
             className="textarea-autosize"
             rows={3}
@@ -207,7 +219,7 @@ function DescriptionField({ value, onChange }: DescriptionFieldProps) {
           Nothing to preview yet.
         </p>
       )}
-    </Field>
+    </GroupBox>
   )
 }
 
@@ -216,6 +228,9 @@ interface ItemDetailShellProps {
   onNotesChange: (id: string, notes: string) => void
   onDescriptionChange: (id: string, description: string) => void
   onTitleChange: (id: string, title: string) => void
+  descriptionInfoOpen: boolean
+  onDescriptionInfoOpen: () => void
+  onDescriptionInfoClose: () => void
   children: ReactNode
 }
 
@@ -228,6 +243,9 @@ function ItemDetailShell({
   onNotesChange,
   onDescriptionChange,
   onTitleChange,
+  descriptionInfoOpen,
+  onDescriptionInfoOpen,
+  onDescriptionInfoClose,
   children,
 }: ItemDetailShellProps) {
   return (
@@ -239,6 +257,9 @@ function ItemDetailShell({
       <DescriptionField
         value={item.description}
         onChange={(next) => onDescriptionChange(item.id, next)}
+        infoOpen={descriptionInfoOpen}
+        onInfoOpen={onDescriptionInfoOpen}
+        onInfoClose={onDescriptionInfoClose}
       />
 
       {children}
@@ -318,7 +339,7 @@ function ActiveItemPanel({
     openKey: infoOpen,
     open: openInfo,
     close: closeInfo,
-  } = useSingleInfoPopover<'estimate' | 'phase' | 'range'>()
+  } = useSingleInfoPopover<'description' | 'estimate' | 'phase' | 'range'>()
 
   const allFilled = best !== '' && likely !== '' && worst !== ''
   const bestNum = Number(best)
@@ -364,6 +385,9 @@ function ActiveItemPanel({
       onNotesChange={onNotesChange}
       onDescriptionChange={onDescriptionChange}
       onTitleChange={onTitleChange}
+      descriptionInfoOpen={infoOpen === 'description'}
+      onDescriptionInfoOpen={() => openInfo('description')}
+      onDescriptionInfoClose={closeInfo}
     >
       <GroupBox
         label="Phase"
@@ -530,7 +554,7 @@ function LiveFacilitatorPanel({
     openKey: infoOpen,
     open: openInfo,
     close: closeInfo,
-  } = useSingleInfoPopover<'estimate' | 'range'>()
+  } = useSingleInfoPopover<'description' | 'estimate' | 'range'>()
   const {
     armed: reopenArmed,
     handleClick: armAndReopen,
@@ -548,6 +572,9 @@ function LiveFacilitatorPanel({
       onNotesChange={onNotesChange}
       onDescriptionChange={onDescriptionChange}
       onTitleChange={onTitleChange}
+      descriptionInfoOpen={infoOpen === 'description'}
+      onDescriptionInfoOpen={() => openInfo('description')}
+      onDescriptionInfoClose={closeInfo}
     >
       <GroupBox
         label={item.revealed ? 'Participant estimates' : 'Participants'}
