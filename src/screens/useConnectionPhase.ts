@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 
 /** What the UI should say about the connection, as opposed to what the transport
  *  is doing. `reconnecting` is a drop Trystero is still expected to repair;
@@ -32,7 +32,10 @@ export function useConnectionPhase(
 ): ConnectionPhase {
   const [graceElapsed, setGraceElapsed] = useState(false)
 
-  useEffect(() => {
+  // Layout effect, not a plain effect: it must reset graceElapsed before the
+  // browser paints, or a retry's stale 'lost' render (still showing the old
+  // graceElapsed) would flash on screen for a frame before this fires.
+  useLayoutEffect(() => {
     setGraceElapsed(false)
     if (!isDown) return
     const timer = setTimeout(() => setGraceElapsed(true), RECONNECT_GRACE_MS)
