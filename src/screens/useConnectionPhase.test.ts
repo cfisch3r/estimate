@@ -60,4 +60,20 @@ describe('useConnectionPhase', () => {
 
     expect(result.current).toBe('reconnecting')
   })
+
+  it('restarts the window when attemptId changes even if isDown stays true', () => {
+    vi.useFakeTimers()
+    const { result, rerender } = renderHook(
+      ({ s, attempt }) => useConnectionPhase(s, attempt),
+      { initialProps: { s: true, attempt: 0 } },
+    )
+    act(() => {
+      vi.advanceTimersByTime(RECONNECT_GRACE_MS)
+    })
+    expect(result.current).toBe('lost')
+
+    rerender({ s: true, attempt: 1 })
+
+    expect(result.current).toBe('reconnecting')
+  })
 })

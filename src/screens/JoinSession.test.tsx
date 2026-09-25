@@ -142,6 +142,34 @@ describe('JoinSession', () => {
     }
   })
 
+  // A retry tears down and rejoins while connectionStatus stays 'connecting'
+  // throughout, so the failure banner must clear on the click itself rather
+  // than staying latched at 'lost' until the connection actually succeeds.
+  it('clears the failure banner immediately when Retry is clicked', () => {
+    vi.useFakeTimers()
+    try {
+      render(<JoinSession />)
+      fireEvent.change(screen.getByLabelText('Session code'), {
+        target: { value: 'K7F9Q2' },
+      })
+      fireEvent.change(screen.getByLabelText('Your name'), { target: { value: 'Sam' } })
+      fireEvent.click(screen.getByRole('button', { name: 'Join' }))
+
+      act(() => {
+        vi.advanceTimersByTime(RECONNECT_GRACE_MS)
+      })
+      expect(screen.getByText(/Couldn.t reach the session/)).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
+
+      expect(screen.queryByText(/Couldn.t reach the session/)).not.toBeInTheDocument()
+      expect(screen.getByText('Connecting to peers…')).toBeInTheDocument()
+      expect(connectMock).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('routes to the estimate view once this client has joined and is connected', async () => {
     const user = userEvent.setup()
     render(<JoinSession />)
