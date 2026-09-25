@@ -24,6 +24,7 @@ export function JoinSession() {
   const [code, setCode] = useState('')
   const [name, setName] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [attempt, setAttempt] = useState(0)
 
   const canSubmit = code.trim().length > 0 && name.trim().length > 0
   const connecting = connectionStatus === 'connecting'
@@ -33,7 +34,11 @@ export function JoinSession() {
   // was never reached, not just "still setting up". A hard onJoinError
   // ('disconnected') escalates immediately; it isn't the kind of blip the
   // grace period exists to absorb.
-  const connectionPhase = useConnectionPhase(submitted && connecting)
+  //
+  // `attempt` forces the grace timer to restart on Retry: a rejoin tears down
+  // and reconnects while connectionStatus stays 'connecting' throughout, so
+  // the boolean alone would never signal a fresh attempt.
+  const connectionPhase = useConnectionPhase(submitted && connecting, attempt)
   const failed = connectionStatus === 'disconnected' || connectionPhase === 'lost'
 
   // Only this client's own join attempt should navigate onward — not a 'connected'
@@ -48,6 +53,7 @@ export function JoinSession() {
     if (!canSubmit) return
     const trimmedCode = code.trim().toUpperCase()
     setSubmitted(true)
+    setAttempt((a) => a + 1)
     joinLiveSession(trimmedCode, name)
     connect(trimmedCode)
   }

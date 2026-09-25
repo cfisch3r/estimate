@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useLayoutEffect, useState } from 'react'
 
 /** What the UI should say about the connection, as opposed to what the transport
  *  is doing. `reconnecting` is a drop Trystero is still expected to repair;
@@ -20,18 +20,27 @@ export const RECONNECT_GRACE_MS = 15_000
  *  Takes a plain boolean rather than a `connectionStatus` because what counts as
  *  "down" differs by role: a participant is down when it has lost the session it
  *  was in, while a facilitator alone is merely waiting for people to arrive. The
- *  caller decides; this only handles the timing. */
-export function useConnectionPhase(isDown: boolean): ConnectionPhase {
+ *  caller decides; this only handles the timing.
+ *
+ *  `attemptId` lets a caller force the grace timer to restart even when `isDown`
+ *  doesn't change value — e.g. a manual retry that tears down and rejoins while
+ *  the status stays 'connecting' the whole time. Without it, a retry after the
+ *  timer already elapsed would be stuck reporting `lost` forever. */
+export function useConnectionPhase(
+  isDown: boolean,
+  attemptId: unknown = 0,
+): ConnectionPhase {
   const [graceElapsed, setGraceElapsed] = useState(false)
 
-  useEffect(() => {
-    if (!isDown) {
-      setGraceElapsed(false)
-      return
-    }
+  // Layout effect, not a plain effect: it must reset graceElapsed before the
+  // browser paints, or a retry's stale 'lost' render (still showing the old
+  // graceElapsed) would flash on screen for a frame before this fires.
+  useLayoutEffect(() => {
+    setGraceElapsed(false)
+    if (!isDown) return
     const timer = setTimeout(() => setGraceElapsed(true), RECONNECT_GRACE_MS)
     return () => clearTimeout(timer)
-  }, [isDown])
+  }, [isDown, attemptId])
 
   if (!isDown) return 'ok'
   return graceElapsed ? 'lost' : 'reconnecting'
