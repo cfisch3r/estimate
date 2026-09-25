@@ -22,7 +22,9 @@ describe('Markdown', () => {
 
   it('strips script tags and inline event handlers', () => {
     const { container } = render(
-      <Markdown content={'<script>window.pwned = true</script><img src=x onerror=alert(1)>'} />,
+      <Markdown
+        content={'<script>window.pwned = true</script><img src=x onerror=alert(1)>'}
+      />,
     )
 
     expect(container.querySelector('script')).not.toBeInTheDocument()

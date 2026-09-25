@@ -31,7 +31,10 @@ function applyEdit(textarea: HTMLTextAreaElement, next: string, cursor: number):
  *  swallowed into the list instead of starting its own paragraph. Returns
  *  null on any other line — the caller should let the browser's default
  *  Enter behavior happen. */
-export function continueListOnEnter(textarea: HTMLTextAreaElement, value: string): string | null {
+export function continueListOnEnter(
+  textarea: HTMLTextAreaElement,
+  value: string,
+): string | null {
   const pos = textarea.selectionStart ?? value.length
   const line = currentLine(value, pos)
   const match = BULLET_LINE.exec(line.text)

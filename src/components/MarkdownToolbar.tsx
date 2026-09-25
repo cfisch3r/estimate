@@ -44,7 +44,11 @@ function wrapSelection(
 /** Inserts `prefix` at the start of the line(s) the selection touches — used
  *  for the bullet-list button, which acts on whole lines rather than wrapping
  *  inline text like bold/italic/link do. */
-function prefixLines(textarea: HTMLTextAreaElement, value: string, prefix: string): string {
+function prefixLines(
+  textarea: HTMLTextAreaElement,
+  value: string,
+  prefix: string,
+): string {
   const start = textarea.selectionStart ?? value.length
   const end = textarea.selectionEnd ?? value.length
   const lineStart = value.lastIndexOf('\n', start - 1) + 1
@@ -54,7 +58,9 @@ function prefixLines(textarea: HTMLTextAreaElement, value: string, prefix: strin
   const prefixed =
     block
       .split('\n')
-      .map((line, i, lines) => (i === lines.length - 1 && line === '' ? line : `${prefix}${line}`))
+      .map((line, i, lines) =>
+        i === lines.length - 1 && line === '' ? line : `${prefix}${line}`,
+      )
       .join('\n') || `${prefix}`
   const next = value.slice(0, lineStart) + prefixed + value.slice(lineEnd)
 
@@ -85,7 +91,11 @@ export function MarkdownToolbar({ textareaRef, value, onChange }: MarkdownToolba
         aria-label="Bold"
         onClick={() =>
           apply((textarea, val) =>
-            wrapSelection(textarea, val, { before: '**', after: '**', placeholder: 'bold text' }),
+            wrapSelection(textarea, val, {
+              before: '**',
+              after: '**',
+              placeholder: 'bold text',
+            }),
           )
         }
       >

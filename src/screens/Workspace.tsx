@@ -166,7 +166,9 @@ function DescriptionField({
       <div className="md-tabs">
         <button
           type="button"
-          className={['md-tab', mode === 'write' && 'md-tab--active'].filter(Boolean).join(' ')}
+          className={['md-tab', mode === 'write' && 'md-tab--active']
+            .filter(Boolean)
+            .join(' ')}
           onClick={() => setMode('write')}
         >
           Write
@@ -184,7 +186,11 @@ function DescriptionField({
       <div className="md-panel">
         {mode === 'write' ? (
           <>
-            <MarkdownToolbar textareaRef={textareaRef} value={value} onChange={onChange} />
+            <MarkdownToolbar
+              textareaRef={textareaRef}
+              value={value}
+              onChange={onChange}
+            />
             <Textarea
               aria-label="Description"
               ref={textareaRef}

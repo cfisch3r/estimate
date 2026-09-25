@@ -70,7 +70,10 @@ export function Markdown({ content, className }: MarkdownProps) {
         <div className="markdown" dangerouslySetInnerHTML={{ __html: html }} />
       </div>
       {!hideTopHint && (
-        <div className="markdown-overflow-hint markdown-overflow-hint--top" aria-hidden="true">
+        <div
+          className="markdown-overflow-hint markdown-overflow-hint--top"
+          aria-hidden="true"
+        >
           <CaretUpIcon size={12} weight="bold" />
         </div>
       )}
