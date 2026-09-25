@@ -163,62 +163,61 @@ function DescriptionField({
       onInfoOpen={onInfoOpen}
       onInfoClose={onInfoClose}
     >
-      <div className="seg" style={{ alignSelf: 'flex-end' }}>
-        <label className="seg-opt">
-          <input
-            type="radio"
-            name="description-mode"
-            checked={mode === 'write'}
-            onChange={() => setMode('write')}
-          />
+      <div className="md-tabs">
+        <button
+          type="button"
+          className={['md-tab', mode === 'write' && 'md-tab--active'].filter(Boolean).join(' ')}
+          onClick={() => setMode('write')}
+        >
           Write
-        </label>
-        <label className="seg-opt">
-          <input
-            type="radio"
-            name="description-mode"
-            checked={mode === 'preview'}
-            onChange={() => setMode('preview')}
-          />
+        </button>
+        <button
+          type="button"
+          className={['md-tab', mode === 'preview' && 'md-tab--active']
+            .filter(Boolean)
+            .join(' ')}
+          onClick={() => setMode('preview')}
+        >
           Preview
-        </label>
+        </button>
       </div>
-
-      {mode === 'write' ? (
-        <>
-          <MarkdownToolbar textareaRef={textareaRef} value={value} onChange={onChange} />
-          <Textarea
-            aria-label="Description"
-            ref={textareaRef}
-            className="textarea-autosize"
-            rows={3}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onKeyDown={(e) => {
-              const textarea = e.currentTarget
-              if (e.key === 'Enter') {
-                const next = continueListOnEnter(textarea, value)
-                if (next !== null) {
-                  e.preventDefault()
-                  onChange(next)
+      <div className="md-panel">
+        {mode === 'write' ? (
+          <>
+            <MarkdownToolbar textareaRef={textareaRef} value={value} onChange={onChange} />
+            <Textarea
+              aria-label="Description"
+              ref={textareaRef}
+              className="textarea-autosize"
+              rows={3}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => {
+                const textarea = e.currentTarget
+                if (e.key === 'Enter') {
+                  const next = continueListOnEnter(textarea, value)
+                  if (next !== null) {
+                    e.preventDefault()
+                    onChange(next)
+                  }
+                } else if (e.key === 'Tab') {
+                  const next = indentListLine(textarea, value, e.shiftKey)
+                  if (next !== null) {
+                    e.preventDefault()
+                    onChange(next)
+                  }
                 }
-              } else if (e.key === 'Tab') {
-                const next = indentListLine(textarea, value, e.shiftKey)
-                if (next !== null) {
-                  e.preventDefault()
-                  onChange(next)
-                }
-              }
-            }}
-          />
-        </>
-      ) : value ? (
-        <Markdown content={value} className="markdown-preview" />
-      ) : (
-        <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
-          Nothing to preview yet.
-        </p>
-      )}
+              }}
+            />
+          </>
+        ) : value ? (
+          <Markdown content={value} className="markdown-preview" />
+        ) : (
+          <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+            Nothing to preview yet.
+          </p>
+        )}
+      </div>
     </GroupBox>
   )
 }

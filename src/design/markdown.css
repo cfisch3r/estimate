@@ -132,6 +132,64 @@
   margin-bottom: var(--space-2);
 }
 
+/* Write/Preview as tabs attached to the panel below them, rather than a
+   segmented toggle floating in the corner with no visual tie to what it
+   controls. `md-tabs` cancels GroupBox's flex `gap` so it sits flush against
+   `md-panel` — the classic "folder tab" technique needs zero space between
+   them: the active tab's bottom edge matches the panel's background and
+   overlaps its top border by 1px (negative margin-bottom), painting over
+   that border exactly where the tab sits, so the tab reads as fused to the
+   panel while the inactive tab stays visually separate above the line. */
+.md-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: calc(-1 * var(--space-3));
+}
+.md-tab {
+  padding: 6px 14px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-neutral-500);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom-color: var(--color-divider);
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+.md-tab:hover {
+  color: var(--color-text);
+}
+.md-tab:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+.md-tab--active {
+  color: var(--color-text);
+  background: var(--color-surface);
+  border-color: var(--color-divider) var(--color-divider) var(--color-surface);
+}
+
+.md-panel {
+  border: 1px solid var(--color-divider);
+  border-top-left-radius: 0;
+  border-radius: 0 var(--radius-md) var(--radius-md) var(--radius-md);
+  background: var(--color-surface);
+  padding: var(--space-2);
+}
+/* The panel now supplies the box (border/background/padding) that
+   .textarea-autosize and .markdown-preview each already carry on their own
+   elsewhere (e.g. the participant view's card) — stripped here so tabbed
+   mode doesn't show a border-in-a-border. */
+.md-panel .textarea-autosize,
+.md-panel .markdown-preview {
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  padding: 0;
+}
+
 /* Description textarea: grows with content (see DescriptionField's autosize
    effect in Workspace.tsx) instead of the default drag handle, up to the
    same shared cap, then scrolls like the rendered views above. The element
