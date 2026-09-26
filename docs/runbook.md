@@ -259,7 +259,9 @@ The mode-select screen's "Preview build" tag shows the running version
   The `main`-branch run of the same workflow, for the same commit, succeeds — that's
   the one shown in GitHub's checks UI, so the tag-triggered failure is easy to miss
   and looks contradictory. Cosmetic only (nothing actually fails to deploy); no IONOS
-  dashboard setting fixes it. To silence it, add a `branches: ['**']` filter under
-  `estimate-orchestration.yaml`'s `push:` trigger so tag pushes stop triggering it —
-  but that file is IONOS-generated (see the [Pipeline](#pipeline) table) and could be
-  reverted if IONOS re-syncs it. Otherwise report to `deploynow-support@ionos.com`.
+  dashboard setting fixes it. To silence it, convert `estimate-orchestration.yaml`'s
+  shorthand `on: [push, workflow_dispatch]` trigger into mapping form with a
+  `branches: ['**']` filter (`on: { push: { branches: ['**'] }, workflow_dispatch }`)
+  so tag pushes stop triggering it — but that file is IONOS-generated (see the
+  [Pipeline](#pipeline) table) and could be reverted if IONOS re-syncs it. Otherwise
+  report to `deploynow-support@ionos.com`.
