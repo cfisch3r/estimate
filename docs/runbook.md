@@ -247,3 +247,21 @@ The mode-select screen's "Preview build" tag shows the running version
 - **Root URL 404s or serves stale content:** check the **Orchestration** run's `build`
   job output directory is still `dist`; check the **Deploy to IONOS** run's rsync step
   for errors.
+- **"Deploy Now: Build estimate" failure email, but the PR/commit checks on GitHub
+  show green:** the failing run is a separate one triggered by the git tag
+  `release-please` pushes when cutting a release (see
+  [How releases are cut](#how-releases-are-cut)), not the `main`-branch push for the
+  same commit. `Orchestration`'s `retrieve-project` job can't resolve IONOS branch
+  info for a tag ref (`refs/tags/vX.Y.Z`) — `project-action`'s `retrieve-info` call
+  errors with `Failed to fetch information about branch "refs/tags/...": The setup of
+  this DeployNow project is not fully completed yet`, which leaves
+  `steps.project.outputs.info` empty and fails the job's `fromJson(...)` outputs.
+  The `main`-branch run of the same workflow, for the same commit, succeeds — that's
+  the one shown in GitHub's checks UI, so the tag-triggered failure is easy to miss
+  and looks contradictory. Cosmetic only (nothing actually fails to deploy); no IONOS
+  dashboard setting fixes it. To silence it, convert `estimate-orchestration.yaml`'s
+  shorthand `on: [push, workflow_dispatch]` trigger into mapping form with a
+  `branches: ['**']` filter (`on: { push: { branches: ['**'] }, workflow_dispatch }`)
+  so tag pushes stop triggering it — but that file is IONOS-generated (see the
+  [Pipeline](#pipeline) table) and could be reverted if IONOS re-syncs it. Otherwise
+  report to `deploynow-support@ionos.com`.
