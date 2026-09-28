@@ -26,7 +26,7 @@
    outside it (see Workspace's redesign handoff). */
 .session-sidebar-scroll {
   position: relative;
-  height: 360px;
+  max-height: 360px;
   overflow-y: auto;
 }
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { DotsSixVerticalIcon } from '@phosphor-icons/react/dist/csr/DotsSixVertical'
 import { NotebookIcon } from '@phosphor-icons/react/dist/csr/Notebook'
 import { CheckCircleIcon } from '@phosphor-icons/react/dist/csr/CheckCircle'
@@ -148,9 +148,22 @@ export function SessionSidebar({
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [newItemTitle, setNewItemTitle] = useState('')
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const prevItemCount = useRef(items.length)
 
   const finalizedCount = items.filter((item) => item.finalResult !== null).length
   const onSummary = currentScreen === 'summary'
+
+  // A newly added item lands at the bottom of a capped-height, scrollable list
+  // (see session-sidebar.css) — without this it's added out of view and only
+  // visible after the user manually scrolls down.
+  useEffect(() => {
+    if (items.length > prevItemCount.current) {
+      const el = scrollRef.current
+      if (el) el.scrollTop = el.scrollHeight
+    }
+    prevItemCount.current = items.length
+  }, [items.length])
 
   function handleAdd() {
     if (newItemTitle.trim().length === 0) return
@@ -192,7 +205,7 @@ export function SessionSidebar({
         </span>
       </div>
       {scrollableList ? (
-        <div className="session-sidebar-scroll">
+        <div className="session-sidebar-scroll" ref={scrollRef}>
           <div className="session-sidebar-rows">{rows}</div>
         </div>
       ) : (
