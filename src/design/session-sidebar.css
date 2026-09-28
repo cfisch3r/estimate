@@ -26,11 +26,15 @@
    outside it (see Workspace's redesign handoff). */
 .session-sidebar-scroll {
   position: relative;
-  height: 360px;
+  max-height: 360px;
   overflow-y: auto;
 }
 
-.session-sidebar-scroll::after {
+/* Only shown when the list is actually capped/scrollable (see the
+   isScrollCapped check in SessionSidebar.tsx) — otherwise, for a short list
+   whose box has shrunk to fit, this would overlap the last row's own content
+   instead of fading empty space below it. */
+.session-sidebar-scroll--capped::after {
   content: '';
   position: absolute;
   left: 0;
