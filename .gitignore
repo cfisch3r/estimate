@@ -14,11 +14,13 @@ coverage
 *.local
 
 # Locally-installed Claude Code skills/plugins (reproducible from skills-lock.json);
-# project-owned agents, commands, and settings (hooks) are versioned.
+# project-owned agents, commands, skills, hook scripts, and settings are versioned.
 .agents/
 .claude/*
 !.claude/agents/
 !.claude/commands/
+!.claude/skills/
+!.claude/hooks/
 !.claude/settings.json
 
 # Editor directories and files
