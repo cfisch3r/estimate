@@ -19,17 +19,21 @@ concretely works, how a session is saved/loaded (a real point of tension with th
 "no operated server" phrasing, since ADR-001's constraint is scoped to live sync, not
 storage), styling/design-system approach, hosting, and module structure.
 
-**As-built status.** The initial scaffold, the `/calc` engine, the Zustand store, the
-single-user (Manual) screens, the Trystero P2P network layer, the Join Session screen, and
-the participant estimate round have all shipped (issues #1–#7), and the entry flow was
-rebuilt to a mode-selection screen plus a unified Workspace in the epic-0010 screen review
-(#34). For the concrete as-built
-detail of the Live-mode layer — the
-`src/network/` component breakdown, the join sequence, the estimate round, the connection
-state machine, and the store fields it added — see [concepts/collaboration-mode.md](concepts/collaboration-mode.md);
-this document keeps the decisions and rationale, that one tracks the implementation. Still
-open: connection-fallback UX (#9) and session save/load (`src/persistence/` is still a
-placeholder — session data is in-memory only; see #10).
+**As-built status.** The initial scaffold, the estimation engine (`entities/estimate`),
+the Zustand store, the single-user (Manual) screens, the Trystero P2P network layer
+(`entities/session/api`), the Join Session screen, and the participant estimate round
+have all shipped (issues #1–#7), and the entry flow was rebuilt to a mode-selection
+screen plus a unified Workspace in the epic-0010 screen review (#34). The `src/` tree
+was migrated to Feature-Sliced Design (issue #109-era work — see
+[ADR-004](adr/004-feature-sliced-design-architecture.md) for the adopted layer set and
+full slice mapping); this document doesn't repeat that mapping, only the architectural
+decisions and rationale behind what's in each slice. For the concrete as-built detail of
+the Live-mode layer — the `entities/session/api` component breakdown, the join sequence,
+the estimate round, the connection state machine, and the store fields it added — see
+[concepts/collaboration-mode.md](concepts/collaboration-mode.md); this document keeps the
+decisions and rationale, that one tracks the implementation. Still open: connection-fallback
+UX (#9) and session save/load (`src/persistence/` is still a placeholder — session data is
+in-memory only; see #10).
 
 ## Confirmed decisions
 
@@ -55,49 +59,54 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 
 ## P2P live-sync layer (Mode A)
 
-- **Room identity:** `generateSessionCode()` (`src/network/sessionCode.ts`) produces a 6-char Crockford-base32 code at session creation (crypto RNG, ambiguous glyphs removed) — short enough to read aloud or paste into chat. It is the Trystero `roomId`, with a fixed `appId` (`estimate-app-v1`) namespacing EstiMate's rooms. *(The proposal assumed a nanoid embedded in a `/join/<id>` deep link; the as-built code ships the human-shareable code with no deep-link route — see the concept doc's "Known MVP gaps".)*
+- **Room identity:** `generateSessionCode()` (`entities/session/api/sessionCode.ts`) produces a 6-char Crockford-base32 code at session creation (crypto RNG, ambiguous glyphs removed) — short enough to read aloud or paste into chat. It is the Trystero `roomId`, with a fixed `appId` (`estimate-app-v1`) namespacing EstiMate's rooms. *(The proposal assumed a nanoid embedded in a `/join/<id>` deep link; the as-built code ships the human-shareable code with no deep-link route — see the concept doc's "Known MVP gaps".)*
 - **Signaling strategy:** Trystero's **Nostr strategy** (`trystero/nostr`) as the default — this is the library's own default and top recommendation, backed by hundreds of independent public relays (most redundancy of the decentralized options), no account/config required, matches ADR-001's "no server we operate." Library's own robustness ranking for the decentralized strategies: Nostr → MQTT → BitTorrent → IPFS. Supabase/Firebase strategies exist but require configuring your own project (not zero-setup); a self-hosted WebSocket relay strategy also exists as an explicit escape hatch if the public networks prove unreliable, mirroring ADR-001's bring-your-own-TURN framing. Verified against current Trystero docs (trystero.dev, github.com/dmotz/trystero).
 - **Room privacy:** `roomId` = the shared session code — this is the invite mechanism. `joinSession()` accepts an optional `password` (Trystero AES-GCM encrypts the signaling handshake); without it the roomId is visible as metadata on the public signaling medium. The 6-char code is already hard to guess, but a password closes the gap cheaply if a session warrants it.
 - **Data sync model: facilitator-owned, not CRDT.** **(Superseded 2026-09-15 by [ADR-003](adr/003-session-reliability-model.md), "Single owner" landed in #60.)** The facilitator's `items[]` is the sole source of truth for submissions, reveal state, and finalization; a participant's `liveRound` is a projection of the facilitator's `syncState` snapshot plus its own pending submission. A participant's `submitEstimate` is a targeted send to the facilitator's peerId only — it never reaches other participants, closing the pre-reveal estimate-value leak. This works because the PRD's aggregation (min of Best, max of Worst, median of Likely) is order-independent and idempotent on the facilitator's own accumulated list — no conflict resolution needed, and Mode A/B can share one calculation engine.
-- **Closed:** Trystero doesn't replay history to late joiners. The wire action for state recovery (`syncState`, carrying a `SessionSnapshot`) exists in `src/network/actions.ts`; the facilitator broadcasts it from `NetworkProvider` on every real change, and — since #60 — a peer that just connected or reconnected pulls it directly via the `requestSnapshot` request/response action, rather than relying on the facilitator to notice the arrival and push one. Since #61, that pull applies the shared kind-driven retry policy (`withKindDrivenRetry`) too, rather than being a single best-effort attempt.
+- **Closed:** Trystero doesn't replay history to late joiners. The wire action for state recovery (`syncState`, carrying a `SessionSnapshot`) exists in `entities/session/api/actions.ts`; the facilitator broadcasts it from `NetworkProvider` on every real change, and — since #60 — a peer that just connected or reconnected pulls it directly via the `requestSnapshot` request/response action, rather than relying on the facilitator to notice the arrival and push one. Since #61, that pull applies the shared kind-driven retry policy (`withKindDrivenRetry`) too, rather than being a single best-effort attempt.
 
 ## Module structure
 
-```
-/src
-  /design       — nocturne.css (verbatim Nocturne port) + composed-pattern CSS built from
-                  its primitives: radio-tile.css, range-bar.css, session-sidebar.css,
-                  phase-picker.css. radio-tile.css is unused since the #34 mode-select
-                  rebuild removed the RadioTile mode picker — kept for a possible reuse
-                  in the estimate form.
-  /components   — Button, Card, Field, GuardNote, ConfirmNote, Header, PhasePicker,
-                  RadioTile, RangeBar, Tag, UncertaintyGuidanceNotes — thin wrappers /
-                  compositions over Nocturne classes. RadioTile is currently
-                  unreferenced (see /design note) but retained as a design-system primitive.
-  /screens      — roughly one per PRD §7 screen (ModeSelect, Workspace, Join, Participant
-                  Estimate View, Summary, History), plus shared screen-level pieces
-                  (SessionSidebar, useLeaveLiveSession, useConnectionPhase). Built so far: ModeSelect, Workspace
-                  (single-user path, collaborative session-code strip, and the facilitator
-                  reveal panel — states 1c waiting / 1d revealed, driven by per-item
-                  `submissions` / `revealed`, #8), Summary, History, Join, and Participant
-                  Estimate View (#7 — lobby / estimating / waiting / revealed states driven
-                  by `store.liveRound`).
-  /calc         — pure functions: aggregateEstimates(), computeCI90() (McConnell's formula, PRD §5),
-                  bias guards (symmetric-range, false-precision, outlier — PRD §6). Framework-free,
-                  unit-testable, identical between Mode A and Mode B.
-  /network      — Trystero wrapper: room join/create, typed actions (submitEstimate, syncState,
-                  announce, requestSnapshot request/response), connection-state hooks,
-                  facilitator-authoritative round state (ADR-003, #60)
-  /state        — Zustand store; network and persistence are adapters dispatching into it
-  /persistence  — session save/load (JSON file export/import), CSV export,
-                  shareable-report-link encode/decode
-```
+`src/` is organized by Feature-Sliced Design (FSD) — see
+[ADR-004](adr/004-feature-sliced-design-architecture.md) for the adopted layer set
+(`app/pages/widgets/features/entities/shared`), the full slice mapping, and the
+rationale. In brief, by architectural role rather than layer:
 
-The `/calc` layer's isolation as pure, framework-free functions is the single most load-bearing structural decision — PRD §4.2 and ADR-001 both require identical calculation/bias-guard behavior across both modes, and this makes it trivially unit-testable against the PRD §5–6 formulas independent of UI or networking.
+- **The estimation engine** (`entities/estimate/model`, formerly `/calc`) — pure
+  functions: `aggregateEstimates()`, `computeCI90()` (McConnell's formula, PRD §5),
+  bias guards (symmetric-range, false-precision, outlier — PRD §6). Framework-free,
+  unit-testable, identical between Mode A and Mode B.
+- **The P2P wire layer** (`entities/session/api`, formerly `/network`) — Trystero
+  wrapper: room join/create, typed actions (`submitEstimate`, `syncState`, `announce`,
+  `requestSnapshot` request/response), connection-state hooks, facilitator-authoritative
+  round state (ADR-003, #60).
+- **The session store** (`entities/session/model`, formerly `/state`) — Zustand store;
+  network and persistence are adapters dispatching into it. Not yet split along FSD
+  slice lines — see ADR-004's issue #111.
+- **Screens** (`pages/*`, formerly `/screens`) — one per PRD §7 screen (ModeSelect,
+  Workspace, Join, Participant Estimate View, Summary, History). Built so far:
+  ModeSelect, Workspace (single-user path, collaborative session-code strip, and the
+  facilitator reveal panel — states 1c waiting / 1d revealed, driven by per-item
+  `submissions` / `revealed`, #8), Summary, History, Join, and Participant Estimate
+  View (#7 — lobby / estimating / waiting / revealed states driven by
+  `store.liveRound`).
+- **Design-system primitives** (`shared/ui`, formerly `/components`) — Button, Card,
+  Field, GuardNote, ConfirmNote, Tag, RadioTile — thin wrappers / compositions over
+  Nocturne classes. RadioTile is currently unreferenced (unused since the #34
+  mode-select rebuild removed the RadioTile mode picker) but retained as a
+  design-system primitive. `Header` moved to `app/` instead — it carries
+  screen/mode-aware logic, not a business-agnostic primitive.
+- **CSS** (`src/design/`, unchanged by the FSD migration) — `nocturne.css` (verbatim
+  Nocturne port) + composed-pattern CSS built from its primitives: `radio-tile.css`,
+  `range-bar.css`, `session-sidebar.css`, `phase-picker.css`.
+- **Persistence** (`src/persistence/`, unchanged, still a placeholder) — session
+  save/load (JSON file export/import), CSV export, shareable-report-link encode/decode.
 
-**Testing note (ADR-002):** browser-specific behavior — real reload/persistence, real P2P connection handling — is the trigger to add Playwright. The Trystero `/network` layer has shipped, but its jsdom-testable surface (actions, validation, state machine) doesn't yet trip that trigger — the #7 participant round, #8 facilitator reveal, and #60's `syncState`-only convergence (no separate reveal/roundReset events) all landed entirely in store + component tests. Real WebRTC peer connect/drop and real `/persistence` are what trip it. Scope it to a handful of golden-path smoke tests; keep edge cases in `/calc`/`/state`/component tests. See ADR-002's 2026-09-07 update.
+The estimation engine's isolation as pure, framework-free functions is the single most load-bearing structural decision — PRD §4.2 and ADR-001 both require identical calculation/bias-guard behavior across both modes, and this makes it trivially unit-testable against the PRD §5–6 formulas independent of UI or networking.
 
-## `/calc` module — detailed design
+**Testing note (ADR-002):** browser-specific behavior — real reload/persistence, real P2P connection handling — is the trigger to add Playwright. The Trystero wire layer has shipped, but its jsdom-testable surface (actions, validation, state machine) doesn't yet trip that trigger — the #7 participant round, #8 facilitator reveal, and #60's `syncState`-only convergence (no separate reveal/roundReset events) all landed entirely in store + component tests. Real WebRTC peer connect/drop and real `/persistence` are what trip it. Scope it to a handful of golden-path smoke tests; keep edge cases in the estimation-engine/store/component tests. See ADR-002's 2026-09-07 update.
+
+## Estimation engine — detailed design
 
 **One aggregation function serves both modes.** `aggregateEstimates()` takes an array of `{best, likely, worst}` estimates and a strategy, and returns the group range. Fed a Live-mode session's N participant submissions or a Manual-mode session's single facilitator-entered set, it's the same call — a single-element array degenerates correctly (min/median/max of one value = that value), so Mode B isn't a special case, it's a consequence of the design (satisfies PRD §4.2 / ADR-001's shared-engine requirement).
 
@@ -129,11 +138,11 @@ type Estimate = RawEstimateInput & { readonly [EstimateBrand]: true }
 function createEstimate(input: RawEstimateInput): Result<Estimate>
 ```
 
-The brand is compile-time only — it adds no runtime property, so `Estimate` stays plain, JSON-transparent data for network transport and file-based session storage — but it does make constructing one any other way (e.g. a bare `{best, likely, worst}` object literal) a type error everywhere `Estimate` is expected. This only guards against *accidental* misuse within our own code, though: TypeScript types don't exist at runtime, so they can't protect against a malformed message from an untrusted Trystero peer. The network layer therefore calls `createEstimate()` on every incoming peer message before it touches state — via `safeCreateEstimate()` in `src/network/actions.ts`, which also traps the throw path since peer input isn't guaranteed well-shaped. One shared validation function, not the ordering check re-implemented per adapter.
+The brand is compile-time only — it adds no runtime property, so `Estimate` stays plain, JSON-transparent data for network transport and file-based session storage — but it does make constructing one any other way (e.g. a bare `{best, likely, worst}` object literal) a type error everywhere `Estimate` is expected. This only guards against *accidental* misuse within our own code, though: TypeScript types don't exist at runtime, so they can't protect against a malformed message from an untrusted Trystero peer. The network layer therefore calls `createEstimate()` on every incoming peer message before it touches state — via `safeCreateEstimate()` in `entities/session/api/actions.ts`, which also traps the throw path since peer input isn't guaranteed well-shaped. One shared validation function, not the ordering check re-implemented per adapter.
 
 **Why `AggregateStrategy` is a per-field interface, not a single toggle:** PRD §5 requires the aggregation logic itself to be configurable, but its philosophy is asymmetric on purpose — `min`/`max` for Best/Worst specifically to *preserve* outliers ("don't average away the outliers... worst case tends to get optimistically averaged down"), `median` for Likely as a robust center. A single `'min-max' | 'average'` switch couldn't express that; three independent knobs can. Currently this is only a code-level configurability point — the PRD data model has no field for *which* strategy a session uses, so it's an engineering default for now, not a facilitator-facing setting (flagged below).
 
-**Bias guards return structured signals, not copy.** PRD §6's guards are real `/calc` functions; the exact warning text belongs in the screens layer so product/design can iterate on wording without touching tested logic:
+**Bias guards return structured signals, not copy.** PRD §6's guards are real estimation-engine functions; the exact warning text belongs in the screens layer so product/design can iterate on wording without touching tested logic:
 
 ```ts
 interface GuardResult { fired: boolean; deviationPct?: number }
@@ -143,15 +152,15 @@ function checkOutlier(estimate: Estimate, allEstimates: Estimate[], thresholdPct
 function checkUncertaintyRange(best: number, worst: number, level: UncertaintyLevel): GuardResult
 ```
 
-`src/calc/guards.ts` also exports `checkAscendingOrder` — a form-input ordering nudge (best ≤ likely ≤ worst) for the in-progress estimate form, not one of PRD §6's bias guards.
+`entities/estimate/model/guards.ts` also exports `checkAscendingOrder` — a form-input ordering nudge (best ≤ likely ≤ worst) for the in-progress estimate form, not one of PRD §6's bias guards.
 
-The PRD §6.1 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`src/components/PhasePicker.tsx`), local to their own view (`src/hooks/usePhaseGuidance.ts`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
+The PRD §6.1 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`features/estimate-round/ui/PhasePicker.tsx`), local to their own view (`features/estimate-round/lib/usePhaseGuidance.ts`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
 
 **Tunable constants, not settled numbers:** the symmetric-range tolerance (proposed 15%) and outlier threshold (proposed: no range overlap, or `likely` deviates >40% of group spread) are UX-tuning parameters PRD leaves vague ("within a tolerance," "far from the group median") — ship as named constants, expect to retune after real sessions rather than treating these as final.
 
 ## Screens — gaps vs. the prototype
 
-The clickable prototype predates the `/calc` module and unit decisions above, so it doesn't show where bias-guard output or unit selection actually render. Checked against Nocturne's stylesheet directly (`src/design/nocturne.css`) rather than assumed:
+The clickable prototype predates the estimation engine and unit decisions above, so it doesn't show where bias-guard output or unit selection actually render. Checked against Nocturne's stylesheet directly (`src/design/nocturne.css`) rather than assumed:
 
 **Already covered by the prototype, no gap:**
 - Outlier flag at Reveal — the warning icon on an outlier's row already exists in the design; it just needs to switch from hardcoded/simulated to driven by `checkOutlier()`'s real output.
@@ -173,13 +182,16 @@ The clickable prototype predates the `/calc` module and unit decisions above, so
 ## Build status &amp; what's next
 
 The proposal above has been built out through issue #60: Vite + React 19 + TS scaffold,
-Nocturne ported as-is, the `/calc` engine (unit-tested against the PRD §5–6 formulas), the
+Nocturne ported as-is, the estimation engine (unit-tested against the PRD §5–6 formulas), the
 Zustand store, the single-user Workspace screens, the Trystero P2P network layer, the
 Join Session screen, the participant estimate round (lobby / estimating / waiting /
 revealed, driven by `store.liveRound`), participant display names on the wire (#40,
 `announce` action), and the facilitator reveal panel (#8 — Workspace states 1c waiting /
 1d revealed, driven by per-item `submissions` / `revealed`, with group aggregate + CI90
-via `/calc`). Since #60 (ADR-003, "Single owner"), a Reveal or Retry is just another
+via the estimation engine). The `src/` tree was later reorganized to Feature-Sliced
+Design — see [ADR-004](adr/004-feature-sliced-design-architecture.md) — the module
+names above map to their FSD slices per the "Module structure" section. Since #60
+(ADR-003, "Single owner"), a Reveal or Retry is just another
 `syncState` snapshot — there is no separate `reveal` / `roundReset` wire action, and a
 participant's `submitEstimate` targets the facilitator's peerId only. `NetworkProvider`
 dispatches inbound `onEstimate` / `onSyncState` / `onAnnounce`, answers a peer's
@@ -194,7 +206,7 @@ wired into both the Workspace's own-estimate panel and the Participant Estimate 
 Remaining MVP work, tracked on the EstiMate Roadmap board:
 
 - **Outlier flag** — the reveal panel does not yet surface `checkOutlier()` on the
-  per-participant list; the `/calc` guard exists but nothing drives a UI flag from it.
+  per-participant list; the estimation-engine guard exists but nothing drives a UI flag from it.
 - **#9** — connection-fallback UX for peers that can't establish a direct connection.
 - **Persistence** — `src/persistence/` (session save/load via JSON file, CSV export,
   shareable report link) is still a placeholder; save/load is tracked as #10.

@@ -20,31 +20,36 @@ snapshot itself via `requestSnapshot` rather than waiting for the facilitator to
 ## Component view
 
 Level-3 (component) view. Each box carries its `[type]`; responsibilities are in the table
-below. Lanes are the source directories. Lines: **solid** = synchronous call,
+below. Lanes are grouped by FSD slice/segment (see
+[ADR-004](../adr/004-feature-sliced-design-architecture.md) — a single source directory no
+longer maps to one lane the way `src/network` once did). Lines: **solid** = synchronous call,
 **dotted** = asynchronous callback / event / read, `<-->` = bidirectional.
 
 ```mermaid
 flowchart TD
-  subgraph screens["🖼️ &nbsp; UI LANE &nbsp;·&nbsp; src/screens"]
+  subgraph pageslane["🖼️ &nbsp; PAGES LANE &nbsp;·&nbsp; pages/*"]
     direction LR
     MS["ModeSelect<br/>[React Component]"]
     JS["JoinSession<br/>[React Component]"]
     PEV["ParticipantEstimateView<br/>[React Component]"]
     WS["Workspace<br/>[React Component]"]
+  end
+
+  subgraph sharedlane["🔧 &nbsp; SHARED LANE &nbsp;·&nbsp; shared/lib"]
     UCP["useConnectionPhase<br/>[React Hook]"]
   end
 
-  subgraph statelane["🗄️ &nbsp; STATE LANE"]
+  subgraph statelane["🗄️ &nbsp; ENTITIES: SESSION LANE &nbsp;·&nbsp; entities/session/model"]
     Store["useSessionStore<br/>[Zustand Store]"]
   end
 
-  subgraph bridge["🔌 &nbsp; BRIDGE LANE &nbsp;·&nbsp; src/network (React)"]
+  subgraph bridge["🔌 &nbsp; ENTITIES: SESSION (API, REACT) LANE &nbsp;·&nbsp; entities/session/api"]
     direction LR
     NP["NetworkProvider<br/>[React Context Provider]"]
     Hook["useNetworkSession<br/>[React Hook]"]
   end
 
-  subgraph core["📡 &nbsp; P2P CORE LANE &nbsp;·&nbsp; src/network (framework-free)"]
+  subgraph core["📡 &nbsp; ENTITIES: SESSION (API, FRAMEWORK-FREE) LANE &nbsp;·&nbsp; entities/session/api"]
     direction LR
     JSN["joinSession<br/>[Factory Function]"]
     Act["typed actions<br/>[Module]"]
@@ -52,8 +57,8 @@ flowchart TD
     Code["generateSessionCode<br/>[Function]"]
   end
 
-  subgraph purelane["🧮 &nbsp; PURE LANE"]
-    Calc["calc<br/>[Pure Module]"]
+  subgraph purelane["🧮 &nbsp; ENTITIES: ESTIMATE LANE &nbsp;·&nbsp; entities/estimate/model"]
+    Calc["estimation engine<br/>[Pure Module]"]
   end
 
   Trystero["trystero / nostr<br/>[External Library — WebRTC mesh + Nostr signalling]"]
@@ -81,25 +86,28 @@ flowchart TD
   Hook -.->|"setConnectionStatus / setPeerCount"| Store
   NP -.->|"applySyncState / applyRemoteEstimate / applyParticipantName"| Store
   NP -.->|"reads items/activeItem/roster (facilitator syncState + requestSnapshot answers); reads own name/id (announce)"| Store
-  Store -.->|"state (read)"| screens
+  Store -.->|"state (read)"| pageslane
   PEV -->|"hasEverConnected && peerCount === 0"| UCP
 
   %% --- lane + node colours ---
   classDef ui     fill:#DDD6FE,stroke:#7C3AED,color:#2E1065
+  classDef shared fill:#FBCFE8,stroke:#DB2777,color:#500724
   classDef state  fill:#FDE68A,stroke:#D97706,color:#3F2D0B
   classDef br     fill:#99F6E4,stroke:#0D9488,color:#042F2A
   classDef pcore  fill:#BFDBFE,stroke:#2563EB,color:#0B2545
   classDef pure   fill:#E2E8F0,stroke:#64748B,color:#0F172A
   classDef ext    fill:#FFEDD5,stroke:#EA580C,color:#3F1D0B,stroke-dasharray:5 4
 
-  class MS,JS,PEV,WS,UCP ui
+  class MS,JS,PEV,WS ui
+  class UCP shared
   class Store state
   class NP,Hook br
   class JSN,Act,Conn,Code pcore
   class Calc pure
   class Trystero ext
 
-  style screens   fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
+  style pageslane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
+  style sharedlane fill:#FDF2F8,stroke:#DB2777,stroke-width:2px
   style statelane fill:#FFFBEB,stroke:#D97706,stroke-width:2px
   style bridge    fill:#F0FDFA,stroke:#0D9488,stroke-width:2px
   style core      fill:#EFF6FF,stroke:#2563EB,stroke-width:2px
@@ -115,14 +123,14 @@ flowchart TD
 | **ParticipantEstimateView** | React Component | The participant's whole round (#7), driven by `store.liveRound`: a lobby before the facilitator picks an item, then the Best/Likely/Worst form with live bias guards (5c), a waiting state showing the submitted values with a revise affordance and a delivery sub-state — *sending* / *submitted* / *not delivered*, derived from the roster rather than tracked separately (5d, #61), and a revealed state with the aggregated range bar + per-participant list (5e). No finalize/retry — those are facilitator-only. Submitting calls `store.submitEstimate()` then sends the validated estimate as a request via `useNetworkSession().sendEstimate`, which resolves once the facilitator acknowledges it or rejects with a typed failure after the shared retry policy is exhausted (ADR-003, "Acknowledged submissions"). |
 | **Workspace** | React Component | The single working screen for both modes: session-name / unit / item-list sidebar plus the active item's estimate panel (or an empty state). In Live mode additionally renders the session-code strip (with copy button), the "N participants connected" count, and a connection-status `Tag`. For a **facilitator** in Live mode the manual B/L/W inputs are replaced by the reveal panel: state 1c lists each participant as `Submitted` / `Waiting` (from the facilitator's own `item.submissions`, not the wire roster — it already holds the full local state) and gates a **Reveal estimates** button on `submissions.length >= 1`; state 1d shows the aggregated range bar + per-participant values with **Finalize item** (`finalizeLiveItem`) and **Retry — start new round** (`retryRound`). Reveal/Retry are local store mutations only (`revealRound` / `retryRound`) — the store subscription in `NetworkProvider` broadcasts the resulting snapshot, so there's no separate wire call to make (#60). |
 | **useConnectionPhase** | React Hook | Turns "is the connection down" into what the user is told, holding a drop at `reconnecting` for `RECONNECT_GRACE_MS` (15s) before escalating to `lost`, because Trystero normally rebuilds a dropped link within 5–10s. Takes a boolean, not a status: what counts as down differs by role (a participant that has lost the session vs. a facilitator merely waiting for arrivals). |
-| **useSessionStore** | Zustand Store | Single source of truth for session state: `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `peerCount`, items, current screen. **Participant** clients hold `liveRound` (the facilitator's current item + a values-free `roster` + revealed flag + own submission, plus the frozen `submissions` once revealed), updated by `applySyncState` / `submitEstimate`; `applySyncState` additionally adopts `snapshot.unit` into `store.unit`. A Reveal or Retry has no separate handler — it's just a later `applySyncState` call with different `revealed` / `round` fields (#60). **Facilitator** clients instead accumulate each round on the `Item` itself — `applyRemoteEstimate(itemId, estimate, round)` upserts inbound (targeted) submissions onto `items[activeItemId].submissions` only when `itemId` is the active item and it is not yet `revealed` or finalized (so a straggler for a just-finalized item can't seed the next round), `revealRound` / `retryRound` flip `items[].revealed` (`retryRound` also clears that item's `submissions`), and `finalizeLiveItem` aggregates `items[].submissions` into `finalResult`. On a participant, `applySyncState` takes `revealed`, `roster`, and — once revealed — the frozen `submissions` list straight from the snapshot; pre-reveal, `submissions` stays empty (estimate values never reach a participant before reveal, #60). A peer that joins or reconnects pulls this snapshot itself (`requestSnapshot`) rather than waiting for a push, so it lands on the correct view regardless of what it missed. Type-only import of `SessionSnapshot` from `src/network/actions`; no runtime `src/network` import. |
+| **useSessionStore** | Zustand Store | Single source of truth for session state: `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `peerCount`, items, current screen. **Participant** clients hold `liveRound` (the facilitator's current item + a values-free `roster` + revealed flag + own submission, plus the frozen `submissions` once revealed), updated by `applySyncState` / `submitEstimate`; `applySyncState` additionally adopts `snapshot.unit` into `store.unit`. A Reveal or Retry has no separate handler — it's just a later `applySyncState` call with different `revealed` / `round` fields (#60). **Facilitator** clients instead accumulate each round on the `Item` itself — `applyRemoteEstimate(itemId, estimate, round)` upserts inbound (targeted) submissions onto `items[activeItemId].submissions` only when `itemId` is the active item and it is not yet `revealed` or finalized (so a straggler for a just-finalized item can't seed the next round), `revealRound` / `retryRound` flip `items[].revealed` (`retryRound` also clears that item's `submissions`), and `finalizeLiveItem` aggregates `items[].submissions` into `finalResult`. On a participant, `applySyncState` takes `revealed`, `roster`, and — once revealed — the frozen `submissions` list straight from the snapshot; pre-reveal, `submissions` stays empty (estimate values never reach a participant before reveal, #60). A peer that joins or reconnects pulls this snapshot itself (`requestSnapshot`) rather than waiting for a push, so it lands on the correct view regardless of what it missed. Type-only import of `SessionSnapshot` from `entities/session/api/actions`; no runtime `entities/session/api` import. |
 | **NetworkProvider** | React Context Provider | Wraps `<App>`. Owns the one `NetworkSession` instance for the app's lifetime and exposes it via `useNetworkSession`; tears it down on unmount. On `connect` it also dispatches inbound `onEstimate` / `onSyncState` / `onAnnounce` into the store, registers an `onRequestSnapshot` responder (facilitator only, answers with the current snapshot), and (facilitator only) subscribes to the store to broadcast a `syncState` whenever the active item, estimation unit, roster, or finalized set changes. It also broadcasts the local client's own `announce` on connect and re-announces on every peer join, applies inbound announces via `applyParticipantName`, and — participant only — learns the facilitator's peerId from its `announce` to target `sendEstimate` and to pull a snapshot via `requestSnapshot` on first learning (or re-learning, after a peerId change) that id. |
 | **useNetworkSession** | React Hook | The only code that touches both the store and the P2P core. `connect(sessionId)` calls `joinSession()` and subscribes to its events; `disconnect()` calls `leave()`; `sendEstimate(itemId, estimate, round)` sends a participant's submission (tagged with the item and round it's for) as a request targeted at the facilitator's peerId only — never broadcast to the mesh — wrapped in the shared kind-driven retry policy (`withKindDrivenRetry`, #61), returning a promise that resolves on ack or rejects once retries are exhausted. The same wrapper also re-sends whenever an incoming snapshot shows this participant missing from the roster, so a lost ack (not just a lost submission) self-heals without the caller doing anything. Mirrors `onConnectionStateChange` and peer join/leave into the store. (The participant name is put in the store by `joinLiveSession()` before `connect()` runs.) |
 | **joinSession** | Factory Function | Entry point of the P2P core (from PR #25). Opens the Trystero room (`roomId = sessionId`), wires up the connection tracker and typed actions, returns a `NetworkSession` of `send*` / `on*` / `requestSnapshot` methods. |
 | **typed actions** | Module | Defines the wire actions — two message actions (`syncState`, `announce`) and two request/response actions (`submitEstimate`, `requestSnapshot`) — serialises outbound messages, and validates every inbound message (through `calc` for estimates; shape checks for the rest) before surfacing it. `submitEstimate` sends an `{ itemId, round, estimate }` envelope as a request, targeted with `{ target: facilitatorPeerId, timeoutMs: 800 }` so it reaches the facilitator only (a straggler submission for a finished item can be dropped rather than mis-recorded); the facilitator's `onRequest` handler acks with `EstimateAck` (`{ ok: true }`) or throws on a malformed payload, surfacing as a typed rejection (`error.kind`: `timeout` \| `disconnected` \| `aborted` \| a generic rejection) that the caller's shared retry policy keys on (ADR-003, "Acknowledged submissions", #61). `syncState` carries `sessionName`, `unit`, `revealed`, `round`, a values-free `roster: Array<{ participantId, submitted, connected }>`, and — once `revealed` — the frozen `submissions` set. `sessionName` follows the same missing-field tolerance as `unit`/`revealed`/`round` (defaults to `''` if an older peer omits it), and drives the participant kicker's "name (code)" display, falling back to the code alone when empty. `requestSnapshot` lets a peer that just connected or reconnected pull the current `syncState` payload directly from the facilitator instead of waiting for a push, on the same request/retry pattern as `submitEstimate`. `announce` carries a `participantId -> display name` pair, kept off the pure `Estimate` type. |
 | **connection tracker** | Module | State machine over peer join/leave and join errors → `connecting` / `connected` / `disconnected` plus the peer list; notifies subscribers on change. (`idle` is store-only — the "not in a live session" default in `LiveConnectionStatus`; the tracker starts at `connecting`.) |
 | **generateSessionCode** | Function | Returns a 6-char Crockford-base32 code (crypto RNG, ambiguous characters removed), used as both the shareable code and the Trystero room id. |
-| **calc** | Pure Module | Existing framework-free math (`createEstimate`, `aggregateEstimates`, `computeCI90`, guards). Used here only to validate inbound peer estimates. |
+| **estimation engine** | Pure Module | Existing framework-free math (`createEstimate`, `aggregateEstimates`, `computeCI90`, guards) in `entities/estimate/model`. Used here only to validate inbound peer estimates. |
 | **trystero/nostr** | Library (external) | Third-party. Establishes the WebRTC peer mesh and uses Nostr relays for signalling only — no session data is stored on any relay. |
 
 ## Join sequence (#6)
@@ -244,7 +252,7 @@ will disappear once that lands; still shipped as shown above until then.
 
 ## Connection state machine
 
-Mirrored from `src/network`'s connection tracker into `store.connectionStatus`:
+Mirrored from `entities/session/api`'s connection tracker into `store.connectionStatus`:
 
 ```mermaid
 stateDiagram-v2
@@ -277,7 +285,7 @@ as "Disconnected". Telling the two apart needs the per-participant link state in
 
 ### What the participant is told (`useConnectionPhase`)
 
-Connection *status* is not what the participant sees. `src/screens/useConnectionPhase.ts`
+Connection *status* is not what the participant sees. `shared/lib/useConnectionPhase.ts`
 maps a boolean "is it down" — for a participant, `store.hasEverConnected && peerCount === 0`
 — through a grace period, because a dropped link normally rebuilds itself (see below):
 
@@ -296,7 +304,7 @@ Reconnect. `store.hasEverConnected` (not the tracker's status) is the input beca
 `connect()` builds a fresh tracker: keying off status would clear the alarm the instant
 Reconnect is pressed, hiding a rejoin that never succeeds.
 
-A second call site, `src/screens/JoinSession.tsx` (#9), uses the same hook for the
+A second call site, `pages/join-session/ui/JoinSession.tsx` (#9), uses the same hook for the
 **initial join**, not a drop: its "is it down" input is `submitted && connectionStatus
 === 'connecting'`. Held past the grace period, that means the participant never
 reached the facilitator at all — the Join screen escalates from its spinner to the
@@ -430,7 +438,7 @@ connects." Two things go wrong in practice:
 
 ## Trust boundary
 
-Every inbound peer message crossing `trystero/nostr → src/network/actions` is untrusted:
+Every inbound peer message crossing `trystero/nostr → entities/session/api/actions` is untrusted:
 `submitEstimate` must be an `{ itemId, estimate }` envelope with a non-empty string
 `itemId` (a missing/empty one is read as a bare pre-#8 estimate under an empty item id
 instead), and the estimate re-runs `createEstimate`. Since #61, `submitEstimate` is a

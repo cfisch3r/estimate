@@ -218,7 +218,7 @@ PR computes plain `0.x.y` versions and tags `vX.Y.Z` with no bracketed suffix.
 ### Version string in the app
 
 The mode-select screen's "Preview build" tag shows the running version
-(`src/screens/ModeSelect.tsx`), sourced from `package.json` via a Vite `define`
+(`src/pages/mode-select/ui/ModeSelect.tsx`), sourced from `package.json` via a Vite `define`
 (`vite.config.ts` → `__APP_VERSION__`) so there's one place the version lives.
 
 ## Known gaps / open questions

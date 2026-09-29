@@ -37,15 +37,26 @@ We considered three options:
 
 ## Decision
 
-**Adopt FSD**, with only the layers this app currently justifies:
+**Adopt FSD**, with only the layers this app justifies:
 
 ```
-app / pages / features / entities / shared
+app / pages / widgets / features / entities / shared
 ```
 
-`widgets` and `processes` are deliberately skipped for now — nothing is reused
-across multiple pages today (e.g. `SessionSidebar` is Workspace-only). A layer is
-added the day something concretely needs it, not preemptively.
+`processes` is deliberately skipped for now — nothing today needs a cross-feature
+orchestrated flow spanning multiple pages. A layer is added the day something
+concretely needs it, not preemptively.
+
+`widgets` was **not** part of the original plan going into this migration — the
+plan assumed nothing was reused across multiple pages (`SessionSidebar` looked
+Workspace-only from its file location alone). Reading the actual code during the
+migration surfaced the opposite: `SessionSidebar` is used by both the `workspace`
+and `session-summary` pages, and `useConnectionPhase`/`useLeaveLiveSession` are
+used by both `join-session` and `participant-estimate`. That's the concrete
+"reused across pages" trigger the plan itself named as the signal to add
+`widgets` — so it was added mid-migration rather than deferred. This is the
+expected shape of discovering real structure by moving real code, not a plan
+failure.
 
 Enforcement is split by tool, per the existing convention (scanners are the source
 of truth; skills/docs point at configs rather than restating rules):
@@ -84,16 +95,32 @@ of truth; skills/docs point at configs rather than restating rules):
 
 ## Confirmed slice mapping
 
-See the FSD guardrails plan for the full mapping. Two placements were resolved by
-reading the code rather than guessing from filenames:
+A few placements were resolved by reading the code rather than guessing from
+filenames or from the file's original directory:
 
 - `network/actions.ts` (the wire-protocol module: `SessionSnapshot`, `RosterEntry`,
   `createTypedActions()`) is **not** feature-splittable — both `estimate-round` and
   `reveal-results` depend on the same actions. It became `entities/session/api`, a
   shared wire layer both features depend on downward, not a feature slice itself.
-- `hooks/useLeaveWorkspace.ts` is workspace-page-specific (composes
-  `entities/session` state + disconnect, used only by the Workspace page's leave
-  button) — placed in `pages/workspace/model/`, not `shared/lib`.
+- `hooks/useLeaveWorkspace.ts` looked workspace-page-specific from its name, but
+  the global `Header` (rendered on every screen, not just Workspace) also needs it
+  for its "leave" button — so it's really an `entities/session` action, not a
+  page-local one. It's `entities/session/lib/useLeaveWorkspace.ts`. The same
+  discovery moved `Header` itself out of `shared/ui` (which should stay
+  business-agnostic) into `app/` — it carries screen/mode-aware logic, which isn't
+  a generic UI primitive.
+- `hooks/useConnectionPhase.ts` and `screens/useLeaveLiveSession.ts` are used by
+  both the `join-session` and `participant-estimate` pages. `useConnectionPhase`
+  is fully generic (no domain imports at all) and went to `shared/lib`;
+  `useLeaveLiveSession` composes `entities/session` state and went to
+  `entities/session/lib`, alongside `useLeaveWorkspace`.
+- `screens/SessionSidebar.tsx` is used by both the `workspace` and
+  `session-summary` pages — the concrete trigger for adding the `widgets` layer
+  (see Decision above). It's `widgets/session-sidebar`.
+- `components/RangeBar.tsx` is used by both `features/estimate-round` (the manual
+  three-point estimate flow) and `features/reveal-results` (the facilitator's
+  aggregated-range display) — the same same-layer-sibling problem as
+  `network/actions.ts`. It became `entities/estimate/ui/RangeBar.tsx`.
 
 ## Rationale
 
@@ -103,9 +130,11 @@ reading the code rather than guessing from filenames:
 - Splitting the migration from the store decomposition and the metrics ratchet keeps
   each review focused: a directory reshuffle, a state-ownership redesign, and a
   CI-ratchet mechanism are three different kinds of risk.
-- Starting with four layers instead of all six avoids standing up `widgets/` and
-  `processes/` with nothing in them — a layer with no members is a folder Claude has
-  to reason about for no present benefit.
+- Planning to start with five layers (deferring `widgets/` and `processes/`) avoided
+  standing up empty layers on spec — a layer with no members is a folder Claude has
+  to reason about for no present benefit. In practice, reading the actual code during
+  migration surfaced real cross-page reuse immediately, so `widgets/` was added right
+  away rather than staying deferred; `processes/` still has no concrete need.
 
 ## Consequences
 
@@ -126,8 +155,8 @@ reading the code rather than guessing from filenames:
 **Follow-ups / revisit triggers**
 - Issue #111 — decompose `state/store.ts` into entity/feature-owned state.
 - Issue #112 — oxlint suppression-baseline ratchet, then enable metric rules.
-- Revisit whether `widgets/` or `processes/` are needed the first time a component
-  is reused across more than one page, or a multi-step cross-feature flow emerges.
+- Revisit whether `processes/` is needed the first time a multi-step cross-feature
+  flow emerges (`widgets/` is already in use — see Decision).
 
 ## Alternatives considered (summary)
 
@@ -135,4 +164,4 @@ reading the code rather than guessing from filenames:
 |---|---|
 | Formalize existing technical layers (calc/components/screens/state) | No mechanism for feature isolation; bespoke rules don't transfer to future projects |
 | Domain-driven / screaming architecture | One real domain today — would mean naming a domain and a shared-kernel boundary ahead of actually needing to separate multiple domains |
-| Full FSD with all 6 canonical layers (incl. `widgets`/`processes`) | `widgets` would launch with 1–2 slices and `processes` with none — adds folders with nothing to justify them yet |
+| Full FSD with all 7 canonical layers, `processes` included | `processes` would launch with nothing in it — no multi-step cross-feature flow exists yet to justify it |

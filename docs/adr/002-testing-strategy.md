@@ -4,6 +4,13 @@
 **Date:** 2026-08-22
 **Related:** package.json (vitest, @testing-library/react)
 
+> **Update 2026-09-29:** the module paths below (`src/calc/`, `src/state/store.ts`,
+> `src/network/`) are as they were when this ADR and its 2026-09-07 update were written.
+> The `src/` tree was since reorganized to Feature-Sliced Design — see
+> [ADR-004](004-feature-sliced-design-architecture.md) for current locations
+> (`entities/estimate/model`, `entities/session/model`, `entities/session/api`). This
+> ADR's actual decision (defer Playwright) is unaffected.
+
 ## Context
 
 The app currently has a Vitest + Testing Library suite covering `src/calc/` (the estimation math), `src/state/store.ts` (Zustand state), and most screens/components. Coverage review (2026-08-22) found the calculation core at ~98% and, after this ADR's companion work, all previously zero-coverage components/screens closed.

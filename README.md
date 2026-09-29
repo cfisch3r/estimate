@@ -29,17 +29,19 @@ pnpm build           # type-check (tsc -b) and production build
 pnpm typecheck       # type-check only (tsc -b), no bundling
 pnpm preview         # serve the production build locally
 pnpm lint            # oxlint
+pnpm arch            # steiger — FSD architecture boundary check
 pnpm format          # prettier --write
 pnpm format:check    # prettier --check
 pnpm test            # vitest run, summary output
 pnpm test:watch      # vitest in watch mode
 pnpm test:verbose    # vitest run, every individual test name and result
 pnpm test:coverage   # vitest run --coverage
+pnpm deadcode        # knip — unused exports/files/dependencies
 ```
 
-Run `pnpm build`, `pnpm lint`, `pnpm format:check`, and `pnpm test` before considering any
-change complete. These also run as required checks in CI (`.github/workflows/ci.yml`) on
-every PR and push to `main`.
+Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm format:check`, `pnpm test`, and
+`pnpm deadcode` before considering any change complete. These also run as required checks
+in CI (`.github/workflows/ci.yml`) on every PR and push to `main`.
 
 ## Docs
 
