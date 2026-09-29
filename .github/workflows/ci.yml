@@ -29,6 +29,22 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
 
+  arch:
+    name: arch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.3.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm arch
+
   format:
     name: format
     runs-on: ubuntu-latest
@@ -128,7 +144,7 @@ jobs:
 
   ci-passed:
     name: ci-passed
-    needs: [lint, format, typecheck, test, build, deadcode]
+    needs: [lint, arch, format, typecheck, test, build, deadcode]
     runs-on: ubuntu-latest
     steps:
       - run: exit 0

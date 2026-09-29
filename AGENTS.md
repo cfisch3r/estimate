@@ -13,6 +13,7 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/adr/003-session-reliability-model.md` — accepted decision on who owns live-session state and what reconnect restores: facilitator-authoritative rounds, a values-free submission roster in the snapshot, acknowledged submissions with a kind-driven retry policy, stable client identity, and role-asymmetric link state. **Read before working #9, #60, #61, #62, or #63** — it is the design anchor for all of them; the ADR's own status line tracks which elements have landed, rather than duplicating that list here. Current sequencing lives on the Epic-0010 sub-issue list (see [Picking the next task](#picking-the-next-task)), not in the ADR.
 - `docs/concepts/collaboration-mode.md` — Live mode (Mode A) technical concept: the Trystero P2P network layer, join flow, participant estimate round, facilitator reveal / retry-round flow, and screen/store wiring delivered so far
 - `docs/runbook.md` — deployment & release runbook: the IONOS Deploy Now CD pipeline, secrets, troubleshooting, and versioning/release process
+- `docs/adr/004-feature-sliced-design-architecture.md` — accepted decision on Feature-Sliced Design (FSD) as the enforced architecture: the adopted layer set (`app/pages/widgets/features/entities/shared`), the slice mapping, and the two staged follow-ups (store decomposition, issue #111; oxlint metrics ratchet, issue #112). `.claude/skills/fsd-architecture/SKILL.md` has the day-to-day "which slice does new code belong in" guidance; `steiger.config.ts` is the enforcement source of truth for layer/slice/public-API boundaries
 - `design_handoff_estimate_app/` — the original design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
 - `design_handoffs/epic-0010-screen-design-review/` — the Epic-0010 redesign handoff; **supersedes the entry flow** of the original handoff (mode-selection screen + unified Workspace) and is the source of truth for the participant estimating and facilitator reveal flows.
 - `design_handoffs/design_handoff_uncertainty_range/` — the Phase Picker + guidance-aware Range Bar handoff for PRD §6.1's cone-of-uncertainty guard; high-fidelity design reference, not literal production code (see its README for known implementation deviations).
@@ -54,19 +55,21 @@ pnpm build            # type-check (tsc -b) and production build
 pnpm typecheck        # type-check only (tsc -b), no bundling
 pnpm preview          # serve the production build locally
 pnpm lint             # oxlint
+pnpm arch             # steiger — FSD architecture boundary check
 pnpm format           # prettier --write
 pnpm format:check     # prettier --check
 pnpm test             # vitest run, summary output
 pnpm test:watch       # vitest in watch mode
 pnpm test:verbose     # vitest run, every individual test name and result
-pnpm test:coverage    # vitest run --coverage; also enforces the /calc 100% threshold below
+pnpm test:coverage    # vitest run --coverage; also enforces the entities/estimate 100% threshold below
 pnpm deadcode         # knip — unused exports/files/dependencies
 ```
 
-Run `pnpm build`, `pnpm lint`, `pnpm format:check`, `pnpm test`, `pnpm test:coverage`, and
-`pnpm deadcode` before considering any change complete. These also run as required checks in
-CI (`.github/workflows/ci.yml`) on every PR and push to `main` — running them locally first is
-a courtesy that catches failures before you push, not the only gate.
+Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm format:check`, `pnpm test`,
+`pnpm test:coverage`, and `pnpm deadcode` before considering any change complete. These
+also run as required checks in CI (`.github/workflows/ci.yml`) on every PR and push to
+`main` — running them locally first is a courtesy that catches failures before you push,
+not the only gate.
 
 Project-owned Claude Code tooling lives in `.claude/` (versioned):
 
@@ -74,12 +77,23 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   Checks docs for accuracy against shipped code, cross-reference integrity, and
   conformance to this file's conventions. Defaults to the current diff; `/doc-review all`
   for a full audit, or pass a path. Reports severity-ranked findings and applies nothing.
+- **`/architecture-review`** — read-only FSD architecture audit run in the
+  `architecture-review` subagent. Covers judgment calls Steiger/oxlint can't make: slice
+  placement, public-API quality, slice cohesion, component/hook design smells,
+  cross-cutting composition placement (see ADR-004). Defaults to the current diff;
+  `/architecture-review all` for a full audit, or pass a path.
+- **`fsd-architecture` skill** — loaded automatically before creating a new file under
+  `src/` or moving code between slices; the "which slice does this belong in" reference.
+- **Hooks** (`.claude/settings.json` + `.claude/hooks/`) — a `PreToolUse` hard block on
+  writes outside approved paths and edits to `nocturne.css`; a `PostToolUse` per-file
+  `oxlint` check (surfaces output, never blocks); a `Stop` hook running
+  typecheck/`pnpm arch`/`pnpm deadcode`/`pnpm test:coverage` once per turn.
 
 ## Code conventions
 
 - **TypeScript strict mode** (`strict: true`, `noUncheckedIndexedAccess: true`) — don't loosen these.
-- **Domain types with invariants are self-validating value types, not bare interfaces.** If a type has a constraint between its fields (e.g. an ordering, a required relationship), it should only be constructible through a factory that enforces the constraint, so illegal states can't be represented — see `src/calc/estimate.ts`'s `createEstimate()` for the pattern (a `Result`-returning factory plus a compile-time-only phantom brand, so the type stays plain, JSON-transparent data). Don't reintroduce a bare structurally-typed interface for a concept that has a real invariant.
-- **`/calc` is pure and framework-free** — no React, no I/O, no network/storage imports. Functions there should be thoroughly unit-tested (100% coverage — statements, branches, functions, and lines — is enforced in CI via `pnpm test:coverage`'s `vite.config.ts` threshold; `testHelpers.ts` is excluded from that threshold wholesale, since its only content today is one deliberately-untested defensive-throw branch). `pnpm deadcode` (knip) also runs in CI to catch exported-but-uncalled code anywhere in `src/` before it can hide from that threshold behind a barrel re-export.
+- **Domain types with invariants are self-validating value types, not bare interfaces.** If a type has a constraint between its fields (e.g. an ordering, a required relationship), it should only be constructible through a factory that enforces the constraint, so illegal states can't be represented — see `src/entities/estimate/model/estimate.ts`'s `createEstimate()` for the pattern (a `Result`-returning factory plus a compile-time-only phantom brand, so the type stays plain, JSON-transparent data). Don't reintroduce a bare structurally-typed interface for a concept that has a real invariant.
+- **`entities/estimate/model` (formerly `/calc`) is pure and framework-free** — no React, no I/O, no network/storage imports. Functions there should be thoroughly unit-tested (100% coverage — statements, branches, functions, and lines — is enforced in CI via `pnpm test:coverage`'s `vite.config.ts` threshold; `testHelpers.ts` is excluded from that threshold wholesale, since its only content today is one deliberately-untested defensive-throw branch). `pnpm deadcode` (knip) also runs in CI to catch exported-but-uncalled code anywhere in `src/` before it can hide from that threshold behind a barrel re-export, and `pnpm arch` (Steiger) catches FSD boundary violations — see ADR-004.
 - **Nocturne's `src/design/nocturne.css` is a verbatim, unmodified port** of the design system's canonical stylesheet — don't edit it to add app-specific styling. New composed patterns built from Nocturne primitives (e.g. `radio-tile.css`) live in their own file instead, so `nocturne.css` stays a clean diff against its source if the design system is ever re-pulled.
 - Guard/validation functions return structured results (`{fired, deviationPct}`, `{ok, value/error}`) rather than throwing or returning bare booleans, so callers can access the reasoning, not just the verdict.
 - **A test asserting a callback fired in response to one simulated user action should assert `toHaveBeenCalledTimes(1)` alongside `toHaveBeenCalledWith(...)`, not the latter alone.** `toHaveBeenCalledWith` passes whether the callback fired once correctly or twice (once right, once wrong) — it can't tell a clean single fire apart from a double-fire bug (e.g. a click handler that also triggers a parent's pointerdown listener via bubbling). See `PhasePicker.test.tsx`'s step-dot/nudge-arrow tests for the pattern.
@@ -96,7 +110,7 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 - **All changes** — from a one-line typo fix to a full issue — go through a branch + PR. `main`'s branch protection requires the `ci-passed` and PR-title-lint status checks with `enforce_admins` on, so direct pushes are rejected outright. A trivial/no-issue change can use any descriptive branch name and skip `Closes #n`.
 - **Issue-sized work**: one branch per issue (`issue-<n>-<slug>`), PR opened with `Closes #n` in the description, squash-merge into `main`.
 - **PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/)** (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, etc.) — squash-merging makes the PR title the commit message on `main`, and [release-please](docs/runbook.md#versioning--releases) parses that history to cut releases. Enforced as a required status check ([PR title lint](docs/runbook.md#how-releases-are-cut)); `pnpm install` also wires up a local `commit-msg` hook that warns (non-blocking) on individual commits.
-- **Review**: after opening the PR, run the `code-review` skill as an independent pass over the diff (medium effort by default, higher for anything touching `/network` or `/persistence`). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
+- **Review**: after opening the PR, run the `code-review` skill as an independent pass over the diff (medium effort by default, higher for anything touching `entities/session/api` or `entities/session/model` — the former `/network` and `/state`). Also run `/architecture-review` (read-only, covers FSD slice placement and design judgment calls — see ADR-004) on any PR touching `src/`. Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
 - **Merge gate**: always ask the user whether they want to personally review the PR before merging — even after the automated review comes back clean. Never auto-merge without asking.
 - **Tracking**: the `EstiMate Roadmap` GitHub Project board (https://github.com/users/cfisch3r/projects/1), Backlog → In Progress → In Review → Done. Work is a two-level ordered backlog of epics and their sub-issues — see [Picking the next task](#picking-the-next-task). Milestones are retired (closed `M0`–`M3` kept as history).
 

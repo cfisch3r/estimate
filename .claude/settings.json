@@ -9,6 +9,38 @@
             "command": "cmd=$(jq -r '.tool_input.command // empty'); if printf '%s' \"$cmd\" | grep -qE 'Co-Authored-By:[[:space:]]*Claude|Generated with \\[Claude Code\\]|🤖 Generated with'; then printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked: this repo forbids Claude/Anthropic attribution in commit messages and PR bodies (see AGENTS.md). Remove the Co-Authored-By trailer and/or Generated-with-Claude-Code footer, then retry.\"}}'; else echo '{}'; fi"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/pretooluse-guard.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/posttooluse-oxlint.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-checks.sh",
+            "timeout": 120
+          }
+        ]
       }
     ]
   }
