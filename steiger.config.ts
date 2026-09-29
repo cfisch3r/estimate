@@ -7,14 +7,17 @@ import fsd from '@feature-sliced/steiger-plugin'
 export default defineConfig([
   ...fsd.configs.recommended,
   {
-    // `entities/session` (the parked, not-yet-decomposed state/store.ts and the
-    // network wire layer — see ADR-004) genuinely depends on `entities/estimate`
-    // (Estimate validation/aggregation) and `entities/participant` (participant
-    // identity): a live round's Item holds Estimate submissions, and store
-    // actions validate through createEstimate(). This is real domain coupling,
-    // not accidental layering — revisit when issue #111 (store decomposition)
-    // lands, since splitting the store may reduce or relocate this dependency.
-    files: ['./src/entities/session/**'],
+    // `entities/session/{model,api}` (the parked, not-yet-decomposed
+    // state/store.ts and the network wire layer — see ADR-004) genuinely
+    // depends on `entities/estimate` (Estimate validation/aggregation) and
+    // `entities/participant` (participant identity): a live round's Item
+    // holds Estimate submissions, and store actions validate through
+    // createEstimate(). This is real domain coupling, not accidental
+    // layering — revisit when issue #111 (store decomposition) lands, since
+    // splitting the store may reduce or relocate this dependency. Scoped to
+    // model/api only (not ui/lib, which have no such dependency today) so an
+    // accidental cross-slice import elsewhere in entities/session still fails.
+    files: ['./src/entities/session/model/**', './src/entities/session/api/**'],
     rules: {
       'fsd/forbidden-imports': 'off',
     },

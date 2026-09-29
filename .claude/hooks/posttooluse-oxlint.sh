@@ -21,7 +21,9 @@ case "$file_path" in
 esac
 
 cd "$root"
-output=$(npx oxlint "$file_path" 2>&1) || true
+oxlint_bin="$root/node_modules/.bin/oxlint"
+[ -x "$oxlint_bin" ] || oxlint_bin="npx oxlint"
+output=$($oxlint_bin "$file_path" 2>&1) || true
 
 if [ -n "$output" ]; then
   printf '{"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":%s}}' \

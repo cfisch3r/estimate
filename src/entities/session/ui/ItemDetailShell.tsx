@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react'
-import { Field, FieldLabel, Textarea } from '../../../shared/ui/Field'
+import { Field, FieldLabel, Textarea, EditableTitle } from '../../../shared/ui'
 import type { Item } from '../model/types'
-import { EditableTitle } from './EditableTitle'
 import { DescriptionField } from './DescriptionField'
 
 interface ItemDetailShellProps {

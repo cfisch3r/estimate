@@ -2,10 +2,5 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "project": ["src/**/*.{ts,tsx}"],
   "entry": ["steiger.config.ts"],
-  "ignore": [
-    "src/entities/estimate/index.ts",
-    "src/entities/session/index.ts",
-    "src/entities/session/api/index.ts",
-    "src/shared/ui/index.ts"
-  ]
+  "ignore": ["src/**/index.ts"]
 }

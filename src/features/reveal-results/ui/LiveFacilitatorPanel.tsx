@@ -1,4 +1,4 @@
-import { Button, GroupBox, Tag, NavRow } from '../../../shared/ui'
+import { Button, GroupBox, Tag, NavRow, formatValue } from '../../../shared/ui'
 import { PARTICIPANT_ESTIMATES_INFO, RANGE_INFO } from '../../../shared/copy'
 import { useConfirmArm } from '../../../shared/lib/useConfirmArm'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
@@ -110,7 +110,7 @@ export function LiveFacilitatorPanel({
                 {item.revealed ? (
                   <span className={row.submission ? undefined : 'text-muted'}>
                     {row.submission
-                      ? `${row.submission.best}${suffix} / ${row.submission.likely}${suffix} / ${row.submission.worst}${suffix}`
+                      ? `${formatValue(row.submission.best)}${suffix} / ${formatValue(row.submission.likely)}${suffix} / ${formatValue(row.submission.worst)}${suffix}`
                       : 'No response'}
                   </span>
                 ) : (

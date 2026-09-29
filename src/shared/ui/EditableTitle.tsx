@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
-import { Input } from '../../../shared/ui/Field'
+import { Input } from './Field'
 
 interface EditableTitleProps {
   value: string
