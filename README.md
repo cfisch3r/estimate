@@ -36,12 +36,17 @@ pnpm test            # vitest run, summary output
 pnpm test:watch      # vitest in watch mode
 pnpm test:verbose    # vitest run, every individual test name and result
 pnpm test:coverage   # vitest run --coverage
+pnpm test:e2e            # Playwright, real WebRTC via a local self-hosted relay (ADR-007)
+pnpm test:e2e:real-world # same specs against production signaling (public Nostr relays)
 pnpm deadcode        # knip — unused exports/files/dependencies
 ```
 
 Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm format:check`, `pnpm test`, and
 `pnpm deadcode` before considering any change complete. These also run as required checks
-in CI (`.github/workflows/ci.yml`) on every PR and push to `main`.
+in CI (`.github/workflows/ci.yml`) on every PR and push to `main` — `pnpm test:e2e` does
+too (needs `pnpm exec playwright install --with-deps chromium` once beforehand).
+`pnpm test:e2e:real-world` only runs on a nightly schedule and manual dispatch
+(`.github/workflows/e2e-real-world.yml`); it never gates a PR.
 
 ## Docs
 
@@ -53,6 +58,7 @@ in CI (`.github/workflows/ci.yml`) on every PR and push to `main`.
 - [docs/adr/004-feature-sliced-design-architecture.md](docs/adr/004-feature-sliced-design-architecture.md) — Feature-Sliced Design (FSD) as the enforced architecture: layer set, slice mapping, staged follow-ups
 - [docs/adr/005-session-store-decomposition.md](docs/adr/005-session-store-decomposition.md) — accepted decision on the session store's split into three per-concern stores (`entities/session/model/{session,connection,round}.ts`)
 - [docs/adr/006-router-adoption.md](docs/adr/006-router-adoption.md) — accepted decision on replacing faked `currentScreen` navigation with react-router
+- [docs/adr/007-e2e-dual-mode-signaling.md](docs/adr/007-e2e-dual-mode-signaling.md) — Playwright e2e tests for the P2P layer: a locally self-hosted signaling relay by default, production Nostr relays in a separate nightly job
 - [docs/concepts/collaboration-mode.md](docs/concepts/collaboration-mode.md) — Live mode technical concept: P2P network layer, join flow, screen wiring
 - [docs/runbook.md](docs/runbook.md) — deployment & release runbook: CD pipeline, secrets, troubleshooting, versioning/releases
 - [AGENTS.md](AGENTS.md) — conventions for AI coding agents working in this repo

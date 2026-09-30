@@ -1,0 +1,38 @@
+name: E2E (real-world signaling)
+
+# Runs the same Playwright specs as the `e2e` job in ci.yml, but against the
+# production signaling strategy (public Nostr relays via trystero/nostr)
+# instead of the locally self-hosted relay — see ADR-007. Never gates PRs:
+# it depends on third-party relay uptime/latency, which is exactly the
+# dependency the default CI mode was designed to avoid.
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e-real-world:
+    name: e2e-real-world
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.3.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm test:e2e:real-world
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-real-world
+          path: playwright-report/
+          retention-days: 7
