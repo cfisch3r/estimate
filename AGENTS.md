@@ -14,7 +14,8 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/concepts/collaboration-mode.md` — Live mode (Mode A) technical concept: the Trystero P2P network layer, join flow, participant estimate round, facilitator reveal / retry-round flow, and screen/store wiring delivered so far
 - `docs/runbook.md` — deployment & release runbook: the IONOS Deploy Now CD pipeline, secrets, troubleshooting, and versioning/release process
 - `docs/adr/004-feature-sliced-design-architecture.md` — accepted decision on Feature-Sliced Design (FSD) as the enforced architecture: the adopted layer set (`app/pages/widgets/features/entities/shared`), the slice mapping, and the two staged follow-ups (store decomposition, issue #111; oxlint metrics ratchet, issue #112). `.claude/skills/fsd-architecture/SKILL.md` has the day-to-day "which slice does new code belong in" guidance; `steiger.config.ts` is the enforcement source of truth for layer/slice/public-API boundaries
-- `docs/adr/005-session-store-decomposition.md` — proposed decision on splitting `entities/session`'s monolithic store into four per-concern stores. **Read before working issue #111.**
+- `docs/adr/005-session-store-decomposition.md` — proposed decision on splitting `entities/session`'s monolithic store into three per-concern stores (navigation is out of scope — see ADR-006). **Read before working issue #111.**
+- `docs/adr/006-router-adoption.md` — accepted decision on replacing the hand-rolled `currentScreen`/`goToScreen` navigation state with `react-router`, resolving an FSD layer-direction conflict ADR-005 hit
 - `design_handoff_estimate_app/` — the original design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
 - `design_handoffs/epic-0010-screen-design-review/` — the Epic-0010 redesign handoff; **supersedes the entry flow** of the original handoff (mode-selection screen + unified Workspace) and is the source of truth for the participant estimating and facilitator reveal flows.
 - `design_handoffs/design_handoff_uncertainty_range/` — the Phase Picker + guidance-aware Range Bar handoff for PRD §6.1's cone-of-uncertainty guard; high-fidelity design reference, not literal production code (see its README for known implementation deviations).
@@ -130,9 +131,10 @@ Diagram conventions (all Mermaid):
 - Put each component's **responsibilities in a table below the diagram**, never inside the
   boxes.
 - Group nodes into subgraph **"lanes"** (usually by source directory). Each lane gets an
-  emoji + UPPERCASE title, a light background tint, and member nodes coloured to match via
-  `classDef` / `class`; use `direction LR` inside multi-node lanes. External systems stay
-  outside all lanes with a dashed border.
+  UPPERCASE title, a light background tint, and member nodes coloured to match via
+  `classDef` / `class` — no emoji in lane titles or anywhere else in a diagram. Use
+  `direction LR` inside multi-node lanes. External systems stay outside all lanes with a
+  dashed border.
 - **Legend above every diagram**: solid line = synchronous call, dotted = async
   callback/event/read, `<-->` = bidirectional. Label edges with what crosses them.
 - Collapse many parallel edges (e.g. store → each screen) into one edge pointing at the lane.
