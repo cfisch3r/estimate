@@ -16,8 +16,11 @@ vi.mock('../entities/session/api/useNetworkSession', () => ({
 }))
 
 function resetStore() {
+  // App renders its own <BrowserRouter>, which reads real browser history —
+  // reset it alongside the store so a navigation in one test doesn't leak
+  // into the next.
+  window.history.replaceState({}, '', '/')
   useSessionStore.setState({
-    currentScreen: 'mode-select',
     sessionName: '',
     unit: 'days',
     items: [],

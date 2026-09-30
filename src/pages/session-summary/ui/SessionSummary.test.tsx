@@ -1,8 +1,24 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { SessionSummary } from './SessionSummary'
 import { useSessionStore, type Item } from '../../../entities/session'
+
+const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
+
+vi.mock('react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router')>()
+  return { ...actual, useNavigate: () => navigateMock }
+})
+
+function renderSessionSummary() {
+  return render(
+    <MemoryRouter initialEntries={['/summary']}>
+      <SessionSummary />
+    </MemoryRouter>,
+  )
+}
 
 function item(id: string, title: string, finalResult: Item['finalResult'] = null): Item {
   return {
@@ -21,7 +37,6 @@ const finalized = { min: 2, expected: 5, max: 8, ci90: 8.85 }
 
 function resetStore() {
   useSessionStore.setState({
-    currentScreen: 'summary',
     sessionName: 'Sprint 14',
     unit: 'days',
     items: [],
@@ -29,7 +44,10 @@ function resetStore() {
   })
 }
 
-beforeEach(resetStore)
+beforeEach(() => {
+  navigateMock.mockClear()
+  resetStore()
+})
 
 describe('SessionSummary', () => {
   it('lists only finalized items with their best/likely/worst values in a table', () => {
@@ -37,7 +55,7 @@ describe('SessionSummary', () => {
       items: [item('1', 'Migrate auth', finalized), item('2', 'Not done yet')],
     })
 
-    render(<SessionSummary />)
+    renderSessionSummary()
 
     const table = screen.getByRole('table')
     const row = within(table).getByRole('row', { name: /Migrate auth/ })
@@ -50,7 +68,7 @@ describe('SessionSummary', () => {
   it('shows the shared sidebar alongside the table', () => {
     useSessionStore.setState({ items: [item('1', 'Migrate auth', finalized)] })
 
-    render(<SessionSummary />)
+    renderSessionSummary()
 
     expect(screen.getByText('Items')).toBeInTheDocument()
   })
@@ -62,11 +80,12 @@ describe('SessionSummary', () => {
       activeItemId: '1',
     })
 
-    render(<SessionSummary />)
+    renderSessionSummary()
 
     await user.click(screen.getByRole('button', { name: 'Back to item' }))
 
-    expect(useSessionStore.getState().currentScreen).toBe('workspace')
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/workspace')
     expect(useSessionStore.getState().activeItemId).toBe('1')
   })
 })

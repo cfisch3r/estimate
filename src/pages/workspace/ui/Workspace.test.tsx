@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { Workspace } from './Workspace'
 import { createEstimate, type Estimate } from '../../../entities/estimate'
 import { useSessionStore } from '../../../entities/session'
 import type { Item } from '../../../entities/session'
+
+const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
 
 vi.mock('../../../entities/session/api/useNetworkSession', () => ({
   useNetworkSession: () => ({
@@ -13,6 +16,18 @@ vi.mock('../../../entities/session/api/useNetworkSession', () => ({
     sendEstimate: vi.fn(),
   }),
 }))
+vi.mock('react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router')>()
+  return { ...actual, useNavigate: () => navigateMock }
+})
+
+function renderWorkspace() {
+  return render(
+    <MemoryRouter initialEntries={['/workspace']}>
+      <Workspace />
+    </MemoryRouter>,
+  )
+}
 
 function item(overrides: Partial<Item> = {}): Item {
   return {
@@ -36,7 +51,6 @@ function estimate(participantId: string, best = 2, likely = 4, worst = 8): Estim
 
 function resetStore() {
   useSessionStore.setState({
-    currentScreen: 'workspace',
     sessionName: '',
     unit: 'days',
     items: [],
@@ -52,13 +66,14 @@ function resetStore() {
 }
 
 beforeEach(() => {
+  navigateMock.mockClear()
   resetStore()
 })
 
 describe('Workspace', () => {
   it('shows the empty state until an item is added, then the estimate widget', async () => {
     const user = userEvent.setup()
-    render(<Workspace />)
+    renderWorkspace()
 
     expect(screen.getByText('Add an item to get started')).toBeInTheDocument()
 
@@ -75,7 +90,7 @@ describe('Workspace', () => {
       items: [item({ id: '1', title: 'Keep me' }), item({ id: '2', title: 'Remove me' })],
       activeItemId: '1',
     })
-    render(<Workspace />)
+    renderWorkspace()
 
     const row = screen.getByText('Remove me').closest('.session-sidebar-row')!
     await user.click(row.querySelector('button[aria-label="Remove item"]')!)
@@ -94,7 +109,7 @@ describe('Workspace', () => {
       ],
       activeItemId: '1',
     })
-    const { container } = render(<Workspace />)
+    const { container } = renderWorkspace()
 
     const rows = container.querySelectorAll('.session-sidebar-row')
     const activeRow = Array.from(rows).find((r) =>
@@ -109,21 +124,29 @@ describe('Workspace', () => {
 
   it('distinguishes the empty, all-finalized, and nothing-selected panel states', () => {
     const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
-    const { rerender } = render(<Workspace />)
+    const { rerender } = renderWorkspace()
     expect(screen.getByText('Add an item to get started')).toBeInTheDocument()
 
     useSessionStore.setState({
       items: [item({ id: '1', title: 'A', finalResult: finalized })],
       activeItemId: null,
     })
-    rerender(<Workspace />)
+    rerender(
+      <MemoryRouter initialEntries={['/workspace']}>
+        <Workspace />
+      </MemoryRouter>,
+    )
     expect(screen.getByText('All items finalized')).toBeInTheDocument()
 
     useSessionStore.setState({
       items: [item({ id: '1', title: 'A' })],
       activeItemId: null,
     })
-    rerender(<Workspace />)
+    rerender(
+      <MemoryRouter initialEntries={['/workspace']}>
+        <Workspace />
+      </MemoryRouter>,
+    )
     expect(screen.getByText('Select an item to estimate')).toBeInTheDocument()
   })
 
@@ -133,7 +156,7 @@ describe('Workspace', () => {
       items: [item({ id: '1', title: 'Only item' })],
       activeItemId: '1',
     })
-    render(<Workspace />)
+    renderWorkspace()
 
     await user.type(screen.getByLabelText(/Best case/), '2')
     await user.type(screen.getByLabelText(/Most likely/), '5')
@@ -152,7 +175,7 @@ describe('Workspace', () => {
       items: [item({ id: '1', title: 'Only item' })],
       activeItemId: '1',
     })
-    render(<Workspace />)
+    renderWorkspace()
 
     await user.click(screen.getByRole('button', { name: 'About phase' }))
     expect(screen.getByText(/Where you are in the project lifecycle/)).toBeInTheDocument()
@@ -171,7 +194,7 @@ describe('Workspace', () => {
       items: [item({ id: '1', title: 'Typoo', description: 'desc' })],
       activeItemId: '1',
     })
-    render(<Workspace />)
+    renderWorkspace()
 
     await user.click(screen.getByRole('heading', { name: 'Typoo' }))
     const input = screen.getByLabelText('Item title')
@@ -184,7 +207,7 @@ describe('Workspace', () => {
 
   it('shows the live session-code strip in collaborative mode', () => {
     useSessionStore.setState({ mode: 'live', sessionId: 'K7F9Q2' })
-    render(<Workspace />)
+    renderWorkspace()
 
     expect(screen.getByText('K7F9Q2')).toBeInTheDocument()
     expect(screen.getByText('Waiting for participants…')).toBeInTheDocument()
@@ -196,7 +219,7 @@ describe('Workspace', () => {
       items: [item({ id: '1', title: 'First' }), item({ id: '2', title: 'Second' })],
       activeItemId: '1',
     })
-    const { rerender } = render(<Workspace />)
+    const { rerender } = renderWorkspace()
 
     expect(screen.getByText('Requirements Complete')).toHaveClass(
       'phase-picker-label--active',
@@ -205,7 +228,11 @@ describe('Workspace', () => {
     expect(screen.getByText('UI Complete')).toHaveClass('phase-picker-label--active')
 
     useSessionStore.setState({ activeItemId: '2' })
-    rerender(<Workspace />)
+    rerender(
+      <MemoryRouter initialEntries={['/workspace']}>
+        <Workspace />
+      </MemoryRouter>,
+    )
 
     expect(screen.getByRole('heading', { name: 'Second' })).toBeInTheDocument()
     expect(screen.getByText('Requirements Complete')).toHaveClass(
@@ -224,7 +251,7 @@ describe('Workspace', () => {
       peerCount: 0,
       hasEverConnected: true,
     })
-    render(<Workspace />)
+    renderWorkspace()
 
     expect(screen.getByText('All participants disconnected')).toBeInTheDocument()
     expect(screen.queryByText('Waiting for participants…')).not.toBeInTheDocument()
@@ -247,7 +274,7 @@ describe('Workspace — live facilitator reveal flow', () => {
 
   it('lists participants with waiting/submitted status and gates Reveal on a submission', () => {
     setupRound({ submissions: [estimate('p1')] })
-    render(<Workspace />)
+    renderWorkspace()
 
     expect(screen.getByText('Participants')).toBeInTheDocument()
     const sam = screen.getByText('Sam').closest('li')!
@@ -259,7 +286,7 @@ describe('Workspace — live facilitator reveal flow', () => {
 
   it('disables Reveal while no estimates have been submitted', () => {
     setupRound()
-    render(<Workspace />)
+    renderWorkspace()
 
     expect(screen.getByRole('button', { name: 'Reveal estimates' })).toBeDisabled()
   })
@@ -267,7 +294,7 @@ describe('Workspace — live facilitator reveal flow', () => {
   it('reveals the round: sets the flag, shows the aggregated bar and values', async () => {
     const user = userEvent.setup()
     setupRound({ submissions: [estimate('p1', 2, 4, 8), estimate('p2', 3, 5, 10)] })
-    render(<Workspace />)
+    renderWorkspace()
 
     await user.click(screen.getByRole('button', { name: /Reveal estimates/ }))
 
@@ -279,7 +306,7 @@ describe('Workspace — live facilitator reveal flow', () => {
 
   it('marks a non-responder "No response" after reveal', () => {
     setupRound({ revealed: true, submissions: [estimate('p1')] })
-    render(<Workspace />)
+    renderWorkspace()
 
     expect(screen.getByText('Alex').closest('li')!).toHaveTextContent('No response')
   })
@@ -290,7 +317,7 @@ describe('Workspace — live facilitator reveal flow', () => {
       revealed: true,
       submissions: [estimate('p1', 2, 4, 8), estimate('p2', 4, 6, 12)],
     })
-    render(<Workspace />)
+    renderWorkspace()
 
     // Only item in the list, so it's also the last one — the primary button
     // reads "…& view summary" rather than "…& next →".
@@ -302,13 +329,14 @@ describe('Workspace — live facilitator reveal flow', () => {
       max: 12,
       ci90: expect.any(Number),
     })
-    expect(useSessionStore.getState().currentScreen).toBe('summary')
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/summary')
   })
 
   it('retries a revealed round: clears submissions, returns to waiting', async () => {
     const user = userEvent.setup()
     setupRound({ revealed: true, submissions: [estimate('p1')] })
-    render(<Workspace />)
+    renderWorkspace()
 
     await user.click(screen.getByRole('button', { name: /Retry/ }))
 
@@ -324,7 +352,7 @@ describe('Workspace — live facilitator reveal flow', () => {
       finalResult: { min: 1, expected: 2, max: 3, ci90: 3 },
       submissions: [estimate('p1')],
     })
-    render(<Workspace />)
+    renderWorkspace()
 
     // Only item in the list, so it's also the last one — "…& view summary".
     expect(
@@ -345,7 +373,7 @@ describe('Workspace — live facilitator reveal flow', () => {
       finalResult: { min: 1, expected: 2, max: 3, ci90: 3 },
       submissions: [estimate('p1')],
     })
-    render(<Workspace />)
+    renderWorkspace()
 
     await user.click(screen.getByRole('button', { name: 'Reopen item' }))
     expect(useSessionStore.getState().items[0]!.finalResult).not.toBeNull()
@@ -363,7 +391,7 @@ describe('Workspace — live facilitator reveal flow', () => {
       items: [item({ id: 'i1', title: 'Solo' })],
       activeItemId: 'i1',
     })
-    render(<Workspace />)
+    renderWorkspace()
 
     expect(screen.getByLabelText(/Best case/)).toBeInTheDocument()
     expect(screen.queryByText('Participants')).not.toBeInTheDocument()

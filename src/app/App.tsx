@@ -1,5 +1,6 @@
-import type { ComponentType } from 'react'
-import { useSessionStore, NetworkProvider, type ScreenId } from '../entities/session'
+import { BrowserRouter, Routes, Route } from 'react-router'
+import { NetworkProvider } from '../entities/session'
+import { ROUTES } from '../shared/lib/routes'
 import { Header } from './Header'
 import { ModeSelect } from '../pages/mode-select'
 import { Workspace } from '../pages/workspace'
@@ -8,31 +9,28 @@ import { SessionHistory } from '../pages/session-history'
 import { JoinSession } from '../pages/join-session'
 import { ParticipantEstimateView } from '../pages/participant-estimate'
 
-const SCREENS: Record<ScreenId, ComponentType> = {
-  'mode-select': ModeSelect,
-  workspace: Workspace,
-  summary: SessionSummary,
-  history: SessionHistory,
-  join: JoinSession,
-  estimate: ParticipantEstimateView,
-}
-
 function App() {
-  const currentScreen = useSessionStore((s) => s.currentScreen)
-  const Screen = SCREENS[currentScreen]
-
   return (
-    <NetworkProvider>
-      <a href="#main-content" className="skip-link">
-        Skip to main content
-      </a>
-      <Header />
-      {/* tabIndex={-1}: a plain <main> isn't focusable, so activating the skip
-          link above wouldn't move keyboard focus here in Firefox/Safari without it. */}
-      <main id="main-content" tabIndex={-1}>
-        <Screen />
-      </main>
-    </NetworkProvider>
+    <BrowserRouter>
+      <NetworkProvider>
+        <a href="#main-content" className="skip-link">
+          Skip to main content
+        </a>
+        <Header />
+        {/* tabIndex={-1}: a plain <main> isn't focusable, so activating the skip
+            link above wouldn't move keyboard focus here in Firefox/Safari without it. */}
+        <main id="main-content" tabIndex={-1}>
+          <Routes>
+            <Route path={ROUTES.modeSelect} element={<ModeSelect />} />
+            <Route path={ROUTES.join} element={<JoinSession />} />
+            <Route path={ROUTES.estimate} element={<ParticipantEstimateView />} />
+            <Route path={ROUTES.workspace} element={<Workspace />} />
+            <Route path={ROUTES.summary} element={<SessionSummary />} />
+            <Route path={ROUTES.history} element={<SessionHistory />} />
+          </Routes>
+        </main>
+      </NetworkProvider>
+    </BrowserRouter>
   )
 }
 

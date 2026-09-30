@@ -27,7 +27,7 @@ case "$file_path" in
 esac
 
 case "$file_path" in
-  "$root"/src/*|"$root"/docs/*|"$root"/.claude/*|"$root"/.github/*) echo '{}'; exit 0 ;;
+  "$root"/src/*|"$root"/docs/*|"$root"/.claude/*|"$root"/.github/*|"$root"/public/*) echo '{}'; exit 0 ;;
   "$HOME"/.claude/*) echo '{}'; exit 0 ;;
   "$root"/package.json|"$root"/pnpm-lock.yaml|"$root"/tsconfig*.json|"$root"/vite.config.ts \
     |"$root"/.oxlintrc.json|"$root"/.prettierrc.json|"$root"/.prettierignore|"$root"/knip.json \

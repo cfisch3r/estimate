@@ -6,12 +6,15 @@ import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
 import { Button, Input } from '../../../shared/ui'
 import { useConfirmArm } from '../../../shared/lib/useConfirmArm'
-import type { Item, ScreenId } from '../../../entities/session'
+import type { Item } from '../../../entities/session'
 
 interface SessionSidebarProps {
   items: Item[]
   activeItemId: string | null
-  currentScreen: ScreenId
+  /** Whether the session-summary screen is the current route — drives the
+   *  Summary button's highlighted state. Computed by the caller from its own
+   *  router location, so this widget stays router-agnostic. */
+  isSummaryScreen: boolean
   onSelect: (id: string) => void
   onReorder: (fromIndex: number, toIndex: number) => void
   onRemove: (id: string) => void
@@ -136,7 +139,7 @@ function SidebarRow({
 export function SessionSidebar({
   items,
   activeItemId,
-  currentScreen,
+  isSummaryScreen,
   onSelect,
   onReorder,
   onRemove,
@@ -153,7 +156,7 @@ export function SessionSidebar({
   const [isScrollCapped, setIsScrollCapped] = useState(false)
 
   const finalizedCount = items.filter((item) => item.finalResult !== null).length
-  const onSummary = currentScreen === 'summary'
+  const onSummary = isSummaryScreen
 
   // A newly added item lands at the bottom of a capped-height, scrollable list
   // (see session-sidebar.css) — without this it's added out of view and only

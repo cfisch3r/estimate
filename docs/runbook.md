@@ -112,10 +112,19 @@ configuration changes.
 
 ### SPA routing
 
-The app has no client-side router (state-driven screens via Zustand, not URL routes),
-so no deep-link fallback (e.g. rewriting all paths to `index.html`) was configured.
-Confirmed by loading the root URL directly after deploy — it serves the app correctly.
-Revisit this if a router is ever introduced.
+The app uses a real client-side router (`react-router`, ADR-006) with distinct paths
+per screen (`/workspace`, `/join`, `/estimate`, `/summary`, `/history`). A static host
+has no server-side route table, so anything but a request for exactly `/` needs a
+rewrite to `index.html` before the client router ever runs — otherwise a hard reload or
+a shared link to e.g. `/workspace` 404s at the host, before the app gets a chance to
+load. `public/.htaccess` (rsynced into `dist/` by the build, since Vite copies `public/`
+verbatim) configures this via `mod_rewrite` for IONOS's Apache-based webspace.
+
+Verify after every deploy that touches routing: load a non-root path directly (not via
+in-app navigation) — e.g. `https://<site>/workspace` — and confirm it serves the app
+rather than a host 404. This was previously a no-op check (the app had no real routes
+to 404 on), so it's newly load-bearing as of the router adoption; not yet independently
+re-confirmed against production IONOS since the `.htaccess` was added.
 
 ## Secrets (repo → Settings → Secrets and variables → Actions)
 

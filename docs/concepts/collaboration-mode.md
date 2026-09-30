@@ -241,10 +241,11 @@ stateDiagram-v2
   summary --> history : View session history
 ```
 
-`ScreenId` is `mode-select | workspace | join | estimate | summary | history` (the #34
-redesign replaced `create` / `session` with `mode-select` / `workspace`; reveal is no
-longer a screen — it's Workspace states 1c/1d, #8). The diagram writes ids as
-`mode_select` / `workspace` because Mermaid state ids can't contain `-`.
+Each state is a real route (`ROUTES` in `shared/lib/routes.ts`, via `react-router` — see
+ADR-006): `/` (mode-select), `/workspace`, `/join`, `/estimate`, `/summary`, `/history`
+(the #34 redesign replaced `create` / `session` with `mode-select` / `workspace`; reveal
+is no longer a screen — it's Workspace states 1c/1d, #8). The diagram writes ids as
+`mode_select` / `workspace` because Mermaid state ids can't contain `-` or `/`.
 
 `history` / `SessionHistory` is slated for removal per #10 — file-based save/load
 (architecture.md's "Persistence" decision) replaces it, so this transition and screen id

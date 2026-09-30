@@ -24,7 +24,7 @@ function renderSidebar(props: Partial<Parameters<typeof SessionSidebar>[0]> = {}
     <SessionSidebar
       items={[item('1', 'A'), item('2', 'B')]}
       activeItemId="1"
-      currentScreen="workspace"
+      isSummaryScreen={false}
       onSelect={vi.fn()}
       onReorder={vi.fn()}
       onRemove={vi.fn()}

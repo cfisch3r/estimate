@@ -1,4 +1,6 @@
+import { useLocation, useNavigate } from 'react-router'
 import { Button } from '../../../shared/ui'
+import { ROUTES } from '../../../shared/lib/routes'
 import { SessionSidebar } from '../../../widgets/session-sidebar'
 import { useSessionStore, type Item } from '../../../entities/session'
 import type { AggregateResult } from '../../../entities/estimate'
@@ -10,12 +12,12 @@ function isFinalized(item: Item): item is Item & { finalResult: AggregateResult 
 export function SessionSummary() {
   const items = useSessionStore((s) => s.items)
   const activeItemId = useSessionStore((s) => s.activeItemId)
-  const currentScreen = useSessionStore((s) => s.currentScreen)
   const selectItem = useSessionStore((s) => s.selectItem)
   const reorderItems = useSessionStore((s) => s.reorderItems)
   const removeItem = useSessionStore((s) => s.removeItem)
   const addItem = useSessionStore((s) => s.addItem)
-  const goToScreen = useSessionStore((s) => s.goToScreen)
+  const location = useLocation()
+  const navigate = useNavigate()
 
   const finalizedItems = items.filter(isFinalized)
 
@@ -33,12 +35,12 @@ export function SessionSummary() {
       <SessionSidebar
         items={items}
         activeItemId={activeItemId}
-        currentScreen={currentScreen}
+        isSummaryScreen={location.pathname === ROUTES.summary}
         onSelect={selectItem}
         onReorder={reorderItems}
         onRemove={removeItem}
         onAdd={addItem}
-        onGoSummary={() => goToScreen('summary')}
+        onGoSummary={() => navigate(ROUTES.summary)}
         scrollableList={false}
       />
 
@@ -73,10 +75,10 @@ export function SessionSummary() {
         )}
 
         <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center' }}>
-          <Button variant="secondary" onClick={() => goToScreen('workspace')}>
+          <Button variant="secondary" onClick={() => navigate(ROUTES.workspace)}>
             Back to item
           </Button>
-          <Button variant="secondary" onClick={() => goToScreen('history')}>
+          <Button variant="secondary" onClick={() => navigate(ROUTES.history)}>
             View session history
           </Button>
         </div>

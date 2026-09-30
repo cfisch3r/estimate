@@ -7,7 +7,6 @@ import type {
   Item,
   LiveConnectionStatus,
   LiveRound,
-  ScreenId,
   SessionMode,
   SessionRole,
 } from './types'
@@ -20,7 +19,6 @@ type SubmitEstimateResult =
   { ok: true; estimate: Estimate } | { ok: false; error: string }
 
 interface SessionStore {
-  currentScreen: ScreenId
   sessionName: string
   unit: EstimationUnit
   items: Item[]
@@ -83,7 +81,6 @@ interface SessionStore {
   /** Facilitator: discard this item's submissions and drop back to the waiting
    *  state (1d -> 1c) so participants estimate the item again. */
   retryRound: (id: string) => void
-  goToScreen: (screen: ScreenId) => void
 
   /** Participant: adopt the facilitator's broadcast round state. */
   applySyncState: (snapshot: SessionSnapshot) => void
@@ -172,7 +169,6 @@ const LIVE_SESSION_DEFAULTS = {
 >
 
 export const useSessionStore = create<SessionStore>((set, get) => ({
-  currentScreen: 'mode-select',
   sessionName: '',
   items: [],
   activeItemId: null,
@@ -237,7 +233,7 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
 
   startSingleUser: () => {
     const { items } = get()
-    set({ currentScreen: 'workspace', activeItemId: firstPendingItemId(items) })
+    set({ activeItemId: firstPendingItemId(items) })
   },
 
   startCollaborative: (sessionCode) => {
@@ -251,7 +247,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       connectionStatus: 'connecting',
       hasEverConnected: false,
       peerCount: 0,
-      currentScreen: 'workspace',
       activeItemId: firstPendingItemId(items),
     })
   },
@@ -272,11 +267,10 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
       hasEverConnected: false,
       peerCount: 0,
       liveRound: null,
-      currentScreen: 'join',
     })
   },
 
-  leaveLiveSession: () => set({ ...LIVE_SESSION_DEFAULTS, currentScreen: 'mode-select' }),
+  leaveLiveSession: () => set({ ...LIVE_SESSION_DEFAULTS }),
 
   leaveWorkspace: () => {
     get().leaveLiveSession()
@@ -362,8 +356,6 @@ export const useSessionStore = create<SessionStore>((set, get) => ({
           : item,
       ),
     })),
-
-  goToScreen: (screen) => set({ currentScreen: screen }),
 
   applySyncState: (snapshot) =>
     set((state) => {

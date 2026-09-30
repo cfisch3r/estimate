@@ -1,0 +1,13 @@
+# SPA fallback: react-router (ADR-006) serves real paths (/workspace, /join, ...)
+# client-side, but the static host has no server-side route table — without this,
+# a hard reload or a shared link to anything but "/" 404s at the host instead of
+# ever reaching index.html. See docs/runbook.md#spa-routing.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  RewriteRule ^index\.html$ - [L]
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  RewriteRule ^ index.html [L]
+</IfModule>

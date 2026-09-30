@@ -1,12 +1,14 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router'
 import { Card, CardTitle, CardBody, CardMeta, Input } from '../../../shared/ui'
+import { ROUTES } from '../../../shared/lib/routes'
 import { useSessionStore } from '../../../entities/session'
 
 export function SessionHistory() {
   const sessionName = useSessionStore((s) => s.sessionName)
   const items = useSessionStore((s) => s.items)
   const unit = useSessionStore((s) => s.unit)
-  const goToScreen = useSessionStore((s) => s.goToScreen)
+  const navigate = useNavigate()
 
   const [search, setSearch] = useState('')
 
@@ -32,7 +34,7 @@ export function SessionHistory() {
         <Card
           elevation="sm"
           style={{ cursor: 'pointer' }}
-          onClick={() => goToScreen('summary')}
+          onClick={() => navigate(ROUTES.summary)}
         >
           <CardTitle>{`${displayName} (current)`}</CardTitle>
           <CardMeta>{`Manual Entry · ${items.length} item${items.length === 1 ? '' : 's'} · ${unit}`}</CardMeta>
