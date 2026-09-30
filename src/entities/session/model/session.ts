@@ -19,12 +19,17 @@ interface SessionStore {
   selectItem: (id: string | null) => void
   setItemNotes: (id: string, notes: string) => void
   setItemDescription: (id: string, description: string) => void
-  /** Merge `patch` into item `id`. General-purpose escape hatch for
+  /** Merge a round outcome into item `id`. Escape hatch for
    *  `entities/session/model/round.ts` (a same-slice file, not a cross-slice
-   *  caller) to record round outcomes (`finalResult`, `revealed`, `round`,
-   *  `submissions`) onto an item without this store needing to know about
-   *  round mechanics — see ADR-005, Option D. */
-  patchItem: (id: string, patch: Partial<Item>) => void
+   *  caller) to record round results onto an item without this store
+   *  needing to know about round mechanics — see ADR-005, Option D. Scoped
+   *  to round-owned fields only, so it can't be used to bypass `updateItem`/
+   *  `setItemNotes`/`setItemDescription`'s validation of the content fields
+   *  they own. */
+  patchItem: (
+    id: string,
+    patch: Partial<Pick<Item, 'finalResult' | 'revealed' | 'round' | 'submissions'>>,
+  ) => void
   /** Reset back to a blank workspace: no items, no session name, no
    *  selection. Composed with the other two stores' own leave-resets by
    *  `useLeaveWorkspace` (`features/session-lifecycle`) — see ADR-005. */

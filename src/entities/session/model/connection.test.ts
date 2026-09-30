@@ -71,14 +71,16 @@ describe('startCollaborative', () => {
 })
 
 describe('joinLiveSession', () => {
-  it('ignores a blank code or blank name', () => {
-    useConnectionStore.getState().joinLiveSession('   ', 'Sam')
-    useConnectionStore.getState().joinLiveSession('K7F9Q2', '   ')
+  it('ignores a blank code or blank name, reporting it did not proceed', () => {
+    expect(useConnectionStore.getState().joinLiveSession('   ', 'Sam')).toBe(false)
+    expect(useConnectionStore.getState().joinLiveSession('K7F9Q2', '   ')).toBe(false)
     expect(useConnectionStore.getState().mode).toBe('manual')
   })
 
-  it('enters a connecting participant session, normalising the code', () => {
-    useConnectionStore.getState().joinLiveSession('  k7f9q2 ', '  Sam Rivera  ')
+  it('enters a connecting participant session, normalising the code, and reports it proceeded', () => {
+    expect(
+      useConnectionStore.getState().joinLiveSession('  k7f9q2 ', '  Sam Rivera  '),
+    ).toBe(true)
 
     expect(useConnectionStore.getState()).toMatchObject({
       mode: 'live',

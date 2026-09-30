@@ -10,7 +10,6 @@ export function useJoinLiveSession(): (sessionCode: string, name: string) => voi
   const clearRound = useRoundStore((s) => s.clearRound)
 
   return (sessionCode, name) => {
-    joinLiveSession(sessionCode, name)
-    clearRound()
+    if (joinLiveSession(sessionCode, name)) clearRound()
   }
 }

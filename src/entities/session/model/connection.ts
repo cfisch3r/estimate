@@ -31,7 +31,10 @@ interface ConnectionStore {
   removeParticipant: (participantId: string) => void
   startSingleUser: () => void
   startCollaborative: (sessionCode: string) => void
-  joinLiveSession: (sessionCode: string, name: string) => void
+  /** Returns whether the join actually proceeded, so a caller composing this
+   *  with another store's reset (e.g. `useJoinLiveSession` clearing the round
+   *  view) doesn't do so on a no-op call. */
+  joinLiveSession: (sessionCode: string, name: string) => boolean
   leaveLiveSession: () => void
 }
 
@@ -105,7 +108,7 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
   joinLiveSession: (sessionCode, name) => {
     const code = sessionCode.trim().toUpperCase()
     const trimmedName = name.trim()
-    if (code.length === 0 || trimmedName.length === 0) return
+    if (code.length === 0 || trimmedName.length === 0) return false
     const participantId = getOrCreateParticipantId()
     set({
       mode: 'live',
@@ -118,6 +121,7 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
       hasEverConnected: false,
       peerCount: 0,
     })
+    return true
   },
 
   leaveLiveSession: () => {
