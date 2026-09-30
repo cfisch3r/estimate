@@ -51,7 +51,7 @@ in CI (`.github/workflows/ci.yml`) on every PR and push to `main`.
 - [docs/adr/002-testing-strategy.md](docs/adr/002-testing-strategy.md) — layered test strategy (unit/component now; Playwright deferred until `/network` or `/persistence` are real)
 - [docs/adr/003-session-reliability-model.md](docs/adr/003-session-reliability-model.md) — facilitator-authoritative round state, versioned rounds, stable client identity, and related live-session reliability decisions
 - [docs/adr/004-feature-sliced-design-architecture.md](docs/adr/004-feature-sliced-design-architecture.md) — Feature-Sliced Design (FSD) as the enforced architecture: layer set, slice mapping, staged follow-ups
-- [docs/adr/005-session-store-decomposition.md](docs/adr/005-session-store-decomposition.md) — proposed decision on splitting the session store into three per-concern stores
+- [docs/adr/005-session-store-decomposition.md](docs/adr/005-session-store-decomposition.md) — accepted decision on the session store's split into three per-concern stores (`entities/session/model/{session,connection,round}.ts`)
 - [docs/adr/006-router-adoption.md](docs/adr/006-router-adoption.md) — accepted decision on replacing faked `currentScreen` navigation with react-router
 - [docs/concepts/collaboration-mode.md](docs/concepts/collaboration-mode.md) — Live mode technical concept: P2P network layer, join flow, screen wiring
 - [docs/runbook.md](docs/runbook.md) — deployment & release runbook: CD pipeline, secrets, troubleshooting, versioning/releases

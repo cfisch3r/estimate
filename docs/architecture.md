@@ -80,9 +80,10 @@ rationale. In brief, by architectural role rather than layer:
   wrapper: room join/create, typed actions (`submitEstimate`, `syncState`, `announce`,
   `requestSnapshot` request/response), connection-state hooks, facilitator-authoritative
   round state (ADR-003, #60).
-- **The session store** (`entities/session/model`, formerly `/state`) — Zustand store;
-  network and persistence are adapters dispatching into it. Not yet split along FSD
-  slice lines — see ADR-004's issue #111.
+- **The session stores** (`entities/session/model`, formerly `/state`) — three
+  per-concern Zustand stores (ADR-005): `session.ts` (session domain data),
+  `connection.ts` (live-connection state), `round.ts` (round mechanics); network
+  and persistence are adapters dispatching into them.
 - **Screens** (`pages/*`, formerly `/screens`) — one per PRD §7 screen (ModeSelect,
   Workspace, Join, Participant Estimate View, Summary, History). Built so far:
   ModeSelect, Workspace (single-user path, collaborative session-code strip, and the

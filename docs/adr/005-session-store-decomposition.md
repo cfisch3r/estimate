@@ -29,8 +29,8 @@ session never touches concern 2 at all; a manual-entry finalize
 (`finalizeItem`) never touches concern 3's round state. These are
 independent axes bolted together, not one cohesive domain object.
 
-**Current shape** (post-ADR-006 — navigation already replaced by a router,
-this decomposition still pending):
+**Shape before this decomposition** (post-ADR-006 — navigation already
+replaced by a router, this decomposition not yet applied):
 
 Legend: solid = synchronous call/read.
 
