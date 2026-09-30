@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useLocation, useNavigate } from 'react-router'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { NotebookIcon } from '@phosphor-icons/react/dist/csr/Notebook'
 import { ListChecksIcon } from '@phosphor-icons/react/dist/csr/ListChecks'
@@ -209,7 +210,8 @@ export function Workspace() {
   const unit = useSessionStore((s) => s.unit)
   const items = useSessionStore((s) => s.items)
   const activeItemId = useSessionStore((s) => s.activeItemId)
-  const currentScreen = useSessionStore((s) => s.currentScreen)
+  const location = useLocation()
+  const navigate = useNavigate()
   const mode = useSessionStore((s) => s.mode)
   const role = useSessionStore((s) => s.role)
   const sessionId = useSessionStore((s) => s.sessionId)
@@ -230,7 +232,6 @@ export function Workspace() {
   const finalizeLiveItem = useSessionStore((s) => s.finalizeLiveItem)
   const revealRound = useSessionStore((s) => s.revealRound)
   const retryRound = useSessionStore((s) => s.retryRound)
-  const goToScreen = useSessionStore((s) => s.goToScreen)
   const { connect } = useNetworkSession()
 
   const isLiveFacilitator = mode === 'live' && role === 'facilitator'
@@ -279,7 +280,7 @@ export function Workspace() {
         // finalized" empty state instead of reopening this now-done item.
         selectItem(null)
       }
-      goToScreen('summary')
+      navigate('/summary')
     } else {
       selectItem(items[activeIndex + 1]!.id)
     }
@@ -347,7 +348,7 @@ export function Workspace() {
             <option value="weeks">Weeks</option>
           </Select>
           <span style={{ flex: 1 }} />
-          <Button variant="ghost" onClick={() => goToScreen('summary')}>
+          <Button variant="ghost" onClick={() => navigate('/summary')}>
             <NotebookIcon size={15} />
             Summary
           </Button>
@@ -358,12 +359,12 @@ export function Workspace() {
             <SessionSidebar
               items={items}
               activeItemId={activeItemId}
-              currentScreen={currentScreen}
+              isSummaryScreen={location.pathname === '/summary'}
               onSelect={selectItem}
               onReorder={reorderItems}
               onRemove={removeItem}
               onAdd={addItem}
-              onGoSummary={() => goToScreen('summary')}
+              onGoSummary={() => navigate('/summary')}
               hideSummaryButton
             />
           </div>

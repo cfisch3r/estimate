@@ -1,9 +1,10 @@
+import { useLocation } from 'react-router'
 import { ChatTeardropTextIcon } from '@phosphor-icons/react/dist/csr/ChatTeardropText'
 import { Tag } from '../shared/ui'
 import { useConfirmArm } from '../shared/lib/useConfirmArm'
-import { useSessionStore, useLeaveWorkspace, type ScreenId } from '../entities/session'
+import { useSessionStore, useLeaveWorkspace } from '../entities/session'
 
-const EXIT_SCREENS = new Set<ScreenId>(['workspace', 'summary', 'history'])
+const EXIT_PATHS = new Set(['/workspace', '/summary', '/history'])
 const FEEDBACK_URL =
   'https://github.com/cfisch3r/estimate/issues/new?template=feedback.yml'
 
@@ -51,7 +52,7 @@ function BrandMark() {
 }
 
 export function Header() {
-  const currentScreen = useSessionStore((s) => s.currentScreen)
+  const location = useLocation()
   const mode = useSessionStore((s) => s.mode)
   const peerCount = useSessionStore((s) => s.peerCount)
   const leaveWorkspace = useLeaveWorkspace()
@@ -61,8 +62,8 @@ export function Header() {
     ref: leaveRef,
   } = useConfirmArm<HTMLButtonElement>(leaveWorkspace)
 
-  const showModeTag = currentScreen !== 'mode-select' && currentScreen !== 'join'
-  const canLeave = EXIT_SCREENS.has(currentScreen)
+  const showModeTag = location.pathname !== '/' && location.pathname !== '/join'
+  const canLeave = EXIT_PATHS.has(location.pathname)
   const needsConfirm = mode === 'live' && peerCount > 0
 
   return (

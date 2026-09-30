@@ -1,22 +1,36 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { JoinSession } from './JoinSession'
 import { RECONNECT_GRACE_MS } from '../../../shared/lib/useConnectionPhase'
 import { useSessionStore } from '../../../entities/session'
 
-const { connectMock, disconnectMock } = vi.hoisted(() => ({
+const { connectMock, disconnectMock, navigateMock } = vi.hoisted(() => ({
   connectMock: vi.fn(),
   disconnectMock: vi.fn(),
+  navigateMock: vi.fn(),
 }))
 
 vi.mock('../../../entities/session/api/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: connectMock, disconnect: disconnectMock }),
 }))
 
+vi.mock('react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router')>()
+  return { ...actual, useNavigate: () => navigateMock }
+})
+
+function renderJoinSession() {
+  return render(
+    <MemoryRouter>
+      <JoinSession />
+    </MemoryRouter>,
+  )
+}
+
 function resetStore() {
   useSessionStore.setState({
-    currentScreen: 'join',
     sessionName: '',
     unit: 'days',
     items: [],
@@ -33,19 +47,20 @@ function resetStore() {
 beforeEach(() => {
   connectMock.mockClear()
   disconnectMock.mockClear()
+  navigateMock.mockClear()
   resetStore()
 })
 
 describe('JoinSession', () => {
   it('warns about joining from a second tab in the same browser', () => {
-    render(<JoinSession />)
+    renderJoinSession()
 
     expect(screen.getByText(/another tab in this browser/i)).toBeInTheDocument()
   })
 
   it('keeps Join disabled until both code and name are provided', async () => {
     const user = userEvent.setup()
-    render(<JoinSession />)
+    renderJoinSession()
 
     const join = screen.getByRole('button', { name: 'Join' })
     expect(join).toBeDisabled()
@@ -59,7 +74,7 @@ describe('JoinSession', () => {
 
   it('joins with a normalised code and connects', async () => {
     const user = userEvent.setup()
-    render(<JoinSession />)
+    renderJoinSession()
 
     await user.type(screen.getByLabelText('Session code'), 'k7f9q2')
     await user.type(screen.getByLabelText('Your name'), 'Sam Rivera')
@@ -77,7 +92,7 @@ describe('JoinSession', () => {
 
   it('shows the connecting indicator and disables Join while connecting', async () => {
     const user = userEvent.setup()
-    render(<JoinSession />)
+    renderJoinSession()
     await user.type(screen.getByLabelText('Session code'), 'K7F9Q2')
     await user.type(screen.getByLabelText('Your name'), 'Sam')
 
@@ -89,7 +104,7 @@ describe('JoinSession', () => {
 
   it('shows the failure banner with a Retry action when disconnected', () => {
     useSessionStore.setState({ connectionStatus: 'disconnected' })
-    render(<JoinSession />)
+    renderJoinSession()
 
     expect(screen.getByText(/Couldn.t reach the session/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
@@ -102,7 +117,7 @@ describe('JoinSession', () => {
   it('stays on the spinner for a connecting join within the grace window', () => {
     vi.useFakeTimers()
     try {
-      render(<JoinSession />)
+      renderJoinSession()
       fireEvent.change(screen.getByLabelText('Session code'), {
         target: { value: 'K7F9Q2' },
       })
@@ -123,7 +138,7 @@ describe('JoinSession', () => {
   it('escalates to the failure banner once a connecting join outlives the grace window', () => {
     vi.useFakeTimers()
     try {
-      render(<JoinSession />)
+      renderJoinSession()
       fireEvent.change(screen.getByLabelText('Session code'), {
         target: { value: 'K7F9Q2' },
       })
@@ -148,7 +163,7 @@ describe('JoinSession', () => {
   it('clears the failure banner immediately when Retry is clicked', () => {
     vi.useFakeTimers()
     try {
-      render(<JoinSession />)
+      renderJoinSession()
       fireEvent.change(screen.getByLabelText('Session code'), {
         target: { value: 'K7F9Q2' },
       })
@@ -172,32 +187,34 @@ describe('JoinSession', () => {
 
   it('routes to the estimate view once this client has joined and is connected', async () => {
     const user = userEvent.setup()
-    render(<JoinSession />)
+    renderJoinSession()
 
     await user.type(screen.getByLabelText('Session code'), 'K7F9Q2')
     await user.type(screen.getByLabelText('Your name'), 'Sam')
     await user.click(screen.getByRole('button', { name: 'Join' }))
-    expect(useSessionStore.getState().currentScreen).toBe('join')
+    expect(navigateMock).not.toHaveBeenCalled()
 
     act(() => useSessionStore.setState({ connectionStatus: 'connected' }))
 
-    expect(useSessionStore.getState().currentScreen).toBe('estimate')
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/estimate')
   })
 
   it('does not route away on mount from a stale connected status it did not initiate', () => {
     useSessionStore.setState({ connectionStatus: 'connected' })
-    render(<JoinSession />)
+    renderJoinSession()
 
-    expect(useSessionStore.getState().currentScreen).toBe('join')
+    expect(navigateMock).not.toHaveBeenCalled()
   })
 
-  it('Back disconnects and returns to the mode-select screen', async () => {
+  it('Back disconnects and returns to mode-select', async () => {
     const user = userEvent.setup()
-    render(<JoinSession />)
+    renderJoinSession()
 
     await user.click(screen.getByRole('button', { name: '← Back' }))
 
     expect(disconnectMock).toHaveBeenCalled()
-    expect(useSessionStore.getState().currentScreen).toBe('mode-select')
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/')
   })
 })

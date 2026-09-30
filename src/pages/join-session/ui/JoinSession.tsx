@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router'
 import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import {
   Button,
@@ -19,7 +20,7 @@ import {
 export function JoinSession() {
   const connectionStatus = useSessionStore((s) => s.connectionStatus)
   const joinLiveSession = useSessionStore((s) => s.joinLiveSession)
-  const goToScreen = useSessionStore((s) => s.goToScreen)
+  const navigate = useNavigate()
   const { connect } = useNetworkSession()
   const leave = useLeaveLiveSession()
 
@@ -47,9 +48,9 @@ export function JoinSession() {
   // status left in the store by some other flow.
   useEffect(() => {
     if (submitted && connectionStatus === 'connected') {
-      goToScreen('estimate')
+      navigate('/estimate')
     }
-  }, [submitted, connectionStatus, goToScreen])
+  }, [submitted, connectionStatus, navigate])
 
   function handleJoin() {
     if (!canSubmit) return

@@ -1,18 +1,26 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { Header } from './Header'
 import { useSessionStore } from '../entities/session'
 
-const { disconnectMock } = vi.hoisted(() => ({ disconnectMock: vi.fn() }))
+const { disconnectMock, navigateMock } = vi.hoisted(() => ({
+  disconnectMock: vi.fn(),
+  navigateMock: vi.fn(),
+}))
 
 vi.mock('../entities/session/api/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: vi.fn(), disconnect: disconnectMock }),
 }))
 
+vi.mock('react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router')>()
+  return { ...actual, useNavigate: () => navigateMock }
+})
+
 function resetStore() {
   useSessionStore.setState({
-    currentScreen: 'mode-select',
     sessionName: '',
     unit: 'days',
     items: [],
@@ -23,20 +31,29 @@ function resetStore() {
   })
 }
 
+function renderHeader(path = '/') {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <Header />
+    </MemoryRouter>,
+  )
+}
+
 beforeEach(() => {
   disconnectMock.mockClear()
+  navigateMock.mockClear()
   resetStore()
 })
 
 describe('Header', () => {
   it('always renders the brand mark', () => {
-    render(<Header />)
+    renderHeader()
 
     expect(screen.getByText('EstiMate')).toBeInTheDocument()
   })
 
   it('always renders a feedback link that opens the GitHub issue template in a new tab', () => {
-    render(<Header />)
+    renderHeader()
 
     const link = screen.getByRole('link', { name: 'Send feedback' })
     expect(link).toHaveAttribute(
@@ -48,46 +65,49 @@ describe('Header', () => {
   })
 
   it('omits the mode tag on the mode-select and join screens', () => {
-    render(<Header />)
+    renderHeader('/')
     expect(screen.queryByText('Single-user')).not.toBeInTheDocument()
+  })
 
-    useSessionStore.setState({ currentScreen: 'join' })
+  it('omits the mode tag on the join screen', () => {
+    renderHeader('/join')
     expect(screen.queryByText('Single-user')).not.toBeInTheDocument()
   })
 
   it('shows the Single-user tag in manual mode once in the workspace', () => {
-    useSessionStore.setState({ currentScreen: 'workspace', mode: 'manual' })
+    useSessionStore.setState({ mode: 'manual' })
 
-    render(<Header />)
+    renderHeader('/workspace')
 
     expect(screen.getByText('Single-user')).toBeInTheDocument()
   })
 
   it('shows the Live tag in live mode', () => {
-    useSessionStore.setState({ currentScreen: 'workspace', mode: 'live' })
+    useSessionStore.setState({ mode: 'live' })
 
-    render(<Header />)
+    renderHeader('/workspace')
 
     expect(screen.getByText('Live')).toBeInTheDocument()
   })
 
   it('does not make the brand a button on mode-select or join', () => {
-    render(<Header />)
-    expect(
-      screen.queryByRole('button', { name: /mode selection/ }),
-    ).not.toBeInTheDocument()
-
-    useSessionStore.setState({ currentScreen: 'join' })
+    renderHeader('/')
     expect(
       screen.queryByRole('button', { name: /mode selection/ }),
     ).not.toBeInTheDocument()
   })
 
-  it.each(['workspace', 'summary', 'history'] as const)(
+  it('does not make the brand a button on join', () => {
+    renderHeader('/join')
+    expect(
+      screen.queryByRole('button', { name: /mode selection/ }),
+    ).not.toBeInTheDocument()
+  })
+
+  it.each(['/workspace', '/summary', '/history'])(
     'makes the brand a clickable exit on %s',
-    (currentScreen) => {
-      useSessionStore.setState({ currentScreen })
-      render(<Header />)
+    (path) => {
+      renderHeader(path)
 
       expect(
         screen.getByRole('button', { name: 'Back to mode selection' }),
@@ -95,10 +115,9 @@ describe('Header', () => {
     },
   )
 
-  it('leaves immediately in single-user mode, resetting items and the screen', async () => {
+  it('leaves immediately in single-user mode, resetting items and navigating home', async () => {
     const user = userEvent.setup()
     useSessionStore.setState({
-      currentScreen: 'workspace',
       mode: 'manual',
       sessionName: 'My session',
       items: [
@@ -115,41 +134,44 @@ describe('Header', () => {
       ],
       activeItemId: '1',
     })
-    render(<Header />)
+    renderHeader('/workspace')
 
     await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))
 
     expect(useSessionStore.getState()).toMatchObject({
-      currentScreen: 'mode-select',
       items: [],
       sessionName: '',
       activeItemId: null,
     })
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/')
   })
 
   it('leaves immediately for a live facilitator with nobody connected', async () => {
     const user = userEvent.setup()
-    useSessionStore.setState({ currentScreen: 'workspace', mode: 'live', peerCount: 0 })
-    render(<Header />)
+    useSessionStore.setState({ mode: 'live', peerCount: 0 })
+    renderHeader('/workspace')
 
     await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))
 
-    expect(useSessionStore.getState().currentScreen).toBe('mode-select')
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/')
   })
 
   it('requires a second click to leave a live session with participants connected', async () => {
     const user = userEvent.setup()
-    useSessionStore.setState({ currentScreen: 'workspace', mode: 'live', peerCount: 2 })
-    render(<Header />)
+    useSessionStore.setState({ mode: 'live', peerCount: 2 })
+    renderHeader('/workspace')
 
     await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))
-    expect(useSessionStore.getState().currentScreen).toBe('workspace')
+    expect(navigateMock).not.toHaveBeenCalled()
     expect(
       screen.getByRole('button', { name: 'Click again to leave session' }),
     ).toBeInTheDocument()
 
     await user.click(screen.getByRole('button', { name: 'Click again to leave session' }))
-    expect(useSessionStore.getState().currentScreen).toBe('mode-select')
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/')
     expect(disconnectMock).toHaveBeenCalled()
   })
 })

@@ -1,14 +1,16 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { ParticipantEstimateView } from './ParticipantEstimateView'
 import { RECONNECT_GRACE_MS } from '../../../shared/lib/useConnectionPhase'
 import { createEstimate, type Estimate } from '../../../entities/estimate'
 import { useSessionStore } from '../../../entities/session'
 
-const { disconnectMock, sendEstimateMock } = vi.hoisted(() => ({
+const { disconnectMock, sendEstimateMock, navigateMock } = vi.hoisted(() => ({
   disconnectMock: vi.fn(),
   sendEstimateMock: vi.fn(() => Promise.resolve()),
+  navigateMock: vi.fn(),
 }))
 
 vi.mock('../../../entities/session/api/useNetworkSession', () => ({
@@ -18,6 +20,18 @@ vi.mock('../../../entities/session/api/useNetworkSession', () => ({
     sendEstimate: sendEstimateMock,
   }),
 }))
+vi.mock('react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router')>()
+  return { ...actual, useNavigate: () => navigateMock }
+})
+
+function renderView() {
+  return render(
+    <MemoryRouter>
+      <ParticipantEstimateView />
+    </MemoryRouter>,
+  )
+}
 
 const item = { id: 'item-1', title: 'Retry queue', description: 'exponential backoff' }
 
@@ -36,8 +50,8 @@ function estimate(overrides: Partial<Estimate> = {}): Estimate {
 beforeEach(() => {
   disconnectMock.mockClear()
   sendEstimateMock.mockClear()
+  navigateMock.mockClear()
   useSessionStore.setState({
-    currentScreen: 'estimate',
     unit: 'days',
     mode: 'live',
     role: 'participant',
@@ -54,7 +68,7 @@ beforeEach(() => {
 
 describe('ParticipantEstimateView', () => {
   it('waits for the facilitator before a round starts', () => {
-    render(<ParticipantEstimateView />)
+    renderView()
 
     expect(screen.getByText(/Waiting for the facilitator to start/)).toBeInTheDocument()
     expect(screen.getByText('Session K7F9Q2')).toBeInTheDocument()
@@ -64,7 +78,7 @@ describe('ParticipantEstimateView', () => {
   // must not raise the alarm — only one that outlives the grace window.
   it('stays quiet on a fresh drop, offering no reconnect action yet', () => {
     useSessionStore.setState({ peerCount: 0 })
-    render(<ParticipantEstimateView />)
+    renderView()
 
     expect(screen.getByText('Reconnecting…')).toBeInTheDocument()
     expect(screen.queryByText('Session connection lost')).not.toBeInTheDocument()
@@ -75,7 +89,7 @@ describe('ParticipantEstimateView', () => {
     vi.useFakeTimers()
     try {
       useSessionStore.setState({ peerCount: 0 })
-      render(<ParticipantEstimateView />)
+      renderView()
 
       act(() => {
         vi.advanceTimersByTime(RECONNECT_GRACE_MS)
@@ -97,7 +111,7 @@ describe('ParticipantEstimateView', () => {
     vi.useFakeTimers()
     try {
       useSessionStore.setState({ peerCount: 0 })
-      render(<ParticipantEstimateView />)
+      renderView()
       act(() => {
         vi.advanceTimersByTime(RECONNECT_GRACE_MS)
       })
@@ -120,13 +134,14 @@ describe('ParticipantEstimateView', () => {
 
   it('leaves the session and returns to mode selection', async () => {
     const user = userEvent.setup()
-    render(<ParticipantEstimateView />)
+    renderView()
 
     await user.click(screen.getByRole('button', { name: 'Leave session' }))
 
     expect(disconnectMock).toHaveBeenCalled()
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/')
     expect(useSessionStore.getState()).toMatchObject({
-      currentScreen: 'mode-select',
       mode: 'manual',
       sessionId: null,
     })
@@ -144,7 +159,7 @@ describe('ParticipantEstimateView', () => {
         mySubmission: null,
       },
     })
-    render(<ParticipantEstimateView />)
+    renderView()
 
     expect(screen.getByText('Retry queue')).toBeInTheDocument()
     expect(screen.getByText('exponential backoff')).toBeInTheDocument()
@@ -179,7 +194,7 @@ describe('ParticipantEstimateView', () => {
         mySubmission: null,
       },
     })
-    const { rerender } = render(<ParticipantEstimateView />)
+    const { rerender } = renderView()
 
     expect(screen.getByText('Requirements Complete')).toHaveClass(
       'phase-picker-label--active',
@@ -199,7 +214,11 @@ describe('ParticipantEstimateView', () => {
         },
       })
     })
-    rerender(<ParticipantEstimateView />)
+    rerender(
+      <MemoryRouter>
+        <ParticipantEstimateView />
+      </MemoryRouter>,
+    )
 
     expect(screen.getByText('Second item')).toBeInTheDocument()
     expect(screen.getByText('Requirements Complete')).toHaveClass(
@@ -222,7 +241,7 @@ describe('ParticipantEstimateView', () => {
         mySubmission: null,
       },
     })
-    render(<ParticipantEstimateView />)
+    renderView()
 
     await user.type(screen.getByLabelText('Best case (days)'), '3')
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
@@ -261,7 +280,7 @@ describe('ParticipantEstimateView', () => {
         mySubmission: null,
       },
     })
-    render(<ParticipantEstimateView />)
+    renderView()
 
     await user.type(screen.getByLabelText('Best case (days)'), '3')
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
@@ -290,7 +309,7 @@ describe('ParticipantEstimateView', () => {
         mySubmission: null,
       },
     })
-    render(<ParticipantEstimateView />)
+    renderView()
 
     await user.type(screen.getByLabelText('Best case (days)'), '3')
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
@@ -313,7 +332,7 @@ describe('ParticipantEstimateView', () => {
         mySubmission: null,
       },
     })
-    render(<ParticipantEstimateView />)
+    renderView()
 
     await user.type(screen.getByLabelText('Best case (days)'), '3')
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
@@ -348,7 +367,7 @@ describe('ParticipantEstimateView', () => {
         mySubmission: null,
       },
     })
-    render(<ParticipantEstimateView />)
+    renderView()
 
     await user.type(screen.getByLabelText('Best case (days)'), '3')
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
@@ -384,7 +403,7 @@ describe('ParticipantEstimateView', () => {
         mySubmission: { best: 2, likely: 4, worst: 8 },
       },
     })
-    render(<ParticipantEstimateView />)
+    renderView()
 
     await user.click(screen.getByRole('button', { name: 'Revise estimate' }))
     expect(screen.getByRole('button', { name: 'Update estimate' })).toBeInTheDocument()
@@ -407,7 +426,7 @@ describe('ParticipantEstimateView', () => {
         mySubmission: { best: 3, likely: 5, worst: 8 },
       },
     })
-    render(<ParticipantEstimateView />)
+    renderView()
 
     expect(screen.getByTestId('range-bar-marker-expected')).toBeInTheDocument()
     expect(screen.getByText('You')).toBeInTheDocument()
@@ -433,7 +452,7 @@ describe('ParticipantEstimateView', () => {
         mySubmission: { best: 3, likely: 5, worst: 8 },
       },
     })
-    render(<ParticipantEstimateView />)
+    renderView()
 
     expect(screen.getByText('You')).toBeInTheDocument()
     expect(screen.getByText('Jordan Lee')).toBeInTheDocument()
@@ -458,7 +477,7 @@ describe('ParticipantEstimateView', () => {
         mySubmission: { best: 3, likely: 5, worst: 8 },
       },
     })
-    render(<ParticipantEstimateView />)
+    renderView()
 
     expect(screen.getByText('You')).toBeInTheDocument()
     expect(screen.getByText('Teammate 1')).toBeInTheDocument()

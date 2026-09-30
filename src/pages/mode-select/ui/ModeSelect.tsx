@@ -4,10 +4,12 @@ import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree'
 import { SignInIcon } from '@phosphor-icons/react/dist/csr/SignIn'
 import { ArrowRightIcon } from '@phosphor-icons/react/dist/csr/ArrowRight'
 import { Card, CardTitle, CardBody, CardMeta, Tag } from '../../../shared/ui'
+import { useNavigate } from 'react-router'
 import {
-  useSessionStore,
   generateSessionCode,
   useNetworkSession,
+  useStartSingleUser,
+  useStartCollaborative,
 } from '../../../entities/session'
 
 function BrandMark() {
@@ -104,9 +106,9 @@ function ModeRow({ icon, title, description, onClick }: ModeRowProps) {
 }
 
 export function ModeSelect() {
-  const startSingleUser = useSessionStore((s) => s.startSingleUser)
-  const startCollaborative = useSessionStore((s) => s.startCollaborative)
-  const goToScreen = useSessionStore((s) => s.goToScreen)
+  const startSingleUser = useStartSingleUser()
+  const startCollaborative = useStartCollaborative()
+  const navigate = useNavigate()
   const { connect } = useNetworkSession()
 
   function handleCollaborative() {
@@ -171,7 +173,7 @@ export function ModeSelect() {
           icon={<SignInIcon size={22} />}
           title="Join a collaborative session"
           description="Enter a code your facilitator shared."
-          onClick={() => goToScreen('join')}
+          onClick={() => navigate('/join')}
         />
       </div>
 

@@ -6,7 +6,6 @@ import type { Item } from './types'
 function resetStore() {
   localStorage.clear()
   useSessionStore.setState({
-    currentScreen: 'mode-select',
     sessionName: '',
     unit: 'days',
     items: [],
@@ -91,10 +90,9 @@ describe('reorderItems', () => {
 })
 
 describe('startSingleUser', () => {
-  it('enters the workspace with no items and nothing selected', () => {
+  it('leaves nothing selected when there are no items', () => {
     useSessionStore.getState().startSingleUser()
     const state = useSessionStore.getState()
-    expect(state.currentScreen).toBe('workspace')
     expect(state.activeItemId).toBeNull()
   })
 
@@ -104,7 +102,6 @@ describe('startSingleUser', () => {
     addItem('Second item')
     startSingleUser()
     const state = useSessionStore.getState()
-    expect(state.currentScreen).toBe('workspace')
     expect(state.activeItemId).toBe(state.items[0]?.id)
   })
 })
@@ -167,7 +164,7 @@ describe('removeItem', () => {
 })
 
 describe('startCollaborative', () => {
-  it('enters a live facilitator session on the workspace with no items yet', () => {
+  it('enters a live facilitator session with no items yet', () => {
     useSessionStore.getState().startCollaborative('K7F9Q2')
 
     const state = useSessionStore.getState()
@@ -176,7 +173,6 @@ describe('startCollaborative', () => {
       role: 'facilitator',
       sessionId: 'K7F9Q2',
       connectionStatus: 'connecting',
-      currentScreen: 'workspace',
     })
     expect(state.activeItemId).toBeNull()
   })
@@ -202,7 +198,6 @@ describe('joinLiveSession', () => {
     useSessionStore.getState().joinLiveSession('   ', 'Sam')
     useSessionStore.getState().joinLiveSession('K7F9Q2', '   ')
     expect(useSessionStore.getState().mode).toBe('manual')
-    expect(useSessionStore.getState().currentScreen).toBe('mode-select')
   })
 
   it('enters a connecting participant session, normalising the code', () => {
@@ -214,7 +209,6 @@ describe('joinLiveSession', () => {
       sessionId: 'K7F9Q2',
       myName: 'Sam Rivera',
       connectionStatus: 'connecting',
-      currentScreen: 'join',
     })
   })
 
@@ -230,7 +224,7 @@ describe('joinLiveSession', () => {
 })
 
 describe('leaveLiveSession', () => {
-  it('resets every live field and returns to the mode-select screen', () => {
+  it('resets every live field', () => {
     useSessionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
     useSessionStore.getState().setConnectionStatus('connected')
     useSessionStore.getState().setPeerCount(3)
@@ -257,7 +251,6 @@ describe('leaveLiveSession', () => {
       connectionStatus: 'idle',
       peerCount: 0,
       liveRound: null,
-      currentScreen: 'mode-select',
       // a unit inherited from the facilitator must not leak past leave
       unit: 'days',
     })
@@ -292,7 +285,6 @@ describe('leaveWorkspace', () => {
     useSessionStore.getState().leaveWorkspace()
 
     expect(useSessionStore.getState()).toMatchObject({
-      currentScreen: 'mode-select',
       items: [],
       sessionName: '',
       activeItemId: null,

@@ -41,9 +41,6 @@ export interface LiveRound {
   mySubmission: { best: number; likely: number; worst: number } | null
 }
 
-export type ScreenId =
-  'mode-select' | 'workspace' | 'summary' | 'history' | 'join' | 'estimate'
-
 export type SessionMode = 'manual' | 'live'
 
 export type SessionRole = 'facilitator' | 'participant'
