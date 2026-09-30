@@ -2,7 +2,7 @@ import { useLocation } from 'react-router'
 import { ChatTeardropTextIcon } from '@phosphor-icons/react/dist/csr/ChatTeardropText'
 import { Tag } from '../shared/ui'
 import { useConfirmArm } from '../shared/lib/useConfirmArm'
-import { useSessionStore } from '../entities/session'
+import { useConnectionStore } from '../entities/session'
 import { useLeaveWorkspace } from '../features/session-lifecycle'
 import { ROUTES } from '../shared/lib/routes'
 
@@ -55,8 +55,8 @@ function BrandMark() {
 
 export function Header() {
   const location = useLocation()
-  const mode = useSessionStore((s) => s.mode)
-  const peerCount = useSessionStore((s) => s.peerCount)
+  const mode = useConnectionStore((s) => s.mode)
+  const peerCount = useConnectionStore((s) => s.peerCount)
   const leaveWorkspace = useLeaveWorkspace()
   const {
     armed,

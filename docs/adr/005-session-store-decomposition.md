@@ -1,6 +1,6 @@
 # ADR-005: Decomposing `entities/session`'s Monolithic Store
 
-**Status:** Proposed
+**Status:** Accepted
 **Date:** 2026-09-29
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [006-router-adoption.md](006-router-adoption.md), issue #111
 
@@ -29,8 +29,8 @@ session never touches concern 2 at all; a manual-entry finalize
 (`finalizeItem`) never touches concern 3's round state. These are
 independent axes bolted together, not one cohesive domain object.
 
-**Current shape** (post-ADR-006 — navigation already replaced by a router,
-this decomposition still pending):
+**Shape before this decomposition** (post-ADR-006 — navigation already
+replaced by a router, this decomposition not yet applied):
 
 Legend: solid = synchronous call/read.
 
@@ -263,9 +263,12 @@ scope entirely — see ADR-006, which must land first.
   same as any other in-slice cohesion call.
 
 **Follow-ups / revisit triggers**
-- ADR-006 must land first (removes navigation as a store concern entirely).
-- Issue #111 — implement this decomposition once the shape above is
-  confirmed.
+- Implemented in issue #111: `entities/session/model/session.ts`,
+  `connection.ts`, and `round.ts` replace the monolithic `store.ts`, with
+  cross-store writes (`round.ts` → `session.ts`'s `patchItem`,
+  `connection.ts` → `session.ts`'s item-selection setters) exactly as
+  diagrammed above, and the `leaveWorkspace`/`leaveLiveSession` compositions
+  moved to `features/session-lifecycle`'s composer hooks.
 - Revisit Option B (split `items` into its own entity) if Roadmap Building
   needs items independent of an estimation session.
 

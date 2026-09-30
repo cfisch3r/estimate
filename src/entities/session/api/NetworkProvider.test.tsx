@@ -5,8 +5,75 @@ import type { ConnectionState } from './connection'
 import { NetworkProvider } from './NetworkProvider'
 import { useNetworkSession } from './useNetworkSession'
 import type { NetworkSessionApi } from './networkSessionContext'
-import { createEstimate } from '../../estimate'
-import { useSessionStore } from '../model/store'
+import { createEstimate, type EstimationUnit } from '../../estimate'
+import { useSessionStore } from '../model/session'
+import { useConnectionStore } from '../model/connection'
+import { useRoundStore } from '../model/round'
+import type {
+  Item,
+  LiveRound,
+  SessionMode,
+  SessionRole,
+  LiveConnectionStatus,
+} from '../model/types'
+
+type SessionPatch = Partial<{
+  sessionName: string
+  unit: EstimationUnit
+  items: Item[]
+  activeItemId: string | null
+}>
+type ConnectionPatch = Partial<{
+  mode: SessionMode
+  role: SessionRole
+  sessionId: string | null
+  myName: string
+  participantId: string
+  connectionStatus: LiveConnectionStatus
+  hasEverConnected: boolean
+  peerCount: number
+  participantNames: Record<string, string>
+}>
+type RoundPatch = Partial<{ liveRound: LiveRound | null }>
+
+const SESSION_KEYS: (keyof SessionPatch)[] = [
+  'sessionName',
+  'unit',
+  'items',
+  'activeItemId',
+]
+const CONNECTION_KEYS: (keyof ConnectionPatch)[] = [
+  'mode',
+  'role',
+  'sessionId',
+  'myName',
+  'participantId',
+  'connectionStatus',
+  'hasEverConnected',
+  'peerCount',
+  'participantNames',
+]
+
+/** Dispatches a combined patch (mirroring the pre-decomposition monolithic
+ *  store's shape, which most of this file's fixtures still describe) to
+ *  whichever of the three real stores now owns each field — see ADR-005. */
+function setSessionState(patch: SessionPatch & ConnectionPatch & RoundPatch) {
+  const session: SessionPatch = {}
+  const connection: ConnectionPatch = {}
+  const round: RoundPatch = {}
+  for (const [key, value] of Object.entries(patch)) {
+    if ((SESSION_KEYS as string[]).includes(key)) {
+      ;(session as Record<string, unknown>)[key] = value
+    } else if ((CONNECTION_KEYS as string[]).includes(key)) {
+      ;(connection as Record<string, unknown>)[key] = value
+    } else {
+      ;(round as Record<string, unknown>)[key] = value
+    }
+  }
+  if (Object.keys(session).length > 0) useSessionStore.setState(session)
+  if (Object.keys(connection).length > 0) useConnectionStore.setState(connection)
+  if (Object.keys(round).length > 0) useRoundStore.setState(round)
+}
 
 const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
   let listener: ((state: ConnectionState) => void) | null = null
@@ -81,7 +148,7 @@ beforeEach(() => {
   fakeSession.requestSnapshot.mockClear()
   fakeSession.sendEstimate.mockImplementation(() => Promise.resolve())
   emitState({ status: 'connecting', peerIds: [] })
-  useSessionStore.setState({
+  setSessionState({
     connectionStatus: 'idle',
     peerCount: 0,
     mode: 'manual',
@@ -116,7 +183,7 @@ describe('useNetworkSession', () => {
     await user.click(screen.getByText('connect'))
 
     expect(joinSessionMock).toHaveBeenCalledWith('K7F9Q2')
-    expect(useSessionStore.getState().connectionStatus).toBe('connecting')
+    expect(useConnectionStore.getState().connectionStatus).toBe('connecting')
   })
 
   it('mirrors later connection-state changes into the store', async () => {
@@ -130,14 +197,14 @@ describe('useNetworkSession', () => {
 
     act(() => emitState({ status: 'connected', peerIds: ['p1', 'p2'] }))
 
-    expect(useSessionStore.getState().connectionStatus).toBe('connected')
-    expect(useSessionStore.getState().peerCount).toBe(2)
+    expect(useConnectionStore.getState().connectionStatus).toBe('connected')
+    expect(useConnectionStore.getState().peerCount).toBe(2)
   })
 
   it('does not report a participant as connected until the facilitator announces', async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -154,14 +221,14 @@ describe('useNetworkSession', () => {
     // Reaches a peer, but it isn't the facilitator yet.
     act(() => emitState({ status: 'connected', peerIds: ['peer-other'] }))
 
-    expect(useSessionStore.getState().connectionStatus).toBe('connecting')
-    expect(useSessionStore.getState().peerCount).toBe(1)
+    expect(useConnectionStore.getState().connectionStatus).toBe('connecting')
+    expect(useConnectionStore.getState().peerCount).toBe(1)
   })
 
   it("flips a participant to connected once the facilitator's announce arrives", async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -176,19 +243,19 @@ describe('useNetworkSession', () => {
     await user.click(screen.getByText('connect'))
 
     act(() => emitState({ status: 'connected', peerIds: ['peer-fac'] }))
-    expect(useSessionStore.getState().connectionStatus).toBe('connecting')
+    expect(useConnectionStore.getState().connectionStatus).toBe('connecting')
 
     act(() => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
     })
 
-    expect(useSessionStore.getState().connectionStatus).toBe('connected')
+    expect(useConnectionStore.getState().connectionStatus).toBe('connected')
   })
 
   it('drops a participant back to connecting (not disconnected) when only the facilitator peer leaves', async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -207,7 +274,7 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       emit('announce', { participantId: 'p-other', name: 'Other' }, 'peer-other')
     })
-    expect(useSessionStore.getState().connectionStatus).toBe('connected')
+    expect(useConnectionStore.getState().connectionStatus).toBe('connected')
 
     // Mirrors connection.ts's real ordering: the tracker's own state-change
     // fires before its peer-leave listeners, so the raw peer count drops
@@ -219,8 +286,8 @@ describe('useNetworkSession', () => {
       emit('peerLeave', 'peer-fac')
     })
 
-    expect(useSessionStore.getState().connectionStatus).toBe('connecting')
-    expect(useSessionStore.getState().peerCount).toBe(1)
+    expect(useConnectionStore.getState().connectionStatus).toBe('connecting')
+    expect(useConnectionStore.getState().peerCount).toBe(1)
 
     // The facilitator reconnecting under a new peerId still triggers a pull
     // (lastPulledFacilitatorPeerId was cleared on the departure above).
@@ -256,13 +323,13 @@ describe('useNetworkSession', () => {
     await user.click(screen.getByText('disconnect'))
 
     expect(fakeSession.leave).toHaveBeenCalled()
-    expect(useSessionStore.getState().connectionStatus).toBe('idle')
-    expect(useSessionStore.getState().peerCount).toBe(0)
+    expect(useConnectionStore.getState().connectionStatus).toBe('idle')
+    expect(useConnectionStore.getState().peerCount).toBe(0)
   })
 
   it('dispatches incoming syncState into the store, including reveal and Retry via later snapshots', async () => {
     const user = userEvent.setup()
-    act(() => useSessionStore.setState({ mode: 'live', role: 'participant' }))
+    act(() => setSessionState({ mode: 'live', role: 'participant' }))
     render(
       <NetworkProvider>
         <Consumer />
@@ -282,8 +349,8 @@ describe('useNetworkSession', () => {
         finalizedItemIds: [],
       }),
     )
-    expect(useSessionStore.getState().liveRound?.item.title).toBe('Retry queue')
-    expect(useSessionStore.getState().liveRound?.roster).toHaveLength(1)
+    expect(useRoundStore.getState().liveRound?.item.title).toBe('Retry queue')
+    expect(useRoundStore.getState().liveRound?.roster).toHaveLength(1)
 
     // A later snapshot carries the reveal — there's no separate one-shot event
     // any more (ADR-003, "Versioned rounds").
@@ -298,7 +365,7 @@ describe('useNetworkSession', () => {
         finalizedItemIds: [],
       }),
     )
-    expect(useSessionStore.getState().liveRound?.revealed).toBe(true)
+    expect(useRoundStore.getState().liveRound?.revealed).toBe(true)
 
     // And a Retry is just a round bump on the next snapshot.
     act(() =>
@@ -312,14 +379,14 @@ describe('useNetworkSession', () => {
         finalizedItemIds: [],
       }),
     )
-    expect(useSessionStore.getState().liveRound?.revealed).toBe(false)
-    expect(useSessionStore.getState().liveRound?.round).toBe(1)
+    expect(useRoundStore.getState().liveRound?.revealed).toBe(false)
+    expect(useRoundStore.getState().liveRound?.round).toBe(1)
   })
 
   it('does not record another peer’s estimate on a participant client (sendEstimate targets the facilitator only)', async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         items: [],
@@ -337,7 +404,7 @@ describe('useNetworkSession', () => {
       emit('estimate', 'item-1', { participantId: 'p2', best: 2, likely: 4, worst: 8 }),
     )
 
-    expect(useSessionStore.getState().liveRound).toBeNull()
+    expect(useRoundStore.getState().liveRound).toBeNull()
   })
 
   it('does not re-broadcast the snapshot on peer-join (a newcomer pulls it instead)', async () => {
@@ -350,7 +417,7 @@ describe('useNetworkSession', () => {
     await user.click(screen.getByText('connect'))
 
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'facilitator',
         sessionId: 'K7F9Q2',
@@ -387,7 +454,7 @@ describe('useNetworkSession', () => {
     await user.click(screen.getByText('connect'))
 
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'facilitator',
         sessionId: 'K7F9Q2',
@@ -421,7 +488,7 @@ describe('useNetworkSession', () => {
   it("pulls the facilitator's snapshot once a participant learns its peerId from an announce", async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -452,13 +519,13 @@ describe('useNetworkSession', () => {
     })
 
     expect(fakeSession.requestSnapshot).toHaveBeenCalledWith('peer-fac')
-    expect(useSessionStore.getState().liveRound?.item.title).toBe('Retry queue')
+    expect(useRoundStore.getState().liveRound?.item.title).toBe('Retry queue')
   })
 
   it("does not re-pull when the facilitator's peerId is re-announced unchanged", async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -500,7 +567,7 @@ describe('useNetworkSession', () => {
   it("targets sendEstimate at the facilitator's peerId once learned", async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -560,7 +627,7 @@ describe('useNetworkSession', () => {
   it("never falls back to an untargeted broadcast when the facilitator's peerId isn't known yet", async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -602,7 +669,7 @@ describe('useNetworkSession', () => {
   it('retries a sendEstimate that times out, and delivers on the retry', async () => {
     vi.useFakeTimers()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -663,7 +730,7 @@ describe('useNetworkSession', () => {
 
   it('does not retry a sendEstimate that fails as disconnected', async () => {
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -716,7 +783,7 @@ describe('useNetworkSession', () => {
 
   it('resends this participant’s estimate when a snapshot shows it not yet in the roster', async () => {
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -742,7 +809,7 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       await Promise.resolve()
     })
-    act(() => useSessionStore.getState().submitEstimate(1, 2, 3))
+    act(() => useRoundStore.getState().submitEstimate(1, 2, 3))
     fakeSession.sendEstimate.mockClear()
 
     await act(async () => {
@@ -768,7 +835,7 @@ describe('useNetworkSession', () => {
 
   it('does not resend when the roster already shows this participant as submitted', async () => {
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -794,7 +861,7 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       await Promise.resolve()
     })
-    act(() => useSessionStore.getState().submitEstimate(1, 2, 3))
+    act(() => useRoundStore.getState().submitEstimate(1, 2, 3))
     fakeSession.sendEstimate.mockClear()
 
     await act(async () => {
@@ -815,7 +882,7 @@ describe('useNetworkSession', () => {
 
   it('does not stack a second roster-triggered resend while one is already in flight', async () => {
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -841,7 +908,7 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       await Promise.resolve()
     })
-    act(() => useSessionStore.getState().submitEstimate(1, 2, 3))
+    act(() => useRoundStore.getState().submitEstimate(1, 2, 3))
     fakeSession.sendEstimate.mockClear()
     // First resend never settles within this test, so a second snapshot
     // arriving before it does must not fire a duplicate.
@@ -871,7 +938,7 @@ describe('useNetworkSession', () => {
   it('resends against the facilitator’s current peerId if it changes mid-retry', async () => {
     vi.useFakeTimers()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -965,7 +1032,7 @@ describe('useNetworkSession', () => {
     if (!sub.ok) throw new Error('bad fixture')
 
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'facilitator',
         sessionId: 'K7F9Q2',
@@ -986,7 +1053,7 @@ describe('useNetworkSession', () => {
     )
     fakeSession.sendSyncState.mockClear()
 
-    act(() => useSessionStore.getState().revealRound('i1'))
+    act(() => useRoundStore.getState().revealRound('i1'))
 
     expect(fakeSession.sendSyncState).toHaveBeenCalledWith(
       expect.objectContaining({ revealed: true, submissions: [sub.value] }),
@@ -996,7 +1063,7 @@ describe('useNetworkSession', () => {
   it('announces the local participant on connect and applies inbound announces', async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -1017,13 +1084,13 @@ describe('useNetworkSession', () => {
     })
 
     act(() => emit('announce', { participantId: 'p-2', name: 'Jordan' }))
-    expect(useSessionStore.getState().participantNames['p-2']).toBe('Jordan')
+    expect(useConnectionStore.getState().participantNames['p-2']).toBe('Jordan')
   })
 
   it('prunes a participant from the roster once their peer connection leaves', async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'facilitator',
         myName: 'Facilitator',
@@ -1037,17 +1104,17 @@ describe('useNetworkSession', () => {
     await user.click(screen.getByText('connect'))
 
     act(() => emit('announce', { participantId: 'p-2', name: 'Jordan' }, 'peer-2'))
-    expect(useSessionStore.getState().participantNames['p-2']).toBe('Jordan')
+    expect(useConnectionStore.getState().participantNames['p-2']).toBe('Jordan')
 
     act(() => emit('peerLeave', 'peer-2'))
 
-    expect(useSessionStore.getState().participantNames['p-2']).toBeUndefined()
+    expect(useConnectionStore.getState().participantNames['p-2']).toBeUndefined()
   })
 
   it('does not prune on a participant client (roster pruning is facilitator-only)', async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'participant',
         participantId: 'p-self',
@@ -1064,13 +1131,13 @@ describe('useNetworkSession', () => {
     act(() => emit('announce', { participantId: 'p-2', name: 'Jordan' }, 'peer-2'))
     act(() => emit('peerLeave', 'peer-2'))
 
-    expect(useSessionStore.getState().participantNames['p-2']).toBe('Jordan')
+    expect(useConnectionStore.getState().participantNames['p-2']).toBe('Jordan')
   })
 
   it('keeps a name backed by another live connection (two tabs, one participantId)', async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'facilitator',
         myName: 'Facilitator',
@@ -1090,7 +1157,7 @@ describe('useNetworkSession', () => {
 
     act(() => emit('peerLeave', 'peer-2a'))
 
-    expect(useSessionStore.getState().participantNames['p-2']).toBe('Jordan')
+    expect(useConnectionStore.getState().participantNames['p-2']).toBe('Jordan')
   })
 
   it('keeps the name of a participant who already submitted this round', async () => {
@@ -1098,7 +1165,7 @@ describe('useNetworkSession', () => {
     const sub = createEstimate({ participantId: 'p-2', best: 2, likely: 4, worst: 8 })
     if (!sub.ok) throw new Error('bad fixture')
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'facilitator',
         myName: 'Facilitator',
@@ -1127,13 +1194,13 @@ describe('useNetworkSession', () => {
     act(() => emit('announce', { participantId: 'p-2', name: 'Jordan' }, 'peer-2'))
     act(() => emit('peerLeave', 'peer-2'))
 
-    expect(useSessionStore.getState().participantNames['p-2']).toBe('Jordan')
+    expect(useConnectionStore.getState().participantNames['p-2']).toBe('Jordan')
   })
 
   it('does nothing when an unannounced peer leaves', async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'facilitator',
         myName: 'Facilitator',
@@ -1149,13 +1216,13 @@ describe('useNetworkSession', () => {
 
     act(() => emit('peerLeave', 'peer-never-announced'))
 
-    expect(useSessionStore.getState().participantNames).toEqual({ p2: 'Jordan' })
+    expect(useConnectionStore.getState().participantNames).toEqual({ p2: 'Jordan' })
   })
 
   it('re-announces the local client when a peer joins', async () => {
     const user = userEvent.setup()
     act(() =>
-      useSessionStore.setState({
+      setSessionState({
         mode: 'live',
         role: 'facilitator',
         myName: 'Facilitator',
@@ -1197,7 +1264,7 @@ describe('useNetworkSession', () => {
       }),
     )
 
-    expect(useSessionStore.getState().liveRound).toBeNull()
+    expect(useRoundStore.getState().liveRound).toBeNull()
   })
 
   it('leaves the room when the provider unmounts', async () => {

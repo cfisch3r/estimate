@@ -12,12 +12,15 @@ import {
 } from '../../../shared/ui'
 import { useConnectionPhase } from '../../../shared/lib/useConnectionPhase'
 import { ROUTES } from '../../../shared/lib/routes'
-import { useSessionStore, useNetworkSession } from '../../../entities/session'
-import { useLeaveLiveSession } from '../../../features/session-lifecycle'
+import { useConnectionStore, useNetworkSession } from '../../../entities/session'
+import {
+  useJoinLiveSession,
+  useLeaveLiveSession,
+} from '../../../features/session-lifecycle'
 
 export function JoinSession() {
-  const connectionStatus = useSessionStore((s) => s.connectionStatus)
-  const joinLiveSession = useSessionStore((s) => s.joinLiveSession)
+  const connectionStatus = useConnectionStore((s) => s.connectionStatus)
+  const joinLiveSession = useJoinLiveSession()
   const navigate = useNavigate()
   const { connect } = useNetworkSession()
   const leave = useLeaveLiveSession()

@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { Header } from './Header'
-import { useSessionStore } from '../entities/session'
+import { useSessionStore, useConnectionStore } from '../entities/session'
 
 const { disconnectMock, navigateMock } = vi.hoisted(() => ({
   disconnectMock: vi.fn(),
@@ -25,6 +25,8 @@ function resetStore() {
     unit: 'days',
     items: [],
     activeItemId: null,
+  })
+  useConnectionStore.setState({
     mode: 'manual',
     role: 'facilitator',
     peerCount: 0,
@@ -75,7 +77,7 @@ describe('Header', () => {
   })
 
   it('shows the Single-user tag in manual mode once in the workspace', () => {
-    useSessionStore.setState({ mode: 'manual' })
+    useConnectionStore.setState({ mode: 'manual' })
 
     renderHeader('/workspace')
 
@@ -83,7 +85,7 @@ describe('Header', () => {
   })
 
   it('shows the Live tag in live mode', () => {
-    useSessionStore.setState({ mode: 'live' })
+    useConnectionStore.setState({ mode: 'live' })
 
     renderHeader('/workspace')
 
@@ -117,8 +119,8 @@ describe('Header', () => {
 
   it('leaves immediately in single-user mode, resetting items and navigating home', async () => {
     const user = userEvent.setup()
+    useConnectionStore.setState({ mode: 'manual' })
     useSessionStore.setState({
-      mode: 'manual',
       sessionName: 'My session',
       items: [
         {
@@ -143,13 +145,14 @@ describe('Header', () => {
       sessionName: '',
       activeItemId: null,
     })
+    expect(useConnectionStore.getState()).toMatchObject({ mode: 'manual', peerCount: 0 })
     expect(navigateMock).toHaveBeenCalledTimes(1)
     expect(navigateMock).toHaveBeenCalledWith('/')
   })
 
   it('leaves immediately for a live facilitator with nobody connected', async () => {
     const user = userEvent.setup()
-    useSessionStore.setState({ mode: 'live', peerCount: 0 })
+    useConnectionStore.setState({ mode: 'live', peerCount: 0 })
     renderHeader('/workspace')
 
     await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))
@@ -160,7 +163,7 @@ describe('Header', () => {
 
   it('requires a second click to leave a live session with participants connected', async () => {
     const user = userEvent.setup()
-    useSessionStore.setState({ mode: 'live', peerCount: 2 })
+    useConnectionStore.setState({ mode: 'live', peerCount: 2 })
     renderHeader('/workspace')
 
     await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))

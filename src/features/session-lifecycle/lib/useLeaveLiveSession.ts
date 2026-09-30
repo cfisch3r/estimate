@@ -1,17 +1,23 @@
 import { useNavigate } from 'react-router'
-import { useSessionStore, useNetworkSession } from '../../../entities/session'
+import {
+  useConnectionStore,
+  useRoundStore,
+  useNetworkSession,
+} from '../../../entities/session'
 import { ROUTES } from '../../../shared/lib/routes'
 
 /** Tear down the current live session: drop the P2P connection, reset the
- *  store's session state, and navigate back to mode-select. */
+ *  connection and round stores, and navigate back to mode-select. */
 export function useLeaveLiveSession(): () => void {
-  const leaveLiveSession = useSessionStore((s) => s.leaveLiveSession)
+  const leaveLiveSession = useConnectionStore((s) => s.leaveLiveSession)
+  const clearRound = useRoundStore((s) => s.clearRound)
   const { disconnect } = useNetworkSession()
   const navigate = useNavigate()
 
   return () => {
     disconnect()
     leaveLiveSession()
+    clearRound()
     navigate(ROUTES.modeSelect)
   }
 }

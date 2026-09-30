@@ -4,6 +4,12 @@
 **Date:** 2026-09-29
 **Related:** `.oxlintrc.json`, `steiger.config.ts`, `docs/concepts/` (diagram conventions), issues #111, #112
 
+> **Update 2026-09-30:** Issue #111 (store decomposition) landed — see
+> [ADR-005](005-session-store-decomposition.md) for the three-store shape.
+> Issue #112 (oxlint metrics ratchet) remains staged. The Context/Consequences/
+> Follow-ups sections below describe the state at this ADR's own acceptance
+> and are left as the historical record.
+
 ## Context
 
 The app has grown to ~55 source files organized by technical role
