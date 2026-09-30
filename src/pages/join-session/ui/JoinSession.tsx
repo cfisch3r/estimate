@@ -11,11 +11,9 @@ import {
   Input,
 } from '../../../shared/ui'
 import { useConnectionPhase } from '../../../shared/lib/useConnectionPhase'
-import {
-  useSessionStore,
-  useNetworkSession,
-  useLeaveLiveSession,
-} from '../../../entities/session'
+import { ROUTES } from '../../../shared/lib/routes'
+import { useSessionStore, useNetworkSession } from '../../../entities/session'
+import { useLeaveLiveSession } from '../../../features/session-lifecycle'
 
 export function JoinSession() {
   const connectionStatus = useSessionStore((s) => s.connectionStatus)
@@ -48,7 +46,7 @@ export function JoinSession() {
   // status left in the store by some other flow.
   useEffect(() => {
     if (submitted && connectionStatus === 'connected') {
-      navigate('/estimate')
+      navigate(ROUTES.estimate)
     }
   }, [submitted, connectionStatus, navigate])
 

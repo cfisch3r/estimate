@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router'
-import { useSessionStore } from '../model/store'
-import { useNetworkSession } from '../api'
+import { useSessionStore, useNetworkSession } from '../../../entities/session'
+import { ROUTES } from '../../../shared/lib/routes'
 
 /** Tear down the workspace entirely: drop the P2P connection (if any), reset
  *  the store back to a blank slate, and navigate to mode-select. Distinct from
@@ -14,6 +14,6 @@ export function useLeaveWorkspace(): () => void {
   return () => {
     disconnect()
     leaveWorkspace()
-    navigate('/')
+    navigate(ROUTES.modeSelect)
   }
 }

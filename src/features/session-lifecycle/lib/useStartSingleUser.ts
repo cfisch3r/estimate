@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router'
-import { useSessionStore } from '../model/store'
+import { useSessionStore } from '../../../entities/session'
+import { ROUTES } from '../../../shared/lib/routes'
 
 /** Start a single-user (manual-entry) session and navigate to the workspace. */
 export function useStartSingleUser(): () => void {
@@ -8,6 +9,6 @@ export function useStartSingleUser(): () => void {
 
   return () => {
     startSingleUser()
-    navigate('/workspace')
+    navigate(ROUTES.workspace)
   }
 }

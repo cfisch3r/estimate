@@ -16,6 +16,7 @@ import {
 } from '../../../shared/ui'
 import { PHASE_INFO, RANGE_INFO } from '../../../shared/copy'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
+import { ROUTES } from '../../../shared/lib/routes'
 import { SessionSidebar } from '../../../widgets/session-sidebar'
 import {
   useSessionStore,
@@ -280,7 +281,7 @@ export function Workspace() {
         // finalized" empty state instead of reopening this now-done item.
         selectItem(null)
       }
-      navigate('/summary')
+      navigate(ROUTES.summary)
     } else {
       selectItem(items[activeIndex + 1]!.id)
     }
@@ -348,7 +349,7 @@ export function Workspace() {
             <option value="weeks">Weeks</option>
           </Select>
           <span style={{ flex: 1 }} />
-          <Button variant="ghost" onClick={() => navigate('/summary')}>
+          <Button variant="ghost" onClick={() => navigate(ROUTES.summary)}>
             <NotebookIcon size={15} />
             Summary
           </Button>
@@ -359,12 +360,12 @@ export function Workspace() {
             <SessionSidebar
               items={items}
               activeItemId={activeItemId}
-              isSummaryScreen={location.pathname === '/summary'}
+              isSummaryScreen={location.pathname === ROUTES.summary}
               onSelect={selectItem}
               onReorder={reorderItems}
               onRemove={removeItem}
               onAdd={addItem}
-              onGoSummary={() => navigate('/summary')}
+              onGoSummary={() => navigate(ROUTES.summary)}
               hideSummaryButton
             />
           </div>

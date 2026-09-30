@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router'
-import { useSessionStore } from '../model/store'
+import { useSessionStore } from '../../../entities/session'
+import { ROUTES } from '../../../shared/lib/routes'
 
 /** Start a facilitator-hosted live session and navigate to the workspace. */
 export function useStartCollaborative(): (sessionCode: string) => void {
@@ -8,6 +9,6 @@ export function useStartCollaborative(): (sessionCode: string) => void {
 
   return (sessionCode) => {
     startCollaborative(sessionCode)
-    navigate('/workspace')
+    navigate(ROUTES.workspace)
   }
 }

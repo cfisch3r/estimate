@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Card, CardTitle, CardBody, CardMeta, Input } from '../../../shared/ui'
+import { ROUTES } from '../../../shared/lib/routes'
 import { useSessionStore } from '../../../entities/session'
 
 export function SessionHistory() {
@@ -33,7 +34,7 @@ export function SessionHistory() {
         <Card
           elevation="sm"
           style={{ cursor: 'pointer' }}
-          onClick={() => navigate('/summary')}
+          onClick={() => navigate(ROUTES.summary)}
         >
           <CardTitle>{`${displayName} (current)`}</CardTitle>
           <CardMeta>{`Manual Entry · ${items.length} item${items.length === 1 ? '' : 's'} · ${unit}`}</CardMeta>

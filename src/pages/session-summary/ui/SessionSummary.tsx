@@ -1,5 +1,6 @@
 import { useLocation, useNavigate } from 'react-router'
 import { Button } from '../../../shared/ui'
+import { ROUTES } from '../../../shared/lib/routes'
 import { SessionSidebar } from '../../../widgets/session-sidebar'
 import { useSessionStore, type Item } from '../../../entities/session'
 import type { AggregateResult } from '../../../entities/estimate'
@@ -34,12 +35,12 @@ export function SessionSummary() {
       <SessionSidebar
         items={items}
         activeItemId={activeItemId}
-        isSummaryScreen={location.pathname === '/summary'}
+        isSummaryScreen={location.pathname === ROUTES.summary}
         onSelect={selectItem}
         onReorder={reorderItems}
         onRemove={removeItem}
         onAdd={addItem}
-        onGoSummary={() => navigate('/summary')}
+        onGoSummary={() => navigate(ROUTES.summary)}
         scrollableList={false}
       />
 
@@ -74,10 +75,10 @@ export function SessionSummary() {
         )}
 
         <div style={{ display: 'flex', gap: 'var(--space-2)', justifyContent: 'center' }}>
-          <Button variant="secondary" onClick={() => navigate('/workspace')}>
+          <Button variant="secondary" onClick={() => navigate(ROUTES.workspace)}>
             Back to item
           </Button>
-          <Button variant="secondary" onClick={() => navigate('/history')}>
+          <Button variant="secondary" onClick={() => navigate(ROUTES.history)}>
             View session history
           </Button>
         </div>

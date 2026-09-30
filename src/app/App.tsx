@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router'
 import { NetworkProvider } from '../entities/session'
+import { ROUTES } from '../shared/lib/routes'
 import { Header } from './Header'
 import { ModeSelect } from '../pages/mode-select'
 import { Workspace } from '../pages/workspace'
@@ -20,12 +21,12 @@ function App() {
             link above wouldn't move keyboard focus here in Firefox/Safari without it. */}
         <main id="main-content" tabIndex={-1}>
           <Routes>
-            <Route path="/" element={<ModeSelect />} />
-            <Route path="/join" element={<JoinSession />} />
-            <Route path="/estimate" element={<ParticipantEstimateView />} />
-            <Route path="/workspace" element={<Workspace />} />
-            <Route path="/summary" element={<SessionSummary />} />
-            <Route path="/history" element={<SessionHistory />} />
+            <Route path={ROUTES.modeSelect} element={<ModeSelect />} />
+            <Route path={ROUTES.join} element={<JoinSession />} />
+            <Route path={ROUTES.estimate} element={<ParticipantEstimateView />} />
+            <Route path={ROUTES.workspace} element={<Workspace />} />
+            <Route path={ROUTES.summary} element={<SessionSummary />} />
+            <Route path={ROUTES.history} element={<SessionHistory />} />
           </Routes>
         </main>
       </NetworkProvider>

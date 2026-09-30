@@ -29,7 +29,6 @@ import {
 import {
   useSessionStore,
   useNetworkSession,
-  useLeaveLiveSession,
   type LiveRound,
 } from '../../../entities/session'
 import {
@@ -38,6 +37,7 @@ import {
   ThreePointEstimateFields,
   usePhaseGuidance,
 } from '../../../features/estimate-round'
+import { useLeaveLiveSession } from '../../../features/session-lifecycle'
 
 type SubmitResult = { ok: true } | { ok: false; error: string }
 

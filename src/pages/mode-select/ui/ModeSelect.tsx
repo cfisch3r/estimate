@@ -5,12 +5,12 @@ import { SignInIcon } from '@phosphor-icons/react/dist/csr/SignIn'
 import { ArrowRightIcon } from '@phosphor-icons/react/dist/csr/ArrowRight'
 import { Card, CardTitle, CardBody, CardMeta, Tag } from '../../../shared/ui'
 import { useNavigate } from 'react-router'
+import { ROUTES } from '../../../shared/lib/routes'
+import { generateSessionCode, useNetworkSession } from '../../../entities/session'
 import {
-  generateSessionCode,
-  useNetworkSession,
   useStartSingleUser,
   useStartCollaborative,
-} from '../../../entities/session'
+} from '../../../features/session-lifecycle'
 
 function BrandMark() {
   return (
@@ -173,7 +173,7 @@ export function ModeSelect() {
           icon={<SignInIcon size={22} />}
           title="Join a collaborative session"
           description="Enter a code your facilitator shared."
-          onClick={() => navigate('/join')}
+          onClick={() => navigate(ROUTES.join)}
         />
       </div>
 
