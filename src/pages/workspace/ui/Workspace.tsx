@@ -20,6 +20,8 @@ import { ROUTES } from '../../../shared/lib/routes'
 import { SessionSidebar } from '../../../widgets/session-sidebar'
 import {
   useSessionStore,
+  useConnectionStore,
+  useRoundStore,
   useNetworkSession,
   ItemDetailShell,
   type FinalizeResult,
@@ -213,13 +215,13 @@ export function Workspace() {
   const activeItemId = useSessionStore((s) => s.activeItemId)
   const location = useLocation()
   const navigate = useNavigate()
-  const mode = useSessionStore((s) => s.mode)
-  const role = useSessionStore((s) => s.role)
-  const sessionId = useSessionStore((s) => s.sessionId)
-  const connectionStatus = useSessionStore((s) => s.connectionStatus)
-  const peerCount = useSessionStore((s) => s.peerCount)
-  const hasEverConnected = useSessionStore((s) => s.hasEverConnected)
-  const participantNames = useSessionStore((s) => s.participantNames)
+  const mode = useConnectionStore((s) => s.mode)
+  const role = useConnectionStore((s) => s.role)
+  const sessionId = useConnectionStore((s) => s.sessionId)
+  const connectionStatus = useConnectionStore((s) => s.connectionStatus)
+  const peerCount = useConnectionStore((s) => s.peerCount)
+  const hasEverConnected = useConnectionStore((s) => s.hasEverConnected)
+  const participantNames = useConnectionStore((s) => s.participantNames)
   const setSessionName = useSessionStore((s) => s.setSessionName)
   const setUnit = useSessionStore((s) => s.setUnit)
   const addItem = useSessionStore((s) => s.addItem)
@@ -229,10 +231,10 @@ export function Workspace() {
   const reorderItems = useSessionStore((s) => s.reorderItems)
   const setItemNotes = useSessionStore((s) => s.setItemNotes)
   const setItemDescription = useSessionStore((s) => s.setItemDescription)
-  const finalizeItem = useSessionStore((s) => s.finalizeItem)
-  const finalizeLiveItem = useSessionStore((s) => s.finalizeLiveItem)
-  const revealRound = useSessionStore((s) => s.revealRound)
-  const retryRound = useSessionStore((s) => s.retryRound)
+  const finalizeItem = useRoundStore((s) => s.finalizeItem)
+  const finalizeLiveItem = useRoundStore((s) => s.finalizeLiveItem)
+  const revealRound = useRoundStore((s) => s.revealRound)
+  const retryRound = useRoundStore((s) => s.retryRound)
   const { connect } = useNetworkSession()
 
   const isLiveFacilitator = mode === 'live' && role === 'facilitator'

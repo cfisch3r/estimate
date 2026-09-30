@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { Workspace } from './Workspace'
 import { createEstimate, type Estimate } from '../../../entities/estimate'
-import { useSessionStore } from '../../../entities/session'
+import { useSessionStore, useConnectionStore } from '../../../entities/session'
 import type { Item } from '../../../entities/session'
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
@@ -55,6 +55,8 @@ function resetStore() {
     unit: 'days',
     items: [],
     activeItemId: null,
+  })
+  useConnectionStore.setState({
     mode: 'manual',
     role: 'facilitator',
     sessionId: null,
@@ -206,7 +208,7 @@ describe('Workspace', () => {
   })
 
   it('shows the live session-code strip in collaborative mode', () => {
-    useSessionStore.setState({ mode: 'live', sessionId: 'K7F9Q2' })
+    useConnectionStore.setState({ mode: 'live', sessionId: 'K7F9Q2' })
     renderWorkspace()
 
     expect(screen.getByText('K7F9Q2')).toBeInTheDocument()
@@ -244,7 +246,7 @@ describe('Workspace', () => {
   })
 
   it('tells "everyone left" apart from "nobody has joined yet" in the session strip', () => {
-    useSessionStore.setState({
+    useConnectionStore.setState({
       mode: 'live',
       sessionId: 'K7F9Q2',
       connectionStatus: 'connecting',
@@ -260,13 +262,15 @@ describe('Workspace', () => {
 
 describe('Workspace — live facilitator reveal flow', () => {
   function setupRound(overrides: Partial<Item> = {}) {
-    useSessionStore.setState({
+    useConnectionStore.setState({
       mode: 'live',
       role: 'facilitator',
       sessionId: 'K7F9Q2',
       connectionStatus: 'connected',
       peerCount: 2,
       participantNames: { facilitator: 'Facilitator', p1: 'Sam', p2: 'Alex' },
+    })
+    useSessionStore.setState({
       items: [item({ id: 'i1', title: 'Retry queue', ...overrides })],
       activeItemId: 'i1',
     })
@@ -386,8 +390,8 @@ describe('Workspace — live facilitator reveal flow', () => {
   })
 
   it('leaves the manual estimate inputs in place for single-user mode', () => {
+    useConnectionStore.setState({ mode: 'manual' })
     useSessionStore.setState({
-      mode: 'manual',
       items: [item({ id: 'i1', title: 'Solo' })],
       activeItemId: 'i1',
     })

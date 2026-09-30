@@ -1,5 +1,7 @@
-export { useSessionStore } from './model/store'
-export type { FinalizeResult } from './model/store'
+export { useSessionStore } from './model/session'
+export { useConnectionStore } from './model/connection'
+export { useRoundStore } from './model/round'
+export type { FinalizeResult } from './model/round'
 export type {
   Item,
   LiveRound,

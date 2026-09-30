@@ -1,4 +1,5 @@
 export { useStartSingleUser } from './lib/useStartSingleUser'
 export { useStartCollaborative } from './lib/useStartCollaborative'
+export { useJoinLiveSession } from './lib/useJoinLiveSession'
 export { useLeaveWorkspace } from './lib/useLeaveWorkspace'
 export { useLeaveLiveSession } from './lib/useLeaveLiveSession'

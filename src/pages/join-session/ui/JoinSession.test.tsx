@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { JoinSession } from './JoinSession'
 import { RECONNECT_GRACE_MS } from '../../../shared/lib/useConnectionPhase'
-import { useSessionStore } from '../../../entities/session'
+import { useSessionStore, useConnectionStore } from '../../../entities/session'
 
 const { connectMock, disconnectMock, navigateMock } = vi.hoisted(() => ({
   connectMock: vi.fn(),
@@ -35,6 +35,8 @@ function resetStore() {
     unit: 'days',
     items: [],
     activeItemId: null,
+  })
+  useConnectionStore.setState({
     mode: 'manual',
     role: 'facilitator',
     sessionId: null,
@@ -80,7 +82,7 @@ describe('JoinSession', () => {
     await user.type(screen.getByLabelText('Your name'), 'Sam Rivera')
     await user.click(screen.getByRole('button', { name: 'Join' }))
 
-    expect(useSessionStore.getState()).toMatchObject({
+    expect(useConnectionStore.getState()).toMatchObject({
       mode: 'live',
       role: 'participant',
       sessionId: 'K7F9Q2',
@@ -96,14 +98,14 @@ describe('JoinSession', () => {
     await user.type(screen.getByLabelText('Session code'), 'K7F9Q2')
     await user.type(screen.getByLabelText('Your name'), 'Sam')
 
-    act(() => useSessionStore.setState({ connectionStatus: 'connecting' }))
+    act(() => useConnectionStore.setState({ connectionStatus: 'connecting' }))
 
     expect(screen.getByText('Connecting to peers…')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Join' })).toBeDisabled()
   })
 
   it('shows the failure banner with a Retry action when disconnected', () => {
-    useSessionStore.setState({ connectionStatus: 'disconnected' })
+    useConnectionStore.setState({ connectionStatus: 'disconnected' })
     renderJoinSession()
 
     expect(screen.getByText(/Couldn.t reach the session/)).toBeInTheDocument()
@@ -194,14 +196,14 @@ describe('JoinSession', () => {
     await user.click(screen.getByRole('button', { name: 'Join' }))
     expect(navigateMock).not.toHaveBeenCalled()
 
-    act(() => useSessionStore.setState({ connectionStatus: 'connected' }))
+    act(() => useConnectionStore.setState({ connectionStatus: 'connected' }))
 
     expect(navigateMock).toHaveBeenCalledTimes(1)
     expect(navigateMock).toHaveBeenCalledWith('/estimate')
   })
 
   it('does not route away on mount from a stale connected status it did not initiate', () => {
-    useSessionStore.setState({ connectionStatus: 'connected' })
+    useConnectionStore.setState({ connectionStatus: 'connected' })
     renderJoinSession()
 
     expect(navigateMock).not.toHaveBeenCalled()

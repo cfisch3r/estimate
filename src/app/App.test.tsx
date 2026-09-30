@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import App from './App'
-import { useSessionStore } from '../entities/session'
+import { useSessionStore, useConnectionStore } from '../entities/session'
 
 vi.mock('../entities/session/api/sessionCode', () => ({
   generateSessionCode: () => 'LIVECODE',
@@ -25,6 +25,8 @@ function resetStore() {
     unit: 'days',
     items: [],
     activeItemId: null,
+  })
+  useConnectionStore.setState({
     mode: 'manual',
     role: 'facilitator',
     sessionId: null,

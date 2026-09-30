@@ -28,6 +28,8 @@ import {
 } from '../../../entities/estimate'
 import {
   useSessionStore,
+  useConnectionStore,
+  useRoundStore,
   useNetworkSession,
   type LiveRound,
 } from '../../../entities/session'
@@ -489,17 +491,17 @@ function Lobby({
 }
 
 export function ParticipantEstimateView() {
-  const sessionId = useSessionStore((s) => s.sessionId)
+  const sessionId = useConnectionStore((s) => s.sessionId)
   const sessionName = useSessionStore((s) => s.sessionName)
-  const myName = useSessionStore((s) => s.myName)
-  const connectionStatus = useSessionStore((s) => s.connectionStatus)
-  const hasEverConnected = useSessionStore((s) => s.hasEverConnected)
+  const myName = useConnectionStore((s) => s.myName)
+  const connectionStatus = useConnectionStore((s) => s.connectionStatus)
+  const hasEverConnected = useConnectionStore((s) => s.hasEverConnected)
   const unit = useSessionStore((s) => s.unit)
-  const peerCount = useSessionStore((s) => s.peerCount)
-  const participantId = useSessionStore((s) => s.participantId)
-  const participantNames = useSessionStore((s) => s.participantNames)
-  const liveRound = useSessionStore((s) => s.liveRound)
-  const submitEstimate = useSessionStore((s) => s.submitEstimate)
+  const peerCount = useConnectionStore((s) => s.peerCount)
+  const participantId = useConnectionStore((s) => s.participantId)
+  const participantNames = useConnectionStore((s) => s.participantNames)
+  const liveRound = useRoundStore((s) => s.liveRound)
+  const submitEstimate = useRoundStore((s) => s.submitEstimate)
   const leave = useLeaveLiveSession()
   const { sendEstimate, connect } = useNetworkSession()
   // Down = we reached the session at some point and now hold no peers. Derived

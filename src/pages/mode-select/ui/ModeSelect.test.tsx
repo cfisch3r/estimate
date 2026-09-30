@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { ModeSelect } from './ModeSelect'
-import { useSessionStore } from '../../../entities/session'
+import { useSessionStore, useConnectionStore } from '../../../entities/session'
 
 const { connectMock, navigateMock } = vi.hoisted(() => ({
   connectMock: vi.fn(),
@@ -31,13 +31,15 @@ function renderModeSelect() {
 
 function resetStore() {
   useSessionStore.setState({
+    items: [],
+    activeItemId: null,
+  })
+  useConnectionStore.setState({
     mode: 'manual',
     role: 'facilitator',
     sessionId: null,
     connectionStatus: 'idle',
     peerCount: 0,
-    items: [],
-    activeItemId: null,
   })
 }
 
@@ -68,7 +70,7 @@ describe('ModeSelect', () => {
 
     await user.click(screen.getByRole('button', { name: /Start single-user mode/ }))
 
-    expect(useSessionStore.getState().mode).toBe('manual')
+    expect(useConnectionStore.getState().mode).toBe('manual')
     expect(navigateMock).toHaveBeenCalledTimes(1)
     expect(navigateMock).toHaveBeenCalledWith('/workspace')
   })
@@ -81,7 +83,7 @@ describe('ModeSelect', () => {
       screen.getByRole('button', { name: /Start collaborative estimation/ }),
     )
 
-    const state = useSessionStore.getState()
+    const state = useConnectionStore.getState()
     expect(state.mode).toBe('live')
     expect(state.sessionId).toBe('LIVECODE')
     expect(connectMock).toHaveBeenCalledWith('LIVECODE')

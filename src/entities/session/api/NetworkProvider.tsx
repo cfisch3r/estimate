@@ -6,7 +6,9 @@ import type { ConnectionState, ConnectionStatus } from './connection'
 import type { RosterEntry } from './actions'
 import { NetworkSessionContext, type NetworkSessionApi } from './networkSessionContext'
 import { withKindDrivenRetry } from './retryPolicy'
-import { useSessionStore } from '../model/store'
+import { useSessionStore } from '../model/session'
+import { useConnectionStore } from '../model/connection'
+import { useRoundStore } from '../model/round'
 import { createEstimate } from '../../estimate'
 import type { SessionRole } from '../model/types'
 
@@ -88,7 +90,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     // state, gated through deriveConnectionStatus so a participant isn't told
     // it's connected before facilitatorPeerId (above) is known.
     const syncConnectionStatus = (trackerState: ConnectionState) => {
-      const { role, setConnectionStatus, setPeerCount } = useSessionStore.getState()
+      const { role, setConnectionStatus, setPeerCount } = useConnectionStore.getState()
       setConnectionStatus(
         deriveConnectionStatus(role, trackerState.status, facilitatorPeerId !== null),
       )
@@ -107,6 +109,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     // `requestSnapshot` pull.
     const computeSnapshot = () => {
       const state = useSessionStore.getState()
+      const connection = useConnectionStore.getState()
       const active = state.items.find((item) => item.id === state.activeItemId) ?? null
       const currentItem = active
         ? { id: active.id, title: active.title, description: active.description }
@@ -120,7 +123,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       // owner") — pre-reveal, the roster (below) is what drives "N of M submitted".
       const submissions = revealed && active ? active.submissions : []
       const roster = buildRoster(
-        state.participantNames,
+        connection.participantNames,
         active?.submissions.map((s) => s.participantId) ?? [],
         new Set(peerParticipants.values()),
       )
@@ -140,8 +143,12 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     // typing, name edits, …).
     let lastSnapshotKey = ''
     const broadcastFacilitatorState = () => {
-      const state = useSessionStore.getState()
-      if (state.mode !== 'live' || state.role !== 'facilitator' || !state.sessionId)
+      const connection = useConnectionStore.getState()
+      if (
+        connection.mode !== 'live' ||
+        connection.role !== 'facilitator' ||
+        !connection.sessionId
+      )
         return
       const snapshot = computeSnapshot()
       const key = JSON.stringify({
@@ -162,7 +169,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     // its own `participantId -> display name` on connect and again whenever a peer
     // joins, letting reveal rows show real names instead of "Teammate N".
     const announceSelf = () => {
-      const state = useSessionStore.getState()
+      const state = useConnectionStore.getState()
       if (state.mode !== 'live' || state.myName.trim().length === 0) return
       const participantId =
         state.role === 'facilitator' ? 'facilitator' : state.participantId
@@ -181,23 +188,22 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
         facilitatorPeerId = null
         lastPulledFacilitatorPeerId = null
         resendInFlightKey = null
-        const store = useSessionStore
         const unsubscribers = [
           session.onConnectionStateChange(syncConnectionStatus),
           session.onEstimate((itemId, estimate, _peerId, round) =>
-            store.getState().applyRemoteEstimate(itemId, estimate, round),
+            useRoundStore.getState().applyRemoteEstimate(itemId, estimate, round),
           ),
           session.onSyncState((snapshot) => {
-            store.getState().applySyncState(snapshot)
+            useRoundStore.getState().applySyncState(snapshot)
             // Correctness rests on this, not on sendEstimate's ack (ADR-003,
             // "Acknowledged submissions"): on every snapshot, check whether this
             // participant's own submission actually landed, and re-send if not.
             // This is what recovers a submission that arrived but whose ack was
             // lost on the way back, as well as one that never arrived at all.
-            const state = store.getState()
-            const liveRound = state.liveRound
+            const { role, participantId } = useConnectionStore.getState()
+            const { liveRound } = useRoundStore.getState()
             if (
-              state.role !== 'participant' ||
+              role !== 'participant' ||
               !liveRound ||
               liveRound.revealed ||
               !liveRound.mySubmission
@@ -205,7 +211,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
               return
             }
             const myEntry = liveRound.roster.find(
-              (entry) => entry.participantId === state.participantId,
+              (entry) => entry.participantId === participantId,
             )
             if (myEntry?.submitted) return
             // A burst of snapshots (other participants submitting in quick
@@ -215,7 +221,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             const resendKey = `${liveRound.item.id}:${liveRound.round}`
             if (resendInFlightKey === resendKey) return
             const result = createEstimate({
-              participantId: state.participantId,
+              participantId,
               ...liveRound.mySubmission,
             })
             if (!result.ok) return
@@ -232,7 +238,9 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
           session.onRequestSnapshot(() => computeSnapshot()),
           session.onAnnounce((announce, peerId) => {
             peerParticipants.set(peerId, announce.participantId)
-            store.getState().applyParticipantName(announce.participantId, announce.name)
+            useConnectionStore
+              .getState()
+              .applyParticipantName(announce.participantId, announce.name)
             // A peer that has just connected or reconnected pulls the snapshot
             // itself, rather than the facilitator inferring the event and pushing
             // one (ADR-003, "Snapshot delivery: pull on arrival"). Single fetch,
@@ -240,7 +248,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             // changed since the last pull.
             if (
               announce.participantId === 'facilitator' &&
-              store.getState().role === 'participant'
+              useConnectionStore.getState().role === 'participant'
             ) {
               facilitatorPeerId = peerId
               const current = sessionRef.current?.getConnectionState()
@@ -252,7 +260,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
                   if (!session) return Promise.reject(new Error('No active session'))
                   return session.requestSnapshot(peerId)
                 })
-                  .then((snapshot) => store.getState().applySyncState(snapshot))
+                  .then((snapshot) => useRoundStore.getState().applySyncState(snapshot))
                   .catch((error) => {
                     console.warn('requestSnapshot pull failed after retries:', error)
                   })
@@ -280,8 +288,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             // Roster pruning is facilitator-only: Item.submissions (the "already
             // submitted" guard below) only exists on the facilitator's copy of
             // state.items, so this guard is meaningless on a participant client.
-            const state = store.getState()
-            if (state.role !== 'facilitator') return
+            if (useConnectionStore.getState().role !== 'facilitator') return
             // Two tabs in one browser share a participantId (see the JoinSession
             // warning): losing one connection must not prune a name still backed by
             // another live connection.
@@ -290,14 +297,16 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             // A participant who already submitted keeps their estimate in the
             // aggregate (ADR-003) — pruning their name would anonymise an otherwise
             // still-attributed, already-recorded row on reveal.
+            const state = useSessionStore.getState()
             const activeItem = state.items.find((item) => item.id === state.activeItemId)
             const hasSubmitted =
               activeItem?.submissions.some((s) => s.participantId === participantId) ??
               false
             if (hasSubmitted) return
-            store.getState().removeParticipant(participantId)
+            useConnectionStore.getState().removeParticipant(participantId)
           }),
-          store.subscribe(broadcastFacilitatorState),
+          useSessionStore.subscribe(broadcastFacilitatorState),
+          useConnectionStore.subscribe(broadcastFacilitatorState),
           // Every client still re-announces itself whenever a peer joins, so a
           // newcomer's reveal rows show real names instead of "Teammate N" (the
           // snapshot itself is now pulled by the newcomer, not pushed here).
@@ -309,12 +318,12 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       },
       disconnect: () => {
         teardown()
-        const { setConnectionStatus, setPeerCount } = useSessionStore.getState()
+        const { setConnectionStatus, setPeerCount } = useConnectionStore.getState()
         setConnectionStatus('idle')
         setPeerCount(0)
       },
       sendEstimate: (itemId, estimate, round) => {
-        const { role } = useSessionStore.getState()
+        const { role } = useConnectionStore.getState()
         // Facilitator-only clients never submit their own estimate over the
         // network (Workspace drives that side directly), so this is
         // participant-only in practice.
