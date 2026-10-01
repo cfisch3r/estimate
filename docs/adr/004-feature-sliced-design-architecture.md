@@ -6,9 +6,14 @@
 
 > **Update 2026-09-30:** Issue #111 (store decomposition) landed — see
 > [ADR-005](005-session-store-decomposition.md) for the three-store shape.
-> Issue #112 (oxlint metrics ratchet) remains staged. The Context/Consequences/
-> Follow-ups sections below describe the state at this ADR's own acceptance
-> and are left as the historical record.
+> Issue #112 landed as **advisory metrics, not a ratchet**: `pnpm metrics` ranks
+> files by `fta-cli` score × git churn and names each file's worst function
+> (limits in `.oxlintrc.metrics.json`, kept out of the default `pnpm lint`). The
+> `architecture-review` subagent treats the output as a prompt to inspect cohesion,
+> never as a finding or a gate — metrics like file length are weak proxies, and a
+> hard baseline invites gaming them. The Context/Consequences/Follow-ups sections
+> below describe the state at this ADR's own acceptance and are left as the
+> historical record.
 
 ## Context
 

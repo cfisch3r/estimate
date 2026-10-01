@@ -71,6 +71,7 @@ pnpm test:e2e             # Playwright, real WebRTC via a local self-hosted rela
 pnpm test:e2e:real-world  # same specs against production signaling (public Nostr relays)
 pnpm test:e2e:ui          # Playwright UI mode, for local debugging
 pnpm deadcode             # knip — unused exports/files/dependencies
+pnpm metrics              # advisory complexity/size hotspots in the diff (`pnpm metrics all` for src/); never gates
 ```
 
 Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm format:check`, `pnpm test`,

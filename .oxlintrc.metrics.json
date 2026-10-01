@@ -1,0 +1,36 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": [],
+  "categories": { "correctness": "off" },
+  "rules": {
+    "complexity": ["warn", { "max": 10 }],
+    "max-lines-per-function": [
+      "warn",
+      { "max": 60, "skipBlankLines": true, "skipComments": true }
+    ],
+    "max-lines": ["warn", { "max": 300, "skipBlankLines": true, "skipComments": true }],
+    "max-depth": ["warn", { "max": 4 }],
+    "max-params": ["warn", { "max": 4 }]
+  },
+  "overrides": [
+    {
+      "files": ["**/*.tsx"],
+      "rules": {
+        "max-lines": [
+          "warn",
+          { "max": 450, "skipBlankLines": true, "skipComments": true }
+        ]
+      }
+    },
+    {
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/testHelpers.ts"],
+      "rules": {
+        "complexity": "off",
+        "max-lines": "off",
+        "max-lines-per-function": "off",
+        "max-depth": "off",
+        "max-params": "off"
+      }
+    }
+  ]
+}

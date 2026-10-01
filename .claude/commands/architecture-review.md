@@ -24,7 +24,9 @@ Spawn the `architecture-review` subagent (subagent_type: `architecture-review`) 
 - the resolved scope (diff / all / path),
 - for diff mode, the diff text (or instruct it which `git diff` to run),
 - a reminder to run `steiger ./src` and `oxlint src` itself first and never restate
-  either tool's own findings — its report is judgment calls only.
+  either tool's own findings — its report is judgment calls only,
+- a reminder to run `pnpm metrics` (`pnpm metrics all` in full-audit mode) and treat its
+  hotspot list as prompts to inspect cohesion, not as findings.
 
 ## Relay
 
