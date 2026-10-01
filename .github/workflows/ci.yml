@@ -129,6 +129,25 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm deadcode
 
+  # Real WebRTC, real browser contexts, signaling via a locally self-hosted relay
+  # (no public third-party dependency) — see ADR-007. Blocking, not a separate
+  # opt-in layer: the local relay removes the flakiness source ADR-002 originally
+  # worried about, so this is held to the same bar as the rest of CI.
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-e2e
+      - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
+
   codeql:
     name: codeql
     runs-on: ubuntu-latest
@@ -144,7 +163,7 @@ jobs:
 
   ci-passed:
     name: ci-passed
-    needs: [lint, arch, format, typecheck, test, build, deadcode]
+    needs: [lint, arch, format, typecheck, test, build, deadcode, e2e]
     runs-on: ubuntu-latest
     steps:
       - run: exit 0
