@@ -107,6 +107,23 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
 - Guard/validation functions return structured results (`{fired, deviationPct}`, `{ok, value/error}`) rather than throwing or returning bare booleans, so callers can access the reasoning, not just the verdict.
 - **A test asserting a callback fired in response to one simulated user action should assert `toHaveBeenCalledTimes(1)` alongside `toHaveBeenCalledWith(...)`, not the latter alone.** `toHaveBeenCalledWith` passes whether the callback fired once correctly or twice (once right, once wrong) — it can't tell a clean single fire apart from a double-fire bug (e.g. a click handler that also triggers a parent's pointerdown listener via bubbling). See `PhasePicker.test.tsx`'s step-dot/nudge-arrow tests for the pattern.
 
+## Accessibility & browser support
+
+- **Automated checks**: oxlint's `jsx-a11y` plugin (`.oxlintrc.json`, enforced via
+  `pnpm lint`) catches static ARIA/semantics issues; `jest-axe` scans run in the
+  interactive components' own test files (enforced via `pnpm test`); a real-browser
+  `@axe-core/playwright` pass runs in `e2e/specs/accessibility.spec.ts` against the
+  app's main screens (enforced via `pnpm test:e2e`) — this is the one that actually
+  catches `color-contrast` and other layout-dependent rules jsdom can't evaluate.
+  `color-contrast` is disabled there pending a known design-system-token gap
+  (Nocturne's `.text-muted`, tracked in #123) rather than silently passing or
+  blocking every PR on an unrelated, pre-existing issue.
+- **Supported browsers**: the last 2 versions of evergreen Chrome, Firefox, Safari,
+  and Edge. No IE11 or other legacy-engine support — Vite's own defaults already
+  target modern JS, so this is a statement of intent for manual QA and bug triage
+  (e.g. "does this reproduce on the oldest browser we claim to support"), not a
+  build-time enforcement mechanism.
+
 ## Commit conventions
 
 - Do not add a `Co-Authored-By: Claude` (or similar AI co-author) trailer to commit messages in this repo.
