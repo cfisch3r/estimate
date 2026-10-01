@@ -1,5 +1,24 @@
 import type { Page } from '@playwright/test'
 import { expect } from '@playwright/test'
+import AxeBuilder from '@axe-core/playwright'
+
+/** Fails the test with axe-core's own violation report (rule, impact, and
+ *  every matching node) if the current page has any accessibility
+ *  violations. Runs in a real browser — unlike the jsdom-based jest-axe
+ *  scans on individual components, this one can actually evaluate
+ *  color-contrast and other layout-dependent rules against real rendering.
+ *
+ *  color-contrast is disabled: Nocturne's `.text-muted` token measures
+ *  4.49:1 against the app background, just under AA's 4.5:1, and it's used
+ *  throughout the app — but `nocturne.css` is a verbatim design-system port
+ *  this codebase doesn't patch locally (see AGENTS.md). Tracked in #123;
+ *  remove this exclusion once the token itself is fixed upstream. */
+export async function expectNoA11yViolations(page: Page): Promise<void> {
+  const { violations } = await new AxeBuilder({ page })
+    .disableRules(['color-contrast'])
+    .analyze()
+  expect(violations, JSON.stringify(violations, null, 2)).toEqual([])
+}
 
 /** `generateSessionCode()`'s alphabet (`entities/session/api/sessionCode.ts`):
  *  Crockford base32 minus the ambiguous 0/O/1/I/L/U. */
