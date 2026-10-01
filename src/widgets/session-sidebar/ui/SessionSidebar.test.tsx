@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { axe } from 'jest-axe'
 import { SessionSidebar } from './SessionSidebar'
 import type { Item } from '../../../entities/session'
 
@@ -36,6 +37,16 @@ function renderSidebar(props: Partial<Parameters<typeof SessionSidebar>[0]> = {}
 }
 
 describe('SessionSidebar', () => {
+  it('has no axe violations', async () => {
+    const { container } = renderSidebar()
+
+    // color-contrast needs real layout/computed font metrics jsdom doesn't
+    // provide; real-browser contrast coverage lives in the e2e axe pass.
+    expect(
+      await axe(container, { rules: { 'color-contrast': { enabled: false } } }),
+    ).toHaveNoViolations()
+  })
+
   it('shows the finalized/total count', () => {
     renderSidebar({
       items: [item('1', 'A', finalized), item('2', 'B'), item('3', 'C')],

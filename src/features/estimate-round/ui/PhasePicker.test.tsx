@@ -1,9 +1,20 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { axe } from 'jest-axe'
 import { PhasePicker } from './PhasePicker'
 
 describe('PhasePicker', () => {
+  it('has no axe violations', async () => {
+    const { container } = render(<PhasePicker index={2} onChange={vi.fn()} />)
+
+    // color-contrast needs real layout/computed font metrics jsdom doesn't
+    // provide; real-browser contrast coverage lives in the e2e axe pass.
+    expect(
+      await axe(container, { rules: { 'color-contrast': { enabled: false } } }),
+    ).toHaveNoViolations()
+  })
+
   it('highlights the active phase label for the given index', () => {
     render(<PhasePicker index={2} onChange={vi.fn()} />)
 

@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
 import { ModeSelect } from './ModeSelect'
 import { useSessionStore, useConnectionStore } from '../../../entities/session'
@@ -50,6 +51,16 @@ beforeEach(() => {
 })
 
 describe('ModeSelect', () => {
+  it('has no axe violations', async () => {
+    const { container } = renderModeSelect()
+
+    // color-contrast needs real layout/computed font metrics jsdom doesn't
+    // provide; real-browser contrast coverage lives in the e2e axe pass.
+    expect(
+      await axe(container, { rules: { 'color-contrast': { enabled: false } } }),
+    ).toHaveNoViolations()
+  })
+
   it('offers the three entry paths', () => {
     renderModeSelect()
 
