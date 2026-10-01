@@ -46,9 +46,18 @@ cannot make:
    (e.g. the old `leaveWorkspace`, which touched both store state and the network
    connection) should live once split across slices.
 
-**Anti-gaming check**: flag any *new* `// oxlint-disable` comment in the diff that
-isn't accompanied by an update to `oxlint-suppressions.json` (once issue #112 lands) —
-the suppression baseline is the one sanctioned way to grandfather a violation.
+**Metrics hotspots (advisory)**: also run `pnpm metrics` (diff mode) or
+`pnpm metrics all` (full-audit mode). It prints at most 5 files, ranked by fta score ×
+git churn, with each file's worst function (files qualify at fta ≥ 60, or in diff mode when a
+touched file has an over-limit function per `.oxlintrc.metrics.json`). Treat every line as a **prompt to look**, not
+a finding: read the file and ask whether it has more than one reason to change. A large
+but cohesive file is fine — say nothing. Report only when you can name the separate
+responsibilities and the seam to split along. Never recommend splitting, extracting
+helpers, or trimming code just to lower a number; a split that merely redistributes lines
+is worse than none. If the output is empty, there is nothing to report.
+
+**Anti-gaming check**: flag any *new* `// oxlint-disable` comment in the diff — there is
+no sanctioned baseline, so each one needs a stated reason.
 
 ## Output
 

@@ -9,6 +9,14 @@
 > Issue #112 (oxlint metrics ratchet) remains staged. The Context/Consequences/
 > Follow-ups sections below describe the state at this ADR's own acceptance
 > and are left as the historical record.
+>
+> **Update 2026-10-01:** Issue #112 landed as **advisory metrics, not a ratchet**:
+> `pnpm metrics` ranks files by `fta-cli` score × git churn and names each file's
+> worst function (limits in `.oxlintrc.metrics.json`, kept out of the default
+> `pnpm lint`). The `architecture-review` subagent treats the output as a prompt to
+> inspect cohesion, never as a finding or a gate — metrics like file length are weak
+> proxies, and a hard baseline invites gaming them. The ratchet mentioned in this
+> ADR's body was therefore not built.
 
 ## Context
 
@@ -92,7 +100,7 @@ of truth; skills/docs point at configs rather than restating rules):
    `entities/session/model/` unchanged in this migration; splitting it correctly is
    real design work bundled into a separate PR so a risky state-store decomposition
    isn't reviewed alongside a large file-move migration.
-3. **Metrics ratchet (issue #112)** — oxlint's complexity/size metric rules
+3. **Metrics ratchet (issue #112; superseded, see the 2026-10-01 update)** — oxlint's complexity/size metric rules
    (`complexity`, `max-lines`, `max-lines-per-function`, `max-depth`, `max-params`,
    `max-statements`) are not enabled in this migration. Several existing files
    (`Workspace.tsx` at 989 lines, `NetworkProvider.test.tsx`, `store.test.ts`) would
@@ -154,13 +162,13 @@ filenames or from the file's original directory:
 - `state/store.ts` remains one monolithic file until issue #111 lands — FSD's
   per-slice state ownership isn't actually true yet for the biggest piece of state
   in the app.
-- Complexity/size metrics stay unenforced until issue #112 lands — large files
+- Complexity/size metrics stay unenforced (superseded: advisory only, see the 2026-10-01 update) — large files
   (`Workspace.tsx`) aren't flagged by a scanner yet, only by the new
   `architecture-review` subagent's judgment.
 
 **Follow-ups / revisit triggers**
 - Issue #111 — decompose `state/store.ts` into entity/feature-owned state.
-- Issue #112 — oxlint suppression-baseline ratchet, then enable metric rules.
+- Issue #112 — oxlint suppression-baseline ratchet, then enable metric rules (superseded: see the 2026-10-01 update).
 - Revisit whether `processes/` is needed the first time a multi-step cross-feature
   flow emerges (`widgets/` is already in use — see Decision).
 
