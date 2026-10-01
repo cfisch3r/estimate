@@ -48,7 +48,8 @@ cannot make:
 
 **Metrics hotspots (advisory)**: also run `pnpm metrics` (diff mode) or
 `pnpm metrics all` (full-audit mode). It prints at most 5 files, ranked by fta score ×
-git churn, with each file's worst function. Treat every line as a **prompt to look**, not
+git churn, with each file's worst function (files qualify at fta ≥ 60, or in diff mode when a
+touched file has an over-limit function per `.oxlintrc.metrics.json`). Treat every line as a **prompt to look**, not
 a finding: read the file and ask whether it has more than one reason to change. A large
 but cohesive file is fine — say nothing. Report only when you can name the separate
 responsibilities and the seam to split along. Never recommend splitting, extracting
