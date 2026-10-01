@@ -18,6 +18,7 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/adr/004-feature-sliced-design-architecture.md` — accepted decision on Feature-Sliced Design (FSD) as the enforced architecture: the adopted layer set (`app/pages/widgets/features/entities/shared`), the slice mapping, and the two staged follow-ups (store decomposition, issue #111; oxlint metrics ratchet, issue #112). `.claude/skills/fsd-architecture/SKILL.md` has the day-to-day "which slice does new code belong in" guidance; `steiger.config.ts` is the enforcement source of truth for layer/slice/public-API boundaries
 - `docs/adr/005-session-store-decomposition.md` — accepted decision on splitting `entities/session`'s monolithic store into three per-concern stores (`session.ts`, `connection.ts`, `round.ts`; navigation is out of scope — see ADR-006). Implemented in issue #111.
 - `docs/adr/006-router-adoption.md` — accepted decision on replacing the hand-rolled `currentScreen`/`goToScreen` navigation state with `react-router`, resolving an FSD layer-direction conflict ADR-005 hit
+- `docs/adr/008-accessibility-testing-strategy.md` — accepted decision on the three-layer automated accessibility stack (oxlint `jsx-a11y`, `jest-axe` component scans, real-browser `@axe-core/playwright` e2e scans) and the deliberate, tracked `color-contrast` exclusion (issue #123)
 - `design_handoff_estimate_app/` — the original design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
 - `design_handoffs/epic-0010-screen-design-review/` — the Epic-0010 redesign handoff; **supersedes the entry flow** of the original handoff (mode-selection screen + unified Workspace) and is the source of truth for the participant estimating and facilitator reveal flows.
 - `design_handoffs/design_handoff_uncertainty_range/` — the Phase Picker + guidance-aware Range Bar handoff for PRD §6.1's cone-of-uncertainty guard; high-fidelity design reference, not literal production code (see its README for known implementation deviations).
@@ -106,6 +107,19 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
 - **Nocturne's `src/design/nocturne.css` is a verbatim, unmodified port** of the design system's canonical stylesheet — don't edit it to add app-specific styling. New composed patterns built from Nocturne primitives (e.g. `radio-tile.css`) live in their own file instead, so `nocturne.css` stays a clean diff against its source if the design system is ever re-pulled.
 - Guard/validation functions return structured results (`{fired, deviationPct}`, `{ok, value/error}`) rather than throwing or returning bare booleans, so callers can access the reasoning, not just the verdict.
 - **A test asserting a callback fired in response to one simulated user action should assert `toHaveBeenCalledTimes(1)` alongside `toHaveBeenCalledWith(...)`, not the latter alone.** `toHaveBeenCalledWith` passes whether the callback fired once correctly or twice (once right, once wrong) — it can't tell a clean single fire apart from a double-fire bug (e.g. a click handler that also triggers a parent's pointerdown listener via bubbling). See `PhasePicker.test.tsx`'s step-dot/nudge-arrow tests for the pattern.
+
+## Accessibility & browser support
+
+Automated accessibility checking (oxlint `jsx-a11y`, `jest-axe` component scans,
+real-browser `@axe-core/playwright` e2e scans, and the deliberate, tracked
+`color-contrast` exclusion) is documented in
+[ADR-008](docs/adr/008-accessibility-testing-strategy.md).
+
+- **Supported browsers**: the last 2 versions of evergreen Chrome, Firefox, Safari,
+  and Edge. No IE11 or other legacy-engine support — Vite's own defaults already
+  target modern JS, so this is a statement of intent for manual QA and bug triage
+  (e.g. "does this reproduce on the oldest browser we claim to support"), not a
+  build-time enforcement mechanism.
 
 ## Commit conventions
 

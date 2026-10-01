@@ -59,11 +59,31 @@
   font-size: 15px;
   color: var(--color-neutral-300);
   border: 1px solid var(--color-neutral-800);
-  cursor: pointer;
 }
 .session-sidebar-row-active {
   color: var(--color-text);
   border-color: var(--color-accent);
+}
+.session-sidebar-row-select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  background: none;
+  border: none;
+  margin: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.session-sidebar-row-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .session-sidebar-grip {
   color: var(--color-neutral-500);

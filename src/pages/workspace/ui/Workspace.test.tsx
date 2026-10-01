@@ -198,7 +198,7 @@ describe('Workspace', () => {
     })
     renderWorkspace()
 
-    await user.click(screen.getByRole('heading', { name: 'Typoo' }))
+    await user.click(screen.getByRole('button', { name: 'Typoo' }))
     const input = screen.getByLabelText('Item title')
     await user.clear(input)
     await user.type(input, 'Fixed title{Enter}')
@@ -342,7 +342,7 @@ describe('Workspace — live facilitator reveal flow', () => {
     setupRound({ revealed: true, submissions: [estimate('p1')] })
     renderWorkspace()
 
-    await user.click(screen.getByRole('button', { name: /Retry/ }))
+    await user.click(screen.getByRole('button', { name: 'Retry round' }))
 
     const stored = useSessionStore.getState().items[0]!
     expect(stored.revealed).toBe(false)
@@ -363,7 +363,7 @@ describe('Workspace — live facilitator reveal flow', () => {
       screen.getByRole('button', { name: 'Update & view summary' }),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Reopen item' })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Retry/ })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry round' })).not.toBeInTheDocument()
     expect(
       screen.queryByRole('button', { name: 'Finalize & view summary' }),
     ).not.toBeInTheDocument()
