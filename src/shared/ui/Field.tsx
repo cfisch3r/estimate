@@ -14,7 +14,12 @@ export function Field({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
   return <div className={['field', className].filter(Boolean).join(' ')} {...props} />
 }
 
+// A generic pass-through wrapper: oxlint can't see through the `{...props}`
+// spread to confirm a literal `htmlFor` at this definition site, but every
+// call site passes one (verified: ThreePointEstimateFields, JoinSession,
+// ItemDetailShell) — the real check belongs at the call site, not here.
 export function FieldLabel(props: LabelHTMLAttributes<HTMLLabelElement>) {
+  // oxlint-disable-next-line jsx-a11y/label-has-associated-control
   return <label {...props} />
 }
 

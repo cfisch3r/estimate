@@ -65,7 +65,6 @@ function SidebarRow({
     <div
       draggable
       data-active={isActive}
-      onClick={onSelect}
       onDragStart={onDragStart}
       onDragOver={(e) => {
         e.preventDefault()
@@ -80,15 +79,11 @@ function SidebarRow({
         boxShadow: isDropTarget ? '0 0 0 2px var(--color-accent)' : undefined,
       }}
     >
-      <span
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 'var(--space-2)',
-          minWidth: 0,
-          overflow: 'hidden',
-        }}
-      >
+      {/* A native button, not the row div, carries the select click/keyboard
+       *  handler — a clickable div isn't keyboard-operable or announced as
+       *  interactive to assistive tech, and the remove button below must stay
+       *  a sibling rather than nested inside it. */}
+      <button type="button" className="session-sidebar-row-select" onClick={onSelect}>
         <DotsSixVerticalIcon size={14} className="session-sidebar-grip" />
         {isFinalized && (
           <CheckCircleIcon
@@ -98,16 +93,8 @@ function SidebarRow({
           />
         )}
         {isActive && !isFinalized && <span className="session-sidebar-marker">▷</span>}
-        <span
-          style={{
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {item.title}
-        </span>
-      </span>
+        <span className="session-sidebar-row-label">{item.title}</span>
+      </button>
       <Button
         ref={removeRef}
         variant="ghost"
@@ -124,10 +111,7 @@ function SidebarRow({
           padding: armed ? '0 var(--space-2)' : undefined,
           color: armed ? 'var(--color-warning)' : undefined,
         }}
-        onClick={(e) => {
-          e.stopPropagation()
-          armAndConfirmRemove()
-        }}
+        onClick={armAndConfirmRemove}
       >
         <XIcon size={12} weight={armed ? 'bold' : 'regular'} />
         {armed && 'Confirm delete'}
