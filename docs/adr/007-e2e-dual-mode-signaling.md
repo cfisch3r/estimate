@@ -37,19 +37,34 @@ use, which would test nothing new.
    signaling path still works, without gating merges on a third party's
    uptime.
 
-**The seam** — a build-time module swap, not a runtime branch:
+**The seam** — a guarded dynamic import, resolved once at module init:
 - `src/entities/session/api/signaling.ts` wraps the production `joinRoom`
   call (`trystero/nostr`) behind `joinSignalingRoom(sessionId, options)`.
-  `session.ts` imports this instead of calling Trystero directly.
 - `src/entities/session/api/signaling.wsRelay.ts` implements the same
   signature via `@trystero-p2p/ws-relay`, reading the relay URL from
-  `import.meta.env.VITE_TRYSTERO_RELAY_URL`.
-- `vite.config.ts` aliases `./signaling` → `./signaling.wsRelay` only when
-  Vite's `mode === 'e2e'`. A production build never resolves the test-only
-  file at all — no runtime conditional ships to users, and no lazy chunk for
-  code that's never used in production.
-- Real-world mode uses the default Vite mode (no alias) — it's literally the
-  production code path, just pointed at the real thing.
+  `import.meta.env.VITE_TRYSTERO_RELAY_URL`. Both implementations share their
+  types/constant through `signalingContract.ts` — the contract they both
+  satisfy, not a grab-bag of "shared stuff."
+- `session.ts` picks between them with a **top-level await**, resolved once
+  when the module first loads, not inside `joinSession()` on every call:
+  ```ts
+  const { joinSignalingRoom } =
+    import.meta.env.MODE === 'e2e'
+      ? await import('./signaling.wsRelay')
+      : await import('./signaling')
+  ```
+  This is the pattern the wider ecosystem uses to keep test/dev-only code out
+  of a production bundle (Mock Service Worker's own setup guide recommends
+  the same guarded-dynamic-import shape). Once Vite inlines
+  `import.meta.env.MODE` as a literal, the unreached `import()` call is
+  ordinary dead code eliminated during Vite's per-file transform, before
+  Rollup ever builds its chunk graph — confirmed by bundle inspection (see
+  "Alternatives considered" for the two mechanisms tried and rejected before
+  this one, and why). Resolving it once at module scope, rather than per
+  `joinSession()` call, keeps `joinSession` itself fully synchronous — no
+  ripple into `NetworkProvider.connect()` or its four call sites.
+- Real-world mode uses the default Vite mode — the ternary resolves to
+  `signaling.ts` either way, so it's literally the production code path.
 
 **CI gating: blocking.** The local relay removes ADR-002's actual worry
 (third-party dependency); what's left — real handshake timing, shared-runner
@@ -64,16 +79,52 @@ join, submit + reveal, syncState propagation, late-joiner snapshot) rather
 than re-testing edge cases already covered by the unit-level `actions.ts`
 validation/sanitization tests.
 
-## Does this conflict with ADR-001?
+## Rationale
 
-No. ADR-001 requires the **shipped product** never depend on a server the
-app operates — that's about what ships to users, not test infrastructure.
-The `ws-relay` instance in `e2e/relay-server.mjs` only ever runs inside a CI
-job or a contributor's own machine, is never part of a production build (the
-alias above guarantees `signaling.wsRelay.ts` is unreachable from
-`vite build`'s default mode), and is torn down with the test run. Writing
-this down explicitly so a future reader doesn't mistake "CI has a relay
-process" for "the product now depends on a self-run server."
+**Why a guarded dynamic import, not a bundler alias or a static-import
+ternary — three mechanisms were tried, in this order:**
+
+1. **`resolve.alias` matching the literal `'./signaling'` specifier.** Works
+   for `session.ts`, but matches from *any* importer — including, during
+   development of this ADR, `signaling.wsRelay.ts`'s own import of shared
+   constants from `./signaling`, which got aliased back to itself and broke
+   on missing exports. (That incident is why shared bits live in
+   `signalingContract.ts` rather than being re-exported from `signaling.ts`.)
+   Rejected for the any-importer coincidence, not because it failed to work.
+2. **A plain `import.meta.env.MODE === 'e2e'` ternary between two
+   *statically*-imported implementations, no bundler plugin at all.**
+   Measured to fail outright: the production bundle grew from 484KB/152KB
+   gzip to 534KB/169KB gzip and started shipping `@trystero-p2p/ws-relay`
+   code. A static `import` is bound into Rollup's module graph unconditionally
+   — ES module bindings are hoisted by spec — so Rollup keeps it regardless
+   of which branch of a later runtime ternary is actually reachable.
+3. **A scoped Vite `resolveId` plugin**, matching on `mode`, the specifier,
+   *and* the importer's file path together. This worked and was measured
+   correct (production bundle back to exactly 250 modules / 484.19KB /
+   152.39KB gzip, zero ws-relay code in the output), fixing option 1's
+   any-importer gap. Superseded anyway in favor of option 4 below, since it
+   still required bespoke Vite-config code for something the ecosystem
+   already has an idiom for.
+4. **A guarded dynamic `import()`, resolved once via top-level await** (the
+   adopted approach, detailed above). Unlike option 2, a dynamic `import()`
+   is an ordinary function call, not a hoisted binding — ordinary dead-code
+   elimination applies to it. Measured correct: same 250 modules / zero
+   ws-relay code, plus zero custom Vite-plugin code. The one trade-off
+   (accepted): `signaling.ts` — the production strategy — is now its own
+   lazily-loaded chunk (~59KB/22KB gzip), fetched on the first `joinSession()`
+   call rather than bundled eagerly into the initial load. Since signaling is
+   only ever needed once a user actually starts or joins a **live** session
+   (never for Manual mode), this is an acceptable, arguably-beneficial
+   deferral, not a regression.
+
+**Why this doesn't conflict with ADR-001.** ADR-001 requires the **shipped
+product** never depend on a server the app operates — that's about what
+ships to users, not test infrastructure. The `ws-relay` instance in
+`e2e/relay-server.mjs` only ever runs inside a CI job or a contributor's own
+machine, is never part of a production build (confirmed by inspecting the
+built bundle — see above), and is torn down with the test run. Writing this
+down explicitly so a future reader doesn't mistake "CI has a relay process"
+for "the product now depends on a self-run server."
 
 ## Consequences
 
@@ -84,9 +135,14 @@ process" for "the product now depends on a self-run server."
   dependency or its flakiness.
 - The production code path is untouched by test concerns beyond one
   indirection (`session.ts` → `signaling.ts`); `signaling.wsRelay.ts` is
-  never in the production module graph.
+  never in the production module graph — confirmed by bundle inspection,
+  not just by the mechanism's design.
 
 **Negative / accepted trade-offs**
+- `signaling.ts` (the production strategy) is now a separate lazily-loaded
+  chunk, fetched on the first `joinSession()` call rather than bundled
+  eagerly — one extra network round-trip the first time a user starts or
+  joins a live session. Accepted since Manual mode never touches it at all.
 - A second, non-blocking CI surface (`e2e-real-world.yml`) to notice when it
   fails — it won't block a PR, so it needs someone to actually look at it.
 - `workers: 1` means the e2e job doesn't parallelize; acceptable while the
@@ -110,3 +166,7 @@ process" for "the product now depends on a self-run server."
 | Mock Trystero's `joinRoom` entirely (fake in-memory room) as the default | Already exists as the unit-test layer (`ActionRoom`); running Playwright against it would test nothing new and defeat the reason for adding Playwright at all |
 | Public Nostr relays as the only/default mode | Ties every PR's pass/fail to third-party uptime/latency — exactly ADR-002's flakiness concern |
 | A different self-hostable strategy (`trystero/mqtt`, `trystero/torrent`) | Both work, but require heavier self-hosted infra (a full MQTT broker or BitTorrent tracker) than `ws-relay`, which was purpose-built for this exact case |
+| Explicit dependency injection: `import.meta.env.MODE` ternary between two statically-imported strategies, no bundler plugin | More type-safe on paper, but measured to fail the actual requirement — Rollup includes both statically-imported branches regardless of which one is reachable, so `@trystero-p2p/ws-relay` shipped in the production bundle (+50KB/+16KB gzip) |
+| `resolve.alias`, plain string match on `'./signaling'` | Works, but matches the literal specifier from any importer — including `signaling.wsRelay.ts`'s own shared-constant import, aliasing it back to itself |
+| Scoped Vite `resolveId` plugin (mode + specifier + importer) | Worked and was measured correct, but is bespoke Vite-config code for something the ecosystem already has an idiom for (see the adopted option) |
+| A local pnpm workspace package with `package.json` `exports` conditions (the Node-native, Gradle/Maven-source-set-style mechanism) | Real and standardized, but `exports` maps only apply at a package boundary — would require adopting workspace tooling for one internal seam in a single-package repo |

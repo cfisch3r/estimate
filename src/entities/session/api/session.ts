@@ -1,4 +1,3 @@
-import { joinSignalingRoom } from './signaling'
 import { createConnectionTracker, type ConnectionState } from './connection'
 import {
   createTypedActions,
@@ -8,6 +7,20 @@ import {
 import type { Estimate } from '../../estimate'
 
 type Unsubscribe = () => void
+
+/** Resolved once, at module init, via top-level await — not inside `joinSession()`.
+ *  A dynamic `import()` behind a build-time-constant condition is the pattern the
+ *  wider ecosystem uses to keep test/dev-only code out of a production bundle
+ *  (e.g. Mock Service Worker's own guarded-dynamic-import setup): once Vite inlines
+ *  `import.meta.env.MODE` as a literal, an unreached `import()` call is ordinary
+ *  dead code, so Rollup never emits that chunk — confirmed by bundle inspection,
+ *  see ADR-007. Resolving it once here (rather than per `joinSession()` call) keeps
+ *  `joinSession` itself synchronous, so `NetworkProvider.connect()` and its callers
+ *  don't need to change at all. */
+const { joinSignalingRoom } =
+  import.meta.env.MODE === 'e2e'
+    ? await import('./signaling.wsRelay')
+    : await import('./signaling')
 
 export interface JoinSessionOptions {
   password?: string
