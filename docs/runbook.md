@@ -22,7 +22,7 @@ flowchart TB
 
   subgraph CIL["CI"]
     direction LR
-    Gates["lint, format, typecheck, test, build, deadcode<br/>[Quality Gate: 6 parallel GitHub Actions Jobs]"]
+    Gates["lint, arch, format, typecheck, test, build, deadcode, e2e<br/>[Quality Gate: 8 parallel GitHub Actions Jobs]"]
     Passed["ci-passed<br/>[Merge Gate: GitHub Actions Job]"]
     CodeQL["codeql<br/>[Security Scan: GitHub Actions Job]"]
     Gates --> Passed
@@ -48,7 +48,7 @@ flowchart TB
   PR["Pull Request opened/updated<br/>[Git Event: GitHub Actions Trigger]"]:::external
   MergeButton["Merge button<br/>[UI Control: GitHub Pull Request]"]:::external
 
-  Gates["lint, format, typecheck, test, build, deadcode<br/>[Quality Gate: 6 parallel GitHub Actions Jobs]"]
+  Gates["lint, arch, format, typecheck, test, build, deadcode, e2e<br/>[Quality Gate: 8 parallel GitHub Actions Jobs]"]
   Passed["ci-passed<br/>[Merge Gate: GitHub Actions Job]"]
   CodeQL["codeql<br/>[Security Scan: GitHub Actions Job]"]
 
@@ -99,12 +99,17 @@ independently of this deploy pipeline — it's not shown in the diagram above si
 touch the build/deploy path at all; see [Versioning & releases](#versioning--releases) below for
 what it does.
 
+The nightly **E2E (real-world signaling)** workflow (`.github/workflows/e2e-real-world.yml`,
+also runnable on demand via `workflow_dispatch`) is likewise outside both pipelines: it re-runs
+the e2e specs against the production Nostr relays instead of the local relay `ci.yml`'s `e2e`
+job uses, and never gates a PR. See [ADR-007](adr/007-e2e-dual-mode-signaling.md).
+
 | Component | Purpose | Notes |
 | --- | --- | --- |
 | Orchestration | Checks IONOS readiness, calls `build`, dispatches deploy | IONOS-generated, don't hand-edit |
 | build (job) | `pnpm build` (`tsc -b && vite build`); uploads `dist/` to IONOS keyed by commit SHA | Output dir `dist` is Vite's default — the IONOS setup form was originally pre-filled with `public` (source assets, not build output) and had to be corrected |
 | Deploy to IONOS | rsyncs `dist/` to the IONOS webspace over SSH, flips it live | IONOS-generated; its `push` trigger only exists so GitHub registers the file — the job itself is gated `if: github.event_name == 'workflow_dispatch'` |
-| CI (`lint`/`format`/`typecheck`/`test`/`build`/`deadcode`, `ci-passed`, `codeql`) | Quality gates + security scan; `ci-passed` is the required status check | Independent of the deploy pipeline — does not gate it; a push where `ci-passed` fails still deploys |
+| CI (`lint`/`arch`/`format`/`typecheck`/`test`/`build`/`deadcode`/`e2e`, `ci-passed`, `codeql`) | Quality gates + security scan; `ci-passed` is the required status check | Independent of the deploy pipeline — does not gate it; a push where `ci-passed` fails still deploys |
 
 The three IONOS-generated workflow files (Orchestration, build, Deploy to IONOS) carry a
 "please do not edit" header — re-run the IONOS setup flow to regenerate them if the project
