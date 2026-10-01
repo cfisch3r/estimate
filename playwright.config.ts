@@ -27,9 +27,11 @@ const appWebServer = {
         command: `pnpm exec vite build && pnpm exec vite preview --port ${APP_PORT} --strictPort`,
       }
     : {
-        // --mode e2e makes `import.meta.env.MODE === 'e2e'` in session.ts, which
-        // selects the ws-relay signaling strategy, pointed at the relay below.
-        command: `pnpm exec vite build --mode e2e && pnpm exec vite preview --mode e2e --port ${APP_PORT} --strictPort`,
+        // --mode e2e only matters for the build: it makes
+        // `import.meta.env.MODE === 'e2e'` in session.ts, which selects the
+        // ws-relay signaling strategy, pointed at the relay below. `preview`
+        // just serves the finished bundle, so it needs no mode.
+        command: `pnpm exec vite build --mode e2e && pnpm exec vite preview --port ${APP_PORT} --strictPort`,
         env: { VITE_TRYSTERO_RELAY_URL: RELAY_URL },
       }),
 }

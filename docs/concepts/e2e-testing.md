@@ -50,7 +50,7 @@ flowchart TD
   Fixtures -->|"open/close contexts"| Chromium
   Helpers -->|"drive via Page API"| Chromium
   PWConfig -->|"webServer: starts"| RelayScript
-  PWConfig -->|"webServer: `vite build/preview --mode e2e`"| ViteConfig
+  PWConfig -->|"webServer: `vite build --mode e2e`, then `vite preview`"| ViteConfig
   RelayScript -->|"createWsRelayServer()"| WsRelayLib
   SessionFactory -.->|"top-level await import() —<br/>mode=e2e only"| SigTest
   SessionFactory -->|"joinSignalingRoom()"| SigProd
@@ -87,7 +87,7 @@ flowchart TD
   A["playwright.config.ts"] -->|1| B["relay-server.mjs starts,<br/>listens ws://localhost:8971"]
   A -->|2| C["vite build --mode e2e<br/>VITE_TRYSTERO_RELAY_URL=ws://localhost:8971"]
   C -->|3| D["bundle: session.ts's top-level await<br/>picks signaling.wsRelay.ts (mode=e2e)"]
-  A -->|4| E["vite preview --mode e2e<br/>serves bundle on :4173"]
+  A -->|4| E["vite preview<br/>serves bundle on :4173"]
   A -->|5| F["2-3 Chromium contexts<br/>navigate to :4173"]
   F -->|6| G["each: joinSignalingRoom()<br/>→ ws-relay client → relay :8971"]
   G <-->|"7 direct WebRTC data channel<br/>(sendEstimate / syncState / requestSnapshot)"| G
