@@ -92,12 +92,19 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   placement, public-API quality, slice cohesion, component/hook design smells,
   cross-cutting composition placement (see ADR-004). Defaults to the current diff;
   `/architecture-review all` for a full audit, or pass a path.
+- **`/accessibility-review`** — read-only accessibility audit run in the
+  `accessibility-review` subagent. Covers judgment calls oxlint's `jsx-a11y` plugin and
+  the `jest-axe`/`@axe-core/playwright` scans can't make: ARIA pattern appropriateness,
+  focus-order sanity, live-region needs, contrast judgment calls outside the e2e scan's
+  scope (see ADR-008). Defaults to the current diff; `/accessibility-review all` for a
+  full audit, or pass a path.
 - **`fsd-architecture` skill** — loaded automatically before creating a new file under
   `src/` or moving code between slices; the "which slice does this belong in" reference.
 - **Hooks** (`.claude/settings.json` + `.claude/hooks/`) — a `PreToolUse` hard block on
   writes outside approved paths and edits to `nocturne.css`; a `PostToolUse` per-file
-  `oxlint` check (surfaces output, never blocks); a `Stop` hook running
-  typecheck/`pnpm arch`/`pnpm deadcode`/`pnpm test:coverage` once per turn.
+  `oxlint` check (surfaces output, never blocks); a `Stop` hook running `pnpm lint`
+  (including the `jsx-a11y` plugin)/typecheck/`pnpm arch`/`pnpm deadcode`/
+  `pnpm test:coverage` once per turn.
 
 ## Code conventions
 
@@ -133,7 +140,7 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 - **All changes** — from a one-line typo fix to a full issue — go through a branch + PR. `main`'s branch protection requires the `ci-passed` and PR-title-lint status checks with `enforce_admins` on, so direct pushes are rejected outright. A trivial/no-issue change can use any descriptive branch name and skip `Closes #n`.
 - **Issue-sized work**: one branch per issue (`issue-<n>-<slug>`), PR opened with `Closes #n` in the description, squash-merge into `main`.
 - **PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/)** (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, etc.) — squash-merging makes the PR title the commit message on `main`, and [release-please](docs/runbook.md#versioning--releases) parses that history to cut releases. Enforced as a required status check ([PR title lint](docs/runbook.md#how-releases-are-cut)); `pnpm install` also wires up a local `commit-msg` hook that warns (non-blocking) on individual commits.
-- **Review**: after opening the PR, run the `code-review` skill as an independent pass over the diff (medium effort by default, higher for anything touching `entities/session/api` or `entities/session/model` — the former `/network` and `/state`). Also run `/architecture-review` (read-only, covers FSD slice placement and design judgment calls — see ADR-004) on any PR touching `src/`. Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
+- **Review**: after opening the PR, run the `code-review` skill as an independent pass over the diff (medium effort by default, higher for anything touching `entities/session/api` or `entities/session/model` — the former `/network` and `/state`). Also run `/architecture-review` (read-only, covers FSD slice placement and design judgment calls — see ADR-004) on any PR touching `src/`. If the PR touches interactive `src/` UI (new or changed components with ARIA roles, focus handling, or dynamic content), also run `/accessibility-review` (read-only, covers ARIA pattern appropriateness, focus-order sanity, live-region needs, contrast judgment calls — see ADR-008). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
 - **Merge gate**: always ask the user whether they want to personally review the PR before merging — even after the automated review comes back clean. Never auto-merge without asking.
 - **Tracking**: the `EstiMate Roadmap` GitHub Project board (https://github.com/users/cfisch3r/projects/1), Backlog → In Progress → In Review → Done. Work is a two-level ordered backlog of epics and their sub-issues — see [Picking the next task](#picking-the-next-task). Milestones are retired (closed `M0`–`M3` kept as history).
 
