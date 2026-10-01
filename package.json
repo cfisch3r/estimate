@@ -21,7 +21,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "deadcode": "knip",
-    "metrics": "node .claude/scripts/metrics.mjs"
+    "metrics": "node scripts/metrics.mjs"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

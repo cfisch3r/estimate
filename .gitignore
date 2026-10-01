@@ -21,7 +21,6 @@ coverage
 !.claude/commands/
 !.claude/skills/
 !.claude/hooks/
-!.claude/scripts/
 !.claude/settings.json
 
 # Editor directories and files
