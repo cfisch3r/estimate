@@ -1,10 +1,12 @@
 #!/bin/sh
-# Stop hook: once per turn, project-wide. Runs typecheck, the FSD architecture
-# scan (Steiger), dead-code detection (knip), and the full test suite with the
-# entities/estimate coverage threshold — in parallel, since none depends on
-# another's output. Blocks the Stop (forcing another turn) on failure so
-# Claude fixes issues before handing back to the user, rather than only finding
-# out at PR/CI time. See docs/adr/004-feature-sliced-design-architecture.md.
+# Stop hook: once per turn, project-wide. Runs lint (oxlint, including the
+# jsx-a11y plugin), typecheck, the FSD architecture scan (Steiger), dead-code
+# detection (knip), and the full test suite with the entities/estimate
+# coverage threshold — in parallel, since none depends on another's output.
+# Blocks the Stop (forcing another turn) on failure so Claude fixes issues
+# before handing back to the user, rather than only finding out at PR/CI
+# time. See docs/adr/004-feature-sliced-design-architecture.md and
+# docs/adr/008-accessibility-testing-strategy.md.
 set -u
 
 root="${CLAUDE_PROJECT_DIR:-$PWD}"
@@ -24,6 +26,7 @@ run_check() {
   fi
 }
 
+run_check "lint (oxlint)" lint pnpm lint &
 run_check "typecheck (tsc -b)" typecheck pnpm typecheck &
 run_check "architecture boundaries (steiger)" arch pnpm arch &
 run_check "dead code (knip)" deadcode pnpm deadcode &
@@ -31,7 +34,7 @@ run_check "tests + coverage" test pnpm test:coverage &
 wait
 
 fail=""
-for slug in typecheck arch deadcode test; do
+for slug in lint typecheck arch deadcode test; do
   if [ -f "$tmpdir/$slug.failed" ]; then
     fail="${fail}## $(cat "$tmpdir/$slug.failed") failed
 $(tail -c 4000 "$tmpdir/$slug.log")
