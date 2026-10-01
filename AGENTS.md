@@ -18,6 +18,7 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/adr/004-feature-sliced-design-architecture.md` — accepted decision on Feature-Sliced Design (FSD) as the enforced architecture: the adopted layer set (`app/pages/widgets/features/entities/shared`), the slice mapping, and the two staged follow-ups (store decomposition, issue #111; oxlint metrics ratchet, issue #112). `.claude/skills/fsd-architecture/SKILL.md` has the day-to-day "which slice does new code belong in" guidance; `steiger.config.ts` is the enforcement source of truth for layer/slice/public-API boundaries
 - `docs/adr/005-session-store-decomposition.md` — accepted decision on splitting `entities/session`'s monolithic store into three per-concern stores (`session.ts`, `connection.ts`, `round.ts`; navigation is out of scope — see ADR-006). Implemented in issue #111.
 - `docs/adr/006-router-adoption.md` — accepted decision on replacing the hand-rolled `currentScreen`/`goToScreen` navigation state with `react-router`, resolving an FSD layer-direction conflict ADR-005 hit
+- `docs/adr/008-accessibility-testing-strategy.md` — accepted decision on the three-layer automated accessibility stack (oxlint `jsx-a11y`, `jest-axe` component scans, real-browser `@axe-core/playwright` e2e scans) and the deliberate, tracked `color-contrast` exclusion (issue #123)
 - `design_handoff_estimate_app/` — the original design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
 - `design_handoffs/epic-0010-screen-design-review/` — the Epic-0010 redesign handoff; **supersedes the entry flow** of the original handoff (mode-selection screen + unified Workspace) and is the source of truth for the participant estimating and facilitator reveal flows.
 - `design_handoffs/design_handoff_uncertainty_range/` — the Phase Picker + guidance-aware Range Bar handoff for PRD §6.1's cone-of-uncertainty guard; high-fidelity design reference, not literal production code (see its README for known implementation deviations).
@@ -109,15 +110,11 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
 
 ## Accessibility & browser support
 
-- **Automated checks**: oxlint's `jsx-a11y` plugin (`.oxlintrc.json`, enforced via
-  `pnpm lint`) catches static ARIA/semantics issues; `jest-axe` scans run in the
-  interactive components' own test files (enforced via `pnpm test`); a real-browser
-  `@axe-core/playwright` pass runs in `e2e/specs/accessibility.spec.ts` against the
-  app's main screens (enforced via `pnpm test:e2e`) — this is the one that actually
-  catches `color-contrast` and other layout-dependent rules jsdom can't evaluate.
-  `color-contrast` is disabled there pending a known design-system-token gap
-  (Nocturne's `.text-muted`, tracked in #123) rather than silently passing or
-  blocking every PR on an unrelated, pre-existing issue.
+Automated accessibility checking (oxlint `jsx-a11y`, `jest-axe` component scans,
+real-browser `@axe-core/playwright` e2e scans, and the deliberate, tracked
+`color-contrast` exclusion) is documented in
+[ADR-008](docs/adr/008-accessibility-testing-strategy.md).
+
 - **Supported browsers**: the last 2 versions of evergreen Chrome, Firefox, Safari,
   and Edge. No IE11 or other legacy-engine support — Vite's own defaults already
   target modern JS, so this is a statement of intent for manual QA and bug triage

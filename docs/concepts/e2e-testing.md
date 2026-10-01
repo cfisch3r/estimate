@@ -2,10 +2,13 @@
 
 ## Overview
 
-Four Playwright specs (`e2e/specs/*.spec.ts`) drive real, separate browser contexts
-against a real built app to exercise WebRTC connection behavior no unit/jsdom test can
-reach. Signaling is swappable at build time between a locally self-hosted relay
-(default) and the production Nostr strategy ("real-world" mode).
+Five Playwright specs (`e2e/specs/*.spec.ts`) drive real, separate browser contexts
+against a real built app. Four exercise WebRTC connection behavior no unit/jsdom test
+can reach; a fifth (`accessibility.spec.ts`) runs real-browser `@axe-core/playwright`
+scans against the app's main screens — see [ADR-008](../adr/008-accessibility-testing-strategy.md)
+for why that needs a real browser rather than the jsdom-based component tests. Signaling
+is swappable at build time between a locally self-hosted relay (default) and the
+production Nostr strategy ("real-world" mode).
 
 This doc covers what exists and how it's wired. [ADR-007](../adr/007-e2e-dual-mode-signaling.md)
 is the decision record — why dual-mode, why this relay, why blocking CI. This doc is
@@ -21,7 +24,7 @@ that). Lines: **solid** = import/call, **dotted** = build-time/config-time wirin
 flowchart TD
   subgraph e2elane["E2E LANE · e2e/*"]
     direction LR
-    Specs["4 spec files<br/>[Playwright Test Files]"]
+    Specs["5 spec files<br/>[Playwright Test Files]"]
     Fixtures["facilitator / participant / lateJoiner<br/>[Playwright Fixture]"]
     Helpers["session / join / item / estimate helpers<br/>[Test Helper Module]"]
     RelayScript["relay-server.mjs<br/>[Node Script]"]
@@ -134,6 +137,9 @@ same-context pages would collide on `participantId`; contexts have isolated stor
 | `submit-and-reveal` | `sendEstimate`/`onEstimate` (request/ack), reveal → `syncState` broadcast | malformed-estimate rejection, ack timeout handling |
 | `sync-state-propagation` | `syncState` broadcast (item change, unit change) | snapshot field-level tolerance/defaults |
 | `late-joiner-snapshot` | `requestSnapshot`/`onRequestSnapshot` (ADR-003 pull-on-arrival) | stale-round rejection, roster sanitization |
+
+`accessibility.spec.ts` isn't in this table — it scans screens for WCAG violations
+(ADR-008), not wire actions, so it's out of scope for this coverage map.
 
 ## CI
 
