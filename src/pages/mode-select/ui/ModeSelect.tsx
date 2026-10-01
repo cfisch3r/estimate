@@ -3,7 +3,7 @@ import { UserIcon } from '@phosphor-icons/react/dist/csr/User'
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree'
 import { SignInIcon } from '@phosphor-icons/react/dist/csr/SignIn'
 import { ArrowRightIcon } from '@phosphor-icons/react/dist/csr/ArrowRight'
-import { Card, CardBody, CardMeta, Tag } from '../../../shared/ui'
+import { Card, CardTitle, CardBody, CardMeta, Tag } from '../../../shared/ui'
 import { useNavigate } from 'react-router'
 import { ROUTES } from '../../../shared/lib/routes'
 import { generateSessionCode, useNetworkSession } from '../../../entities/session'
@@ -102,9 +102,9 @@ function ModeRow({ icon, title, description, onClick }: ModeRowProps) {
         {/* Not a document heading — these three rows are a list of entry
          *  actions, not subsections of the page, and an h3 here would jump
          *  straight from the page's own h1 with nothing in between. */}
-        <span className="card-title" style={{ display: 'block' }}>
+        <CardTitle as="span" style={{ display: 'block' }}>
           {title}
-        </span>
+        </CardTitle>
         <CardBody style={{ display: 'block' }}>{description}</CardBody>
       </span>
       <ArrowRightIcon

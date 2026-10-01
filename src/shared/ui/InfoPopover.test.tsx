@@ -49,7 +49,7 @@ describe('InfoPopover', () => {
     expect(screen.queryByText('Helpful detail about this field.')).not.toBeInTheDocument()
   })
 
-  it('returns focus to the trigger on an outside click too', async () => {
+  it('leaves focus on whatever was clicked when closed by an outside click', async () => {
     const user = userEvent.setup()
     render(
       <>
@@ -60,9 +60,14 @@ describe('InfoPopover', () => {
 
     const trigger = screen.getByRole('button', { name: 'About this field' })
     await user.click(trigger)
-    await user.click(screen.getByRole('button', { name: 'elsewhere' }))
+    const elsewhere = screen.getByRole('button', { name: 'elsewhere' })
+    await user.click(elsewhere)
 
-    await waitFor(() => expect(trigger).toHaveFocus())
+    // Forcing focus back to the trigger here would fight the user's own
+    // click — they clicked "elsewhere" to interact with it, not to be
+    // bounced back to the info icon.
+    await waitFor(() => expect(elsewhere).toHaveFocus())
+    expect(screen.queryByText('Helpful detail about this field.')).not.toBeInTheDocument()
   })
 
   it('does not call onOpen/onClose more than once per toggle', async () => {

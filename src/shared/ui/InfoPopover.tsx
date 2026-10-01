@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { InfoIcon } from '@phosphor-icons/react/dist/csr/Info'
 
@@ -24,6 +24,11 @@ export function InfoPopover({
   const triggerRef = useRef<HTMLButtonElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const wasOpen = useRef(false)
+  // Set right before onClose() so the focus effect below can tell an outside
+  // click apart from Escape/re-toggle — only the latter two should force
+  // focus back to the trigger (see that effect for why).
+  const closedByOutsideClick = useRef(false)
+  const triggerId = useId()
 
   useEffect(() => {
     if (!open) return
@@ -33,6 +38,7 @@ export function InfoPopover({
         e.target instanceof Node &&
         !containerRef.current.contains(e.target)
       ) {
+        closedByOutsideClick.current = true
         onClose()
       }
     }
@@ -54,10 +60,11 @@ export function InfoPopover({
 
   // Move focus into the panel on open (there's no focusable content in any
   // current usage, so the panel itself is the target) and back to the
-  // trigger on close — Escape, an outside click, or a re-click would
-  // otherwise strand focus on a removed node or leave it on the trigger
-  // without ever having moved, both of which break the expected flow for a
-  // keyboard/screen-reader user opening a disclosure panel.
+  // trigger on close — but only for Escape or a re-click of the trigger
+  // itself, where nothing else claimed focus. An outside click already moved
+  // focus to whatever the user clicked (that's the whole point of their
+  // click); forcing it back to the trigger here would fight that and steal
+  // focus from the element they meant to interact with next.
   useEffect(() => {
     if (open) {
       const panel = panelRef.current
@@ -65,16 +72,18 @@ export function InfoPopover({
         'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])',
       )
       ;(focusable ?? panel)?.focus()
-    } else if (wasOpen.current) {
+    } else if (wasOpen.current && !closedByOutsideClick.current) {
       triggerRef.current?.focus()
     }
     wasOpen.current = open
+    closedByOutsideClick.current = false
   }, [open])
 
   return (
     <span className="info-popover" ref={containerRef}>
       <button
         ref={triggerRef}
+        id={triggerId}
         type="button"
         className="info-popover-trigger"
         aria-label={label}
@@ -84,7 +93,17 @@ export function InfoPopover({
         <InfoIcon size={12} weight="bold" />
       </button>
       {open && (
-        <div className="info-popover-panel" ref={panelRef} tabIndex={-1}>
+        <div
+          className="info-popover-panel"
+          ref={panelRef}
+          tabIndex={-1}
+          // `fieldset` (oxlint's suggested native alternative to
+          // role="group") is for grouping form controls — this panel holds
+          // arbitrary descriptive content, so there's no better native tag.
+          // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
+          role="group"
+          aria-labelledby={triggerId}
+        >
           {children}
         </div>
       )}

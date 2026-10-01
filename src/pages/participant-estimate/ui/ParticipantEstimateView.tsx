@@ -6,6 +6,7 @@ import {
   Card,
   CardBody,
   CardKicker,
+  CardTitle,
   GuardNote,
   GroupBox,
   Markdown,
@@ -229,12 +230,13 @@ function EstimatingPanel({
   return (
     <Card elevation="sm">
       <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
-      {/* A literal h1, not CardTitle's h3: every state this screen can be in
-       *  (here, WaitingPanel, RevealedPanel, and Lobby below) renders exactly
-       *  one of these as its only heading — mirroring the facilitator
-       *  Workspace's item-title EditableTitle, also an h1 — and axe's
-       *  page-has-heading-one rule caught the page having none at all. */}
-      <h1 className="card-title">{round.item.title}</h1>
+      {/* CardTitle as="h1", not its default h3: every state this screen can
+       *  be in (here, WaitingPanel, RevealedPanel, and Lobby below) renders
+       *  exactly one of these as its only heading — mirroring the
+       *  facilitator Workspace's item-title EditableTitle, also an h1 — and
+       *  axe's page-has-heading-one rule caught the page having none at
+       *  all. */}
+      <CardTitle as="h1">{round.item.title}</CardTitle>
       {round.item.description && (
         <Markdown
           content={round.item.description}
@@ -273,7 +275,7 @@ function WaitingPanel({
   return (
     <Card elevation="sm">
       <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
-      <h1 className="card-title">{round.item.title}</h1>
+      <CardTitle as="h1">{round.item.title}</CardTitle>
       {round.item.description && (
         <Markdown
           content={round.item.description}
@@ -383,7 +385,7 @@ function RevealedPanel({
   return (
     <Card elevation="sm">
       <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
-      <h1 className="card-title">{round.item.title}</h1>
+      <CardTitle as="h1">{round.item.title}</CardTitle>
       {round.item.description && (
         <Markdown
           content={round.item.description}
@@ -473,7 +475,7 @@ function Lobby({
     return (
       <Card elevation="sm">
         <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
-        <h1 className="card-title">Session interrupted</h1>
+        <CardTitle as="h1">Session interrupted</CardTitle>
         <CardBody>You were in the session; the connection dropped.</CardBody>
       </Card>
     )
@@ -482,9 +484,9 @@ function Lobby({
   return (
     <Card elevation="sm">
       <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
-      <h1 className="card-title">
+      <CardTitle as="h1">
         {connectionStatus === 'connected' ? `You're in, ${myName}` : 'Connecting…'}
-      </h1>
+      </CardTitle>
       <CardBody>
         {connectionStatus === 'connected'
           ? 'Waiting for the facilitator to start the first item.'
