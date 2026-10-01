@@ -103,8 +103,8 @@ flowchart TD
   A["playwright.config.ts<br/>(PW_MODE=real-world)"] -.->|"skipped: no relay"| B["relay-server.mjs"]
   A -->|1| C["vite build (default mode)"]
   C -->|2| D["bundle: session.ts's top-level await<br/>picks signaling.ts (mode≠e2e)"]
-  A -->|3| E["vite preview serves bundle on :4173"]
-  A -->|4| F["2-3 Chromium contexts<br/>navigate to :4173"]
+  A -->|3| E["vite preview serves bundle on :4174"]
+  A -->|4| F["2-3 Chromium contexts<br/>navigate to :4174"]
   F -->|5| G["each: joinSignalingRoom()<br/>→ trystero/nostr → public relays"]
   G <-->|"6 direct WebRTC data channel"| G
 
@@ -142,16 +142,17 @@ same-context pages would collide on `participantId`; contexts have isolated stor
 | `e2e` (`ci.yml`) | local relay | Yes — in `ci-passed` | every PR / push to `main` |
 | `e2e-real-world` (`e2e-real-world.yml`) | production Nostr | No | nightly + manual |
 
-## Known gaps (accepted for now)
+## Operational notes
 
-Surfaced by code review on PR #121, not yet fixed — listed here for visibility rather
-than silently left in config comments:
-
-- **Port collision across modes**: both modes serve the app on the same hardcoded
-  `:4173` with `reuseExistingServer` on — running one mode then the other locally
-  without killing the first `vite preview` silently reuses the wrong build.
-- **Relay startup has no error handling**: a stale process already holding `:8971`
-  makes `relay-server.mjs` fail with an unhandled rejection instead of a clear message.
-- **`workers: 1` may be broader than necessary** — each spec uses a disjoint
-  session-code room on the shared relay, so per-spec contention isn't obviously why all
-  4 specs are serialized; untested whether parallel workers would actually work.
+- **Ports are per mode** (`:4173` local relay, `:4174` real-world) so that, with
+  `reuseExistingServer` on locally, one mode can never silently reuse the other's
+  still-running build. The relay listens on `:8971`.
+- **A busy relay port fails loudly**: `relay-server.mjs` exits non-zero with a message
+  naming the port conflict, instead of an unhandled rejection and a Playwright timeout.
+- **Specs run in parallel** (2 workers in CI, local default otherwise). Each spec
+  generates its own session code, so its Trystero room is disjoint from every other
+  spec's on the shared relay.
+- **A misconfigured e2e build fails at load**: `signaling.wsRelay.ts` throws on import if
+  `VITE_TRYSTERO_RELAY_URL` is unset, rather than on the first Join click.
+- **CI setup is shared**: both e2e workflows use `.github/actions/setup-e2e`, which also
+  caches Playwright's Chromium keyed on the Playwright version.

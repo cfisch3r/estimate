@@ -54,23 +54,28 @@ Milestones are retired: the closed `M0`–`M3` remain only as historical record.
 ## Commands
 
 ```
-pnpm dev             # start the dev server
-pnpm build            # type-check (tsc -b) and production build
-pnpm typecheck        # type-check only (tsc -b), no bundling
-pnpm preview          # serve the production build locally
-pnpm lint             # oxlint
-pnpm arch             # steiger — FSD architecture boundary check
-pnpm format           # prettier --write
-pnpm format:check     # prettier --check
-pnpm test             # vitest run, summary output
-pnpm test:watch       # vitest in watch mode
-pnpm test:verbose     # vitest run, every individual test name and result
-pnpm test:coverage    # vitest run --coverage; also enforces the entities/estimate 100% threshold below
-pnpm deadcode         # knip — unused exports/files/dependencies
+pnpm dev                  # start the dev server
+pnpm build                # type-check (tsc -b) and production build
+pnpm typecheck            # type-check only (tsc -b), no bundling
+pnpm preview              # serve the production build locally
+pnpm lint                 # oxlint
+pnpm arch                 # steiger — FSD architecture boundary check
+pnpm format               # prettier --write
+pnpm format:check         # prettier --check
+pnpm test                 # vitest run, summary output
+pnpm test:watch           # vitest in watch mode
+pnpm test:verbose         # vitest run, every individual test name and result
+pnpm test:coverage        # vitest run --coverage; also enforces the entities/estimate 100% threshold below
+pnpm test:e2e             # Playwright, real WebRTC via a local self-hosted relay (ADR-007)
+pnpm test:e2e:real-world  # same specs against production signaling (public Nostr relays)
+pnpm test:e2e:ui          # Playwright UI mode, for local debugging
+pnpm deadcode             # knip — unused exports/files/dependencies
 ```
 
 Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm format:check`, `pnpm test`,
-`pnpm test:coverage`, and `pnpm deadcode` before considering any change complete. These
+`pnpm test:coverage`, `pnpm deadcode`, and `pnpm test:e2e` before considering any change
+complete. (`pnpm test:e2e:real-world` is not part of that list — it runs nightly and on
+manual dispatch only, never gates a PR.) These
 also run as required checks in CI (`.github/workflows/ci.yml`) on every PR and push to
 `main` — running them locally first is a courtesy that catches failures before you push,
 not the only gate.

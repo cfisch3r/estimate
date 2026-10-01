@@ -8,14 +8,21 @@ import {
 /** Test-only signaling strategy: a locally self-hosted relay
  *  (`e2e/relay-server.mjs`) instead of public Nostr relays, so Playwright's
  *  real-WebRTC specs don't depend on third-party infrastructure. `session.ts`
- *  itself only ever imports `./signaling` (the production strategy) — under
- *  `--mode e2e`, `vite.config.ts`'s `e2eSignalingSwap` plugin resolves that
- *  specific import to this file instead. Never reachable in a production
- *  build: this module (and its `@trystero-p2p/ws-relay` dependency) is
- *  simply never resolved into the module graph, confirmed by bundle
- *  inspection — see ADR-007. */
+ *  loads this via a guarded dynamic `import()` only when
+ *  `import.meta.env.MODE === 'e2e'`; in every other build that call is dead
+ *  code, so this module (and `@trystero-p2p/ws-relay`) never reaches the
+ *  bundle — confirmed by bundle inspection, see ADR-007. */
 
-const relayUrl = import.meta.env.VITE_TRYSTERO_RELAY_URL
+// Checked at module load, not per join: this module only exists in a
+// `--mode e2e` build, so a missing URL is a build misconfiguration. Failing
+// at load names it immediately instead of surfacing on the first Join click.
+const configuredRelayUrl = import.meta.env.VITE_TRYSTERO_RELAY_URL
+if (!configuredRelayUrl) {
+  throw new Error(
+    'VITE_TRYSTERO_RELAY_URL must be set when building with --mode e2e (see playwright.config.ts)',
+  )
+}
+const relayUrl: string = configuredRelayUrl
 
 /** Same signature as `signaling.ts`'s `joinSignalingRoom` — `session.ts`
  *  programs against `signalingContract.ts`'s shape, not either concrete
@@ -24,11 +31,6 @@ export function joinSignalingRoom(
   sessionId: string,
   options: JoinSignalingRoomOptions = {},
 ): SignalingRoom {
-  if (!relayUrl) {
-    throw new Error(
-      'VITE_TRYSTERO_RELAY_URL must be set when building with --mode e2e (see e2e/relay-server.mjs)',
-    )
-  }
   return joinRoom(
     {
       appId: APP_ID,

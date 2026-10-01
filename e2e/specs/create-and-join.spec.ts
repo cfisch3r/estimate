@@ -13,7 +13,5 @@ test('facilitator creates a session and a participant joins it', async ({
   await joinSessionAsParticipant(participant, code, 'Sam Rivera')
 
   await expect(participant).toHaveURL(/\/estimate$/)
-  await expect(facilitator.locator('.workspace-strip')).toContainText(
-    '1 participant connected',
-  )
+  await expect(facilitator.getByText('1 participant connected')).toBeVisible()
 })

@@ -1,14 +1,18 @@
 import type { Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 
+/** `generateSessionCode()`'s alphabet (`entities/session/api/sessionCode.ts`):
+ *  Crockford base32 minus the ambiguous 0/O/1/I/L/U. */
+const SESSION_CODE = /^[2-9A-HJKMNP-TV-Z]{6}$/
+
 /** Facilitator: ModeSelect → "Start collaborative estimation" → captures the
- *  generated session code from the workspace's LiveSessionStrip
+ *  generated session code shown in the workspace's LiveSessionStrip
  *  (`src/features/reveal-results/ui/LiveSessionStrip.tsx`). */
 export async function createCollaborativeSession(page: Page): Promise<string> {
   await page.goto('/')
   await page.getByRole('button', { name: 'Start collaborative estimation' }).click()
-  const codeLocator = page.locator('.workspace-strip strong')
-  await expect(codeLocator).toHaveText(/^[A-Z0-9]{6}$/)
+  const codeLocator = page.getByText(SESSION_CODE)
+  await expect(codeLocator).toBeVisible()
   return (await codeLocator.textContent())!.trim()
 }
 
@@ -35,9 +39,10 @@ export async function addItem(page: Page, title: string): Promise<void> {
   await page.getByRole('button', { name: 'Add item' }).click()
 }
 
-/** Facilitator: selects an already-added item by clicking its sidebar row. */
+/** Facilitator: selects an already-added item by clicking its row in the
+ *  items sidebar (an `<aside>`, i.e. the `complementary` landmark). */
 export async function selectItem(page: Page, title: string): Promise<void> {
-  await page.locator('.session-sidebar-row', { hasText: title }).click()
+  await page.getByRole('complementary').getByText(title, { exact: true }).click()
 }
 
 /** Participant: fills and submits the three-point estimate form

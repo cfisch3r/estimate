@@ -90,6 +90,6 @@ export function joinSession(
     onPeerLeave: connection.onPeerLeave,
     onConnectionStateChange: connection.onStateChange,
     getConnectionState: connection.getState,
-    leave: () => room.leave(),
+    leave: () => void room.leave(),
   }
 }

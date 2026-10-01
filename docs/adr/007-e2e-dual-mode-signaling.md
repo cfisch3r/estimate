@@ -69,9 +69,8 @@ use, which would test nothing new.
 **CI gating: blocking.** The local relay removes ADR-002's actual worry
 (third-party dependency); what's left — real handshake timing, shared-runner
 resource contention, first-run teething issues — is mitigated with generous
-timeouts, `workers: 1` (one shared relay instance per run, so specs don't
-race each other for it), and limited CI retries, not by keeping the suite
-non-blocking.
+timeouts, a small bounded worker count in CI, and limited CI retries, not by
+keeping the suite non-blocking.
 
 **Scope: Chromium only**, matching ADR-002's "handful of golden-path smoke
 tests" framing — the same reason the specs stay to four scenarios (create +
@@ -145,15 +144,16 @@ for "the product now depends on a self-run server."
   joins a live session. Accepted since Manual mode never touches it at all.
 - A second, non-blocking CI surface (`e2e-real-world.yml`) to notice when it
   fails — it won't block a PR, so it needs someone to actually look at it.
-- `workers: 1` means the e2e job doesn't parallelize; acceptable while the
-  suite stays at four specs per ADR-002's scope.
+- Specs run in parallel against one shared relay, relying on each spec
+  generating its own session code (a disjoint Trystero room); a spec that ever
+  reused a fixed code would collide with its neighbours.
 - First real PRs against this suite are where any local-relay-specific
   teething issue (port conflicts, timing) would surface — mitigated, not
   eliminated, by generous timeouts and CI retries.
 
 **Follow-ups / revisit triggers**
 - If the suite grows meaningfully past "a handful of golden-path tests,"
-  revisit `workers: 1` and Chromium-only scope.
+  revisit the CI worker count and Chromium-only scope.
 - If `e2e-real-world.yml` starts failing regularly against public Nostr
   relays with no corresponding local-mode failure, that's a signal about
   production signaling health, not test infrastructure — investigate the

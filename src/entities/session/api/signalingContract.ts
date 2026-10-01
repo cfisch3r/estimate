@@ -12,7 +12,7 @@ export const APP_ID = 'estimate-app-v1'
 export type SignalingRoom = ActionRoom & {
   onPeerJoin: ((peerId: string) => void) | null
   onPeerLeave: ((peerId: string) => void) | null
-  leave: () => void
+  leave: () => Promise<void>
 }
 
 export interface JoinSignalingRoomOptions {
