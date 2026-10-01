@@ -64,6 +64,7 @@ function worstFunctions(files) {
   const worst = new Map()
   for (const d of JSON.parse(out).diagnostics ?? []) {
     const rule = d.code.replace(/^eslint\((.*)\)$/, '$1')
+    if (rule === 'max-lines') continue // file-level, names no function; fta covers file size
     const match = /\((\d+)\)|complexity of (\d+)|depth of (\d+)/.exec(d.message)
     const value = Number(match?.slice(1).find(Boolean))
     const name = /[Ff]unction `([^`]+)`/.exec(d.message)?.[1] ?? 'anonymous function'
@@ -78,29 +79,41 @@ function worstFunctions(files) {
   return worst
 }
 
-const all = process.argv[2] === 'all'
-const touched = all ? null : touchedFiles()
-const churn = churnByFile()
+function hotspots() {
+  const all = process.argv[2] === 'all'
+  const touched = all ? null : touchedFiles()
+  const churn = churnByFile()
 
-const scored = JSON.parse(run('pnpm', ['exec', 'fta', 'src', '--json']))
-  .map((r) => ({ ...r, path: `src/${r.file_name}` }))
-  .filter((r) => isSource(r.path) && (all || touched.has(r.path)))
-  .map((r) => ({ ...r, churn: churn.get(r.path) ?? 0 }))
+  const scored = JSON.parse(run('pnpm', ['exec', 'fta', 'src', '--json']))
+    .map((r) => ({ ...r, path: `src/${r.file_name}` }))
+    .filter((r) => isSource(r.path) && (all || touched.has(r.path)))
+    .map((r) => ({ ...r, churn: churn.get(r.path) ?? 0 }))
 
-const flagged = new Set(
-  scored.filter((r) => r.fta_score >= NEEDS_IMPROVEMENT).map((r) => r.path),
-)
-// Diff mode: any touched file may have an over-limit function, so check them all.
-const worst = worstFunctions(all ? [...flagged] : scored.map((r) => r.path))
+  const flagged = new Set(
+    scored.filter((r) => r.fta_score >= NEEDS_IMPROVEMENT).map((r) => r.path),
+  )
+  // Diff mode: any touched file may have an over-limit function, so check them all.
+  const worst = worstFunctions(all ? [...flagged] : scored.map((r) => r.path))
 
-const priority = (r) => r.fta_score * Math.log2(r.churn + 1)
-const items = scored
-  .filter((r) => flagged.has(r.path) || (!all && worst.has(r.path)))
-  .sort((a, b) => priority(b) - priority(a))
-  .slice(0, MAX_ITEMS)
+  const priority = (r) => r.fta_score * Math.log2(r.churn + 1)
+  return scored
+    .filter((r) => flagged.has(r.path) || (!all && worst.has(r.path)))
+    .sort((a, b) => priority(b) - priority(a))
+    .slice(0, MAX_ITEMS)
+    .map((r) => ({ ...r, worst: worst.get(r.path) }))
+}
+
+let items
+try {
+  items = hotspots()
+} catch (err) {
+  // Advisory tool: report why it produced nothing, but never fail the caller.
+  console.error(`[metrics] skipped: ${err.message}`)
+  items = []
+}
 
 for (const r of items) {
-  const w = worst.get(r.path)
+  const w = r.worst
   const fn = w ? `; worst: ${w.name} ${w.rule}=${w.value} (line ${w.line})` : ''
   console.log(
     `${r.path} — fta ${r.fta_score.toFixed(1)}, ${r.line_count} lines, cyclo ${r.cyclo}, churn ${r.churn}/12mo${fn}`,
