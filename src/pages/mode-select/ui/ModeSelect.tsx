@@ -1,131 +1,20 @@
-import type { ReactNode } from 'react'
 import { UserIcon } from '@phosphor-icons/react/dist/csr/User'
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree'
 import { SignInIcon } from '@phosphor-icons/react/dist/csr/SignIn'
-import { ArrowRightIcon } from '@phosphor-icons/react/dist/csr/ArrowRight'
-import { Card, CardTitle, CardBody, CardMeta, Tag } from '../../../shared/ui'
+import { CardMeta, Tag } from '../../../shared/ui'
 import { useNavigate } from 'react-router'
 import { ROUTES } from '../../../shared/lib/routes'
-import { generateSessionCode, useNetworkSession } from '../../../entities/session'
 import {
   useStartSingleUser,
   useStartCollaborative,
 } from '../../../features/session-lifecycle'
-
-function BrandMark() {
-  return (
-    <svg width="46" height="34" viewBox="0 0 22 16" fill="none" aria-hidden="true">
-      <line
-        x1="1"
-        y1="8"
-        x2="21"
-        y2="8"
-        stroke="var(--color-divider)"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <line
-        x1="1"
-        y1="4"
-        x2="1"
-        y2="12"
-        stroke="var(--color-neutral-400)"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <line
-        x1="21"
-        y1="4"
-        x2="21"
-        y2="12"
-        stroke="var(--color-neutral-400)"
-        strokeWidth="2"
-        strokeLinecap="round"
-      />
-      <line
-        x1="12"
-        y1="1"
-        x2="12"
-        y2="15"
-        stroke="var(--color-accent)"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-interface ModeRowProps {
-  icon: ReactNode
-  title: string
-  description: string
-  onClick: () => void
-}
-
-function ModeRow({ icon, title, description, onClick }: ModeRowProps) {
-  return (
-    <Card
-      elevation="sm"
-      // A native <button> can't validly contain this row's heading/paragraph
-      // content (button's content model is phrasing content only, and
-      // CardTitle/CardBody render <h3>/<p>, which are flow content) — role +
-      // manual key handling is the spec-conformant pattern for this case.
-      // oxlint-disable-next-line jsx-a11y/prefer-tag-over-role
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault()
-          onClick()
-        }
-      }}
-      style={{
-        flexDirection: 'row',
-        alignItems: 'center',
-        gap: 'var(--space-4)',
-        padding: 'var(--space-4)',
-        cursor: 'pointer',
-      }}
-    >
-      <span
-        style={{
-          fontSize: 22,
-          color: 'var(--color-accent-300)',
-          flex: 'none',
-          display: 'flex',
-        }}
-      >
-        {icon}
-      </span>
-      <span style={{ flex: 1 }}>
-        {/* Not a document heading — these three rows are a list of entry
-         *  actions, not subsections of the page, and an h3 here would jump
-         *  straight from the page's own h1 with nothing in between. */}
-        <CardTitle as="span" style={{ display: 'block' }}>
-          {title}
-        </CardTitle>
-        <CardBody style={{ display: 'block' }}>{description}</CardBody>
-      </span>
-      <ArrowRightIcon
-        size={16}
-        style={{ color: 'var(--color-accent-300)', flex: 'none' }}
-      />
-    </Card>
-  )
-}
+import { BrandMark } from './BrandMark'
+import { ModeRow } from './ModeRow'
 
 export function ModeSelect() {
   const startSingleUser = useStartSingleUser()
   const startCollaborative = useStartCollaborative()
   const navigate = useNavigate()
-  const { connect } = useNetworkSession()
-
-  function handleCollaborative() {
-    const code = generateSessionCode()
-    startCollaborative(code)
-    connect(code)
-  }
 
   return (
     <div
@@ -177,7 +66,7 @@ export function ModeSelect() {
           icon={<UsersThreeIcon size={22} />}
           title="Start collaborative estimation"
           description="Generate a code and estimate live with your team."
-          onClick={handleCollaborative}
+          onClick={startCollaborative}
         />
         <ModeRow
           icon={<SignInIcon size={22} />}

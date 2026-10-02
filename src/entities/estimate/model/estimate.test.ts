@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEstimate } from './estimate'
+import { createEstimate, validateEstimateValues } from './estimate'
 
 describe('createEstimate', () => {
   it('accepts values in ascending order', () => {
@@ -65,5 +65,26 @@ describe('createEstimate', () => {
     expect(
       createEstimate({ participantId: '   ', best: 2, likely: 5, worst: 8 }).ok,
     ).toBe(false)
+  })
+})
+
+describe('validateEstimateValues', () => {
+  it('accepts ascending positive values', () => {
+    expect(validateEstimateValues(2, 5, 8)).toEqual({ ok: true })
+  })
+
+  it('rejects non-finite, non-positive and out-of-order values', () => {
+    expect(validateEstimateValues(NaN, 5, 8).ok).toBe(false)
+    expect(validateEstimateValues(0, 5, 8).ok).toBe(false)
+    expect(validateEstimateValues(8, 5, 2).ok).toBe(false)
+  })
+
+  it('agrees with createEstimate for the same values', () => {
+    const values = validateEstimateValues(8, 5, 9)
+    const created = createEstimate({ participantId: 'a', best: 8, likely: 5, worst: 9 })
+
+    expect(values.ok).toBe(false)
+    expect(created.ok).toBe(false)
+    if (!values.ok && !created.ok) expect(values.error).toBe(created.error)
   })
 })

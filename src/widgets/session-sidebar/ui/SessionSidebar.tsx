@@ -6,20 +6,11 @@ import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
 import { Button, Input } from '../../../shared/ui'
 import { useConfirmArm } from '../../../shared/lib/useConfirmArm'
-import type { Item } from '../../../entities/session'
+import { useNavigate, useLocation } from 'react-router'
+import { ROUTES } from '../../../shared/lib/routes'
+import { useSessionStore, type Item } from '../../../entities/session'
 
 interface SessionSidebarProps {
-  items: Item[]
-  activeItemId: string | null
-  /** Whether the session-summary screen is the current route — drives the
-   *  Summary button's highlighted state. Computed by the caller from its own
-   *  router location, so this widget stays router-agnostic. */
-  isSummaryScreen: boolean
-  onSelect: (id: string) => void
-  onReorder: (fromIndex: number, toIndex: number) => void
-  onRemove: (id: string) => void
-  onAdd: (title: string) => void
-  onGoSummary: () => void
   /** Workspace's merged top bar carries its own Summary button now, so it hides
    *  this one; SessionSummary (which has no top bar) still uses the built-in one. */
   hideSummaryButton?: boolean
@@ -121,17 +112,20 @@ function SidebarRow({
 }
 
 export function SessionSidebar({
-  items,
-  activeItemId,
-  isSummaryScreen,
-  onSelect,
-  onReorder,
-  onRemove,
-  onAdd,
-  onGoSummary,
   hideSummaryButton = false,
   scrollableList = true,
 }: SessionSidebarProps) {
+  const items = useSessionStore((s) => s.items)
+  const activeItemId = useSessionStore((s) => s.activeItemId)
+  const onSelect = useSessionStore((s) => s.selectItem)
+  const onReorder = useSessionStore((s) => s.reorderItems)
+  const onRemove = useSessionStore((s) => s.removeItem)
+  const onAdd = useSessionStore((s) => s.addItem)
+  const navigate = useNavigate()
+  const location = useLocation()
+  // Drives the Summary button's highlighted state.
+  const isSummaryScreen = location.pathname === ROUTES.summary
+  const onGoSummary = () => navigate(ROUTES.summary)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [newItemTitle, setNewItemTitle] = useState('')

@@ -95,6 +95,12 @@ highlighting), computed by each caller page from its own
 `useLocation().pathname === '/summary'` — keeping the widget itself
 purely prop-driven, with no router dependency of its own.
 
+*Amended 2026-10-02:* the sidebar later took over reading the session store and
+the router itself — it derives summary-screen state from `useLocation()` and
+takes only the layout props `hideSummaryButton` / `scrollableList` — because
+both consuming pages were repeating the same store and router wiring. The
+widget now depends on `react-router`.
+
 **ADR-005 amendment**: navigation is removed from that decomposition
 entirely. What was a four-store split there is now three — see ADR-005's
 updated Context/Decision sections.

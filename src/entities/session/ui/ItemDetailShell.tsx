@@ -1,13 +1,11 @@
 import type { ReactNode } from 'react'
 import { Field, FieldLabel, Textarea, EditableTitle } from '../../../shared/ui'
+import { useSessionStore } from '../model/session'
 import type { Item } from '../model/types'
 import { DescriptionField } from './DescriptionField'
 
 interface ItemDetailShellProps {
   item: Item
-  onNotesChange: (id: string, notes: string) => void
-  onDescriptionChange: (id: string, description: string) => void
-  onTitleChange: (id: string, title: string) => void
   descriptionInfoOpen: boolean
   onDescriptionInfoOpen: () => void
   onDescriptionInfoClose: () => void
@@ -20,23 +18,24 @@ interface ItemDetailShellProps {
  *  flush inside Workspace's merged card — no card/shadow of its own. */
 export function ItemDetailShell({
   item,
-  onNotesChange,
-  onDescriptionChange,
-  onTitleChange,
   descriptionInfoOpen,
   onDescriptionInfoOpen,
   onDescriptionInfoClose,
   children,
 }: ItemDetailShellProps) {
+  const setItemTitle = useSessionStore((s) => s.setItemTitle)
+  const setItemDescription = useSessionStore((s) => s.setItemDescription)
+  const setItemNotes = useSessionStore((s) => s.setItemNotes)
+
   return (
     <>
       <EditableTitle
         value={item.title}
-        onCommit={(next) => onTitleChange(item.id, next)}
+        onCommit={(next) => setItemTitle(item.id, next)}
       />
       <DescriptionField
         value={item.description}
-        onChange={(next) => onDescriptionChange(item.id, next)}
+        onChange={(next) => setItemDescription(item.id, next)}
         infoOpen={descriptionInfoOpen}
         onInfoOpen={onDescriptionInfoOpen}
         onInfoClose={onDescriptionInfoClose}
@@ -50,7 +49,7 @@ export function ItemDetailShell({
           id="notes"
           rows={8}
           value={item.notes}
-          onChange={(e) => onNotesChange(item.id, e.target.value)}
+          onChange={(e) => setItemNotes(item.id, e.target.value)}
           style={{ flex: 1, minHeight: 0, resize: 'vertical' }}
         />
       </Field>

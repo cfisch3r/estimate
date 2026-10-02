@@ -11,7 +11,7 @@ interface SessionStore {
   setSessionName: (name: string) => void
   setUnit: (unit: EstimationUnit) => void
   addItem: (title: string, description?: string) => void
-  updateItem: (id: string, updates: { title: string; description: string }) => void
+  setItemTitle: (id: string, title: string) => void
   removeItem: (id: string) => void
   reorderItems: (fromIndex: number, toIndex: number) => void
   /** Passing null clears the selection (e.g. after finalizing the last item
@@ -23,7 +23,7 @@ interface SessionStore {
    *  `entities/session/model/round.ts` (a same-slice file, not a cross-slice
    *  caller) to record round results onto an item without this store
    *  needing to know about round mechanics — see ADR-005, Option D. Scoped
-   *  to round-owned fields only, so it can't be used to bypass `updateItem`/
+   *  to round-owned fields only, so it can't be used to bypass `setItemTitle`/
    *  `setItemNotes`/`setItemDescription`'s validation of the content fields
    *  they own. */
   patchItem: (
@@ -74,12 +74,10 @@ export const useSessionStore = create<SessionStore>((set) => ({
     })
   },
 
-  updateItem: (id, updates) =>
+  setItemTitle: (id, title) =>
     set((state) => ({
       items: state.items.map((item) =>
-        item.id === id
-          ? { ...item, title: updates.title.trim(), description: updates.description }
-          : item,
+        item.id === id ? { ...item, title: title.trim() } : item,
       ),
     })),
 

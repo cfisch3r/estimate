@@ -1,9 +1,17 @@
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { MemoryRouter } from 'react-router'
 import { axe } from 'jest-axe'
 import { SessionSidebar } from './SessionSidebar'
-import type { Item } from '../../../entities/session'
+import { useSessionStore, type Item } from '../../../entities/session'
+
+const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
+
+vi.mock('react-router', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-router')>()
+  return { ...actual, useNavigate: () => navigateMock }
+})
 
 function item(id: string, title: string, finalResult: Item['finalResult'] = null): Item {
   return {
@@ -20,21 +28,25 @@ function item(id: string, title: string, finalResult: Item['finalResult'] = null
 
 const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
 
-function renderSidebar(props: Partial<Parameters<typeof SessionSidebar>[0]> = {}) {
+function renderSidebar(
+  state: Partial<ReturnType<typeof useSessionStore.getState>> = {},
+  path = '/workspace',
+) {
+  useSessionStore.setState({
+    items: [item('1', 'A'), item('2', 'B')],
+    activeItemId: '1',
+    ...state,
+  })
   return render(
-    <SessionSidebar
-      items={[item('1', 'A'), item('2', 'B')]}
-      activeItemId="1"
-      isSummaryScreen={false}
-      onSelect={vi.fn()}
-      onReorder={vi.fn()}
-      onRemove={vi.fn()}
-      onAdd={vi.fn()}
-      onGoSummary={vi.fn()}
-      {...props}
-    />,
+    <MemoryRouter initialEntries={[path]}>
+      <SessionSidebar />
+    </MemoryRouter>,
   )
 }
+
+beforeEach(() => {
+  navigateMock.mockClear()
+})
 
 describe('SessionSidebar', () => {
   it('has no axe violations', async () => {
@@ -57,7 +69,7 @@ describe('SessionSidebar', () => {
   })
 
   it('marks the active item row distinctly from inactive rows', () => {
-    renderSidebar({ items: [item('1', 'A'), item('2', 'B')], activeItemId: '1' })
+    renderSidebar({ activeItemId: '1' })
 
     expect(screen.getByText('A').closest('[data-active]')).toHaveAttribute(
       'data-active',
@@ -69,14 +81,13 @@ describe('SessionSidebar', () => {
     )
   })
 
-  it('calls onSelect with the clicked item id', async () => {
+  it('selects the clicked item in the session store', async () => {
     const user = userEvent.setup()
-    const onSelect = vi.fn()
-    renderSidebar({ onSelect })
+    renderSidebar()
 
     await user.click(screen.getByText('B'))
 
-    expect(onSelect).toHaveBeenCalledWith('2')
+    expect(useSessionStore.getState().activeItemId).toBe('2')
   })
 
   it('renders an extra status icon on finalized rows', () => {
@@ -94,46 +105,36 @@ describe('SessionSidebar', () => {
 
   it('requires a second click to remove an item, and never also selects it', async () => {
     const user = userEvent.setup()
-    const onRemove = vi.fn()
-    const onSelect = vi.fn()
-    renderSidebar({ onRemove, onSelect })
+    renderSidebar({ activeItemId: '1' })
 
     const bRow = screen.getByText('B').closest('.session-sidebar-row')!
     await user.click(bRow.querySelector('button[aria-label="Remove item"]')!)
-    expect(onRemove).not.toHaveBeenCalled()
+    expect(useSessionStore.getState().items).toHaveLength(2)
 
     await user.click(bRow.querySelector('button[aria-label="Confirm delete"]')!)
 
-    expect(onRemove).toHaveBeenCalledWith('2')
-    expect(onSelect).not.toHaveBeenCalled()
+    expect(useSessionStore.getState().items.map((i) => i.id)).toEqual(['1'])
+    expect(useSessionStore.getState().activeItemId).toBe('1')
   })
 
   it('requires a second click to remove a finalized item', async () => {
     const user = userEvent.setup()
-    const onRemove = vi.fn()
-    renderSidebar({
-      items: [item('1', 'A'), item('2', 'B', finalized)],
-      onRemove,
-    })
+    renderSidebar({ items: [item('1', 'A'), item('2', 'B', finalized)] })
 
     const bRow = screen.getByText('B').closest('.session-sidebar-row')!
     const removeButton = bRow.querySelector('button[aria-label="Remove item"]')!
 
     await user.click(removeButton)
-    expect(onRemove).not.toHaveBeenCalled()
+    expect(useSessionStore.getState().items).toHaveLength(2)
     expect(bRow.querySelector('button[aria-label="Confirm delete"]')).toBeInTheDocument()
 
     await user.click(bRow.querySelector('button[aria-label="Confirm delete"]')!)
-    expect(onRemove).toHaveBeenCalledWith('2')
+    expect(useSessionStore.getState().items.map((i) => i.id)).toEqual(['1'])
   })
 
   it('clears the confirm state on an outside click without removing', async () => {
     const user = userEvent.setup()
-    const onRemove = vi.fn()
-    renderSidebar({
-      items: [item('1', 'A'), item('2', 'B', finalized)],
-      onRemove,
-    })
+    renderSidebar({ items: [item('1', 'A'), item('2', 'B', finalized)] })
 
     const bRow = screen.getByText('B').closest('.session-sidebar-row')!
     await user.click(bRow.querySelector('button[aria-label="Remove item"]')!)
@@ -142,28 +143,27 @@ describe('SessionSidebar', () => {
     await user.click(screen.getByText('A'))
 
     expect(bRow.querySelector('button[aria-label="Remove item"]')).toBeInTheDocument()
-    expect(onRemove).not.toHaveBeenCalled()
+    expect(useSessionStore.getState().items).toHaveLength(2)
   })
 
-  it('calls onAdd with the typed title and clears the input', async () => {
+  it('adds the typed title to the session and clears the input', async () => {
     const user = userEvent.setup()
-    const onAdd = vi.fn()
-    renderSidebar({ onAdd })
+    renderSidebar()
 
     const input = screen.getByPlaceholderText('Add an item')
     await user.type(input, 'New item')
     await user.click(screen.getByRole('button', { name: 'Add item' }))
 
-    expect(onAdd).toHaveBeenCalledWith('New item')
+    expect(useSessionStore.getState().items.map((i) => i.title)).toEqual([
+      'A',
+      'B',
+      'New item',
+    ])
     expect(input).toHaveValue('')
   })
 
-  it('calls onReorder with the dragged and drop-target indices', () => {
-    const onReorder = vi.fn()
-    renderSidebar({
-      items: [item('1', 'A'), item('2', 'B'), item('3', 'C')],
-      onReorder,
-    })
+  it('reorders the session items when a row is dragged onto another', () => {
+    renderSidebar({ items: [item('1', 'A'), item('2', 'B'), item('3', 'C')] })
 
     const rows = screen.getAllByText(/^[ABC]$/).map((el) => el.closest('div[draggable]')!)
 
@@ -171,16 +171,16 @@ describe('SessionSidebar', () => {
     fireEvent.dragOver(rows[2]!)
     fireEvent.drop(rows[2]!)
 
-    expect(onReorder).toHaveBeenCalledWith(0, 2)
+    expect(useSessionStore.getState().items.map((i) => i.id)).toEqual(['2', '3', '1'])
   })
 
-  it('calls onGoSummary when the Summary link is clicked', async () => {
+  it('navigates to the summary when the Summary link is clicked', async () => {
     const user = userEvent.setup()
-    const onGoSummary = vi.fn()
-    renderSidebar({ items: [item('1', 'A')], onGoSummary })
+    renderSidebar({ items: [item('1', 'A')] })
 
     await user.click(screen.getByText('Summary'))
 
-    expect(onGoSummary).toHaveBeenCalled()
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/summary')
   })
 })

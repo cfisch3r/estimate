@@ -1,4 +1,4 @@
-import { useLocation, useNavigate } from 'react-router'
+import { useNavigate } from 'react-router'
 import { Button } from '../../../shared/ui'
 import { ROUTES } from '../../../shared/lib/routes'
 import { SessionSidebar } from '../../../widgets/session-sidebar'
@@ -11,12 +11,6 @@ function isFinalized(item: Item): item is Item & { finalResult: AggregateResult 
 
 export function SessionSummary() {
   const items = useSessionStore((s) => s.items)
-  const activeItemId = useSessionStore((s) => s.activeItemId)
-  const selectItem = useSessionStore((s) => s.selectItem)
-  const reorderItems = useSessionStore((s) => s.reorderItems)
-  const removeItem = useSessionStore((s) => s.removeItem)
-  const addItem = useSessionStore((s) => s.addItem)
-  const location = useLocation()
   const navigate = useNavigate()
 
   const finalizedItems = items.filter(isFinalized)
@@ -32,17 +26,7 @@ export function SessionSummary() {
         padding: 'var(--space-6) var(--space-4)',
       }}
     >
-      <SessionSidebar
-        items={items}
-        activeItemId={activeItemId}
-        isSummaryScreen={location.pathname === ROUTES.summary}
-        onSelect={selectItem}
-        onReorder={reorderItems}
-        onRemove={removeItem}
-        onAdd={addItem}
-        onGoSummary={() => navigate(ROUTES.summary)}
-        scrollableList={false}
-      />
+      <SessionSidebar scrollableList={false} />
 
       <div className="card" style={{ padding: 'var(--space-6)', gap: 'var(--space-5)' }}>
         <h1 style={{ margin: 0, fontWeight: 500, fontSize: 22, textAlign: 'center' }}>

@@ -1,3 +1,4 @@
+import { announcedName, teammateLabel } from '../../../entities/participant'
 import type { Item } from '../../../entities/session'
 
 export interface FacilitatorRosterRow {
@@ -24,11 +25,11 @@ export function buildRoster(
   for (const id of ids) {
     if (seen.has(id)) continue
     seen.add(id)
-    const named = Object.hasOwn(participantNames, id) ? participantNames[id] : undefined
+    const named = announcedName(participantNames, id)
     const submission = submissionById.get(id)
     rows.push({
       id,
-      label: named ?? `Teammate ${++teammateNo}`,
+      label: named ?? teammateLabel(++teammateNo),
       submission: submission
         ? {
             best: submission.best,
