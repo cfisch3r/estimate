@@ -177,11 +177,20 @@ describe('ParticipantEstimateView', () => {
     await user.type(screen.getByLabelText('Best case (days)'), '10')
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
     expect(screen.getByText('Out of order')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Best case \(10 days\) is higher than Most likely \(5 days\)/),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Best case (days)')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
     expect(submit).toBeDisabled()
 
     // Completing the range with a descending worst is a hard validation failure.
     await user.type(screen.getByLabelText('Worst case (days)'), '3')
-    expect(screen.getByText('Check your estimate')).toBeInTheDocument()
+    expect(
+      screen.getByText(/Best case \(10 days\) is higher than Most likely \(5 days\)/),
+    ).toBeInTheDocument()
     expect(submit).toBeDisabled()
   })
 

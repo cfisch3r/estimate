@@ -10,7 +10,7 @@ import {
 } from '../../../entities/estimate'
 import { useThreePointDraft, type ThreePointInitial } from '../lib/useThreePointDraft'
 import { PhasePicker } from './PhasePicker'
-import { ThreePointEstimateFields } from './ThreePointEstimateFields'
+import { ESTIMATE_ISSUE_ID, ThreePointEstimateFields } from './ThreePointEstimateFields'
 import { UncertaintyGuidanceNotes } from './UncertaintyGuidanceNotes'
 
 type FormInfoKey = 'estimate' | 'phase' | 'range'
@@ -28,8 +28,8 @@ interface ThreePointEstimateFormProps {
   unit: EstimationUnit
   initial: ThreePointInitial | null
   info: InfoPopover
-  /** An extra error to show in the banner when the draft itself is valid, e.g. a
-   *  rejected submit. */
+  /** An error from the caller's own action (e.g. a rejected submit), shown only
+   *  while the draft itself is valid. */
   error?: string | null
   /** The actions below the form. Receives whether the draft is a valid estimate
    *  and its parsed values. */
@@ -51,9 +51,8 @@ export function ThreePointEstimateForm({
   error,
   footer,
 }: ThreePointEstimateFormProps) {
-  const draft = useThreePointDraft(initial)
+  const draft = useThreePointDraft(initial, unit)
   const { openKey, open, close } = info
-  const bannerError = draft.validationError ?? error
 
   return (
     <>
@@ -75,7 +74,7 @@ export function ThreePointEstimateForm({
         onBestChange={draft.setBest}
         onLikelyChange={draft.setLikely}
         onWorstChange={draft.setWorst}
-        validationError={draft.validationError}
+        issue={draft.issue}
         infoOpen={openKey === 'estimate'}
         onInfoOpen={() => open('estimate')}
         onInfoClose={close}
@@ -121,10 +120,20 @@ export function ThreePointEstimateForm({
           Worst case in software usually has more room than best case. Double check.
         </GuardNote>
       )}
-      {bannerError && (
-        <GuardNote variant="banner" headline="Check your estimate">
-          {bannerError}
+      {draft.issue ? (
+        <GuardNote
+          variant="banner"
+          headline={draft.issue.headline}
+          id={ESTIMATE_ISSUE_ID}
+        >
+          {draft.issue.message}
         </GuardNote>
+      ) : (
+        error && (
+          <GuardNote variant="banner" headline="Couldn't submit">
+            {error}
+          </GuardNote>
+        )
       )}
 
       {footer({

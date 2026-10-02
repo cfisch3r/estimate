@@ -73,18 +73,46 @@ describe('validateEstimateValues', () => {
     expect(validateEstimateValues(2, 5, 8)).toEqual({ ok: true })
   })
 
-  it('rejects non-finite, non-positive and out-of-order values', () => {
-    expect(validateEstimateValues(NaN, 5, 8).ok).toBe(false)
-    expect(validateEstimateValues(0, 5, 8).ok).toBe(false)
-    expect(validateEstimateValues(8, 5, 2).ok).toBe(false)
+  it('names every non-finite field', () => {
+    expect(validateEstimateValues(NaN, 5, Infinity)).toMatchObject({
+      ok: false,
+      code: 'not-finite',
+      fields: ['best', 'worst'],
+    })
   })
 
-  it('agrees with createEstimate for the same values', () => {
+  it('flags a non-positive best case', () => {
+    expect(validateEstimateValues(0, 5, 8)).toMatchObject({
+      ok: false,
+      code: 'non-positive',
+      fields: ['best'],
+    })
+  })
+
+  it('flags best above likely', () => {
+    expect(validateEstimateValues(8, 5, 9)).toMatchObject({
+      ok: false,
+      code: 'best-above-likely',
+      fields: ['best', 'likely'],
+    })
+  })
+
+  it('flags likely above worst', () => {
+    expect(validateEstimateValues(2, 9, 8)).toMatchObject({
+      ok: false,
+      code: 'likely-above-worst',
+      fields: ['likely', 'worst'],
+    })
+  })
+
+  it('reports the first broken pair when both are out of order', () => {
+    expect(validateEstimateValues(9, 5, 2)).toMatchObject({ code: 'best-above-likely' })
+  })
+
+  it('keeps createEstimate error text in step with the validator', () => {
     const values = validateEstimateValues(8, 5, 9)
     const created = createEstimate({ participantId: 'a', best: 8, likely: 5, worst: 9 })
 
-    expect(values.ok).toBe(false)
-    expect(created.ok).toBe(false)
-    if (!values.ok && !created.ok) expect(values.error).toBe(created.error)
+    expect(created).toEqual({ ok: false, error: values.ok ? '' : values.error })
   })
 })

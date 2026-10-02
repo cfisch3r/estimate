@@ -190,7 +190,11 @@ export const useRoundStore = create<RoundStore>((set, get) => ({
   submitEstimate: (best, likely, worst) => {
     const { liveRound } = get()
     if (!liveRound) {
-      return { ok: false, error: 'No active round to estimate.' }
+      return {
+        ok: false,
+        error:
+          'There is no active round to estimate. Wait for the facilitator to start an item.',
+      }
     }
     const { participantId } = useConnectionStore.getState()
     const result = createEstimate({

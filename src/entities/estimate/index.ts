@@ -15,7 +15,13 @@ export {
   UNCERTAINTY_GUIDANCE,
   DEFAULT_UNCERTAINTY_INDEX,
 } from './model/types'
-export type { Estimate, RawEstimateInput, Result } from './model/estimate'
+export type {
+  Estimate,
+  EstimateField,
+  EstimateValuesError,
+  RawEstimateInput,
+  Result,
+} from './model/estimate'
 export { createEstimate, validateEstimateValues } from './model/estimate'
 export { aggregateEstimates } from './model/aggregate'
 export { computeCI90 } from './model/ci90'
@@ -23,7 +29,6 @@ export {
   checkSymmetricRange,
   checkFalsePrecision,
   checkOutlier,
-  checkAscendingOrder,
   checkUncertaintyRange,
 } from './model/guards'
 export { RangeBar } from './ui/RangeBar'

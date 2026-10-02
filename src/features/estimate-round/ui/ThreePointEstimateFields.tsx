@@ -2,12 +2,14 @@ import { Field, FieldLabel, Input } from '../../../shared/ui/Field'
 import { GuardNote } from '../../../shared/ui/GuardNote'
 import { GroupBox } from '../../../shared/ui/GroupBox'
 import { THREE_POINT_ESTIMATE_INFO } from '../../../shared/copy'
-import {
-  checkAscendingOrder,
-  checkFalsePrecision,
-  UNIT_GRANULARITY,
-} from '../../../entities/estimate'
-import type { EstimationUnit } from '../../../entities/estimate'
+import { checkFalsePrecision, UNIT_GRANULARITY } from '../../../entities/estimate'
+import type { EstimateField, EstimationUnit } from '../../../entities/estimate'
+import { describePartialOrdering, type EstimateIssue } from '../lib/describeEstimateIssue'
+
+/** The id of the banner that explains a fully filled, invalid entry; the invalid
+ *  inputs point at it via aria-describedby. */
+export const ESTIMATE_ISSUE_ID = 'estimate-issue'
+const ORDER_NUDGE_ID = 'estimate-order-nudge'
 
 const inputStyle = {
   height: 48,
@@ -24,7 +26,8 @@ interface ThreePointEstimateFieldsProps {
   onBestChange: (value: string) => void
   onLikelyChange: (value: string) => void
   onWorstChange: (value: string) => void
-  validationError: string | null
+  /** Why a fully filled entry is invalid, or null. */
+  issue: EstimateIssue | null
   infoOpen: boolean
   onInfoOpen: () => void
   onInfoClose: () => void
@@ -43,7 +46,7 @@ export function ThreePointEstimateFields({
   onBestChange,
   onLikelyChange,
   onWorstChange,
-  validationError,
+  issue,
   infoOpen,
   onInfoOpen,
   onInfoClose,
@@ -58,15 +61,28 @@ export function ThreePointEstimateFields({
     likely !== '' ? checkFalsePrecision(likelyNum, granularity) : null
   const worstPrecision = worst !== '' ? checkFalsePrecision(worstNum, granularity) : null
 
-  const ascendingGuard = checkAscendingOrder(
-    best === '' ? null : bestNum,
-    likely === '' ? null : likelyNum,
-    worst === '' ? null : worstNum,
-  )
-  const orderingWarning =
-    !validationError && ascendingGuard.fired
-      ? 'Values should ascend: best ≤ likely ≤ worst.'
-      : null
+  // A descending pair is flagged as soon as both of its values are typed, before
+  // the third is filled in; a fully filled invalid entry is explained by `issue`.
+  const orderingNudge = issue
+    ? null
+    : describePartialOrdering(
+        {
+          best: best === '' ? null : bestNum,
+          likely: likely === '' ? null : likelyNum,
+          worst: worst === '' ? null : worstNum,
+        },
+        unit,
+      )
+  const activeIssue = issue ?? orderingNudge
+  const describedBy = issue
+    ? ESTIMATE_ISSUE_ID
+    : orderingNudge
+      ? ORDER_NUDGE_ID
+      : undefined
+  const invalidProps = (field: EstimateField) =>
+    activeIssue?.fields.includes(field)
+      ? { 'aria-invalid': true, 'aria-describedby': describedBy }
+      : {}
 
   return (
     <GroupBox
@@ -85,6 +101,7 @@ export function ThreePointEstimateFields({
             min={0}
             value={best}
             onChange={(e) => onBestChange(e.target.value)}
+            {...invalidProps('best')}
             style={inputStyle}
           />
           {bestPrecision?.fired && (
@@ -99,6 +116,7 @@ export function ThreePointEstimateFields({
             min={0}
             value={likely}
             onChange={(e) => onLikelyChange(e.target.value)}
+            {...invalidProps('likely')}
             style={inputStyle}
           />
           {likelyPrecision?.fired && (
@@ -113,6 +131,7 @@ export function ThreePointEstimateFields({
             min={0}
             value={worst}
             onChange={(e) => onWorstChange(e.target.value)}
+            {...invalidProps('worst')}
             style={inputStyle}
           />
           {worstPrecision?.fired && (
@@ -120,9 +139,9 @@ export function ThreePointEstimateFields({
           )}
         </Field>
       </div>
-      {orderingWarning && (
-        <GuardNote variant="banner" headline="Out of order">
-          {orderingWarning}
+      {orderingNudge && (
+        <GuardNote variant="banner" headline={orderingNudge.headline} id={ORDER_NUDGE_ID}>
+          {orderingNudge.message}
         </GuardNote>
       )}
     </GroupBox>

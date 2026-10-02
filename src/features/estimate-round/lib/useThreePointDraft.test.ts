@@ -4,28 +4,28 @@ import { useThreePointDraft } from './useThreePointDraft'
 
 describe('useThreePointDraft', () => {
   it('starts empty and invalid without an initial value', () => {
-    const { result } = renderHook(() => useThreePointDraft(null))
+    const { result } = renderHook(() => useThreePointDraft(null, 'days'))
 
     expect(result.current.best).toBe('')
-    expect(result.current.validationError).toBeNull()
+    expect(result.current.issue).toBeNull()
     expect(result.current.valid).toBe(false)
     expect(result.current.symmetricGuard).toBeNull()
   })
 
   it('seeds the fields from the initial estimate and validates it', () => {
     const { result } = renderHook(() =>
-      useThreePointDraft({ best: 2, likely: 4, worst: 9 }),
+      useThreePointDraft({ best: 2, likely: 4, worst: 9 }, 'days'),
     )
 
     expect(result.current.best).toBe('2')
     expect(result.current.likely).toBe('4')
     expect(result.current.worst).toBe('9')
     expect(result.current.valid).toBe(true)
-    expect(result.current.validationError).toBeNull()
+    expect(result.current.issue).toBeNull()
   })
 
   it('reports a validation error for out-of-order values', () => {
-    const { result } = renderHook(() => useThreePointDraft(null))
+    const { result } = renderHook(() => useThreePointDraft(null, 'days'))
 
     act(() => {
       result.current.setBest('9')
@@ -34,11 +34,12 @@ describe('useThreePointDraft', () => {
     })
 
     expect(result.current.valid).toBe(false)
-    expect(result.current.validationError).toEqual(expect.any(String))
+    expect(result.current.issue?.fields).toEqual(['best', 'likely'])
+    expect(result.current.issue?.message).toContain('Best case (9 days)')
   })
 
   it('fires the symmetric guard when likely sits midway', () => {
-    const { result } = renderHook(() => useThreePointDraft(null))
+    const { result } = renderHook(() => useThreePointDraft(null, 'days'))
 
     act(() => {
       result.current.setBest('2')
