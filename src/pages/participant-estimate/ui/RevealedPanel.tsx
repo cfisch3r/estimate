@@ -3,10 +3,12 @@ import { RANGE_INFO } from '../../../shared/copy'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import {
   aggregateEstimates,
+  EstimateTriple,
   RangeBar,
   UNIT_SUFFIX,
   type EstimationUnit,
 } from '../../../entities/estimate'
+import { announcedName, teammateLabel } from '../../../entities/participant'
 import type { LiveRound } from '../../../entities/session'
 import { RoundCardHeader } from './RoundCardHeader'
 
@@ -63,16 +65,15 @@ export function RevealedPanel({
           // Every non-self row consumes a teammate number (whether or not it
           // also has an announced name), so a given peer's "Teammate N" stays
           // put when a *different* peer's announce arrives. Prefer the announced
-          // name; `Object.hasOwn` guards against an untrusted participantId that
-          // collides with an Object.prototype key ("toString", "constructor", …).
+          // name.
           let teammateNo = 0
           return round.submissions.map((estimate) => {
             const isMe = estimate.participantId === participantId
             const ordinal = isMe ? 0 : ++teammateNo
-            const name = Object.hasOwn(participantNames, estimate.participantId)
-              ? participantNames[estimate.participantId]
-              : undefined
-            const label = isMe ? 'You' : (name ?? `Teammate ${ordinal}`)
+            const label = isMe
+              ? 'You'
+              : (announcedName(participantNames, estimate.participantId) ??
+                teammateLabel(ordinal))
             return (
               <li
                 key={estimate.participantId}
@@ -80,10 +81,12 @@ export function RevealedPanel({
               >
                 <span>{label}</span>
                 <span>
-                  {estimate.best}
-                  {suffix} / {estimate.likely}
-                  {suffix} / {estimate.worst}
-                  {suffix}
+                  <EstimateTriple
+                    best={estimate.best}
+                    likely={estimate.likely}
+                    worst={estimate.worst}
+                    unit={unit}
+                  />
                 </span>
               </li>
             )

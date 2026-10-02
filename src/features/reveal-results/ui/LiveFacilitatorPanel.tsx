@@ -1,10 +1,11 @@
-import { Button, GroupBox, Tag, NavRow, formatValue } from '../../../shared/ui'
+import { Button, GroupBox, Tag, NavRow } from '../../../shared/ui'
 import { PARTICIPANT_ESTIMATES_INFO, RANGE_INFO } from '../../../shared/copy'
 import { useConfirmArm } from '../../../shared/lib/useConfirmArm'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import {
   aggregateEstimates,
   UNIT_SUFFIX,
+  EstimateTriple,
   RangeBar,
   type EstimationUnit,
 } from '../../../entities/estimate'
@@ -26,9 +27,6 @@ interface LiveFacilitatorPanelProps {
   onFinalize: (id: string) => FinalizeResult
   onAdvance: () => void
   onNavigatePrev: () => void
-  onNotesChange: (id: string, notes: string) => void
-  onDescriptionChange: (id: string, description: string) => void
-  onTitleChange: (id: string, title: string) => void
 }
 
 /** Live mode, facilitator side: Workspace states 1c (waiting for estimates) and
@@ -45,9 +43,6 @@ export function LiveFacilitatorPanel({
   onFinalize,
   onAdvance,
   onNavigatePrev,
-  onNotesChange,
-  onDescriptionChange,
-  onTitleChange,
 }: LiveFacilitatorPanelProps) {
   const suffix = UNIT_SUFFIX[unit]
   const roster = buildRoster(item, participantNames)
@@ -74,9 +69,6 @@ export function LiveFacilitatorPanel({
   return (
     <ItemDetailShell
       item={item}
-      onNotesChange={onNotesChange}
-      onDescriptionChange={onDescriptionChange}
-      onTitleChange={onTitleChange}
       descriptionInfoOpen={infoOpen === 'description'}
       onDescriptionInfoOpen={() => openInfo('description')}
       onDescriptionInfoClose={closeInfo}
@@ -109,9 +101,16 @@ export function LiveFacilitatorPanel({
                 <span>{row.label}</span>
                 {item.revealed ? (
                   <span className={row.submission ? undefined : 'text-muted'}>
-                    {row.submission
-                      ? `${formatValue(row.submission.best)}${suffix} / ${formatValue(row.submission.likely)}${suffix} / ${formatValue(row.submission.worst)}${suffix}`
-                      : 'No response'}
+                    {row.submission ? (
+                      <EstimateTriple
+                        best={row.submission.best}
+                        likely={row.submission.likely}
+                        worst={row.submission.worst}
+                        unit={unit}
+                      />
+                    ) : (
+                      'No response'
+                    )}
                   </span>
                 ) : (
                   <Tag variant={row.submission ? 'accent' : 'neutral'}>

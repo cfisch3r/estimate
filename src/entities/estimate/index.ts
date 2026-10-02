@@ -27,3 +27,4 @@ export {
   checkUncertaintyRange,
 } from './model/guards'
 export { RangeBar } from './ui/RangeBar'
+export { EstimateTriple } from './ui/EstimateTriple'

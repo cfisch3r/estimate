@@ -3,7 +3,7 @@ import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { Button, Card, GuardNote } from '../../../shared/ui'
 import type { ConnectionPhase } from '../../../shared/lib/useConnectionPhase'
-import { UNIT_SUFFIX, type EstimationUnit } from '../../../entities/estimate'
+import { EstimateTriple, type EstimationUnit } from '../../../entities/estimate'
 import type { LiveRound } from '../../../entities/session'
 import type { DeliveryState, SubmitResult } from '../../../features/submit-estimate'
 import { EstimateForm } from './EstimateForm'
@@ -28,7 +28,6 @@ export function WaitingPanel({
 }: WaitingPanelProps) {
   const [editing, setEditing] = useState(false)
   const mine = round.mySubmission!
-  const suffix = UNIT_SUFFIX[unit]
 
   return (
     <Card elevation="sm">
@@ -57,10 +56,13 @@ export function WaitingPanel({
             }}
           >
             <span>
-              <strong>{mine.best}</strong>
-              {suffix} / <strong>{mine.likely}</strong>
-              {suffix} / <strong>{mine.worst}</strong>
-              {suffix}
+              <EstimateTriple
+                best={mine.best}
+                likely={mine.likely}
+                worst={mine.worst}
+                unit={unit}
+                emphasis
+              />
             </span>
             <Button
               icon
