@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
+import { ISSUE_SETTLE_MS } from './useSettledIssue'
 import { useThreePointDraft } from './useThreePointDraft'
 
 describe('useThreePointDraft', () => {
@@ -24,18 +25,27 @@ describe('useThreePointDraft', () => {
     expect(result.current.issue).toBeNull()
   })
 
-  it('reports a validation error for out-of-order values', () => {
-    const { result } = renderHook(() => useThreePointDraft(null, 'days'))
+  it('reports a validation error for out-of-order values once the entry settles', () => {
+    vi.useFakeTimers()
+    try {
+      const { result } = renderHook(() => useThreePointDraft(null, 'days'))
 
-    act(() => {
-      result.current.setBest('9')
-      result.current.setLikely('4')
-      result.current.setWorst('2')
-    })
+      act(() => {
+        result.current.setBest('9')
+        result.current.setLikely('4')
+        result.current.setWorst('2')
+      })
+      expect(result.current.valid).toBe(false)
+      expect(result.current.issue).toBeNull()
 
-    expect(result.current.valid).toBe(false)
-    expect(result.current.issue?.fields).toEqual(['best', 'likely'])
-    expect(result.current.issue?.message).toContain('Best case (9 days)')
+      act(() => {
+        vi.advanceTimersByTime(ISSUE_SETTLE_MS)
+      })
+      expect(result.current.issue?.fields).toEqual(['best', 'likely'])
+      expect(result.current.issue?.message).toContain('Best case (9 days)')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('fires the symmetric guard when likely sits midway', () => {

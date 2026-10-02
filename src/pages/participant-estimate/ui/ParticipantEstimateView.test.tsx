@@ -177,7 +177,7 @@ describe('ParticipantEstimateView', () => {
     // Partial, out-of-order entry gets the ascending nudge.
     await user.type(screen.getByLabelText('Best case (days)'), '10')
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
-    expect(screen.getByText('Out of order')).toBeInTheDocument()
+    expect(await screen.findByText('Out of order')).toBeInTheDocument()
     expect(
       screen.getByText(/Best case \(10 days\) is higher than Most likely \(5 days\)/),
     ).toBeInTheDocument()

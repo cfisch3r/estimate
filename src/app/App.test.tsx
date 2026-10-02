@@ -93,7 +93,9 @@ describe('Single-user end-to-end flow', () => {
     await user.type(screen.getByLabelText('Worst case (days)'), '3')
 
     expect(
-      screen.getByText(/Most likely \(5 days\) is higher than Worst case \(3 days\)/),
+      await screen.findByText(
+        /Most likely \(5 days\) is higher than Worst case \(3 days\)/,
+      ),
     ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Finalize item' })).toBeDisabled()
     // still on the same item, not advanced
@@ -110,7 +112,9 @@ describe('Single-user end-to-end flow', () => {
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
     await user.type(screen.getByLabelText('Worst case (days)'), '3')
     expect(
-      screen.getByText(/Most likely \(5 days\) is higher than Worst case \(3 days\)/),
+      await screen.findByText(
+        /Most likely \(5 days\) is higher than Worst case \(3 days\)/,
+      ),
     ).toBeInTheDocument()
 
     await user.clear(screen.getByLabelText('Worst case (days)'))

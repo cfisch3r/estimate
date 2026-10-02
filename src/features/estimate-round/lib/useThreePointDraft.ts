@@ -11,6 +11,7 @@ import {
   type EstimateIssue,
 } from './describeEstimateIssue'
 import { usePhaseGuidance } from './usePhaseGuidance'
+import { useSettledIssue } from './useSettledIssue'
 
 export interface ThreePointInitial {
   best: number
@@ -29,8 +30,11 @@ export interface ThreePointDraft {
   likelyNum: number
   worstNum: number
   /** What is wrong with the entry so far — a rejected full entry, or a descending
-   *  pair in a partly filled one — or null. */
+   *  pair in a partly filled one — once it has settled (see `useSettledIssue`), or
+   *  null. `valid` is not delayed. */
   issue: EstimateIssue | null
+  /** Show the current problem now instead of waiting for the entry to settle. */
+  flushIssue: () => void
   /** True once the three values form a valid estimate. */
   valid: boolean
   symmetricGuard: GuardResult | null
@@ -61,7 +65,7 @@ export function useThreePointDraft(
   const validation = allFilled
     ? validateEstimateValues(bestNum, likelyNum, worstNum)
     : null
-  const issue =
+  const currentIssue =
     validation && !validation.ok
       ? describeEstimateIssue(
           validation,
@@ -76,6 +80,8 @@ export function useThreePointDraft(
           },
           unit,
         )
+
+  const { issue, flush: flushIssue } = useSettledIssue(currentIssue)
 
   const symmetricGuard = allFilled
     ? checkSymmetricRange(bestNum, likelyNum, worstNum)
@@ -98,6 +104,7 @@ export function useThreePointDraft(
     likelyNum,
     worstNum,
     issue,
+    flushIssue,
     valid: validation?.ok ?? false,
     symmetricGuard,
     phaseIndex,
