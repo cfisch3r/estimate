@@ -14,7 +14,9 @@ export function RoundCardHeader({ kicker, item }: RoundCardHeaderProps) {
   return (
     <>
       <CardKicker>{kicker}</CardKicker>
-      <CardTitle as="h1">{item.title}</CardTitle>
+      <CardTitle as="h1" tabIndex={-1}>
+        {item.title}
+      </CardTitle>
       {item.description && (
         <Markdown content={item.description} className="card-body markdown-preview" />
       )}

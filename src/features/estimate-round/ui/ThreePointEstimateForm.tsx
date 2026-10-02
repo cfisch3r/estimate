@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from 'react'
 import { GroupBox } from '../../../shared/ui/GroupBox'
 import { GuardNote } from '../../../shared/ui/GuardNote'
+import { LiveRegion } from '../../../shared/ui/LiveRegion'
 import { PHASE_INFO, RANGE_INFO } from '../../../shared/copy'
 import {
   computeCI90,
@@ -117,22 +118,25 @@ export function ThreePointEstimateForm({
         )}
       </GroupBox>
 
-      {draft.symmetricGuard?.fired && (
-        <GuardNote variant="banner" headline="Symmetric range">
-          Worst case in software usually has more room than best case. Double check.
-        </GuardNote>
-      )}
-      {draft.issue ? (
-        <GuardNote variant="banner" headline={draft.issue.headline} id={issueId}>
-          {draft.issue.message}
-        </GuardNote>
-      ) : (
-        error && (
+      <LiveRegion>
+        {draft.symmetricGuard?.fired && (
+          <GuardNote variant="banner" headline="Symmetric range">
+            Worst case in software usually has more room than best case. Double check.
+          </GuardNote>
+        )}
+        {draft.issue && (
+          <GuardNote variant="banner" headline={draft.issue.headline} id={issueId}>
+            {draft.issue.message}
+          </GuardNote>
+        )}
+      </LiveRegion>
+      <LiveRegion role="alert">
+        {!draft.issue && error && (
           <GuardNote variant="banner" headline="Couldn't submit">
             {error}
           </GuardNote>
-        )
-      )}
+        )}
+      </LiveRegion>
 
       {footer({
         valid: draft.valid,

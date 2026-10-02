@@ -99,4 +99,55 @@ describe('ThreePointEstimateForm', () => {
       await axe(container, { rules: { 'color-contrast': { enabled: false } } }),
     ).toHaveNoViolations()
   })
+
+  it('announces validation banners through live regions', async () => {
+    const user = userEvent.setup()
+    render(
+      <ThreePointEstimateForm
+        unit="days"
+        initial={null}
+        info={info}
+        error="Round closed"
+        footer={() => null}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/Best case/), '8')
+    await user.type(screen.getByLabelText(/Most likely/), '5')
+
+    const nudge = screen.getByText(/Best case \(8 days\) is higher than Most likely/)
+    expect(nudge.closest('[role="status"]')).not.toBeNull()
+  })
+
+  it("announces the caller's error as an alert", () => {
+    render(
+      <ThreePointEstimateForm
+        unit="days"
+        initial={{ best: 1, likely: 3, worst: 8 }}
+        info={info}
+        error="Round closed"
+        footer={() => null}
+      />,
+    )
+
+    expect(screen.getByText('Round closed').closest('[role="alert"]')).not.toBeNull()
+  })
+
+  it('links the rounding note to its input', async () => {
+    const user = userEvent.setup()
+    render(
+      <ThreePointEstimateForm
+        unit="days"
+        initial={null}
+        info={info}
+        footer={() => null}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/Best case/), '1.3')
+
+    expect(screen.getByLabelText(/Best case/)).toHaveAccessibleDescription(
+      'Consider rounding to a meaningful value.',
+    )
+  })
 })

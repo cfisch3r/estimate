@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button } from '../../../shared/ui'
+import { Button, LiveRegion } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import type { EstimationUnit } from '../../../entities/estimate'
 import { ThreePointEstimateForm } from '../../../features/estimate-round'
@@ -44,14 +44,16 @@ export function EstimateForm({
             {submitLabel}
           </Button>
 
-          {statusLine && (
-            <p
-              className="text-muted"
-              style={{ margin: 0, fontSize: 13, textAlign: 'center' }}
-            >
-              {statusLine}
-            </p>
-          )}
+          <LiveRegion>
+            {statusLine && (
+              <p
+                className="text-muted"
+                style={{ margin: 0, fontSize: 13, textAlign: 'center' }}
+              >
+                {statusLine}
+              </p>
+            )}
+          </LiveRegion>
         </>
       )}
     />

@@ -8,6 +8,7 @@ import {
   FieldLabel,
   GuardNote,
   Input,
+  LiveRegion,
 } from '../../../shared/ui'
 import { useJoinFlow, useLeaveLiveSession } from '../../../features/session-lifecycle'
 
@@ -73,26 +74,30 @@ export function JoinSession() {
         don&rsquo;t estimate from two tabs at once.
       </GuardNote>
 
-      {connecting && !failed && (
-        <div
-          className="card-meta"
-          style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
-        >
-          <CircleNotchIcon size={16} weight="bold" className="spin" />
-          Connecting to peers…
-        </div>
-      )}
+      <LiveRegion>
+        {connecting && !failed && (
+          <div
+            className="card-meta"
+            style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}
+          >
+            <CircleNotchIcon size={16} weight="bold" className="spin" />
+            Connecting to peers…
+          </div>
+        )}
+      </LiveRegion>
 
-      {failed && (
-        // Retry is the only action offered on purpose: there is no facilitator-side
-        // control to switch a session or item to Manual Entry mid-flight (ADR-003,
-        // "Also explicitly out of scope" under Role-asymmetric link state), so this
-        // must not suggest one.
-        <GuardNote variant="banner" headline="Couldn't reach the session">
-          We couldn&rsquo;t reach the facilitator. Double-check the session code with them
-          and try again.
-        </GuardNote>
-      )}
+      <LiveRegion role="alert">
+        {failed && (
+          // Retry is the only action offered on purpose: there is no facilitator-side
+          // control to switch a session or item to Manual Entry mid-flight (ADR-003,
+          // "Also explicitly out of scope" under Role-asymmetric link state), so this
+          // must not suggest one.
+          <GuardNote variant="banner" headline="Couldn't reach the session">
+            We couldn&rsquo;t reach the facilitator. Double-check the session code with
+            them and try again.
+          </GuardNote>
+        )}
+      </LiveRegion>
 
       <Button
         variant="primary"

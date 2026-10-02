@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import { Field, FieldLabel, Input } from '../../../shared/ui/Field'
 import { GuardNote } from '../../../shared/ui/GuardNote'
 import { GroupBox } from '../../../shared/ui/GroupBox'
@@ -59,10 +60,28 @@ export function ThreePointEstimateFields({
     likely !== '' ? checkFalsePrecision(likelyNum, granularity) : null
   const worstPrecision = worst !== '' ? checkFalsePrecision(worstNum, granularity) : null
 
-  const invalidProps = (field: EstimateField) =>
-    issue?.fields.includes(field)
-      ? { 'aria-invalid': true, 'aria-describedby': issueId }
-      : {}
+  const precisionBase = useId()
+  const precisionFired: Record<EstimateField, boolean> = {
+    best: bestPrecision?.fired ?? false,
+    likely: likelyPrecision?.fired ?? false,
+    worst: worstPrecision?.fired ?? false,
+  }
+  const precisionId = (field: EstimateField) => `${precisionBase}-${field}`
+  // An input is described by its own rounding note and, when the issue names it,
+  // the issue message too.
+  const inputAria = (field: EstimateField) => {
+    const invalid = issue?.fields.includes(field) ?? false
+    const describedBy = [
+      precisionFired[field] ? precisionId(field) : null,
+      invalid ? issueId : null,
+    ]
+      .filter(Boolean)
+      .join(' ')
+    return {
+      ...(invalid ? { 'aria-invalid': true as const } : {}),
+      ...(describedBy ? { 'aria-describedby': describedBy } : {}),
+    }
+  }
 
   return (
     <GroupBox
@@ -81,11 +100,13 @@ export function ThreePointEstimateFields({
             min={0}
             value={best}
             onChange={(e) => onBestChange(e.target.value)}
-            {...invalidProps('best')}
+            {...inputAria('best')}
             style={inputStyle}
           />
           {bestPrecision?.fired && (
-            <GuardNote>Consider rounding to a meaningful value.</GuardNote>
+            <GuardNote id={precisionId('best')}>
+              Consider rounding to a meaningful value.
+            </GuardNote>
           )}
         </Field>
         <Field style={{ flex: 1 }}>
@@ -96,11 +117,13 @@ export function ThreePointEstimateFields({
             min={0}
             value={likely}
             onChange={(e) => onLikelyChange(e.target.value)}
-            {...invalidProps('likely')}
+            {...inputAria('likely')}
             style={inputStyle}
           />
           {likelyPrecision?.fired && (
-            <GuardNote>Consider rounding to a meaningful value.</GuardNote>
+            <GuardNote id={precisionId('likely')}>
+              Consider rounding to a meaningful value.
+            </GuardNote>
           )}
         </Field>
         <Field style={{ flex: 1 }}>
@@ -111,11 +134,13 @@ export function ThreePointEstimateFields({
             min={0}
             value={worst}
             onChange={(e) => onWorstChange(e.target.value)}
-            {...invalidProps('worst')}
+            {...inputAria('worst')}
             style={inputStyle}
           />
           {worstPrecision?.fired && (
-            <GuardNote>Consider rounding to a meaningful value.</GuardNote>
+            <GuardNote id={precisionId('worst')}>
+              Consider rounding to a meaningful value.
+            </GuardNote>
           )}
         </Field>
       </div>
