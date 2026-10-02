@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
+import { ISSUE_SETTLE_MS } from '../lib/useSettledIssue'
 import { ThreePointEstimateForm } from './ThreePointEstimateForm'
 
 const info = { openKey: null, open: vi.fn(), close: vi.fn() }
@@ -115,7 +116,10 @@ describe('ThreePointEstimateForm', () => {
     await user.type(screen.getByLabelText(/Best case/), '8')
     await user.type(screen.getByLabelText(/Most likely/), '5')
 
-    const nudge = screen.getByText(/Best case \(8 days\) is higher than Most likely/)
+    // The entry settles before the problem is shown.
+    const nudge = await screen.findByText(
+      /Best case \(8 days\) is higher than Most likely/,
+    )
     expect(nudge.closest('[role="status"]')).not.toBeNull()
   })
 
@@ -149,5 +153,49 @@ describe('ThreePointEstimateForm', () => {
     expect(screen.getByLabelText(/Best case/)).toHaveAccessibleDescription(
       'Consider rounding to a meaningful value.',
     )
+  })
+
+  it('does not flash a problem while typing through an intermediate value', async () => {
+    const user = userEvent.setup()
+    render(
+      <ThreePointEstimateForm
+        unit="days"
+        initial={null}
+        info={info}
+        footer={() => null}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/Best case/), '5')
+    const likely = screen.getByLabelText(/Most likely/)
+    await user.type(likely, '1')
+    // "1" is below the best case of 5, but only on the way to "15".
+    expect(screen.queryByText(/is higher than/)).not.toBeInTheDocument()
+    expect(likely).not.toHaveAttribute('aria-invalid')
+
+    await user.type(likely, '5')
+    await new Promise((resolve) => setTimeout(resolve, ISSUE_SETTLE_MS + 100))
+
+    expect(screen.queryByText(/is higher than/)).not.toBeInTheDocument()
+  })
+
+  it('shows a pending problem at once when the field loses focus', async () => {
+    const user = userEvent.setup()
+    render(
+      <ThreePointEstimateForm
+        unit="days"
+        initial={null}
+        info={info}
+        footer={() => null}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/Best case/), '8')
+    await user.type(screen.getByLabelText(/Most likely/), '5')
+    await user.tab()
+
+    expect(
+      screen.getByText(/Best case \(8 days\) is higher than Most likely/),
+    ).toBeInTheDocument()
   })
 })

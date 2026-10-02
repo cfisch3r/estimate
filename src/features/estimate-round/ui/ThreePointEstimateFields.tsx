@@ -28,6 +28,8 @@ interface ThreePointEstimateFieldsProps {
   issueId: string
   /** Focus the first input when the fields mount (e.g. when opening a revise form). */
   focusOnMount?: boolean
+  /** An input lost focus: the caller can show a pending problem now. */
+  onBlur?: () => void
   infoOpen: boolean
   onInfoOpen: () => void
   onInfoClose: () => void
@@ -49,6 +51,7 @@ export function ThreePointEstimateFields({
   issue,
   issueId,
   focusOnMount = false,
+  onBlur,
   infoOpen,
   onInfoOpen,
   onInfoClose,
@@ -108,6 +111,7 @@ export function ThreePointEstimateFields({
             value={best}
             onChange={(e) => onBestChange(e.target.value)}
             {...inputAria('best')}
+            onBlur={onBlur}
             style={inputStyle}
           />
           {bestPrecision?.fired && (
@@ -125,6 +129,7 @@ export function ThreePointEstimateFields({
             value={likely}
             onChange={(e) => onLikelyChange(e.target.value)}
             {...inputAria('likely')}
+            onBlur={onBlur}
             style={inputStyle}
           />
           {likelyPrecision?.fired && (
@@ -142,6 +147,7 @@ export function ThreePointEstimateFields({
             value={worst}
             onChange={(e) => onWorstChange(e.target.value)}
             {...inputAria('worst')}
+            onBlur={onBlur}
             style={inputStyle}
           />
           {worstPrecision?.fired && (
