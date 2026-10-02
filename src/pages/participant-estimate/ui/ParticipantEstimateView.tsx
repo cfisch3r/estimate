@@ -1,494 +1,65 @@
-import { useState } from 'react'
 import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
-import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
-import {
-  Button,
-  Card,
-  CardBody,
-  CardKicker,
-  CardTitle,
-  GuardNote,
-  GroupBox,
-  Markdown,
-} from '../../../shared/ui'
-import { RANGE_INFO } from '../../../shared/copy'
-import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
-import {
-  useConnectionPhase,
-  type ConnectionPhase,
-} from '../../../shared/lib/useConnectionPhase'
-import {
-  aggregateEstimates,
-  UNIT_SUFFIX,
-  RangeBar,
-  type EstimationUnit,
-} from '../../../entities/estimate'
-import {
-  useSessionStore,
-  useConnectionStore,
-  useRoundStore,
-  useNetworkSession,
-  type LiveRound,
-} from '../../../entities/session'
-import { ThreePointEstimateForm } from '../../../features/estimate-round'
+import { Button, GuardNote } from '../../../shared/ui'
+import { useNetworkSession } from '../../../entities/session'
+import { useSubmitEstimate } from '../../../features/estimate-round'
 import { useLeaveLiveSession } from '../../../features/session-lifecycle'
-
-type SubmitResult = { ok: true } | { ok: false; error: string }
-
-/** Where this participant's own estimate stands with the facilitator, derived
- *  rather than tracked as its own store field: `submitted` comes straight from
- *  the roster (the actual convergence proof, per ADR-003), so a background
- *  resend that lands is reflected automatically with no wiring back to this
- *  component. `sending` / `not-delivered` describe only the most recent local
- *  send attempt. */
-type DeliveryState = 'sending' | 'submitted' | 'not-delivered'
-
-interface EstimateFormProps {
-  unit: EstimationUnit
-  initial: { best: number; likely: number; worst: number } | null
-  submitLabel: string
-  statusLine?: string
-  onSubmit: (best: number, likely: number, worst: number) => SubmitResult
-}
-
-/** The estimating (5c) and revise-before-reveal (5d) form: the shared
- *  three-point form plus this view's submit button and status line. */
-function EstimateForm({
-  unit,
-  initial,
-  submitLabel,
-  statusLine,
-  onSubmit,
-}: EstimateFormProps) {
-  const [submitError, setSubmitError] = useState<string | null>(null)
-  const info = useSingleInfoPopover<'estimate' | 'phase' | 'range'>()
-
-  return (
-    <ThreePointEstimateForm
-      unit={unit}
-      initial={initial}
-      info={info}
-      error={submitError}
-      footer={({ valid, best, likely, worst }) => (
-        <>
-          <Button
-            variant="primary"
-            disabled={!valid}
-            onClick={() => {
-              const result = onSubmit(best, likely, worst)
-              setSubmitError(result.ok ? null : result.error)
-            }}
-          >
-            {submitLabel}
-          </Button>
-
-          {statusLine && (
-            <p
-              className="text-muted"
-              style={{ margin: 0, fontSize: 13, textAlign: 'center' }}
-            >
-              {statusLine}
-            </p>
-          )}
-        </>
-      )}
-    />
-  )
-}
-
-/** "{sessionName} ({sessionId})" once the facilitator's session name has
- *  reached this client (see the sync protocol's `sessionName` field) — falls
- *  back to the join code alone (today's kicker) while it hasn't, e.g. an old
- *  facilitator build, or the brief window before the first snapshot lands. */
-function formatSessionKicker(sessionName: string, sessionId: string | null): string {
-  const trimmed = sessionName.trim()
-  return trimmed ? `${trimmed} (${sessionId})` : `Session ${sessionId}`
-}
-
-interface RoundPanelProps {
-  round: LiveRound
-  unit: EstimationUnit
-  sessionId: string | null
-  sessionName: string
-}
-
-function EstimatingPanel({
-  round,
-  unit,
-  sessionId,
-  sessionName,
-  onSubmit,
-}: RoundPanelProps & {
-  onSubmit: (best: number, likely: number, worst: number) => SubmitResult
-}) {
-  // The roster (from the facilitator's snapshot) is the authoritative "who's
-  // estimating" list — it replaces deriving the denominator from `peerCount`,
-  // which is only correct while the full peer-to-peer mesh is intact.
-  const totalEstimators = Math.max(round.roster.length, 1)
-  const submitted = round.roster.filter((entry) => entry.submitted).length
-  const statusLine = `${submitted} of ${totalEstimators} teammate${
-    totalEstimators === 1 ? '' : 's'
-  } ${submitted === 1 ? 'has' : 'have'} submitted so far.`
-
-  return (
-    <Card elevation="sm">
-      <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
-      {/* CardTitle as="h1", not its default h3: every state this screen can
-       *  be in (here, WaitingPanel, RevealedPanel, and Lobby below) renders
-       *  exactly one of these as its only heading — mirroring the
-       *  facilitator Workspace's item-title EditableTitle, also an h1 — and
-       *  axe's page-has-heading-one rule caught the page having none at
-       *  all. */}
-      <CardTitle as="h1">{round.item.title}</CardTitle>
-      {round.item.description && (
-        <Markdown
-          content={round.item.description}
-          className="card-body markdown-preview"
-        />
-      )}
-      <EstimateForm
-        key={round.item.id}
-        unit={unit}
-        initial={null}
-        submitLabel="Submit estimate"
-        statusLine={statusLine}
-        onSubmit={onSubmit}
-      />
-    </Card>
-  )
-}
-
-function WaitingPanel({
-  round,
-  unit,
-  sessionId,
-  sessionName,
-  onSubmit,
-  deliveryState,
-  connectionPhase,
-}: RoundPanelProps & {
-  onSubmit: (best: number, likely: number, worst: number) => SubmitResult
-  deliveryState: DeliveryState
-  connectionPhase: ConnectionPhase
-}) {
-  const [editing, setEditing] = useState(false)
-  const mine = round.mySubmission!
-  const suffix = UNIT_SUFFIX[unit]
-
-  return (
-    <Card elevation="sm">
-      <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
-      <CardTitle as="h1">{round.item.title}</CardTitle>
-      {round.item.description && (
-        <Markdown
-          content={round.item.description}
-          className="card-body markdown-preview"
-        />
-      )}
-
-      {editing ? (
-        <EstimateForm
-          key={round.item.id}
-          unit={unit}
-          initial={mine}
-          submitLabel="Update estimate"
-          onSubmit={(best, likely, worst) => {
-            const result = onSubmit(best, likely, worst)
-            if (result.ok) setEditing(false)
-            return result
-          }}
-        />
-      ) : (
-        <>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 'var(--space-4)',
-            }}
-          >
-            <span>
-              <strong>{mine.best}</strong>
-              {suffix} / <strong>{mine.likely}</strong>
-              {suffix} / <strong>{mine.worst}</strong>
-              {suffix}
-            </span>
-            <Button
-              icon
-              variant="ghost"
-              aria-label="Revise estimate"
-              onClick={() => setEditing(true)}
-            >
-              <PencilSimpleIcon size={16} />
-            </Button>
-          </div>
-          <div
-            className="card-meta"
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 'var(--space-2)',
-            }}
-          >
-            <CircleNotchIcon size={16} weight="bold" className="spin" />
-            Waiting for the facilitator to reveal…
-          </div>
-
-          {/* When the facilitator link is down, that banner (rendered by the
-           *  parent) already explains why nothing is arriving — this must not
-           *  stack a second alarm on top of it. */}
-          {connectionPhase !== 'lost' && deliveryState === 'sending' && (
-            <div
-              className="card-meta"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 'var(--space-2)',
-              }}
-            >
-              <CircleNotchIcon size={16} weight="bold" className="spin" />
-              Sending your estimate…
-            </div>
-          )}
-          {connectionPhase !== 'lost' && deliveryState === 'not-delivered' && (
-            <GuardNote variant="banner" headline="Not delivered yet">
-              Your estimate hasn&apos;t reached the facilitator. It will retry
-              automatically.
-            </GuardNote>
-          )}
-        </>
-      )}
-    </Card>
-  )
-}
-
-function RevealedPanel({
-  round,
-  unit,
-  sessionId,
-  sessionName,
-  participantId,
-  participantNames,
-}: RoundPanelProps & {
-  participantId: string
-  participantNames: Record<string, string>
-}) {
-  const suffix = UNIT_SUFFIX[unit]
-  const aggregate =
-    round.submissions.length > 0 ? aggregateEstimates(round.submissions) : null
-  const {
-    openKey: infoOpen,
-    open: openInfo,
-    close: closeInfo,
-  } = useSingleInfoPopover<'range'>()
-
-  return (
-    <Card elevation="sm">
-      <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
-      <CardTitle as="h1">{round.item.title}</CardTitle>
-      {round.item.description && (
-        <Markdown
-          content={round.item.description}
-          className="card-body markdown-preview"
-        />
-      )}
-
-      {aggregate ? (
-        <GroupBox
-          label="Range (aggregated)"
-          info={RANGE_INFO}
-          infoOpen={infoOpen === 'range'}
-          onInfoOpen={() => openInfo('range')}
-          onInfoClose={closeInfo}
-        >
-          <RangeBar
-            min={aggregate.min}
-            max={aggregate.max}
-            expected={aggregate.expected}
-            ci90={aggregate.ci90}
-            unitSuffix={suffix}
-          />
-        </GroupBox>
-      ) : (
-        <CardBody>No estimates were submitted before the reveal.</CardBody>
-      )}
-
-      <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gap: 4 }}>
-        {(() => {
-          // Every non-self row consumes a teammate number (whether or not it
-          // also has an announced name), so a given peer's "Teammate N" stays
-          // put when a *different* peer's announce arrives. Prefer the announced
-          // name; `Object.hasOwn` guards against an untrusted participantId that
-          // collides with an Object.prototype key ("toString", "constructor", …).
-          let teammateNo = 0
-          return round.submissions.map((estimate) => {
-            const isMe = estimate.participantId === participantId
-            const ordinal = isMe ? 0 : ++teammateNo
-            const name = Object.hasOwn(participantNames, estimate.participantId)
-              ? participantNames[estimate.participantId]
-              : undefined
-            const label = isMe ? 'You' : (name ?? `Teammate ${ordinal}`)
-            return (
-              <li
-                key={estimate.participantId}
-                style={{ display: 'flex', justifyContent: 'space-between' }}
-              >
-                <span>{label}</span>
-                <span>
-                  {estimate.best}
-                  {suffix} / {estimate.likely}
-                  {suffix} / {estimate.worst}
-                  {suffix}
-                </span>
-              </li>
-            )
-          })
-        })()}
-      </ul>
-
-      <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
-        Waiting for the facilitator to finalize or start a new round.
-      </p>
-    </Card>
-  )
-}
-
-interface LobbyProps {
-  sessionId: string | null
-  sessionName: string
-  myName: string
-  connectionStatus: string
-  connectionPhase: ConnectionPhase
-}
-
-function Lobby({
-  sessionId,
-  sessionName,
-  myName,
-  connectionStatus,
-  connectionPhase,
-}: LobbyProps) {
-  // While the connection is down, the spinner or banner below owns the
-  // explanation — the card must not also claim to be "Establishing the peer
-  // connection", which reads as a first join that never happened.
-  if (connectionPhase !== 'ok') {
-    return (
-      <Card elevation="sm">
-        <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
-        <CardTitle as="h1">Session interrupted</CardTitle>
-        <CardBody>You were in the session; the connection dropped.</CardBody>
-      </Card>
-    )
-  }
-
-  return (
-    <Card elevation="sm">
-      <CardKicker>{formatSessionKicker(sessionName, sessionId)}</CardKicker>
-      <CardTitle as="h1">
-        {connectionStatus === 'connected' ? `You're in, ${myName}` : 'Connecting…'}
-      </CardTitle>
-      <CardBody>
-        {connectionStatus === 'connected'
-          ? 'Waiting for the facilitator to start the first item.'
-          : 'Establishing the peer connection.'}
-      </CardBody>
-    </Card>
-  )
-}
+import { useParticipantRound } from '../model/useParticipantRound'
+import { EstimatingPanel } from './EstimatingPanel'
+import { LobbyPanel } from './LobbyPanel'
+import { RevealedPanel } from './RevealedPanel'
+import { WaitingPanel } from './WaitingPanel'
 
 export function ParticipantEstimateView() {
-  const sessionId = useConnectionStore((s) => s.sessionId)
-  const sessionName = useSessionStore((s) => s.sessionName)
-  const myName = useConnectionStore((s) => s.myName)
-  const connectionStatus = useConnectionStore((s) => s.connectionStatus)
-  const hasEverConnected = useConnectionStore((s) => s.hasEverConnected)
-  const unit = useSessionStore((s) => s.unit)
-  const peerCount = useConnectionStore((s) => s.peerCount)
-  const participantId = useConnectionStore((s) => s.participantId)
-  const participantNames = useConnectionStore((s) => s.participantNames)
-  const liveRound = useRoundStore((s) => s.liveRound)
-  const submitEstimate = useRoundStore((s) => s.submitEstimate)
+  const {
+    view,
+    liveRound,
+    unit,
+    sessionId,
+    kicker,
+    myName,
+    connectionStatus,
+    connectionPhase,
+    participantId,
+    participantNames,
+  } = useParticipantRound()
+  const { submit, deliveryState } = useSubmitEstimate()
+  const { connect } = useNetworkSession()
   const leave = useLeaveLiveSession()
-  const { sendEstimate, connect } = useNetworkSession()
-  // Down = we reached the session at some point and now hold no peers. Derived
-  // from the store rather than the tracker's status because `connect()` builds a
-  // fresh tracker: keying off status alone would clear the alarm the instant
-  // Reconnect is pressed, hiding a rejoin that never succeeds.
-  const connectionPhase = useConnectionPhase(hasEverConnected && peerCount === 0)
-  // Tracks only the most recent local send attempt; the roster convergence
-  // check in NetworkProvider can also resend in the background, and that path
-  // is reflected below purely through the roster, without touching this flag.
-  const [deliveryFailed, setDeliveryFailed] = useState(false)
-
-  function handleSubmit(best: number, likely: number, worst: number): SubmitResult {
-    const result = submitEstimate(best, likely, worst)
-    if (result.ok) {
-      if (liveRound) {
-        setDeliveryFailed(false)
-        sendEstimate(liveRound.item.id, result.estimate, liveRound.round).catch(() => {
-          setDeliveryFailed(true)
-        })
-      }
-      return { ok: true }
-    }
-    return result
-  }
-
-  const myRosterEntry = liveRound?.roster.find(
-    (entry) => entry.participantId === participantId,
-  )
-  const deliveryState: DeliveryState = myRosterEntry?.submitted
-    ? 'submitted'
-    : deliveryFailed
-      ? 'not-delivered'
-      : 'sending'
 
   let panel
-  if (!liveRound) {
+  if (!liveRound || view === 'lobby') {
     panel = (
-      <Lobby
-        sessionId={sessionId}
-        sessionName={sessionName}
+      <LobbyPanel
+        kicker={kicker}
         myName={myName}
         connectionStatus={connectionStatus}
         connectionPhase={connectionPhase}
       />
     )
-  } else if (liveRound.revealed) {
+  } else if (view === 'revealed') {
     panel = (
       <RevealedPanel
         round={liveRound}
         unit={unit}
-        sessionId={sessionId}
-        sessionName={sessionName}
+        kicker={kicker}
         participantId={participantId}
         participantNames={participantNames}
       />
     )
-  } else if (liveRound.mySubmission) {
+  } else if (view === 'waiting') {
     panel = (
       <WaitingPanel
         round={liveRound}
         unit={unit}
-        sessionId={sessionId}
-        sessionName={sessionName}
-        onSubmit={handleSubmit}
+        kicker={kicker}
+        onSubmit={submit}
         deliveryState={deliveryState}
         connectionPhase={connectionPhase}
       />
     )
   } else {
     panel = (
-      <EstimatingPanel
-        round={liveRound}
-        unit={unit}
-        sessionId={sessionId}
-        sessionName={sessionName}
-        onSubmit={handleSubmit}
-      />
+      <EstimatingPanel round={liveRound} unit={unit} kicker={kicker} onSubmit={submit} />
     )
   }
 
