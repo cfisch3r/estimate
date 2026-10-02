@@ -82,7 +82,7 @@ export function ThreePointEstimateForm({
         issue={draft.issue}
         issueId={issueId}
         focusOnMount={focusOnMount}
-        onBlur={draft.flushIssue}
+        onFieldCommit={draft.flushIssue}
         infoOpen={openKey === 'estimate'}
         onInfoOpen={() => open('estimate')}
         onInfoClose={close}

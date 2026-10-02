@@ -61,7 +61,33 @@ describe('useSettledIssue', () => {
     expect(result.current.issue).toBeNull()
   })
 
-  it('restarts the wait when the issue changes', () => {
+  it('updates a showing problem in place when it changes to another', () => {
+    const { result, rerender } = renderHook(({ value }) => useSettledIssue(value), {
+      initialProps: { value: issue('a') as EstimateIssue | null },
+    })
+    expect(result.current.issue?.message).toBe('a')
+
+    rerender({ value: issue('b') })
+
+    expect(result.current.issue?.message).toBe('b')
+  })
+
+  it('shows a re-appearing problem only after it settles again', () => {
+    const { result, rerender } = renderHook(({ value }) => useSettledIssue(value), {
+      initialProps: { value: issue('a') as EstimateIssue | null },
+    })
+
+    rerender({ value: null })
+    rerender({ value: issue('a') })
+    expect(result.current.issue).toBeNull()
+
+    act(() => {
+      vi.advanceTimersByTime(ISSUE_SETTLE_MS)
+    })
+    expect(result.current.issue?.message).toBe('a')
+  })
+
+  it('restarts the wait when a not-yet-shown issue changes', () => {
     const { result, rerender } = renderHook(({ value }) => useSettledIssue(value), {
       initialProps: { value: null as EstimateIssue | null },
     })

@@ -198,4 +198,43 @@ describe('ThreePointEstimateForm', () => {
       screen.getByText(/Best case \(8 days\) is higher than Most likely/),
     ).toBeInTheDocument()
   })
+
+  it('shows a pending problem at once when Enter is pressed in a field', async () => {
+    const user = userEvent.setup()
+    render(
+      <ThreePointEstimateForm
+        unit="days"
+        initial={null}
+        info={info}
+        footer={() => null}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/Best case/), '8')
+    await user.type(screen.getByLabelText(/Most likely/), '5{Enter}')
+
+    expect(
+      screen.getByText(/Best case \(8 days\) is higher than Most likely/),
+    ).toBeInTheDocument()
+  })
+
+  it('has no axe violations once a typed problem has been revealed', async () => {
+    const user = userEvent.setup()
+    const { container } = render(
+      <ThreePointEstimateForm
+        unit="days"
+        initial={null}
+        info={info}
+        footer={() => null}
+      />,
+    )
+
+    await user.type(screen.getByLabelText(/Best case/), '8')
+    await user.type(screen.getByLabelText(/Most likely/), '5{Enter}')
+
+    // color-contrast needs real layout jsdom doesn't provide; see ADR-008.
+    expect(
+      await axe(container, { rules: { 'color-contrast': { enabled: false } } }),
+    ).toHaveNoViolations()
+  })
 })

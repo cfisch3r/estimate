@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from 'react'
+import { useEffect, useId, useRef, type KeyboardEvent } from 'react'
 import { Field, FieldLabel, Input } from '../../../shared/ui/Field'
 import { GuardNote } from '../../../shared/ui/GuardNote'
 import { GroupBox } from '../../../shared/ui/GroupBox'
@@ -28,8 +28,9 @@ interface ThreePointEstimateFieldsProps {
   issueId: string
   /** Focus the first input when the fields mount (e.g. when opening a revise form). */
   focusOnMount?: boolean
-  /** An input lost focus: the caller can show a pending problem now. */
-  onBlur?: () => void
+  /** A value was committed — an input lost focus, or Enter was pressed in it — so
+   *  the caller can show a pending problem now. */
+  onFieldCommit?: () => void
   infoOpen: boolean
   onInfoOpen: () => void
   onInfoClose: () => void
@@ -51,7 +52,7 @@ export function ThreePointEstimateFields({
   issue,
   issueId,
   focusOnMount = false,
-  onBlur,
+  onFieldCommit,
   infoOpen,
   onInfoOpen,
   onInfoClose,
@@ -88,6 +89,10 @@ export function ThreePointEstimateFields({
       .filter(Boolean)
       .join(' ')
     return {
+      onBlur: onFieldCommit,
+      onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => {
+        if (event.key === 'Enter') onFieldCommit?.()
+      },
       ...(invalid ? { 'aria-invalid': true as const } : {}),
       ...(describedBy ? { 'aria-describedby': describedBy } : {}),
     }
@@ -111,7 +116,6 @@ export function ThreePointEstimateFields({
             value={best}
             onChange={(e) => onBestChange(e.target.value)}
             {...inputAria('best')}
-            onBlur={onBlur}
             style={inputStyle}
           />
           {bestPrecision?.fired && (
@@ -129,7 +133,6 @@ export function ThreePointEstimateFields({
             value={likely}
             onChange={(e) => onLikelyChange(e.target.value)}
             {...inputAria('likely')}
-            onBlur={onBlur}
             style={inputStyle}
           />
           {likelyPrecision?.fired && (
@@ -147,7 +150,6 @@ export function ThreePointEstimateFields({
             value={worst}
             onChange={(e) => onWorstChange(e.target.value)}
             {...inputAria('worst')}
-            onBlur={onBlur}
             style={inputStyle}
           />
           {worstPrecision?.fired && (
