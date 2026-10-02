@@ -288,6 +288,14 @@ describe('Workspace — live facilitator reveal flow', () => {
     expect(screen.getByRole('button', { name: /Reveal estimates/ })).toBeEnabled()
   })
 
+  it('announces how many participants have submitted through a status region', () => {
+    setupRound({ submissions: [estimate('p1')] })
+    renderWorkspace()
+
+    const count = screen.getByText('1 of 2 submitted')
+    expect(count.closest('[role="status"]')).not.toBeNull()
+  })
+
   it('disables Reveal while no estimates have been submitted', () => {
     setupRound()
     renderWorkspace()

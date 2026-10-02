@@ -11,7 +11,12 @@ export function useFocusHeadingOnChange(key: string) {
   useEffect(() => {
     if (previousKey.current === key) return
     previousKey.current = key
-    containerRef.current?.querySelector<HTMLElement>('h1')?.focus()
+    const heading = containerRef.current?.querySelector<HTMLElement>('h1')
+    if (!heading) return
+    // Headings aren't focusable by default; -1 allows programmatic focus only, so
+    // panels don't each have to opt in.
+    heading.tabIndex = -1
+    heading.focus()
   }, [key])
 
   return containerRef

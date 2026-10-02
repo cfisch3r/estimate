@@ -29,6 +29,8 @@ interface ThreePointEstimateFormProps {
   unit: EstimationUnit
   initial: ThreePointInitial | null
   info: InfoPopover
+  /** Focus the first input on mount. */
+  focusOnMount?: boolean
   /** An error from the caller's own action (e.g. a rejected submit), shown only
    *  while the draft itself is valid. */
   error?: string | null
@@ -49,6 +51,7 @@ export function ThreePointEstimateForm({
   unit,
   initial,
   info,
+  focusOnMount,
   error,
   footer,
 }: ThreePointEstimateFormProps) {
@@ -78,6 +81,7 @@ export function ThreePointEstimateForm({
         onWorstChange={draft.setWorst}
         issue={draft.issue}
         issueId={issueId}
+        focusOnMount={focusOnMount}
         infoOpen={openKey === 'estimate'}
         onInfoOpen={() => open('estimate')}
         onInfoClose={close}
@@ -124,6 +128,8 @@ export function ThreePointEstimateForm({
             Worst case in software usually has more room than best case. Double check.
           </GuardNote>
         )}
+      </LiveRegion>
+      <LiveRegion>
         {draft.issue && (
           <GuardNote variant="banner" headline={draft.issue.headline} id={issueId}>
             {draft.issue.message}

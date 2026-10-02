@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
-import { Button, Card, GuardNote, LiveRegion } from '../../../shared/ui'
+import { Button, Card, GuardNote, LiveRegion, VisuallyHidden } from '../../../shared/ui'
 import type { ConnectionPhase } from '../../../shared/lib/useConnectionPhase'
 import { EstimateTriple, type EstimationUnit } from '../../../entities/estimate'
 import type { LiveRound } from '../../../entities/session'
@@ -27,18 +27,15 @@ export function WaitingPanel({
   connectionPhase,
 }: WaitingPanelProps) {
   const [editing, setEditing] = useState(false)
+  const [updated, setUpdated] = useState(false)
   const reviseRef = useRef<HTMLButtonElement>(null)
   const wasEditing = useRef(false)
   const mine = round.mySubmission!
 
-  // Revise / Update unmount the button or form that had focus; hand it to the
-  // next control in the flow instead of letting it fall to <body>.
+  // Revise unmounts the button that had focus and Update unmounts the form: the
+  // form focuses its own first input on mount, and Revise gets focus back here.
   useEffect(() => {
-    if (editing) {
-      document.getElementById('best')?.focus()
-    } else if (wasEditing.current) {
-      reviseRef.current?.focus()
-    }
+    if (!editing && wasEditing.current) reviseRef.current?.focus()
     wasEditing.current = editing
   }, [editing])
 
@@ -52,9 +49,13 @@ export function WaitingPanel({
           unit={unit}
           initial={mine}
           submitLabel="Update estimate"
+          focusOnMount
           onSubmit={(best, likely, worst) => {
             const result = onSubmit(best, likely, worst)
-            if (result.ok) setEditing(false)
+            if (result.ok) {
+              setEditing(false)
+              setUpdated(true)
+            }
             return result
           }}
         />
@@ -82,7 +83,10 @@ export function WaitingPanel({
               icon
               variant="ghost"
               aria-label="Revise estimate"
-              onClick={() => setEditing(true)}
+              onClick={() => {
+                setUpdated(false)
+                setEditing(true)
+              }}
             >
               <PencilSimpleIcon size={16} />
             </Button>
@@ -119,7 +123,10 @@ export function WaitingPanel({
               </div>
             )}
           </LiveRegion>
-          <LiveRegion role="alert">
+          <LiveRegion>
+            <VisuallyHidden>{updated ? 'Estimate updated.' : ''}</VisuallyHidden>
+          </LiveRegion>
+          <LiveRegion>
             {connectionPhase !== 'lost' && deliveryState === 'not-delivered' && (
               <GuardNote variant="banner" headline="Not delivered yet">
                 Your estimate hasn&apos;t reached the facilitator. It will retry

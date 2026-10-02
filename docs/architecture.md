@@ -94,9 +94,12 @@ rationale. In brief, by architectural role rather than layer:
   where the store reads are non-trivial, and the shared three-point entry form
   (`ThreePointEstimateForm`, `features/estimate-round`) used by both Workspace and the
   participant view. The participant submit-and-delivery flow lives in
-  `features/submit-estimate`.
+  `features/submit-estimate`, and `model/useFocusHeadingOnChange` moves focus to the new
+  panel's heading when the round view changes.
 - **Design-system primitives** (`shared/ui`, formerly `/components`) — Button, Card,
-  Field, GuardNote, ConfirmNote, Tag, RadioTile — thin wrappers / compositions over
+  Field, GuardNote, ConfirmNote, Tag, RadioTile, LiveRegion (a persistent
+  `status`/`alert` container for announcements), VisuallyHidden (screen-reader-only
+  text) — thin wrappers / compositions over
   Nocturne classes. RadioTile is currently unreferenced (unused since the #34
   mode-select rebuild removed the RadioTile mode picker) but retained as a
   design-system primitive. `Header` moved to `app/` instead — it carries
@@ -157,7 +160,7 @@ function checkOutlier(estimate: Estimate, allEstimates: Estimate[], thresholdPct
 function checkUncertaintyRange(best: number, worst: number, level: UncertaintyLevel): GuardResult
 ```
 
-`entities/estimate/model/estimate.ts` also exports `validateEstimateValues` — the numeric half of `createEstimate`'s invariant, usable for a live form preview before a participant exists; `createEstimate` runs it after its `participantId` check. It returns a `code` and the affected `fields` alongside the error text, and `features/estimate-round` (`lib/describeEstimateIssue.ts`) turns those into the actionable form messages (naming the numbers and what to change) and marks the offending inputs `aria-invalid`.
+`entities/estimate/model/estimate.ts` also exports `validateEstimateValues` — the numeric half of `createEstimate`'s invariant, usable for a live form preview before a participant exists; `createEstimate` runs it after its `participantId` check. It returns a `code` and the affected `fields` alongside the error text, and `features/estimate-round` (`lib/describeEstimateIssue.ts`) turns those into the actionable form messages (naming the numbers and what to change) and marks the offending inputs `aria-invalid` with `aria-describedby` pointing at the message.
 
 The PRD §6.1 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`features/estimate-round/ui/PhasePicker.tsx`), local to their own view (`features/estimate-round/lib/usePhaseGuidance.ts`, composed with the rest of the entry form by `ThreePointEstimateForm`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
 

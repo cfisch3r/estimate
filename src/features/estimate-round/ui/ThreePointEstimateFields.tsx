@@ -1,4 +1,4 @@
-import { useId } from 'react'
+import { useEffect, useId, useRef } from 'react'
 import { Field, FieldLabel, Input } from '../../../shared/ui/Field'
 import { GuardNote } from '../../../shared/ui/GuardNote'
 import { GroupBox } from '../../../shared/ui/GroupBox'
@@ -26,6 +26,8 @@ interface ThreePointEstimateFieldsProps {
   issue: EstimateIssue | null
   /** The id of the element that shows `issue`'s message; marked inputs point at it. */
   issueId: string
+  /** Focus the first input when the fields mount (e.g. when opening a revise form). */
+  focusOnMount?: boolean
   infoOpen: boolean
   onInfoOpen: () => void
   onInfoClose: () => void
@@ -46,6 +48,7 @@ export function ThreePointEstimateFields({
   onWorstChange,
   issue,
   issueId,
+  focusOnMount = false,
   infoOpen,
   onInfoOpen,
   onInfoClose,
@@ -60,6 +63,10 @@ export function ThreePointEstimateFields({
     likely !== '' ? checkFalsePrecision(likelyNum, granularity) : null
   const worstPrecision = worst !== '' ? checkFalsePrecision(worstNum, granularity) : null
 
+  const fieldsRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (focusOnMount) fieldsRef.current?.querySelector('input')?.focus()
+  }, [focusOnMount])
   const precisionBase = useId()
   const precisionFired: Record<EstimateField, boolean> = {
     best: bestPrecision?.fired ?? false,
@@ -91,7 +98,7 @@ export function ThreePointEstimateFields({
       onInfoOpen={onInfoOpen}
       onInfoClose={onInfoClose}
     >
-      <div style={{ display: 'flex', gap: 'var(--space-4)' }}>
+      <div ref={fieldsRef} style={{ display: 'flex', gap: 'var(--space-4)' }}>
         <Field style={{ flex: 1 }}>
           <FieldLabel htmlFor="best">{`Best case (${unit})`}</FieldLabel>
           <Input

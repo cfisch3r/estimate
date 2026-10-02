@@ -17,6 +17,12 @@ test('a participant estimate round-trips through submit and reveal', async ({
   await addItem(facilitator, 'Checkout redesign') // first item: auto-selected
   await joinSessionAsParticipant(participant, code, 'Sam Rivera')
 
+  // The live regions are the only announcement mechanism for these updates;
+  // jsdom can't confirm a real browser exposes them (display: contents + role).
+  await expect(
+    participant.getByRole('status').filter({ hasText: /submitted so far/ }),
+  ).toBeVisible()
+
   await submitEstimate(participant, { best: 2, likely: 3, worst: 5 })
 
   const revealButton = facilitator.getByRole('button', {

@@ -21,9 +21,7 @@ export function LobbyPanel({
     return (
       <Card elevation="sm">
         <CardKicker>{kicker}</CardKicker>
-        <CardTitle as="h1" tabIndex={-1}>
-          Session interrupted
-        </CardTitle>
+        <CardTitle as="h1">Session interrupted</CardTitle>
         <CardBody>You were in the session; the connection dropped.</CardBody>
       </Card>
     )
@@ -32,7 +30,7 @@ export function LobbyPanel({
   return (
     <Card elevation="sm">
       <CardKicker>{kicker}</CardKicker>
-      <CardTitle as="h1" tabIndex={-1}>
+      <CardTitle as="h1">
         {connectionStatus === 'connected' ? `You're in, ${myName}` : 'Connecting…'}
       </CardTitle>
       <CardBody>
