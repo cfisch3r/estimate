@@ -71,7 +71,7 @@ export function checkOutlier(
  *  on the range bar (guidanceHigh = bestCase * highMult/lowMult). Meets-or-exceeds
  *  guidance does not fire — that case gets a calm confirmation instead, not a nudge.
  *  A non-positive best case or worst < best is a validation error, not a narrow-range
- *  signal, so this doesn't fire for either — checkAscendingOrder/createEstimate own
+ *  signal, so this doesn't fire for either — validateEstimateValues/createEstimate own
  *  flagging those. */
 export function checkUncertaintyRange(
   best: number,

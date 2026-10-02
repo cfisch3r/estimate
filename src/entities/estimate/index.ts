@@ -19,10 +19,16 @@ export type {
   Estimate,
   EstimateField,
   EstimateValuesError,
+  EstimateValuesResult,
+  OrderViolation,
   RawEstimateInput,
   Result,
 } from './model/estimate'
-export { createEstimate, validateEstimateValues } from './model/estimate'
+export {
+  createEstimate,
+  findOrderViolation,
+  validateEstimateValues,
+} from './model/estimate'
 export { aggregateEstimates } from './model/aggregate'
 export { computeCI90 } from './model/ci90'
 export {

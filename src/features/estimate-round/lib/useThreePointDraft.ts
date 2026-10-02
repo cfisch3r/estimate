@@ -5,7 +5,11 @@ import {
   type EstimationUnit,
   type GuardResult,
 } from '../../../entities/estimate'
-import { describeEstimateIssue, type EstimateIssue } from './describeEstimateIssue'
+import {
+  describeEstimateIssue,
+  describePartialOrdering,
+  type EstimateIssue,
+} from './describeEstimateIssue'
 import { usePhaseGuidance } from './usePhaseGuidance'
 
 export interface ThreePointInitial {
@@ -24,7 +28,8 @@ export interface ThreePointDraft {
   bestNum: number
   likelyNum: number
   worstNum: number
-  /** What is wrong with a fully filled entry, or null when it is valid or incomplete. */
+  /** What is wrong with the entry so far — a rejected full entry, or a descending
+   *  pair in a partly filled one — or null. */
   issue: EstimateIssue | null
   /** True once the three values form a valid estimate. */
   valid: boolean
@@ -63,7 +68,14 @@ export function useThreePointDraft(
           { best: bestNum, likely: likelyNum, worst: worstNum },
           unit,
         )
-      : null
+      : describePartialOrdering(
+          {
+            best: best === '' ? null : bestNum,
+            likely: likely === '' ? null : likelyNum,
+            worst: worst === '' ? null : worstNum,
+          },
+          unit,
+        )
 
   const symmetricGuard = allFilled
     ? checkSymmetricRange(bestNum, likelyNum, worstNum)

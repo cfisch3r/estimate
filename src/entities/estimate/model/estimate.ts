@@ -24,14 +24,38 @@ export type EstimateField = 'best' | 'likely' | 'worst'
 
 /** Why a best / likely / worst triple was rejected, as data a UI can turn into an
  *  actionable message. `fields` names the inputs involved. */
-export type EstimateValuesError =
-  | { code: 'not-finite'; fields: EstimateField[] }
-  | { code: 'non-positive'; fields: EstimateField[] }
+export type OrderViolation =
   | { code: 'best-above-likely'; fields: ['best', 'likely'] }
   | { code: 'likely-above-worst'; fields: ['likely', 'worst'] }
+  | { code: 'best-above-worst'; fields: ['best', 'worst'] }
+
+export type EstimateValuesError =
+  | { code: 'not-finite'; fields: EstimateField[] }
+  | { code: 'non-positive'; fields: ['best'] }
+  | OrderViolation
 
 export type EstimateValuesResult =
   { ok: true } | ({ ok: false; error: string } & EstimateValuesError)
+
+/** The first descending pair among the values filled in so far (null = not yet
+ *  typed), so a violation can be flagged before the third value exists. This is
+ *  the single home of the ordering rule: validateEstimateValues() uses it too. */
+export function findOrderViolation(
+  best: number | null,
+  likely: number | null,
+  worst: number | null,
+): OrderViolation | null {
+  if (best !== null && likely !== null && best > likely) {
+    return { code: 'best-above-likely', fields: ['best', 'likely'] }
+  }
+  if (likely !== null && worst !== null && likely > worst) {
+    return { code: 'likely-above-worst', fields: ['likely', 'worst'] }
+  }
+  if (best !== null && worst !== null && best > worst) {
+    return { code: 'best-above-worst', fields: ['best', 'worst'] }
+  }
+  return null
+}
 
 /** The numeric half of the invariant, usable before there is a participant to
  *  attribute the estimate to (e.g. live form preview). createEstimate() runs it
@@ -65,20 +89,12 @@ export function validateEstimateValues(
       fields: ['best'],
     }
   }
-  if (best > likely) {
+  const violation = findOrderViolation(best, likely, worst)
+  if (violation) {
     return {
       ok: false,
       error: 'best must be ≤ likely, and likely must be ≤ worst',
-      code: 'best-above-likely',
-      fields: ['best', 'likely'],
-    }
-  }
-  if (likely > worst) {
-    return {
-      ok: false,
-      error: 'best must be ≤ likely, and likely must be ≤ worst',
-      code: 'likely-above-worst',
-      fields: ['likely', 'worst'],
+      ...violation,
     }
   }
   return { ok: true }

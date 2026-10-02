@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { GroupBox } from '../../../shared/ui/GroupBox'
 import { GuardNote } from '../../../shared/ui/GuardNote'
 import { PHASE_INFO, RANGE_INFO } from '../../../shared/copy'
@@ -10,7 +10,7 @@ import {
 } from '../../../entities/estimate'
 import { useThreePointDraft, type ThreePointInitial } from '../lib/useThreePointDraft'
 import { PhasePicker } from './PhasePicker'
-import { ESTIMATE_ISSUE_ID, ThreePointEstimateFields } from './ThreePointEstimateFields'
+import { ThreePointEstimateFields } from './ThreePointEstimateFields'
 import { UncertaintyGuidanceNotes } from './UncertaintyGuidanceNotes'
 
 type FormInfoKey = 'estimate' | 'phase' | 'range'
@@ -52,6 +52,7 @@ export function ThreePointEstimateForm({
   footer,
 }: ThreePointEstimateFormProps) {
   const draft = useThreePointDraft(initial, unit)
+  const issueId = useId()
   const { openKey, open, close } = info
 
   return (
@@ -75,6 +76,7 @@ export function ThreePointEstimateForm({
         onLikelyChange={draft.setLikely}
         onWorstChange={draft.setWorst}
         issue={draft.issue}
+        issueId={issueId}
         infoOpen={openKey === 'estimate'}
         onInfoOpen={() => open('estimate')}
         onInfoClose={close}
@@ -121,11 +123,7 @@ export function ThreePointEstimateForm({
         </GuardNote>
       )}
       {draft.issue ? (
-        <GuardNote
-          variant="banner"
-          headline={draft.issue.headline}
-          id={ESTIMATE_ISSUE_ID}
-        >
+        <GuardNote variant="banner" headline={draft.issue.headline} id={issueId}>
           {draft.issue.message}
         </GuardNote>
       ) : (

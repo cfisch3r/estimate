@@ -4,12 +4,7 @@ import { GroupBox } from '../../../shared/ui/GroupBox'
 import { THREE_POINT_ESTIMATE_INFO } from '../../../shared/copy'
 import { checkFalsePrecision, UNIT_GRANULARITY } from '../../../entities/estimate'
 import type { EstimateField, EstimationUnit } from '../../../entities/estimate'
-import { describePartialOrdering, type EstimateIssue } from '../lib/describeEstimateIssue'
-
-/** The id of the banner that explains a fully filled, invalid entry; the invalid
- *  inputs point at it via aria-describedby. */
-export const ESTIMATE_ISSUE_ID = 'estimate-issue'
-const ORDER_NUDGE_ID = 'estimate-order-nudge'
+import type { EstimateIssue } from '../lib/describeEstimateIssue'
 
 const inputStyle = {
   height: 48,
@@ -26,8 +21,10 @@ interface ThreePointEstimateFieldsProps {
   onBestChange: (value: string) => void
   onLikelyChange: (value: string) => void
   onWorstChange: (value: string) => void
-  /** Why a fully filled entry is invalid, or null. */
+  /** What is wrong with the entry, or null. The inputs it names are marked invalid. */
   issue: EstimateIssue | null
+  /** The id of the element that shows `issue`'s message; marked inputs point at it. */
+  issueId: string
   infoOpen: boolean
   onInfoOpen: () => void
   onInfoClose: () => void
@@ -47,6 +44,7 @@ export function ThreePointEstimateFields({
   onLikelyChange,
   onWorstChange,
   issue,
+  issueId,
   infoOpen,
   onInfoOpen,
   onInfoClose,
@@ -61,27 +59,9 @@ export function ThreePointEstimateFields({
     likely !== '' ? checkFalsePrecision(likelyNum, granularity) : null
   const worstPrecision = worst !== '' ? checkFalsePrecision(worstNum, granularity) : null
 
-  // A descending pair is flagged as soon as both of its values are typed, before
-  // the third is filled in; a fully filled invalid entry is explained by `issue`.
-  const orderingNudge = issue
-    ? null
-    : describePartialOrdering(
-        {
-          best: best === '' ? null : bestNum,
-          likely: likely === '' ? null : likelyNum,
-          worst: worst === '' ? null : worstNum,
-        },
-        unit,
-      )
-  const activeIssue = issue ?? orderingNudge
-  const describedBy = issue
-    ? ESTIMATE_ISSUE_ID
-    : orderingNudge
-      ? ORDER_NUDGE_ID
-      : undefined
   const invalidProps = (field: EstimateField) =>
-    activeIssue?.fields.includes(field)
-      ? { 'aria-invalid': true, 'aria-describedby': describedBy }
+    issue?.fields.includes(field)
+      ? { 'aria-invalid': true, 'aria-describedby': issueId }
       : {}
 
   return (
@@ -139,11 +119,6 @@ export function ThreePointEstimateFields({
           )}
         </Field>
       </div>
-      {orderingNudge && (
-        <GuardNote variant="banner" headline={orderingNudge.headline} id={ORDER_NUDGE_ID}>
-          {orderingNudge.message}
-        </GuardNote>
-      )}
     </GroupBox>
   )
 }

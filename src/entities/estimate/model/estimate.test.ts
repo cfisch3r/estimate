@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEstimate, validateEstimateValues } from './estimate'
+import { createEstimate, findOrderViolation, validateEstimateValues } from './estimate'
 
 describe('createEstimate', () => {
   it('accepts values in ascending order', () => {
@@ -114,5 +114,31 @@ describe('validateEstimateValues', () => {
     const created = createEstimate({ participantId: 'a', best: 8, likely: 5, worst: 9 })
 
     expect(created).toEqual({ ok: false, error: values.ok ? '' : values.error })
+  })
+})
+
+describe('findOrderViolation', () => {
+  it('flags the first descending pair among filled values', () => {
+    expect(findOrderViolation(10, 5, null)).toEqual({
+      code: 'best-above-likely',
+      fields: ['best', 'likely'],
+    })
+    expect(findOrderViolation(null, 9, 4)).toEqual({
+      code: 'likely-above-worst',
+      fields: ['likely', 'worst'],
+    })
+  })
+
+  it('compares best with worst when likely is not filled in yet', () => {
+    expect(findOrderViolation(9, null, 4)).toEqual({
+      code: 'best-above-worst',
+      fields: ['best', 'worst'],
+    })
+  })
+
+  it('returns null when nothing filled descends', () => {
+    expect(findOrderViolation(1, null, 4)).toBeNull()
+    expect(findOrderViolation(2, 2, 2)).toBeNull()
+    expect(findOrderViolation(null, null, null)).toBeNull()
   })
 })

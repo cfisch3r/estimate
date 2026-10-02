@@ -1,8 +1,9 @@
 import { formatValue } from '../../../shared/ui'
-import type {
-  EstimateField,
-  EstimateValuesError,
-  EstimationUnit,
+import {
+  findOrderViolation,
+  type EstimateField,
+  type EstimateValuesError,
+  type EstimationUnit,
 } from '../../../entities/estimate'
 
 /** What to tell the person about a rejected best / likely / worst entry: a short
@@ -62,10 +63,12 @@ export function describeEstimateIssue(
       return orderingIssue('best', 'likely', values, unit)
     case 'likely-above-worst':
       return orderingIssue('likely', 'worst', values, unit)
+    case 'best-above-worst':
+      return orderingIssue('best', 'worst', values, unit)
     case 'non-positive':
       return {
         headline: 'Enter a positive value',
-        message: `${describeField('best', values, unit)} must be greater than 0. Enter how many ${unit} it would take if everything goes well.`,
+        message: `${describeField(error.fields[0], values, unit)} must be greater than 0. Enter how many ${unit} it would take if everything goes well.`,
         fields: error.fields,
       }
     case 'not-finite': {
@@ -85,17 +88,6 @@ export function describePartialOrdering(
   values: Values,
   unit: EstimationUnit,
 ): EstimateIssue | null {
-  const pairs: [EstimateField, EstimateField][] = [
-    ['best', 'likely'],
-    ['likely', 'worst'],
-    ['best', 'worst'],
-  ]
-  for (const [lower, higher] of pairs) {
-    const a = values[lower]
-    const b = values[higher]
-    if (a !== null && b !== null && a > b) {
-      return orderingIssue(lower, higher, values, unit)
-    }
-  }
-  return null
+  const violation = findOrderViolation(values.best, values.likely, values.worst)
+  return violation ? describeEstimateIssue(violation, values, unit) : null
 }
