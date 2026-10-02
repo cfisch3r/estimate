@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { NotebookIcon } from '@phosphor-icons/react/dist/csr/Notebook'
@@ -10,11 +9,8 @@ import {
   CardBody,
   Input,
   Select,
-  GuardNote,
-  GroupBox,
   NavRow,
 } from '../../../shared/ui'
-import { PHASE_INFO, RANGE_INFO } from '../../../shared/copy'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import { ROUTES } from '../../../shared/lib/routes'
 import { SessionSidebar } from '../../../widgets/session-sidebar'
@@ -27,20 +23,8 @@ import {
   type FinalizeResult,
   type Item,
 } from '../../../entities/session'
-import {
-  checkSymmetricRange,
-  computeCI90,
-  createEstimate,
-  RangeBar,
-  UNIT_SUFFIX,
-  type EstimationUnit,
-} from '../../../entities/estimate'
-import {
-  PhasePicker,
-  ThreePointEstimateFields,
-  UncertaintyGuidanceNotes,
-  usePhaseGuidance,
-} from '../../../features/estimate-round'
+import { type EstimationUnit } from '../../../entities/estimate'
+import { ThreePointEstimateForm } from '../../../features/estimate-round'
 import { LiveFacilitatorPanel, LiveSessionStrip } from '../../../features/reveal-results'
 
 interface ActiveItemPanelProps {
@@ -69,46 +53,7 @@ function ActiveItemPanel({
   onTitleChange,
 }: ActiveItemPanelProps) {
   const isEdit = item.finalResult !== null
-  const [best, setBest] = useState(item.finalResult ? String(item.finalResult.min) : '')
-  const [likely, setLikely] = useState(
-    item.finalResult ? String(item.finalResult.expected) : '',
-  )
-  const [worst, setWorst] = useState(item.finalResult ? String(item.finalResult.max) : '')
-  const {
-    openKey: infoOpen,
-    open: openInfo,
-    close: closeInfo,
-  } = useSingleInfoPopover<'description' | 'estimate' | 'phase' | 'range'>()
-
-  const allFilled = best !== '' && likely !== '' && worst !== ''
-  const bestNum = Number(best)
-  const likelyNum = Number(likely)
-  const worstNum = Number(worst)
-
-  const validation = allFilled
-    ? createEstimate({
-        participantId: 'facilitator',
-        best: bestNum,
-        likely: likelyNum,
-        worst: worstNum,
-      })
-    : null
-  const validationError = validation && !validation.ok ? validation.error : null
-
-  const symmetricGuard = allFilled
-    ? checkSymmetricRange(bestNum, likelyNum, worstNum)
-    : null
-
-  const { phaseIndex, setPhaseIndex, guidanceHigh, uncertaintyGuard } = usePhaseGuidance(
-    bestNum,
-    worstNum,
-    allFilled,
-  )
-
-  function handleFinalize() {
-    const result = onFinalize(item.id, bestNum, likelyNum, worstNum)
-    if (result.ok) onAdvance()
-  }
+  const info = useSingleInfoPopover<'description' | 'estimate' | 'phase' | 'range'>()
 
   const primaryLabel = isEdit
     ? isLast
@@ -124,86 +69,38 @@ function ActiveItemPanel({
       onNotesChange={onNotesChange}
       onDescriptionChange={onDescriptionChange}
       onTitleChange={onTitleChange}
-      descriptionInfoOpen={infoOpen === 'description'}
-      onDescriptionInfoOpen={() => openInfo('description')}
-      onDescriptionInfoClose={closeInfo}
+      descriptionInfoOpen={info.openKey === 'description'}
+      onDescriptionInfoOpen={() => info.open('description')}
+      onDescriptionInfoClose={info.close}
     >
-      <GroupBox
-        label="Phase"
-        info={PHASE_INFO}
-        infoOpen={infoOpen === 'phase'}
-        onInfoOpen={() => openInfo('phase')}
-        onInfoClose={closeInfo}
-      >
-        <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
-      </GroupBox>
-
-      <ThreePointEstimateFields
+      <ThreePointEstimateForm
         unit={unit}
-        best={best}
-        likely={likely}
-        worst={worst}
-        onBestChange={setBest}
-        onLikelyChange={setLikely}
-        onWorstChange={setWorst}
-        validationError={validationError}
-        infoOpen={infoOpen === 'estimate'}
-        onInfoOpen={() => openInfo('estimate')}
-        onInfoClose={closeInfo}
-      />
-
-      <GroupBox
-        label="Range"
-        info={RANGE_INFO}
-        infoOpen={infoOpen === 'range'}
-        onInfoOpen={() => openInfo('range')}
-        onInfoClose={closeInfo}
-      >
-        {validation?.ok ? (
-          <>
-            <RangeBar
-              min={bestNum}
-              max={worstNum}
-              expected={likelyNum}
-              ci90={computeCI90(likelyNum, bestNum, worstNum)}
-              unitSuffix={UNIT_SUFFIX[unit]}
-              guidance={guidanceHigh !== null ? { guidanceHigh } : undefined}
-            />
-            <UncertaintyGuidanceNotes
-              guidanceHigh={guidanceHigh}
-              worst={worstNum}
-              unitSuffix={UNIT_SUFFIX[unit]}
-              uncertaintyGuard={uncertaintyGuard}
-            />
-          </>
-        ) : (
-          <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
-            Enter best, most likely and worst case above to see the range.
-          </p>
+        initial={
+          item.finalResult
+            ? {
+                best: item.finalResult.min,
+                likely: item.finalResult.expected,
+                worst: item.finalResult.max,
+              }
+            : null
+        }
+        info={info}
+        footer={({ valid, best, likely, worst }) => (
+          <NavRow isFirst={isFirst} onNavigatePrev={onNavigatePrev}>
+            <Button
+              variant="primary"
+              style={{ flex: 1 }}
+              disabled={!valid}
+              onClick={() => {
+                const result = onFinalize(item.id, best, likely, worst)
+                if (result.ok) onAdvance()
+              }}
+            >
+              {valid ? primaryLabel : isEdit ? 'Update item' : 'Finalize item'}
+            </Button>
+          </NavRow>
         )}
-      </GroupBox>
-
-      {symmetricGuard?.fired && (
-        <GuardNote variant="banner" headline="Symmetric range">
-          Worst case in software usually has more room than best case. Double check.
-        </GuardNote>
-      )}
-      {validationError && (
-        <GuardNote variant="banner" headline="Invalid range">
-          {validationError}
-        </GuardNote>
-      )}
-
-      <NavRow isFirst={isFirst} onNavigatePrev={onNavigatePrev}>
-        <Button
-          variant="primary"
-          style={{ flex: 1 }}
-          disabled={!validation?.ok}
-          onClick={handleFinalize}
-        >
-          {validation?.ok ? primaryLabel : isEdit ? 'Update item' : 'Finalize item'}
-        </Button>
-      </NavRow>
+      />
     </ItemDetailShell>
   )
 }

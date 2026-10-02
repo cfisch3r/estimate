@@ -11,16 +11,13 @@ import {
   GroupBox,
   Markdown,
 } from '../../../shared/ui'
-import { PHASE_INFO, RANGE_INFO } from '../../../shared/copy'
+import { RANGE_INFO } from '../../../shared/copy'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import {
   useConnectionPhase,
   type ConnectionPhase,
 } from '../../../shared/lib/useConnectionPhase'
 import {
-  checkSymmetricRange,
-  computeCI90,
-  createEstimate,
   aggregateEstimates,
   UNIT_SUFFIX,
   RangeBar,
@@ -33,12 +30,7 @@ import {
   useNetworkSession,
   type LiveRound,
 } from '../../../entities/session'
-import {
-  PhasePicker,
-  UncertaintyGuidanceNotes,
-  ThreePointEstimateFields,
-  usePhaseGuidance,
-} from '../../../features/estimate-round'
+import { ThreePointEstimateForm } from '../../../features/estimate-round'
 import { useLeaveLiveSession } from '../../../features/session-lifecycle'
 
 type SubmitResult = { ok: true } | { ok: false; error: string }
@@ -59,9 +51,8 @@ interface EstimateFormProps {
   onSubmit: (best: number, likely: number, worst: number) => SubmitResult
 }
 
-/** The Best / Most likely / Worst input trio plus the live bias guards, shared by
- *  the estimating (5c) and revise-before-reveal (5d) states. Mirrors the guard
- *  wiring in Workspace's ActiveItemPanel, minus the facilitator-only finalize. */
+/** The estimating (5c) and revise-before-reveal (5d) form: the shared
+ *  three-point form plus this view's submit button and status line. */
 function EstimateForm({
   unit,
   initial,
@@ -69,127 +60,39 @@ function EstimateForm({
   statusLine,
   onSubmit,
 }: EstimateFormProps) {
-  const [best, setBest] = useState(initial ? String(initial.best) : '')
-  const [likely, setLikely] = useState(initial ? String(initial.likely) : '')
-  const [worst, setWorst] = useState(initial ? String(initial.worst) : '')
   const [submitError, setSubmitError] = useState<string | null>(null)
-
-  const allFilled = best !== '' && likely !== '' && worst !== ''
-  const bestNum = Number(best)
-  const likelyNum = Number(likely)
-  const worstNum = Number(worst)
-
-  const validation = allFilled
-    ? createEstimate({
-        participantId: 'preview',
-        best: bestNum,
-        likely: likelyNum,
-        worst: worstNum,
-      })
-    : null
-  const validationError = validation && !validation.ok ? validation.error : null
-
-  const symmetricGuard = allFilled
-    ? checkSymmetricRange(bestNum, likelyNum, worstNum)
-    : null
-
-  const { phaseIndex, setPhaseIndex, guidanceHigh, uncertaintyGuard } = usePhaseGuidance(
-    bestNum,
-    worstNum,
-    allFilled,
-  )
-  const {
-    openKey: infoOpen,
-    open: openInfo,
-    close: closeInfo,
-  } = useSingleInfoPopover<'estimate' | 'phase' | 'range'>()
-
-  function handleSubmit() {
-    const result = onSubmit(bestNum, likelyNum, worstNum)
-    setSubmitError(result.ok ? null : result.error)
-  }
+  const info = useSingleInfoPopover<'estimate' | 'phase' | 'range'>()
 
   return (
-    <>
-      <GroupBox
-        label="Phase"
-        info={PHASE_INFO}
-        infoOpen={infoOpen === 'phase'}
-        onInfoOpen={() => openInfo('phase')}
-        onInfoClose={closeInfo}
-      >
-        <PhasePicker index={phaseIndex} onChange={setPhaseIndex} />
-      </GroupBox>
+    <ThreePointEstimateForm
+      unit={unit}
+      initial={initial}
+      info={info}
+      error={submitError}
+      footer={({ valid, best, likely, worst }) => (
+        <>
+          <Button
+            variant="primary"
+            disabled={!valid}
+            onClick={() => {
+              const result = onSubmit(best, likely, worst)
+              setSubmitError(result.ok ? null : result.error)
+            }}
+          >
+            {submitLabel}
+          </Button>
 
-      <ThreePointEstimateFields
-        unit={unit}
-        best={best}
-        likely={likely}
-        worst={worst}
-        onBestChange={setBest}
-        onLikelyChange={setLikely}
-        onWorstChange={setWorst}
-        validationError={validationError}
-        infoOpen={infoOpen === 'estimate'}
-        onInfoOpen={() => openInfo('estimate')}
-        onInfoClose={closeInfo}
-      />
-
-      <GroupBox
-        label="Range"
-        info={RANGE_INFO}
-        infoOpen={infoOpen === 'range'}
-        onInfoOpen={() => openInfo('range')}
-        onInfoClose={closeInfo}
-      >
-        {validation?.ok ? (
-          <>
-            <RangeBar
-              min={bestNum}
-              max={worstNum}
-              expected={likelyNum}
-              ci90={computeCI90(likelyNum, bestNum, worstNum)}
-              unitSuffix={UNIT_SUFFIX[unit]}
-              guidance={guidanceHigh !== null ? { guidanceHigh } : undefined}
-            />
-            <UncertaintyGuidanceNotes
-              guidanceHigh={guidanceHigh}
-              worst={worstNum}
-              unitSuffix={UNIT_SUFFIX[unit]}
-              uncertaintyGuard={uncertaintyGuard}
-            />
-          </>
-        ) : (
-          <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
-            Enter best, most likely and worst case above to see the range.
-          </p>
-        )}
-      </GroupBox>
-
-      {symmetricGuard?.fired && (
-        <GuardNote variant="banner" headline="Symmetric range">
-          Worst case in software usually has more room than best case. Double check.
-        </GuardNote>
+          {statusLine && (
+            <p
+              className="text-muted"
+              style={{ margin: 0, fontSize: 13, textAlign: 'center' }}
+            >
+              {statusLine}
+            </p>
+          )}
+        </>
       )}
-      {(validationError || submitError) && (
-        <GuardNote variant="banner" headline="Check your estimate">
-          {validationError ?? submitError}
-        </GuardNote>
-      )}
-
-      <Button variant="primary" disabled={!validation?.ok} onClick={handleSubmit}>
-        {submitLabel}
-      </Button>
-
-      {statusLine && (
-        <p
-          className="text-muted"
-          style={{ margin: 0, fontSize: 13, textAlign: 'center' }}
-        >
-          {statusLine}
-        </p>
-      )}
-    </>
+    />
   )
 }
 
