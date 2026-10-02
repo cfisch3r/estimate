@@ -15,6 +15,14 @@ cd "$root" || exit 0
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 
+# pnpm re-runs a full install (including the `prepare` script, which writes
+# .git/config) before any script when package.json has changed — e.g. after a
+# version bump. Five checks starting at once would each do that and race on
+# .git/config's lock, failing with "could not lock config file". Install once,
+# serially, so the parallel checks below find node_modules already current. A
+# failure here is deliberately ignored: the checks will surface the real error.
+pnpm install --frozen-lockfile >/dev/null 2>&1 || true
+
 run_check() {
   label="$1"
   slug="$2"
