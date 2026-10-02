@@ -2,12 +2,9 @@ import { Field, FieldLabel, Input } from '../../../shared/ui/Field'
 import { GuardNote } from '../../../shared/ui/GuardNote'
 import { GroupBox } from '../../../shared/ui/GroupBox'
 import { THREE_POINT_ESTIMATE_INFO } from '../../../shared/copy'
-import {
-  checkAscendingOrder,
-  checkFalsePrecision,
-  UNIT_GRANULARITY,
-} from '../../../entities/estimate'
-import type { EstimationUnit } from '../../../entities/estimate'
+import { checkFalsePrecision, UNIT_GRANULARITY } from '../../../entities/estimate'
+import type { EstimateField, EstimationUnit } from '../../../entities/estimate'
+import type { EstimateIssue } from '../lib/describeEstimateIssue'
 
 const inputStyle = {
   height: 48,
@@ -24,7 +21,10 @@ interface ThreePointEstimateFieldsProps {
   onBestChange: (value: string) => void
   onLikelyChange: (value: string) => void
   onWorstChange: (value: string) => void
-  validationError: string | null
+  /** What is wrong with the entry, or null. The inputs it names are marked invalid. */
+  issue: EstimateIssue | null
+  /** The id of the element that shows `issue`'s message; marked inputs point at it. */
+  issueId: string
   infoOpen: boolean
   onInfoOpen: () => void
   onInfoClose: () => void
@@ -43,7 +43,8 @@ export function ThreePointEstimateFields({
   onBestChange,
   onLikelyChange,
   onWorstChange,
-  validationError,
+  issue,
+  issueId,
   infoOpen,
   onInfoOpen,
   onInfoClose,
@@ -58,15 +59,10 @@ export function ThreePointEstimateFields({
     likely !== '' ? checkFalsePrecision(likelyNum, granularity) : null
   const worstPrecision = worst !== '' ? checkFalsePrecision(worstNum, granularity) : null
 
-  const ascendingGuard = checkAscendingOrder(
-    best === '' ? null : bestNum,
-    likely === '' ? null : likelyNum,
-    worst === '' ? null : worstNum,
-  )
-  const orderingWarning =
-    !validationError && ascendingGuard.fired
-      ? 'Values should ascend: best ≤ likely ≤ worst.'
-      : null
+  const invalidProps = (field: EstimateField) =>
+    issue?.fields.includes(field)
+      ? { 'aria-invalid': true, 'aria-describedby': issueId }
+      : {}
 
   return (
     <GroupBox
@@ -85,6 +81,7 @@ export function ThreePointEstimateFields({
             min={0}
             value={best}
             onChange={(e) => onBestChange(e.target.value)}
+            {...invalidProps('best')}
             style={inputStyle}
           />
           {bestPrecision?.fired && (
@@ -99,6 +96,7 @@ export function ThreePointEstimateFields({
             min={0}
             value={likely}
             onChange={(e) => onLikelyChange(e.target.value)}
+            {...invalidProps('likely')}
             style={inputStyle}
           />
           {likelyPrecision?.fired && (
@@ -113,6 +111,7 @@ export function ThreePointEstimateFields({
             min={0}
             value={worst}
             onChange={(e) => onWorstChange(e.target.value)}
+            {...invalidProps('worst')}
             style={inputStyle}
           />
           {worstPrecision?.fired && (
@@ -120,11 +119,6 @@ export function ThreePointEstimateFields({
           )}
         </Field>
       </div>
-      {orderingWarning && (
-        <GuardNote variant="banner" headline="Out of order">
-          {orderingWarning}
-        </GuardNote>
-      )}
     </GroupBox>
   )
 }

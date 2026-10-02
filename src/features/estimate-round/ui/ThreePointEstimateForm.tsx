@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import { useId, type ReactNode } from 'react'
 import { GroupBox } from '../../../shared/ui/GroupBox'
 import { GuardNote } from '../../../shared/ui/GuardNote'
 import { PHASE_INFO, RANGE_INFO } from '../../../shared/copy'
@@ -28,8 +28,8 @@ interface ThreePointEstimateFormProps {
   unit: EstimationUnit
   initial: ThreePointInitial | null
   info: InfoPopover
-  /** An extra error to show in the banner when the draft itself is valid, e.g. a
-   *  rejected submit. */
+  /** An error from the caller's own action (e.g. a rejected submit), shown only
+   *  while the draft itself is valid. */
   error?: string | null
   /** The actions below the form. Receives whether the draft is a valid estimate
    *  and its parsed values. */
@@ -51,9 +51,9 @@ export function ThreePointEstimateForm({
   error,
   footer,
 }: ThreePointEstimateFormProps) {
-  const draft = useThreePointDraft(initial)
+  const draft = useThreePointDraft(initial, unit)
+  const issueId = useId()
   const { openKey, open, close } = info
-  const bannerError = draft.validationError ?? error
 
   return (
     <>
@@ -75,7 +75,8 @@ export function ThreePointEstimateForm({
         onBestChange={draft.setBest}
         onLikelyChange={draft.setLikely}
         onWorstChange={draft.setWorst}
-        validationError={draft.validationError}
+        issue={draft.issue}
+        issueId={issueId}
         infoOpen={openKey === 'estimate'}
         onInfoOpen={() => open('estimate')}
         onInfoClose={close}
@@ -121,10 +122,16 @@ export function ThreePointEstimateForm({
           Worst case in software usually has more room than best case. Double check.
         </GuardNote>
       )}
-      {bannerError && (
-        <GuardNote variant="banner" headline="Check your estimate">
-          {bannerError}
+      {draft.issue ? (
+        <GuardNote variant="banner" headline={draft.issue.headline} id={issueId}>
+          {draft.issue.message}
         </GuardNote>
+      ) : (
+        error && (
+          <GuardNote variant="banner" headline="Couldn't submit">
+            {error}
+          </GuardNote>
+        )
       )}
 
       {footer({

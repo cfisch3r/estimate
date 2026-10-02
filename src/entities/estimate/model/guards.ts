@@ -35,24 +35,6 @@ export function checkFalsePrecision(value: number, granularity: number): GuardRe
   return { fired: deviationPct > epsilon, deviationPct }
 }
 
-/** Ordering nudge for the in-progress form: fires as soon as any two filled values
- *  are out of order, rather than waiting for all three fields (best/likely/worst) to
- *  be filled. Lets a participant catch e.g. best > worst immediately, before typing
- *  the third value. */
-export function checkAscendingOrder(
-  best: number | null,
-  likely: number | null,
-  worst: number | null,
-): GuardResult {
-  const pairs: [number | null, number | null][] = [
-    [best, likely],
-    [likely, worst],
-    [best, worst],
-  ]
-  const fired = pairs.some(([a, b]) => a !== null && b !== null && a > b)
-  return { fired }
-}
-
 /** PRD §6 "outlier flag": compares one estimate against the rest of the group
  *  (deliberately excludes itself, so a participant is never compared to a range
  *  that already includes their own submission). Fires if the estimate's range
@@ -89,7 +71,7 @@ export function checkOutlier(
  *  on the range bar (guidanceHigh = bestCase * highMult/lowMult). Meets-or-exceeds
  *  guidance does not fire — that case gets a calm confirmation instead, not a nudge.
  *  A non-positive best case or worst < best is a validation error, not a narrow-range
- *  signal, so this doesn't fire for either — checkAscendingOrder/createEstimate own
+ *  signal, so this doesn't fire for either — validateEstimateValues/createEstimate own
  *  flagging those. */
 export function checkUncertaintyRange(
   best: number,

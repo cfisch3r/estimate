@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEstimate, validateEstimateValues } from './estimate'
+import { createEstimate, findOrderViolation, validateEstimateValues } from './estimate'
 
 describe('createEstimate', () => {
   it('accepts values in ascending order', () => {
@@ -73,18 +73,72 @@ describe('validateEstimateValues', () => {
     expect(validateEstimateValues(2, 5, 8)).toEqual({ ok: true })
   })
 
-  it('rejects non-finite, non-positive and out-of-order values', () => {
-    expect(validateEstimateValues(NaN, 5, 8).ok).toBe(false)
-    expect(validateEstimateValues(0, 5, 8).ok).toBe(false)
-    expect(validateEstimateValues(8, 5, 2).ok).toBe(false)
+  it('names every non-finite field', () => {
+    expect(validateEstimateValues(NaN, 5, Infinity)).toMatchObject({
+      ok: false,
+      code: 'not-finite',
+      fields: ['best', 'worst'],
+    })
   })
 
-  it('agrees with createEstimate for the same values', () => {
+  it('flags a non-positive best case', () => {
+    expect(validateEstimateValues(0, 5, 8)).toMatchObject({
+      ok: false,
+      code: 'non-positive',
+      fields: ['best'],
+    })
+  })
+
+  it('flags best above likely', () => {
+    expect(validateEstimateValues(8, 5, 9)).toMatchObject({
+      ok: false,
+      code: 'best-above-likely',
+      fields: ['best', 'likely'],
+    })
+  })
+
+  it('flags likely above worst', () => {
+    expect(validateEstimateValues(2, 9, 8)).toMatchObject({
+      ok: false,
+      code: 'likely-above-worst',
+      fields: ['likely', 'worst'],
+    })
+  })
+
+  it('reports the first broken pair when both are out of order', () => {
+    expect(validateEstimateValues(9, 5, 2)).toMatchObject({ code: 'best-above-likely' })
+  })
+
+  it('keeps createEstimate error text in step with the validator', () => {
     const values = validateEstimateValues(8, 5, 9)
     const created = createEstimate({ participantId: 'a', best: 8, likely: 5, worst: 9 })
 
-    expect(values.ok).toBe(false)
-    expect(created.ok).toBe(false)
-    if (!values.ok && !created.ok) expect(values.error).toBe(created.error)
+    expect(created).toEqual({ ok: false, error: values.ok ? '' : values.error })
+  })
+})
+
+describe('findOrderViolation', () => {
+  it('flags the first descending pair among filled values', () => {
+    expect(findOrderViolation(10, 5, null)).toEqual({
+      code: 'best-above-likely',
+      fields: ['best', 'likely'],
+    })
+    expect(findOrderViolation(null, 9, 4)).toEqual({
+      code: 'likely-above-worst',
+      fields: ['likely', 'worst'],
+    })
+  })
+
+  it('compares best with worst when likely is not filled in yet', () => {
+    expect(findOrderViolation(9, null, 4)).toEqual({
+      code: 'best-above-worst',
+      fields: ['best', 'worst'],
+    })
+  })
+
+  it('returns null when nothing filled descends', () => {
+    expect(findOrderViolation(1, null, 4)).toBeNull()
+    expect(findOrderViolation(2, 2, 2)).toBeNull()
+    expect(findOrderViolation(null, null, null)).toBeNull()
   })
 })

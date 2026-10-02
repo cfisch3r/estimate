@@ -2,8 +2,14 @@ import { useState } from 'react'
 import {
   checkSymmetricRange,
   validateEstimateValues,
+  type EstimationUnit,
   type GuardResult,
 } from '../../../entities/estimate'
+import {
+  describeEstimateIssue,
+  describePartialOrdering,
+  type EstimateIssue,
+} from './describeEstimateIssue'
 import { usePhaseGuidance } from './usePhaseGuidance'
 
 export interface ThreePointInitial {
@@ -22,7 +28,9 @@ export interface ThreePointDraft {
   bestNum: number
   likelyNum: number
   worstNum: number
-  validationError: string | null
+  /** What is wrong with the entry so far — a rejected full entry, or a descending
+   *  pair in a partly filled one — or null. */
+  issue: EstimateIssue | null
   /** True once the three values form a valid estimate. */
   valid: boolean
   symmetricGuard: GuardResult | null
@@ -37,7 +45,10 @@ export interface ThreePointDraft {
  *  cone-of-uncertainty phase guidance. Shared by the facilitator's Workspace and
  *  the participant's estimate view, the two places a person types their own
  *  three-point estimate. */
-export function useThreePointDraft(initial: ThreePointInitial | null): ThreePointDraft {
+export function useThreePointDraft(
+  initial: ThreePointInitial | null,
+  unit: EstimationUnit,
+): ThreePointDraft {
   const [best, setBest] = useState(initial ? String(initial.best) : '')
   const [likely, setLikely] = useState(initial ? String(initial.likely) : '')
   const [worst, setWorst] = useState(initial ? String(initial.worst) : '')
@@ -50,7 +61,21 @@ export function useThreePointDraft(initial: ThreePointInitial | null): ThreePoin
   const validation = allFilled
     ? validateEstimateValues(bestNum, likelyNum, worstNum)
     : null
-  const validationError = validation && !validation.ok ? validation.error : null
+  const issue =
+    validation && !validation.ok
+      ? describeEstimateIssue(
+          validation,
+          { best: bestNum, likely: likelyNum, worst: worstNum },
+          unit,
+        )
+      : describePartialOrdering(
+          {
+            best: best === '' ? null : bestNum,
+            likely: likely === '' ? null : likelyNum,
+            worst: worst === '' ? null : worstNum,
+          },
+          unit,
+        )
 
   const symmetricGuard = allFilled
     ? checkSymmetricRange(bestNum, likelyNum, worstNum)
@@ -72,7 +97,7 @@ export function useThreePointDraft(initial: ThreePointInitial | null): ThreePoin
     bestNum,
     likelyNum,
     worstNum,
-    validationError,
+    issue,
     valid: validation?.ok ?? false,
     symmetricGuard,
     phaseIndex,

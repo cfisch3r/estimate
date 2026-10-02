@@ -92,7 +92,9 @@ describe('Single-user end-to-end flow', () => {
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
     await user.type(screen.getByLabelText('Worst case (days)'), '3')
 
-    expect(screen.getByText(/best must be/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Most likely \(5 days\) is higher than Worst case \(3 days\)/),
+    ).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Finalize item' })).toBeDisabled()
     // still on the same item, not advanced
     expect(screen.getByRole('heading', { name: 'Only item' })).toBeInTheDocument()
@@ -107,12 +109,14 @@ describe('Single-user end-to-end flow', () => {
     await user.type(screen.getByLabelText('Best case (days)'), '2')
     await user.type(screen.getByLabelText('Most likely (days)'), '5')
     await user.type(screen.getByLabelText('Worst case (days)'), '3')
-    expect(screen.getByText(/best must be/i)).toBeInTheDocument()
+    expect(
+      screen.getByText(/Most likely \(5 days\) is higher than Worst case \(3 days\)/),
+    ).toBeInTheDocument()
 
     await user.clear(screen.getByLabelText('Worst case (days)'))
     await user.type(screen.getByLabelText('Worst case (days)'), '15')
 
-    expect(screen.queryByText(/best must be/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/is higher than/)).not.toBeInTheDocument()
     // Once valid, the button's label switches from the disabled-state
     // "Finalize item" to the finalize-and-advance label.
     expect(screen.getByRole('button', { name: 'Finalize & view summary' })).toBeEnabled()
