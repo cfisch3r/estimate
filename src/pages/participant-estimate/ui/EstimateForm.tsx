@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button } from '../../../shared/ui'
+import { Button, LiveRegion } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import type { EstimationUnit } from '../../../entities/estimate'
 import { ThreePointEstimateForm } from '../../../features/estimate-round'
@@ -9,6 +9,7 @@ interface EstimateFormProps {
   unit: EstimationUnit
   initial: { best: number; likely: number; worst: number } | null
   submitLabel: string
+  focusOnMount?: boolean
   statusLine?: string
   onSubmit: (best: number, likely: number, worst: number) => SubmitResult
 }
@@ -19,6 +20,7 @@ export function EstimateForm({
   unit,
   initial,
   submitLabel,
+  focusOnMount,
   statusLine,
   onSubmit,
 }: EstimateFormProps) {
@@ -30,6 +32,7 @@ export function EstimateForm({
       unit={unit}
       initial={initial}
       info={info}
+      focusOnMount={focusOnMount}
       error={submitError}
       footer={({ valid, best, likely, worst }) => (
         <>
@@ -44,14 +47,16 @@ export function EstimateForm({
             {submitLabel}
           </Button>
 
-          {statusLine && (
-            <p
-              className="text-muted"
-              style={{ margin: 0, fontSize: 13, textAlign: 'center' }}
-            >
-              {statusLine}
-            </p>
-          )}
+          <LiveRegion>
+            {statusLine && (
+              <p
+                className="text-muted"
+                style={{ margin: 0, fontSize: 13, textAlign: 'center' }}
+              >
+                {statusLine}
+              </p>
+            )}
+          </LiveRegion>
         </>
       )}
     />

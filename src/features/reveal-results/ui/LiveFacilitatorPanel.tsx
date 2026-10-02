@@ -1,4 +1,11 @@
-import { Button, GroupBox, Tag, NavRow } from '../../../shared/ui'
+import {
+  Button,
+  GroupBox,
+  LiveRegion,
+  Tag,
+  NavRow,
+  VisuallyHidden,
+} from '../../../shared/ui'
 import { PARTICIPANT_ESTIMATES_INFO, RANGE_INFO } from '../../../shared/copy'
 import { useConfirmArm } from '../../../shared/lib/useConfirmArm'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
@@ -80,6 +87,13 @@ export function LiveFacilitatorPanel({
         onInfoOpen={() => openInfo('estimate')}
         onInfoClose={closeInfo}
       >
+        <LiveRegion>
+          <VisuallyHidden>
+            {item.revealed || roster.length === 0
+              ? ''
+              : `${submittedCount} of ${roster.length} submitted`}
+          </VisuallyHidden>
+        </LiveRegion>
         {roster.length === 0 ? (
           <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
             No participants have joined yet.

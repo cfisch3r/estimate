@@ -1,6 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
 import { ParticipantEstimateView } from './ParticipantEstimateView'
 import { RECONNECT_GRACE_MS } from '../../../shared/lib/useConnectionPhase'
@@ -496,5 +497,171 @@ describe('ParticipantEstimateView', () => {
 
     expect(screen.getByText('You')).toBeInTheDocument()
     expect(screen.getByText('Teammate 1')).toBeInTheDocument()
+  })
+
+  describe('accessibility', () => {
+    const roster = [{ participantId: 'me-123', submitted: false, connected: true }]
+    const estimating = {
+      item,
+      submissions: [],
+      revealed: false,
+      round: 0,
+      roster,
+      mySubmission: null,
+    }
+    const waiting = { ...estimating, mySubmission: { best: 2, likely: 4, worst: 8 } }
+    const revealed = {
+      ...waiting,
+      revealed: true,
+      submissions: [estimate({ participantId: 'me-123' })],
+    }
+
+    // color-contrast needs real layout jsdom doesn't provide; see ADR-008.
+    const scan = (container: HTMLElement) =>
+      axe(container, { rules: { 'color-contrast': { enabled: false } } })
+
+    it.each([
+      ['lobby', null],
+      ['estimating', estimating],
+      ['waiting', waiting],
+      ['revealed', revealed],
+    ])('has no axe violations in the %s state', async (_name, liveRound) => {
+      useRoundStore.setState({ liveRound })
+      const { container } = renderView()
+
+      expect(await scan(container)).toHaveNoViolations()
+    })
+
+    it('moves focus to the new heading after submitting', async () => {
+      const user = userEvent.setup()
+      useRoundStore.setState({ liveRound: estimating })
+      renderView()
+
+      await user.type(screen.getByLabelText('Best case (days)'), '3')
+      await user.type(screen.getByLabelText('Most likely (days)'), '5')
+      await user.type(screen.getByLabelText('Worst case (days)'), '8')
+      await user.click(screen.getByRole('button', { name: 'Submit estimate' }))
+
+      expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
+    })
+
+    it('does not steal focus on first render', () => {
+      useRoundStore.setState({ liveRound: estimating })
+      renderView()
+
+      expect(document.body).toHaveFocus()
+    })
+
+    it('moves focus to the heading when the facilitator reveals', () => {
+      useRoundStore.setState({ liveRound: waiting })
+      renderView()
+
+      act(() => {
+        useRoundStore.setState({ liveRound: revealed })
+      })
+
+      expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
+      expect(screen.getByText('Estimates revealed.')).toBeInTheDocument()
+    })
+
+    it('hands focus to the first input when revising, and back to Revise after updating', async () => {
+      const user = userEvent.setup()
+      useRoundStore.setState({ liveRound: waiting })
+      renderView()
+
+      await user.click(screen.getByRole('button', { name: 'Revise estimate' }))
+      expect(screen.getByLabelText('Best case (days)')).toHaveFocus()
+
+      await user.click(screen.getByRole('button', { name: 'Update estimate' }))
+      expect(screen.getByRole('button', { name: 'Revise estimate' })).toHaveFocus()
+    })
+
+    it('announces a failed delivery through a status region', async () => {
+      const user = userEvent.setup()
+      sendEstimateMock.mockRejectedValueOnce(new Error('no ack'))
+      useRoundStore.setState({ liveRound: estimating })
+      renderView()
+
+      await user.type(screen.getByLabelText('Best case (days)'), '3')
+      await user.type(screen.getByLabelText('Most likely (days)'), '5')
+      await user.type(screen.getByLabelText('Worst case (days)'), '8')
+      await user.click(screen.getByRole('button', { name: 'Submit estimate' }))
+
+      const notDelivered = await screen.findByText('Not delivered yet')
+      expect(notDelivered.closest('[role="status"]')).not.toBeNull()
+    })
+
+    it('announces the submitted count through a status region', () => {
+      useRoundStore.setState({ liveRound: estimating })
+      renderView()
+
+      const line = screen.getByText(/submitted so far/)
+      expect(line.closest('[role="status"]')).not.toBeNull()
+    })
+
+    it('announces reconnecting as status and a lost link as an alert', () => {
+      vi.useFakeTimers()
+      try {
+        useConnectionStore.setState({ peerCount: 0 })
+        renderView()
+        expect(
+          screen.getByText('Reconnecting…').closest('[role="status"]'),
+        ).not.toBeNull()
+
+        act(() => {
+          vi.advanceTimersByTime(RECONNECT_GRACE_MS)
+        })
+
+        expect(
+          screen.getByText('Session connection lost').closest('[role="alert"]'),
+        ).not.toBeNull()
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('says nothing about a submit that was already there when the screen opened', () => {
+      useRoundStore.setState({ liveRound: waiting })
+      renderView()
+
+      expect(screen.queryByText('Estimate submitted.')).not.toBeInTheDocument()
+    })
+
+    it('announces the submit when the view changes to waiting', async () => {
+      const user = userEvent.setup()
+      useRoundStore.setState({ liveRound: estimating })
+      renderView()
+
+      await user.type(screen.getByLabelText('Best case (days)'), '3')
+      await user.type(screen.getByLabelText('Most likely (days)'), '5')
+      await user.type(screen.getByLabelText('Worst case (days)'), '8')
+      await user.click(screen.getByRole('button', { name: 'Submit estimate' }))
+
+      expect(screen.getByText('Estimate submitted.')).toBeInTheDocument()
+    })
+
+    it('announces a revised estimate even though the view stays the same', async () => {
+      const user = userEvent.setup()
+      useRoundStore.setState({ liveRound: waiting })
+      renderView()
+
+      await user.click(screen.getByRole('button', { name: 'Revise estimate' }))
+      await user.click(screen.getByRole('button', { name: 'Update estimate' }))
+
+      expect(screen.getByText('Estimate updated.')).toBeInTheDocument()
+    })
+
+    it('announces when the connection to the session is established', () => {
+      useConnectionStore.setState({ connectionStatus: 'connecting' })
+      renderView()
+
+      act(() => {
+        useConnectionStore.setState({ connectionStatus: 'connected' })
+      })
+
+      expect(
+        screen.getByText(/Connected\. Waiting for the facilitator/),
+      ).toBeInTheDocument()
+    })
   })
 })

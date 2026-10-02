@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
-import { Button, Card, GuardNote } from '../../../shared/ui'
+import { Button, Card, GuardNote, LiveRegion, VisuallyHidden } from '../../../shared/ui'
 import type { ConnectionPhase } from '../../../shared/lib/useConnectionPhase'
 import { EstimateTriple, type EstimationUnit } from '../../../entities/estimate'
 import type { LiveRound } from '../../../entities/session'
@@ -27,7 +27,17 @@ export function WaitingPanel({
   connectionPhase,
 }: WaitingPanelProps) {
   const [editing, setEditing] = useState(false)
+  const [updated, setUpdated] = useState(false)
+  const reviseRef = useRef<HTMLButtonElement>(null)
+  const wasEditing = useRef(false)
   const mine = round.mySubmission!
+
+  // Revise unmounts the button that had focus and Update unmounts the form: the
+  // form focuses its own first input on mount, and Revise gets focus back here.
+  useEffect(() => {
+    if (!editing && wasEditing.current) reviseRef.current?.focus()
+    wasEditing.current = editing
+  }, [editing])
 
   return (
     <Card elevation="sm">
@@ -39,9 +49,13 @@ export function WaitingPanel({
           unit={unit}
           initial={mine}
           submitLabel="Update estimate"
+          focusOnMount
           onSubmit={(best, likely, worst) => {
             const result = onSubmit(best, likely, worst)
-            if (result.ok) setEditing(false)
+            if (result.ok) {
+              setEditing(false)
+              setUpdated(true)
+            }
             return result
           }}
         />
@@ -65,10 +79,14 @@ export function WaitingPanel({
               />
             </span>
             <Button
+              ref={reviseRef}
               icon
               variant="ghost"
               aria-label="Revise estimate"
-              onClick={() => setEditing(true)}
+              onClick={() => {
+                setUpdated(false)
+                setEditing(true)
+              }}
             >
               <PencilSimpleIcon size={16} />
             </Button>
@@ -89,26 +107,33 @@ export function WaitingPanel({
           {/* When the facilitator link is down, that banner (rendered by the
            *  parent) already explains why nothing is arriving — this must not
            *  stack a second alarm on top of it. */}
-          {connectionPhase !== 'lost' && deliveryState === 'sending' && (
-            <div
-              className="card-meta"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 'var(--space-2)',
-              }}
-            >
-              <CircleNotchIcon size={16} weight="bold" className="spin" />
-              Sending your estimate…
-            </div>
-          )}
-          {connectionPhase !== 'lost' && deliveryState === 'not-delivered' && (
-            <GuardNote variant="banner" headline="Not delivered yet">
-              Your estimate hasn&apos;t reached the facilitator. It will retry
-              automatically.
-            </GuardNote>
-          )}
+          <LiveRegion>
+            {connectionPhase !== 'lost' && deliveryState === 'sending' && (
+              <div
+                className="card-meta"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: 'var(--space-2)',
+                }}
+              >
+                <CircleNotchIcon size={16} weight="bold" className="spin" />
+                Sending your estimate…
+              </div>
+            )}
+          </LiveRegion>
+          <LiveRegion>
+            <VisuallyHidden>{updated ? 'Estimate updated.' : ''}</VisuallyHidden>
+          </LiveRegion>
+          <LiveRegion>
+            {connectionPhase !== 'lost' && deliveryState === 'not-delivered' && (
+              <GuardNote variant="banner" headline="Not delivered yet">
+                Your estimate hasn&apos;t reached the facilitator. It will retry
+                automatically.
+              </GuardNote>
+            )}
+          </LiveRegion>
         </>
       )}
     </Card>

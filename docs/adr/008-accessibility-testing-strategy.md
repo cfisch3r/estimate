@@ -55,6 +55,13 @@ just valid), focus-order sanity after a state change, whether dynamic content
 needs a live region, and contrast judgment calls the e2e layer's narrowed
 scan doesn't cover.
 
+*Established pattern (2026-10):* the review's live-region and focus-order calls now
+have a shared answer. `shared/ui`'s `LiveRegion` is rendered persistently and only its
+children change (a region that mounts already holding text is announced
+inconsistently), with `status` for progress and `alert` only for failures that need
+action; `useFocusHeadingOnChange` hands focus to the new panel's heading when a view
+replaces the control that had it.
+
 ## Rationale
 
 - Mirroring the Steiger/oxlint + `architecture-review` split keeps the

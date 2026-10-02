@@ -1,5 +1,5 @@
 import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
-import { Button, Tag } from '../../../shared/ui'
+import { Button, LiveRegion, Tag } from '../../../shared/ui'
 import type { LiveConnectionStatus } from '../../../entities/session'
 
 interface LiveSessionStripProps {
@@ -55,7 +55,9 @@ export function LiveSessionStrip({
           Reconnect
         </Button>
       )}
-      <Tag variant={statusTag.variant}>{statusTag.label}</Tag>
+      <LiveRegion>
+        <Tag variant={statusTag.variant}>{statusTag.label}</Tag>
+      </LiveRegion>
     </div>
   )
 }
