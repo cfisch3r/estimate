@@ -30,7 +30,7 @@ one layer down instead).
 | `app` | Bootstrap only: entry point, global providers, app-shell chrome that knows about screens/routing | `app/main.tsx`, `app/App.tsx`, `app/Header.tsx` |
 | `pages` | One slice per top-level screen/view | `pages/workspace`, `pages/join-session` |
 | `widgets` | Composite UI reused across *more than one* page | `widgets/session-sidebar` (used by `workspace` and `session-summary`) |
-| `features` | A user-facing use case/action | `features/estimate-round`, `features/reveal-results` |
+| `features` | A user-facing use case/action | `features/estimate-round`, `features/reveal-results`, `features/submit-estimate` |
 | `entities` | A business noun and its data/logic | `entities/estimate`, `entities/session`, `entities/participant` |
 | `shared` | Business-agnostic UI primitives, generic hooks, copy | `shared/ui/Button`, `shared/lib/useConfirmArm` |
 

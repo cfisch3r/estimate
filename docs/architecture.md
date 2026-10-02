@@ -90,7 +90,11 @@ rationale. In brief, by architectural role rather than layer:
   facilitator reveal panel — states 1c waiting / 1d revealed, driven by per-item
   `submissions` / `revealed`, #8), Summary, History, Join, and Participant Estimate
   View (#7 — lobby / estimating / waiting / revealed states driven by
-  `store.liveRound`).
+  `store.liveRound`). Pages are kept thin: per-state panels, a `model/` read-model hook
+  where the store reads are non-trivial, and the shared three-point entry form
+  (`ThreePointEstimateForm`, `features/estimate-round`) used by both Workspace and the
+  participant view. The participant submit-and-delivery flow lives in
+  `features/submit-estimate`.
 - **Design-system primitives** (`shared/ui`, formerly `/components`) — Button, Card,
   Field, GuardNote, ConfirmNote, Tag, RadioTile — thin wrappers / compositions over
   Nocturne classes. RadioTile is currently unreferenced (unused since the #34
@@ -153,9 +157,11 @@ function checkOutlier(estimate: Estimate, allEstimates: Estimate[], thresholdPct
 function checkUncertaintyRange(best: number, worst: number, level: UncertaintyLevel): GuardResult
 ```
 
+`entities/estimate/model/estimate.ts` also exports `validateEstimateValues` — the numeric half of `createEstimate`'s invariant, usable for a live form preview before a participant exists; `createEstimate` runs it after its `participantId` check.
+
 `entities/estimate/model/guards.ts` also exports `checkAscendingOrder` — a form-input ordering nudge (best ≤ likely ≤ worst) for the in-progress estimate form, not one of PRD §6's bias guards.
 
-The PRD §6.1 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`features/estimate-round/ui/PhasePicker.tsx`), local to their own view (`features/estimate-round/lib/usePhaseGuidance.ts`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
+The PRD §6.1 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`features/estimate-round/ui/PhasePicker.tsx`), local to their own view (`features/estimate-round/lib/usePhaseGuidance.ts`, composed with the rest of the entry form by `ThreePointEstimateForm`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
 
 **Tunable constants, not settled numbers:** the symmetric-range tolerance (proposed 15%) and outlier threshold (proposed: no range overlap, or `likely` deviates >40% of group spread) are UX-tuning parameters PRD leaves vague ("within a tolerance," "far from the group median") — ship as named constants, expect to retune after real sessions rather than treating these as final.
 

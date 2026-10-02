@@ -28,8 +28,10 @@ export default defineConfig([
     // growing use case (facilitator reveal/retry), not incidental UI, per
     // ADR-004. `entities/participant` has one consumer (entities/session's
     // store) for the same reason it's a real, separately-testable domain
-    // noun, not incidental code. Revisit either if it never gains a second
-    // consumer.
+    // noun, not incidental code. `features/submit-estimate` has one consumer
+    // (pages/participant-estimate) for the same reason: it's the participant's
+    // submit use case, kept out of `estimate-round`, which is form UI shared by
+    // both roles. Revisit any of them if they never gain a second consumer.
     files: [
       './src/features/reveal-results/**',
       './src/features/submit-estimate/**',

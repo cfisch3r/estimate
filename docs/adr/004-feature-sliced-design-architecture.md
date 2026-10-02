@@ -128,6 +128,10 @@ filenames or from the file's original directory:
   is fully generic (no domain imports at all) and went to `shared/lib`;
   `useLeaveLiveSession` composes `entities/session` state and went to
   `entities/session/lib`, alongside `useLeaveWorkspace`.
+- `features/submit-estimate` holds the participant's submit-and-delivery use case
+  (record locally, send to the facilitator, track delivery). It sits apart from
+  `estimate-round`, which stays form and guidance UI shared with the facilitator's
+  Workspace.
 - `screens/SessionSidebar.tsx` is used by both the `workspace` and
   `session-summary` pages — the concrete trigger for adding the `widgets` layer
   (see Decision above). It's `widgets/session-sidebar`.

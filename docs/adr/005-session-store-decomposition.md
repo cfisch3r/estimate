@@ -19,9 +19,11 @@ before this split happens (see ADR-006). What's left is three concerns:
 
 | # | Concern | State | Actions |
 |---|---|---|---|
-| 1 | Session domain data | `sessionName`, `unit`, `items`, `activeItemId` | `setSessionName`, `setUnit`, `addItem`, `updateItem`, `removeItem`, `reorderItems`, `selectItem`, `setItemNotes`, `setItemDescription` |
+| 1 | Session domain data | `sessionName`, `unit`, `items`, `activeItemId` | `setSessionName`, `setUnit`, `addItem`, `setItemTitle`, `removeItem`, `reorderItems`, `selectItem`, `setItemNotes`, `setItemDescription` |
 | 2 | Live-connection state | `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `hasEverConnected`, `peerCount`, `participantNames` | `setMode`, `setConnectionStatus`, `setPeerCount`, `applyParticipantName`, `removeParticipant`, `startSingleUser`, `startCollaborative`, `joinLiveSession`, `leaveLiveSession` |
 | 3 | Round mechanics | `liveRound` | `finalizeItem`, `finalizeLiveItem`, `revealRound`, `retryRound`, `applySyncState`, `applyRemoteEstimate`, `submitEstimate` |
+
+(`updateItem`, listed here originally, was later replaced by `setItemTitle`, which changes only the title.)
 
 Around 20 files import `useSessionStore` (7 pages, `App`/`Header`,
 `NetworkProvider`, `entities/session/lib` hooks, plus tests). A single-user
