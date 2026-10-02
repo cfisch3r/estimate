@@ -20,12 +20,14 @@ declare const EstimateBrand: unique symbol
  *  stays plain, JSON-transparent data for network transport and IndexedDB storage. */
 export type Estimate = RawEstimateInput & { readonly [EstimateBrand]: true }
 
-export function createEstimate(input: RawEstimateInput): Result<Estimate> {
-  const { participantId, best, likely, worst } = input
-
-  if (participantId.trim().length === 0) {
-    return { ok: false, error: 'participantId must not be empty' }
-  }
+/** The numeric half of the invariant, usable before there is a participant to
+ *  attribute the estimate to (e.g. live form preview). createEstimate() runs it
+ *  after its participantId check, so the two can't drift. */
+export function validateEstimateValues(
+  best: number,
+  likely: number,
+  worst: number,
+): { ok: true } | { ok: false; error: string } {
   if (!Number.isFinite(best) || !Number.isFinite(likely) || !Number.isFinite(worst)) {
     return { ok: false, error: 'best, likely, and worst must all be finite numbers' }
   }
@@ -37,6 +39,17 @@ export function createEstimate(input: RawEstimateInput): Result<Estimate> {
   if (!(best <= likely && likely <= worst)) {
     return { ok: false, error: 'best must be ≤ likely, and likely must be ≤ worst' }
   }
+  return { ok: true }
+}
+
+export function createEstimate(input: RawEstimateInput): Result<Estimate> {
+  const { participantId, best, likely, worst } = input
+
+  if (participantId.trim().length === 0) {
+    return { ok: false, error: 'participantId must not be empty' }
+  }
+  const values = validateEstimateValues(best, likely, worst)
+  if (!values.ok) return values
 
   return { ok: true, value: input as Estimate }
 }

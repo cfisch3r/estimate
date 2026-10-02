@@ -7,7 +7,7 @@ describe('useThreePointDraft', () => {
     const { result } = renderHook(() => useThreePointDraft(null))
 
     expect(result.current.best).toBe('')
-    expect(result.current.validation).toBeNull()
+    expect(result.current.validationError).toBeNull()
     expect(result.current.valid).toBe(false)
     expect(result.current.symmetricGuard).toBeNull()
   })

@@ -16,7 +16,7 @@ export {
   DEFAULT_UNCERTAINTY_INDEX,
 } from './model/types'
 export type { Estimate, RawEstimateInput, Result } from './model/estimate'
-export { createEstimate } from './model/estimate'
+export { createEstimate, validateEstimateValues } from './model/estimate'
 export { aggregateEstimates } from './model/aggregate'
 export { computeCI90 } from './model/ci90'
 export {

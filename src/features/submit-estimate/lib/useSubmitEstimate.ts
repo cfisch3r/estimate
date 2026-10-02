@@ -5,7 +5,7 @@ import {
   useRoundStore,
 } from '../../../entities/session'
 
-type SubmitResult = { ok: true } | { ok: false; error: string }
+export type SubmitResult = { ok: true } | { ok: false; error: string }
 
 /** Where this participant's own estimate stands with the facilitator, derived
  *  rather than tracked as its own store field: `submitted` comes straight from

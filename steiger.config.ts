@@ -30,7 +30,11 @@ export default defineConfig([
     // store) for the same reason it's a real, separately-testable domain
     // noun, not incidental code. Revisit either if it never gains a second
     // consumer.
-    files: ['./src/features/reveal-results/**', './src/entities/participant/**'],
+    files: [
+      './src/features/reveal-results/**',
+      './src/features/submit-estimate/**',
+      './src/entities/participant/**',
+    ],
     rules: {
       'fsd/insignificant-slice': 'off',
     },

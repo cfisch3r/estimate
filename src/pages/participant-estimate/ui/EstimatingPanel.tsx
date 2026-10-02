@@ -1,7 +1,8 @@
 import { Card } from '../../../shared/ui'
 import type { EstimationUnit } from '../../../entities/estimate'
 import type { LiveRound } from '../../../entities/session'
-import { EstimateForm, type SubmitResult } from './EstimateForm'
+import type { SubmitResult } from '../../../features/submit-estimate'
+import { EstimateForm } from './EstimateForm'
 import { RoundCardHeader } from './RoundCardHeader'
 
 interface EstimatingPanelProps {

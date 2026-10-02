@@ -1,7 +1,7 @@
 import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import { Button, GuardNote } from '../../../shared/ui'
 import { useNetworkSession } from '../../../entities/session'
-import { useSubmitEstimate } from '../../../features/estimate-round'
+import { useSubmitEstimate } from '../../../features/submit-estimate'
 import { useLeaveLiveSession } from '../../../features/session-lifecycle'
 import { useParticipantRound } from '../model/useParticipantRound'
 import { EstimatingPanel } from './EstimatingPanel'
@@ -10,57 +10,57 @@ import { RevealedPanel } from './RevealedPanel'
 import { WaitingPanel } from './WaitingPanel'
 
 export function ParticipantEstimateView() {
-  const {
-    view,
-    liveRound,
-    unit,
-    sessionId,
-    kicker,
-    myName,
-    connectionStatus,
-    connectionPhase,
-    participantId,
-    participantNames,
-  } = useParticipantRound()
+  const round = useParticipantRound()
+  const { sessionId, kicker, unit, connectionPhase } = round
   const { submit, deliveryState } = useSubmitEstimate()
   const { connect } = useNetworkSession()
   const leave = useLeaveLiveSession()
 
   let panel
-  if (!liveRound || view === 'lobby') {
-    panel = (
-      <LobbyPanel
-        kicker={kicker}
-        myName={myName}
-        connectionStatus={connectionStatus}
-        connectionPhase={connectionPhase}
-      />
-    )
-  } else if (view === 'revealed') {
-    panel = (
-      <RevealedPanel
-        round={liveRound}
-        unit={unit}
-        kicker={kicker}
-        participantId={participantId}
-        participantNames={participantNames}
-      />
-    )
-  } else if (view === 'waiting') {
-    panel = (
-      <WaitingPanel
-        round={liveRound}
-        unit={unit}
-        kicker={kicker}
-        onSubmit={submit}
-        deliveryState={deliveryState}
-        connectionPhase={connectionPhase}
-      />
-    )
-  } else {
-    panel = (
-      <EstimatingPanel round={liveRound} unit={unit} kicker={kicker} onSubmit={submit} />
-    )
+  switch (round.view) {
+    case 'lobby':
+      panel = (
+        <LobbyPanel
+          kicker={kicker}
+          myName={round.myName}
+          connectionStatus={round.connectionStatus}
+          connectionPhase={connectionPhase}
+        />
+      )
+      break
+    case 'revealed':
+      panel = (
+        <RevealedPanel
+          round={round.liveRound}
+          unit={unit}
+          kicker={kicker}
+          participantId={round.participantId}
+          participantNames={round.participantNames}
+        />
+      )
+      break
+    case 'waiting':
+      panel = (
+        <WaitingPanel
+          round={round.liveRound}
+          unit={unit}
+          kicker={kicker}
+          onSubmit={submit}
+          deliveryState={deliveryState}
+          connectionPhase={connectionPhase}
+        />
+      )
+      break
+    case 'estimating':
+      panel = (
+        <EstimatingPanel
+          round={round.liveRound}
+          unit={unit}
+          kicker={kicker}
+          onSubmit={submit}
+        />
+      )
+      break
   }
 
   return (

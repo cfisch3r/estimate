@@ -5,8 +5,8 @@ import { Button, Card, GuardNote } from '../../../shared/ui'
 import type { ConnectionPhase } from '../../../shared/lib/useConnectionPhase'
 import { UNIT_SUFFIX, type EstimationUnit } from '../../../entities/estimate'
 import type { LiveRound } from '../../../entities/session'
-import type { DeliveryState } from '../../../features/estimate-round'
-import { EstimateForm, type SubmitResult } from './EstimateForm'
+import type { DeliveryState, SubmitResult } from '../../../features/submit-estimate'
+import { EstimateForm } from './EstimateForm'
 import { RoundCardHeader } from './RoundCardHeader'
 
 interface WaitingPanelProps {

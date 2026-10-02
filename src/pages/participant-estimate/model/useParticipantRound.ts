@@ -6,9 +6,8 @@ import {
   useConnectionStore,
   useRoundStore,
   useSessionStore,
+  type LiveRound,
 } from '../../../entities/session'
-
-type ParticipantView = 'lobby' | 'estimating' | 'waiting' | 'revealed'
 
 /** "{sessionName} ({sessionId})" once the facilitator's session name has
  *  reached this client (see the sync protocol's `sessionName` field) — falls
@@ -40,17 +39,7 @@ export function useParticipantRound() {
     hasEverConnected && peerCount === 0,
   )
 
-  const view: ParticipantView = !liveRound
-    ? 'lobby'
-    : liveRound.revealed
-      ? 'revealed'
-      : liveRound.mySubmission
-        ? 'waiting'
-        : 'estimating'
-
-  return {
-    view,
-    liveRound,
+  const shared = {
     unit,
     sessionId,
     kicker: formatSessionKicker(sessionName, sessionId),
@@ -60,4 +49,14 @@ export function useParticipantRound() {
     participantId,
     participantNames,
   }
+
+  // A discriminated union, so a caller that switches on `view` gets a non-null
+  // `liveRound` in every round state without re-checking.
+  if (!liveRound) return { ...shared, view: 'lobby' as const, liveRound: null }
+  const view = liveRound.revealed
+    ? ('revealed' as const)
+    : liveRound.mySubmission
+      ? ('waiting' as const)
+      : ('estimating' as const)
+  return { ...shared, view, liveRound: liveRound satisfies LiveRound }
 }

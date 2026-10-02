@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import {
   checkSymmetricRange,
-  createEstimate,
+  validateEstimateValues,
   type GuardResult,
 } from '../../../entities/estimate'
 import { usePhaseGuidance } from './usePhaseGuidance'
@@ -11,8 +11,6 @@ export interface ThreePointInitial {
   likely: number
   worst: number
 }
-
-type Validation = ReturnType<typeof createEstimate>
 
 export interface ThreePointDraft {
   best: string
@@ -24,8 +22,6 @@ export interface ThreePointDraft {
   bestNum: number
   likelyNum: number
   worstNum: number
-  /** null until all three fields are filled. */
-  validation: Validation | null
   validationError: string | null
   /** True once the three values form a valid estimate. */
   valid: boolean
@@ -52,12 +48,7 @@ export function useThreePointDraft(initial: ThreePointInitial | null): ThreePoin
   const worstNum = Number(worst)
 
   const validation = allFilled
-    ? createEstimate({
-        participantId: 'preview',
-        best: bestNum,
-        likely: likelyNum,
-        worst: worstNum,
-      })
+    ? validateEstimateValues(bestNum, likelyNum, worstNum)
     : null
   const validationError = validation && !validation.ok ? validation.error : null
 
@@ -81,7 +72,6 @@ export function useThreePointDraft(initial: ThreePointInitial | null): ThreePoin
     bestNum,
     likelyNum,
     worstNum,
-    validation,
     validationError,
     valid: validation?.ok ?? false,
     symmetricGuard,

@@ -3,8 +3,7 @@ import { Button } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import type { EstimationUnit } from '../../../entities/estimate'
 import { ThreePointEstimateForm } from '../../../features/estimate-round'
-
-export type SubmitResult = { ok: true } | { ok: false; error: string }
+import type { SubmitResult } from '../../../features/submit-estimate'
 
 interface EstimateFormProps {
   unit: EstimationUnit
