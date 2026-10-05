@@ -4,7 +4,10 @@ import type { RoundView } from './useParticipantRound'
 
 /** What a screen-reader user can't see happen when the screen changes state: the
  *  focused heading says which item this is, this says what changed about it. */
-function announcementFor(view: RoundView, connectionStatus: LiveConnectionStatus): string {
+function announcementFor(
+  view: RoundView,
+  connectionStatus: LiveConnectionStatus,
+): string {
   if (view === 'waiting') return 'Estimate submitted.'
   if (view === 'revealed') return 'Estimates revealed.'
   if (view === 'lobby' && connectionStatus === 'connected') {

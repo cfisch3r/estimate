@@ -18,8 +18,7 @@ export function useItemNavigation() {
   const activeItem = activeIndex === -1 ? null : items[activeIndex]!
   const isFirst = activeIndex <= 0
   const isLast = activeIndex === items.length - 1
-  const allFinalized =
-    items.length > 0 && items.every(isFinalized)
+  const allFinalized = items.length > 0 && items.every(isFinalized)
 
   function goPrev() {
     if (activeIndex <= 0) return

@@ -53,7 +53,11 @@ export function useParticipantRound() {
   // `liveRound` in every round state without re-checking.
   if (!liveRound) return { ...shared, view: 'lobby' as const, liveRound: null }
   if (liveRound.revealed) {
-    return { ...shared, view: 'revealed' as const, liveRound: liveRound satisfies LiveRound }
+    return {
+      ...shared,
+      view: 'revealed' as const,
+      liveRound: liveRound satisfies LiveRound,
+    }
   }
   if (liveRound.mySubmission) {
     return {
