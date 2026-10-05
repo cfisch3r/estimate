@@ -1,10 +1,11 @@
 import { create } from 'zustand'
-import type { Estimate } from '../../estimate'
-import { createEstimate, aggregateEstimates } from '../../estimate'
-import type { SessionSnapshot } from '../api/actions'
+import type { Estimate } from '../../estimate/@x/session'
+import { createEstimate, aggregateEstimates } from '../../estimate/@x/session'
+import { FACILITATOR_PARTICIPANT_ID } from '../../participant/@x/session'
 import { useConnectionStore } from './connection'
-import { useSessionStore } from './session'
-import type { LiveRound } from './types'
+import { isFinalized } from './item'
+import { patchItem, useSessionStore } from './session'
+import type { LiveRound, SessionSnapshot } from './types'
 
 export type FinalizeResult = { ok: true } | { ok: false; error: string }
 
@@ -65,7 +66,7 @@ export const useRoundStore = create<RoundStore>((set, get) => ({
 
   finalizeItem: (id, best, likely, worst) => {
     const estimateResult = createEstimate({
-      participantId: 'facilitator',
+      participantId: FACILITATOR_PARTICIPANT_ID,
       best,
       likely,
       worst,
@@ -74,7 +75,7 @@ export const useRoundStore = create<RoundStore>((set, get) => ({
       return estimateResult
     }
     const finalResult = aggregateEstimates([estimateResult.value])
-    useSessionStore.getState().patchItem(id, { finalResult })
+    patchItem(id, { finalResult })
     return { ok: true }
   },
 
@@ -87,11 +88,11 @@ export const useRoundStore = create<RoundStore>((set, get) => ({
       return { ok: false, error: 'No estimates have been submitted yet.' }
     }
     const finalResult = aggregateEstimates(item.submissions)
-    useSessionStore.getState().patchItem(id, { finalResult })
+    patchItem(id, { finalResult })
     return { ok: true }
   },
 
-  revealRound: (id) => useSessionStore.getState().patchItem(id, { revealed: true }),
+  revealRound: (id) => patchItem(id, { revealed: true }),
 
   retryRound: (id) => {
     const item = useSessionStore.getState().items.find((i) => i.id === id)
@@ -102,7 +103,7 @@ export const useRoundStore = create<RoundStore>((set, get) => ({
     // new round. Bumping `round` is what lets a participant that reconnects after
     // missing both the Reveal and this Retry tell the new round apart from the
     // old one (ADR-003, "Versioned rounds") — see `applySyncState`.
-    useSessionStore.getState().patchItem(id, {
+    patchItem(id, {
       submissions: [],
       revealed: false,
       round: item.round + 1,
@@ -173,7 +174,7 @@ export const useRoundStore = create<RoundStore>((set, get) => ({
       // the active round (legacy behaviour) rather than dropping it.
       (itemId && itemId !== active.id) ||
       active.revealed ||
-      active.finalResult !== null ||
+      isFinalized(active) ||
       // A round mismatch means this submission belongs to a round the
       // participant hasn't caught up past yet (a stale in-flight send from
       // before a Retry). A missing `round` (older build) bypasses this
@@ -182,7 +183,7 @@ export const useRoundStore = create<RoundStore>((set, get) => ({
     ) {
       return
     }
-    session.patchItem(active.id, {
+    patchItem(active.id, {
       submissions: upsertByParticipant(active.submissions, estimate),
     })
   },

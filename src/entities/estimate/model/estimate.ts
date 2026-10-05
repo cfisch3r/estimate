@@ -1,8 +1,13 @@
-export interface RawEstimateInput {
-  participantId: string
+/** A best / likely / worst triple — the three numbers of a three-point estimate,
+ *  before any participant is attached to it or its ordering is validated. */
+export interface EstimateValues {
   best: number
   likely: number
   worst: number
+}
+
+export interface RawEstimateInput extends EstimateValues {
+  participantId: string
 }
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string }

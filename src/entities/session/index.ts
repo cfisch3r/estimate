@@ -9,13 +9,10 @@ export type {
   SessionRole,
   LiveConnectionStatus,
 } from './model/types'
+export { isFinalized } from './model/item'
+export { roundMemberIds } from './model/roster'
 
-export type { JoinSessionOptions, NetworkSession } from './api/session'
-export { joinSession } from './api/session'
-export type { ParticipantAnnounce, SessionSnapshot } from './api/actions'
-export type { ConnectionState, ConnectionStatus } from './api/connection'
 export { generateSessionCode } from './api/sessionCode'
-export type { NetworkSessionApi } from './api/networkSessionContext'
 export { NetworkProvider } from './api/NetworkProvider'
 export { useNetworkSession } from './api/useNetworkSession'
 

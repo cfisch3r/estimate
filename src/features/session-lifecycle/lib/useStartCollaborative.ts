@@ -3,6 +3,7 @@ import {
   generateSessionCode,
   useConnectionStore,
   useNetworkSession,
+  useSessionStore,
 } from '../../../entities/session'
 import { ROUTES } from '../../../shared/lib/routes'
 
@@ -10,11 +11,13 @@ import { ROUTES } from '../../../shared/lib/routes'
  *  workspace, and open the peer connection. */
 export function useStartCollaborative(): () => void {
   const startCollaborative = useConnectionStore((s) => s.startCollaborative)
+  const selectFirstPending = useSessionStore((s) => s.selectFirstPending)
   const { connect } = useNetworkSession()
   const navigate = useNavigate()
 
   return () => {
     const sessionCode = generateSessionCode()
+    selectFirstPending()
     startCollaborative(sessionCode)
     navigate(ROUTES.workspace)
     connect(sessionCode)

@@ -1,6 +1,8 @@
 import { create } from 'zustand'
-import { getOrCreateParticipantId } from '../../participant'
-import { firstPendingItemId, useSessionStore } from './session'
+import {
+  FACILITATOR_PARTICIPANT_ID,
+  getOrCreateParticipantId,
+} from '../../participant/@x/session'
 import type { LiveConnectionStatus, SessionMode, SessionRole } from './types'
 
 interface ConnectionStore {
@@ -29,7 +31,6 @@ interface ConnectionStore {
   applyParticipantName: (participantId: string, name: string) => void
   /** Facilitator: forget a departed peer's display name once its connection drops. */
   removeParticipant: (participantId: string) => void
-  startSingleUser: () => void
   startCollaborative: (sessionCode: string) => void
   /** Returns whether the join actually proceeded, so a caller composing this
    *  with another store's reset (e.g. `useJoinLiveSession` clearing the round
@@ -85,20 +86,13 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
       return { participantNames: rest }
     }),
 
-  startSingleUser: () => {
-    const { items, selectItem } = useSessionStore.getState()
-    selectItem(firstPendingItemId(items))
-  },
-
   startCollaborative: (sessionCode) => {
-    const { items, selectItem } = useSessionStore.getState()
-    selectItem(firstPendingItemId(items))
     set({
       mode: 'live',
       role: 'facilitator',
       sessionId: sessionCode,
       myName: 'Facilitator',
-      participantNames: { facilitator: 'Facilitator' },
+      participantNames: { [FACILITATOR_PARTICIPANT_ID]: 'Facilitator' },
       connectionStatus: 'connecting',
       hasEverConnected: false,
       peerCount: 0,
@@ -126,13 +120,9 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
 
   leaveLiveSession: () => {
     set({ ...CONNECTION_DEFAULTS })
-    // A participant only ever inherits its unit from the facilitator's snapshot
-    // (see round.ts's applySyncState); reset it here so a unit picked up from
-    // one session doesn't leak into the user's next single-user/facilitator
-    // workspace. `liveRound` (entities/session/model/round.ts) is cleared
-    // alongside this by the composer hooks in features/session-lifecycle,
-    // not here — round.ts already reads this store's `role`, so clearing the
-    // round from here too would create a store import cycle (see ADR-005).
-    useSessionStore.getState().setUnit('days')
+    // The other two stores are cleared alongside this by the composer hooks in
+    // features/session-lifecycle, not here: round.ts reads this store's `role`
+    // and session.ts is a sibling, so reaching into either from here would
+    // couple the stores (see ADR-005).
   },
 }))

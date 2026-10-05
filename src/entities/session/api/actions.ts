@@ -2,55 +2,9 @@ import {
   createEstimate,
   isEstimationUnit,
   type Estimate,
-  type EstimationUnit,
   type RawEstimateInput,
-} from '../../estimate'
-
-/** The subset of an item a participant needs to render the read-only detail —
- *  broadcast by the facilitator so participants never hold the full item list. */
-interface SnapshotItem {
-  id: string
-  title: string
-  description: string
-}
-
-/** A values-free roster row for the current round (ADR-003, "Single owner").
- *  One structure, two renderings: the facilitator's participant panel and the
- *  participant's "N of M submitted" line both read this instead of raw
- *  submission values, which never reach a participant before reveal. */
-export interface RosterEntry {
-  participantId: string
-  submitted: boolean
-  connected: boolean
-}
-
-export interface SessionSnapshot {
-  currentItem: SnapshotItem | null
-  /** The facilitator's session name, so a participant's kicker can show "Sprint 42
-   *  estimates (7F QK 2M)" instead of the join code alone. Tolerated as missing
-   *  (defaults to '') the same way `unit`/`revealed` are, for an older peer. */
-  sessionName: string
-  /** The unit the facilitator is estimating in, so participant forms and bars
-   *  label values with the session's unit rather than their local default. */
-  unit: EstimationUnit
-  /** Whether the facilitator has revealed the current round. Lets a peer that
-   *  joins or reconnects mid-reveal land straight on the revealed view instead
-   *  of a dead estimate form. */
-  revealed: boolean
-  /** The active item's round number, bumped by Retry. Lets a participant that
-   *  reconnects after missing both a Reveal and a Retry tell the rounds apart
-   *  from the snapshot alone (ADR-003, "Versioned rounds"). */
-  round: number
-  /** Who's in and who has submitted this round, with no estimate values.
-   *  Drives a participant's "N of M submitted" line and the facilitator's
-   *  panel alike. */
-  roster: RosterEntry[]
-  /** The frozen submission set, populated only once `revealed` is true —
-   *  pre-reveal this stays empty, since values must not reach participants
-   *  before the reveal (ADR-003). */
-  submissions: RawEstimateInput[]
-  finalizedItemIds: string[]
-}
+} from '../../estimate/@x/session'
+import type { RosterEntry, SessionSnapshot, SnapshotItem } from '../model/types'
 
 /** A participant's estimate plus the item it belongs to. The item id keeps a
  *  straggler (or peer-join re-broadcast) submission for a just-finalized item
