@@ -1,3 +1,4 @@
+import './workspace.css'
 import { Card } from '../../../shared/ui'
 import { SessionSidebar } from '../../../widgets/session-sidebar'
 import {

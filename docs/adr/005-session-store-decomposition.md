@@ -20,7 +20,7 @@ before this split happens (see ADR-006). What's left is three concerns:
 | # | Concern | State | Actions |
 |---|---|---|---|
 | 1 | Session domain data | `sessionName`, `unit`, `items`, `activeItemId` | `setSessionName`, `setUnit`, `addItem`, `setItemTitle`, `removeItem`, `reorderItems`, `selectItem`, `setItemNotes`, `setItemDescription` |
-| 2 | Live-connection state | `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `hasEverConnected`, `peerCount`, `participantNames` | `setMode`, `setConnectionStatus`, `setPeerCount`, `applyParticipantName`, `removeParticipant`, `startSingleUser`, `startCollaborative`, `joinLiveSession`, `leaveLiveSession` |
+| 2 | Live-connection state | `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `hasEverConnected`, `peerCount`, `participantNames` | `setMode`, `setConnectionStatus`, `setPeerCount`, `applyParticipantName`, `removeParticipant`, `startCollaborative`, `joinLiveSession`, `leaveLiveSession` |
 | 3 | Round mechanics | `liveRound` | `finalizeItem`, `finalizeLiveItem`, `revealRound`, `retryRound`, `applySyncState`, `applyRemoteEstimate`, `submitEstimate` |
 
 (`updateItem`, listed here originally, was later replaced by `setItemTitle`, which changes only the title.)
@@ -267,8 +267,9 @@ scope entirely — see ADR-006, which must land first.
 **Follow-ups / revisit triggers**
 - Implemented in issue #111: `entities/session/model/session.ts`,
   `connection.ts`, and `round.ts` replace the monolithic `store.ts`, with
-  cross-store writes (`round.ts` → `session.ts`'s `patchItem`,
-  `connection.ts` → `session.ts`'s item-selection setters) exactly as
+  cross-store writes (`round.ts` → `session.ts`'s `patchItem`; since
+  refined, `connection.ts` no longer touches `session.ts` — the item-selection
+  and unit-reset steps moved into the composer hooks) as
   diagrammed above, and the `leaveWorkspace`/`leaveLiveSession` compositions
   moved to `features/session-lifecycle`'s composer hooks.
 - Revisit Option B (split `items` into its own entity) if Roadmap Building

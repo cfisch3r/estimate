@@ -1,5 +1,6 @@
 import { useLocation } from 'react-router'
 import { ChatTeardropTextIcon } from '@phosphor-icons/react/dist/csr/ChatTeardropText'
+import './header.css'
 import { Tag } from '../shared/ui'
 import { useConfirmArm } from '../shared/lib/useConfirmArm'
 import { useConnectionStore } from '../entities/session'

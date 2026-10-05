@@ -32,7 +32,7 @@ the Live-mode layer — the `entities/session/api` component breakdown, the join
 the estimate round, the connection state machine, and the store fields it added — see
 [concepts/collaboration-mode.md](concepts/collaboration-mode.md); this document keeps the
 decisions and rationale, that one tracks the implementation. Still open: connection-fallback
-UX (#9) and session save/load (`src/persistence/` is still a placeholder — session data is
+UX (#9) and session save/load (not built yet — session data is
 in-memory only; see #10).
 
 ## Confirmed decisions
@@ -104,11 +104,18 @@ rationale. In brief, by architectural role rather than layer:
   mode-select rebuild removed the RadioTile mode picker) but retained as a
   design-system primitive. `Header` moved to `app/` instead — it carries
   screen/mode-aware logic, not a business-agnostic primitive.
-- **CSS** (`src/design/`, unchanged by the FSD migration) — `nocturne.css` (verbatim
-  Nocturne port) + composed-pattern CSS built from its primitives: `radio-tile.css`,
-  `range-bar.css`, `session-sidebar.css`, `phase-picker.css`.
-- **Persistence** (`src/persistence/`, unchanged, still a placeholder) — session
-  save/load (JSON file export/import), CSV export, shareable-report-link encode/decode.
+- **CSS** — `src/design/` holds only the design-system layer: `nocturne.css` (verbatim
+  Nocturne port) and the generic composed patterns built from its primitives
+  (`radio-tile.css`, `markdown.css`). Component-owned styling lives beside its owner and
+  is imported by it: `range-bar.css` in `entities/estimate/ui`, `phase-picker.css` in
+  `features/estimate-round/ui`, `session-sidebar.css` in `widgets/session-sidebar/ui`,
+  `workspace.css` in `pages/workspace/ui`, `header.css` in `app`.
+- **Persistence** — session save/load (JSON file export/import), CSV export and
+  shareable-report-link encode/decode have no home yet; there is no placeholder
+  directory. Under FSD each lands where its use case belongs: file (de)serialisation of
+  a session as a `features/` slice (a save/load use case) built on `entities/session`,
+  with any generic file/download helper in `shared/lib`, and the validation of loaded
+  data going through `createEstimate()`-style factories like every other adapter.
 
 The estimation engine's isolation as pure, framework-free functions is the single most load-bearing structural decision — PRD §4.2 and ADR-001 both require identical calculation/bias-guard behavior across both modes, and this makes it trivially unit-testable against the PRD §5–6 formulas independent of UI or networking.
 
@@ -216,5 +223,6 @@ Remaining MVP work, tracked on the EstiMate Roadmap board:
 - **Outlier flag** — the reveal panel does not yet surface `checkOutlier()` on the
   per-participant list; the estimation-engine guard exists but nothing drives a UI flag from it.
 - **#9** — connection-fallback UX for peers that can't establish a direct connection.
-- **Persistence** — `src/persistence/` (session save/load via JSON file, CSV export,
-  shareable report link) is still a placeholder; save/load is tracked as #10.
+- **Persistence** — session save/load via JSON file, CSV export and the shareable
+  report link are not built yet and have no directory (see the Persistence note under
+  the module structure); save/load is tracked as #10.
