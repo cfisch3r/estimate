@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
-import { ISSUE_SETTLE_MS } from '../lib/useSettledIssue'
+import { ISSUE_SETTLE_MS } from '../model/useSettledIssue'
 import { ThreePointEstimateForm } from './ThreePointEstimateForm'
 
 const info = { openKey: null, open: vi.fn(), close: vi.fn() }

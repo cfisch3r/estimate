@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { EstimateIssue } from './describeEstimateIssue'
+import type { EstimateIssue } from '../lib/describeEstimateIssue'
 
 /** How long an entry must stay invalid, unchanged, before a problem is first shown. */
 export const ISSUE_SETTLE_MS = 600

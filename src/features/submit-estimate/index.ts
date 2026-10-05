@@ -2,4 +2,4 @@ export {
   useSubmitEstimate,
   type DeliveryState,
   type SubmitResult,
-} from './lib/useSubmitEstimate'
+} from './model/useSubmitEstimate'

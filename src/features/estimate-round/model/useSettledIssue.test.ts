@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
-import type { EstimateIssue } from './describeEstimateIssue'
+import type { EstimateIssue } from '../lib/describeEstimateIssue'
 import { ISSUE_SETTLE_MS, useSettledIssue } from './useSettledIssue'
 
 const issue = (message: string): EstimateIssue => ({

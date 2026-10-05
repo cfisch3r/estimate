@@ -9,7 +9,7 @@ import {
   describeEstimateIssue,
   describePartialOrdering,
   type EstimateIssue,
-} from './describeEstimateIssue'
+} from '../lib/describeEstimateIssue'
 import { usePhaseGuidance } from './usePhaseGuidance'
 import { useSettledIssue } from './useSettledIssue'
 
