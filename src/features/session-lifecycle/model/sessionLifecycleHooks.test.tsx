@@ -127,13 +127,35 @@ describe('useLeaveWorkspace', () => {
     useSessionStore.getState().addItem('Gone')
     const { result } = renderWithPath(useLeaveWorkspace, ROUTES.workspace)
 
-    act(() => result.current.value())
+    act(() => result.current.value.leaveWorkspace())
 
     expect(disconnectMock).toHaveBeenCalledTimes(1)
     expect(useConnectionStore.getState().mode).toBe('manual')
     expect(useRoundStore.getState().liveRound).toBeNull()
     expect(useSessionStore.getState()).toMatchObject({ items: [], unit: 'days' })
     expect(result.current.path).toBe(ROUTES.modeSelect)
+  })
+})
+
+describe('useLeaveWorkspace needsConfirm', () => {
+  it('is false without a live session', () => {
+    const { result } = renderWithPath(useLeaveWorkspace, ROUTES.workspace)
+
+    expect(result.current.value.needsConfirm).toBe(false)
+  })
+
+  it('is false for a live session with no peers', () => {
+    useConnectionStore.setState({ mode: 'live', peerCount: 0 })
+    const { result } = renderWithPath(useLeaveWorkspace, ROUTES.workspace)
+
+    expect(result.current.value.needsConfirm).toBe(false)
+  })
+
+  it('is true for a live session with peers', () => {
+    useConnectionStore.setState({ mode: 'live', peerCount: 2 })
+    const { result } = renderWithPath(useLeaveWorkspace, ROUTES.workspace)
+
+    expect(result.current.value.needsConfirm).toBe(true)
   })
 })
 

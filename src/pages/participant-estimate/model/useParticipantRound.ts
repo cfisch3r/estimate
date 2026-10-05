@@ -52,10 +52,18 @@ export function useParticipantRound() {
   // A discriminated union, so a caller that switches on `view` gets a non-null
   // `liveRound` in every round state without re-checking.
   if (!liveRound) return { ...shared, view: 'lobby' as const, liveRound: null }
-  const view = liveRound.revealed
-    ? ('revealed' as const)
-    : liveRound.mySubmission
-      ? ('waiting' as const)
-      : ('estimating' as const)
-  return { ...shared, view, liveRound: liveRound satisfies LiveRound }
+  if (liveRound.revealed) {
+    return { ...shared, view: 'revealed' as const, liveRound: liveRound satisfies LiveRound }
+  }
+  if (liveRound.mySubmission) {
+    return {
+      ...shared,
+      view: 'waiting' as const,
+      liveRound,
+      mySubmission: liveRound.mySubmission,
+    }
+  }
+  return { ...shared, view: 'estimating' as const, liveRound }
 }
+
+export type RoundView = ReturnType<typeof useParticipantRound>['view']

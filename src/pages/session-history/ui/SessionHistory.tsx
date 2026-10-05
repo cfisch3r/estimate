@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Card, CardTitle, CardBody, CardMeta, Input } from '../../../shared/ui'
 import { ROUTES } from '../../../shared/lib/routes'
-import { useSessionStore } from '../../../entities/session'
+import { useSessionStore, isFinalized } from '../../../entities/session'
 
 export function SessionHistory() {
   const sessionName = useSessionStore((s) => s.sessionName)
@@ -15,7 +15,7 @@ export function SessionHistory() {
   // Session name is now an optional free-text field (the mode-select flow no
   // longer forces one), so fall back to a placeholder for display.
   const displayName = sessionName.trim() || 'Untitled session'
-  const hasFinalizedItem = items.some((item) => item.finalResult !== null)
+  const hasFinalizedItem = items.some(isFinalized)
   const matchesSearch = displayName.toLowerCase().includes(search.toLowerCase())
   const showCurrentSession = hasFinalizedItem && matchesSearch
 

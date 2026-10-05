@@ -52,7 +52,7 @@ export function Workspace() {
 
         <div className="workspace-body">
           <div className="workspace-sidebar-col">
-            <SessionSidebar hideSummaryButton />
+            <SessionSidebar />
           </div>
 
           <div className="workspace-detail-col">

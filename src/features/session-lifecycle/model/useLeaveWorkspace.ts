@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router'
-import { useSessionStore } from '../../../entities/session'
+import { useConnectionStore, useSessionStore } from '../../../entities/session'
 import { ROUTES } from '../../../shared/lib/routes'
 import { useTeardownLiveSession } from './useTeardownLiveSession'
 
@@ -8,14 +8,24 @@ import { useTeardownLiveSession } from './useTeardownLiveSession'
  *  (participant-side leave flows), which never owns an item list to clear —
  *  this is the one place that has to know "leaving" spans all three stores
  *  (see ADR-005). */
-export function useLeaveWorkspace(): () => void {
+export function useLeaveWorkspace(): {
+  leaveWorkspace: () => void
+  /** Leaving a live session that still has peers is destructive for them too,
+   *  so the caller should ask for a second click first. */
+  needsConfirm: boolean
+} {
+  const mode = useConnectionStore((s) => s.mode)
+  const peerCount = useConnectionStore((s) => s.peerCount)
   const teardownLiveSession = useTeardownLiveSession()
   const clearSession = useSessionStore((s) => s.clearSession)
   const navigate = useNavigate()
 
-  return () => {
-    teardownLiveSession()
-    clearSession()
-    navigate(ROUTES.modeSelect)
+  return {
+    leaveWorkspace: () => {
+      teardownLiveSession()
+      clearSession()
+      navigate(ROUTES.modeSelect)
+    },
+    needsConfirm: mode === 'live' && peerCount > 0,
   }
 }

@@ -1,17 +1,10 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it } from 'vitest'
+import type { ComponentProps } from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router'
 import { axe } from 'jest-axe'
 import { SessionSidebar } from './SessionSidebar'
 import { useSessionStore, type Item } from '../../../entities/session'
-
-const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
-
-vi.mock('react-router', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-router')>()
-  return { ...actual, useNavigate: () => navigateMock }
-})
 
 function item(id: string, title: string, finalResult: Item['finalResult'] = null): Item {
   return {
@@ -30,23 +23,15 @@ const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
 
 function renderSidebar(
   state: Partial<ReturnType<typeof useSessionStore.getState>> = {},
-  path = '/workspace',
+  props: ComponentProps<typeof SessionSidebar> = {},
 ) {
   useSessionStore.setState({
     items: [item('1', 'A'), item('2', 'B')],
     activeItemId: '1',
     ...state,
   })
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <SessionSidebar />
-    </MemoryRouter>,
-  )
+  return render(<SessionSidebar {...props} />)
 }
-
-beforeEach(() => {
-  navigateMock.mockClear()
-})
 
 describe('SessionSidebar', () => {
   it('has no axe violations', async () => {
@@ -174,13 +159,12 @@ describe('SessionSidebar', () => {
     expect(useSessionStore.getState().items.map((i) => i.id)).toEqual(['2', '3', '1'])
   })
 
-  it('navigates to the summary when the Summary link is clicked', async () => {
-    const user = userEvent.setup()
-    renderSidebar({ items: [item('1', 'A')] })
+  it('shows no row as active when highlightActive is off', () => {
+    renderSidebar({ activeItemId: '1' }, { highlightActive: false })
 
-    await user.click(screen.getByText('Summary'))
-
-    expect(navigateMock).toHaveBeenCalledTimes(1)
-    expect(navigateMock).toHaveBeenCalledWith('/summary')
+    expect(screen.getByText('A').closest('[data-active]')).toHaveAttribute(
+      'data-active',
+      'false',
+    )
   })
 })

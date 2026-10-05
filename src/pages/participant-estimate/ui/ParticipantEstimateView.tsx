@@ -47,6 +47,7 @@ export function ParticipantEstimateView() {
       panel = (
         <WaitingPanel
           round={round.liveRound}
+          mySubmission={round.mySubmission}
           unit={unit}
           kicker={kicker}
           onSubmit={submit}

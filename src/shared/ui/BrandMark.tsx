@@ -1,6 +1,12 @@
-export function BrandMark() {
+interface BrandMarkProps {
+  width: number
+  height: number
+}
+
+/** The EstiMate range-bar logo mark — a decorative SVG, sized by the caller. */
+export function BrandMark({ width, height }: BrandMarkProps) {
   return (
-    <svg width="46" height="34" viewBox="0 0 22 16" fill="none" aria-hidden="true">
+    <svg width={width} height={height} viewBox="0 0 22 16" fill="none" aria-hidden="true">
       <line
         x1="1"
         y1="8"

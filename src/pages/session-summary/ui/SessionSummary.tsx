@@ -2,12 +2,7 @@ import { useNavigate } from 'react-router'
 import { Button } from '../../../shared/ui'
 import { ROUTES } from '../../../shared/lib/routes'
 import { SessionSidebar } from '../../../widgets/session-sidebar'
-import { useSessionStore, type Item } from '../../../entities/session'
-import type { AggregateResult } from '../../../entities/estimate'
-
-function isFinalized(item: Item): item is Item & { finalResult: AggregateResult } {
-  return item.finalResult !== null
-}
+import { useSessionStore, isFinalized } from '../../../entities/session'
 
 export function SessionSummary() {
   const items = useSessionStore((s) => s.items)
@@ -26,7 +21,7 @@ export function SessionSummary() {
         padding: 'var(--space-6) var(--space-4)',
       }}
     >
-      <SessionSidebar scrollableList={false} />
+      <SessionSidebar scrollableList={false} highlightActive={false} />
 
       <div className="card" style={{ padding: 'var(--space-6)', gap: 'var(--space-5)' }}>
         <h1 style={{ margin: 0, fontWeight: 500, fontSize: 22, textAlign: 'center' }}>
