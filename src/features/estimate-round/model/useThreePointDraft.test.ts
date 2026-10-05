@@ -7,7 +7,7 @@ describe('useThreePointDraft', () => {
   it('starts empty and invalid without an initial value', () => {
     const { result } = renderHook(() => useThreePointDraft(null, 'days'))
 
-    expect(result.current.best).toBe('')
+    expect(result.current.values.best).toBe('')
     expect(result.current.issue).toBeNull()
     expect(result.current.valid).toBe(false)
     expect(result.current.symmetricGuard).toBeNull()
@@ -18,9 +18,9 @@ describe('useThreePointDraft', () => {
       useThreePointDraft({ best: 2, likely: 4, worst: 9 }, 'days'),
     )
 
-    expect(result.current.best).toBe('2')
-    expect(result.current.likely).toBe('4')
-    expect(result.current.worst).toBe('9')
+    expect(result.current.values.best).toBe('2')
+    expect(result.current.values.likely).toBe('4')
+    expect(result.current.values.worst).toBe('9')
     expect(result.current.valid).toBe(true)
     expect(result.current.issue).toBeNull()
   })
@@ -31,9 +31,9 @@ describe('useThreePointDraft', () => {
       const { result } = renderHook(() => useThreePointDraft(null, 'days'))
 
       act(() => {
-        result.current.setBest('9')
-        result.current.setLikely('4')
-        result.current.setWorst('2')
+        result.current.setField('best', '9')
+        result.current.setField('likely', '4')
+        result.current.setField('worst', '2')
       })
       expect(result.current.valid).toBe(false)
       expect(result.current.issue).toBeNull()
@@ -52,9 +52,9 @@ describe('useThreePointDraft', () => {
     const { result } = renderHook(() => useThreePointDraft(null, 'days'))
 
     act(() => {
-      result.current.setBest('2')
-      result.current.setLikely('5')
-      result.current.setWorst('8')
+      result.current.setField('best', '2')
+      result.current.setField('likely', '5')
+      result.current.setField('worst', '8')
     })
 
     expect(result.current.symmetricGuard?.fired).toBe(true)

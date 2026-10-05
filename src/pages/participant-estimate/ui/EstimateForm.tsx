@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Button, LiveRegion } from '../../../shared/ui'
+import { Button, GuardNote, LiveRegion } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import type { EstimationUnit } from '../../../entities/estimate'
 import { ThreePointEstimateForm } from '../../../features/estimate-round'
@@ -33,9 +33,16 @@ export function EstimateForm({
       initial={initial}
       info={info}
       focusOnMount={focusOnMount}
-      error={submitError}
       footer={({ valid, best, likely, worst }) => (
         <>
+          <LiveRegion role="alert">
+            {valid && submitError && (
+              <GuardNote variant="banner" headline="Couldn't submit">
+                {submitError}
+              </GuardNote>
+            )}
+          </LiveRegion>
+
           <Button
             variant="primary"
             disabled={!valid}

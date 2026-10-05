@@ -3,22 +3,16 @@ import { GroupBox } from '../../../shared/ui/GroupBox'
 import { THREE_POINT_ESTIMATE_INFO } from '../../../shared/copy'
 import type { EstimateField, EstimationUnit } from '../../../entities/estimate'
 import type { EstimateIssue } from '../lib/describeEstimateIssue'
+import { ESTIMATE_FIELD_LABEL } from '../lib/estimateFieldLabel'
 import { EstimateInput } from './EstimateInput'
 
-const FIELDS: { field: EstimateField; label: string }[] = [
-  { field: 'best', label: 'Best case' },
-  { field: 'likely', label: 'Most likely' },
-  { field: 'worst', label: 'Worst case' },
-]
+const FIELDS: EstimateField[] = ['best', 'likely', 'worst']
 
 interface ThreePointEstimateFieldsProps {
   unit: EstimationUnit
-  best: string
-  likely: string
-  worst: string
-  onBestChange: (value: string) => void
-  onLikelyChange: (value: string) => void
-  onWorstChange: (value: string) => void
+  /** The raw text of each input. */
+  values: Record<EstimateField, string>
+  onChange: (field: EstimateField, value: string) => void
   /** What is wrong with the entry, or null. The inputs it names are marked invalid. */
   issue: EstimateIssue | null
   /** The id of the element that shows `issue`'s message; marked inputs point at it. */
@@ -39,12 +33,8 @@ interface ThreePointEstimateFieldsProps {
  *  stays with each caller since it also drives UI outside this block. */
 export function ThreePointEstimateFields({
   unit,
-  best,
-  likely,
-  worst,
-  onBestChange,
-  onLikelyChange,
-  onWorstChange,
+  values,
+  onChange,
   issue,
   issueId,
   focusOnMount = false,
@@ -58,13 +48,6 @@ export function ThreePointEstimateFields({
     if (focusOnMount) fieldsRef.current?.querySelector('input')?.focus()
   }, [focusOnMount])
 
-  const values: Record<EstimateField, string> = { best, likely, worst }
-  const onChange: Record<EstimateField, (value: string) => void> = {
-    best: onBestChange,
-    likely: onLikelyChange,
-    worst: onWorstChange,
-  }
-
   return (
     <GroupBox
       label="Three-point estimate"
@@ -74,14 +57,14 @@ export function ThreePointEstimateFields({
       onInfoClose={onInfoClose}
     >
       <div ref={fieldsRef} style={{ display: 'flex', gap: 'var(--space-4)' }}>
-        {FIELDS.map(({ field, label }) => (
+        {FIELDS.map((field) => (
           <EstimateInput
             key={field}
             field={field}
-            label={label}
+            label={ESTIMATE_FIELD_LABEL[field]}
             unit={unit}
             value={values[field]}
-            onChange={onChange[field]}
+            onChange={(value) => onChange(field, value)}
             invalid={issue?.fields.includes(field) ?? false}
             issueId={issueId}
             onCommit={onFieldCommit}

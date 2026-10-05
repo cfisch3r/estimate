@@ -31,9 +31,6 @@ interface ThreePointEstimateFormProps {
   info: InfoPopover
   /** Focus the first input on mount. */
   focusOnMount?: boolean
-  /** An error from the caller's own action (e.g. a rejected submit), shown only
-   *  while the draft itself is valid. */
-  error?: string | null
   /** The actions below the form. Receives whether the draft is a valid estimate
    *  and its parsed values. */
   footer: (draft: {
@@ -52,7 +49,6 @@ export function ThreePointEstimateForm({
   initial,
   info,
   focusOnMount,
-  error,
   footer,
 }: ThreePointEstimateFormProps) {
   const draft = useThreePointDraft(initial, unit)
@@ -73,12 +69,8 @@ export function ThreePointEstimateForm({
 
       <ThreePointEstimateFields
         unit={unit}
-        best={draft.best}
-        likely={draft.likely}
-        worst={draft.worst}
-        onBestChange={draft.setBest}
-        onLikelyChange={draft.setLikely}
-        onWorstChange={draft.setWorst}
+        values={draft.values}
+        onChange={draft.setField}
         issue={draft.issue}
         issueId={issueId}
         focusOnMount={focusOnMount}
@@ -131,13 +123,6 @@ export function ThreePointEstimateForm({
         {draft.issue && (
           <GuardNote variant="banner" headline={draft.issue.headline} id={issueId}>
             {draft.issue.message}
-          </GuardNote>
-        )}
-      </LiveRegion>
-      <LiveRegion role="alert">
-        {!draft.issue && error && (
-          <GuardNote variant="banner" headline="Couldn't submit">
-            {error}
           </GuardNote>
         )}
       </LiveRegion>

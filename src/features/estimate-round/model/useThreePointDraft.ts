@@ -3,6 +3,7 @@ import {
   checkSymmetricRange,
   uncertaintyGuidance,
   validateEstimateValues,
+  type EstimateField,
   type EstimationUnit,
   type GuardResult,
   type UncertaintyGuidance,
@@ -22,12 +23,9 @@ export interface ThreePointInitial {
 }
 
 export interface ThreePointDraft {
-  best: string
-  likely: string
-  worst: string
-  setBest: (value: string) => void
-  setLikely: (value: string) => void
-  setWorst: (value: string) => void
+  /** The raw text of each input. */
+  values: Record<EstimateField, string>
+  setField: (field: EstimateField, value: string) => void
   bestNum: number
   likelyNum: number
   worstNum: number
@@ -55,9 +53,14 @@ export function useThreePointDraft(
   initial: ThreePointInitial | null,
   unit: EstimationUnit,
 ): ThreePointDraft {
-  const [best, setBest] = useState(initial ? String(initial.best) : '')
-  const [likely, setLikely] = useState(initial ? String(initial.likely) : '')
-  const [worst, setWorst] = useState(initial ? String(initial.worst) : '')
+  const [values, setValues] = useState<Record<EstimateField, string>>({
+    best: initial ? String(initial.best) : '',
+    likely: initial ? String(initial.likely) : '',
+    worst: initial ? String(initial.worst) : '',
+  })
+  const { best, likely, worst } = values
+  const setField = (field: EstimateField, value: string) =>
+    setValues((current) => ({ ...current, [field]: value }))
 
   const allFilled = best !== '' && likely !== '' && worst !== ''
   const bestNum = Number(best)
@@ -93,12 +96,8 @@ export function useThreePointDraft(
   const guidance = allFilled ? uncertaintyGuidance(bestNum, worstNum, level) : null
 
   return {
-    best,
-    likely,
-    worst,
-    setBest,
-    setLikely,
-    setWorst,
+    values,
+    setField,
     bestNum,
     likelyNum,
     worstNum,
