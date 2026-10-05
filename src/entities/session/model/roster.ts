@@ -1,4 +1,4 @@
-import { FACILITATOR_PARTICIPANT_ID } from '../../participant/@x/session'
+import { FACILITATOR_PARTICIPANT_ID } from './participantId'
 import type { RosterEntry } from './types'
 
 /** The people in a round, in a stable order: every announced non-facilitator

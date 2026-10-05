@@ -31,7 +31,7 @@ one layer down instead).
 | `pages` | One slice per top-level screen/view | `pages/workspace`, `pages/join-session` |
 | `widgets` | Composite UI reused across *more than one* page | `widgets/session-sidebar` (used by `workspace` and `session-summary`) |
 | `features` | A user-facing use case/action | `features/estimate-round`, `features/reveal-results`, `features/submit-estimate`, `features/session-lifecycle` (start / join / leave / reconnect hooks that compose the stores with navigation) |
-| `entities` | A business noun and its data/logic | `entities/estimate`, `entities/session`, `entities/participant` |
+| `entities` | A business noun and its data/logic | `entities/estimate`, `entities/session` |
 | `shared` | Business-agnostic UI primitives, generic hooks, copy | `shared/ui/Button`, `shared/lib/useConfirmArm` |
 
 `processes` is not in use — nothing today needs a cross-feature orchestrated
@@ -96,7 +96,7 @@ Work through these in order — the first one that fits wins:
 ### Before adding a new entity or feature (e.g. Story Points, Roadmap)
 
 - Check whether the new concept is really a new entity, or an existing one
-  (`estimate`, `session`, `participant`) with an extra field. Prefer
+  (`estimate`, `session`) with an extra field. Prefer
   extending an existing entity over creating a near-duplicate.
 - If it's genuinely new, give it its own `entities/<name>` (or
   `features/<name>` if it's an action, not a noun) rather than bolting it

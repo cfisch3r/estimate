@@ -29,7 +29,9 @@
 > | `LiveSessionStrip` | `pages/workspace/ui` — it had a single consumer, so it was page-local UI, not part of the feature |
 > | Pure session policies (roster, snapshot building, resend decision, round membership) | `entities/session/model` |
 > | The cone-of-uncertainty guidance rule | `entities/estimate` (pure), with the feature only rendering it |
-> | Sibling-entity coupling (`entities/session` using `estimate` / `participant`) | FSD `@x` cross-import surfaces (`entities/<slice>/@x/session.ts`), replacing the earlier Steiger rule exemptions |
+> | Sibling-entity coupling (`entities/session` using `estimate`) | FSD `@x` cross-import surfaces (`entities/<slice>/@x/session.ts`), replacing the earlier Steiger rule exemptions |
+>
+> **Update 2026-10-05 (later):** `entities/participant` held only the facilitator id constant, the localStorage identity helper and two label helpers, all effectively owned by `entities/session`, so it was folded in (`model/participantId.ts`, `model/participantLabel.ts`, `api/participantIdentity.ts`). `announcedName` / `teammateLabel` are exported from the session barrel for the reveal views.
 
 ## Context
 

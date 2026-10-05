@@ -11,6 +11,7 @@ export type {
 } from './model/types'
 export { isFinalized } from './model/item'
 export { roundMemberIds } from './model/roster'
+export { announcedName, teammateLabel } from './model/participantLabel'
 
 export { generateSessionCode } from './api/sessionCode'
 export { NetworkProvider } from './api/NetworkProvider'

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import type { Estimate } from '../../estimate/@x/session'
 import { createEstimate, aggregateEstimates } from '../../estimate/@x/session'
-import { FACILITATOR_PARTICIPANT_ID } from '../../participant/@x/session'
+import { FACILITATOR_PARTICIPANT_ID } from './participantId'
 import { useConnectionStore } from './connection'
 import { isFinalized } from './item'
 import { patchItem, useSessionStore } from './session'

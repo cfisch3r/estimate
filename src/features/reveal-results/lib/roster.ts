@@ -1,6 +1,10 @@
-import { announcedName, teammateLabel } from '../../../entities/participant'
 import type { EstimateValues } from '../../../entities/estimate'
-import { roundMemberIds, type Item } from '../../../entities/session'
+import {
+  announcedName,
+  roundMemberIds,
+  teammateLabel,
+  type Item,
+} from '../../../entities/session'
 
 export interface FacilitatorRosterRow {
   id: string

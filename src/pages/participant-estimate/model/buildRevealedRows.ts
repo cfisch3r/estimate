@@ -1,5 +1,5 @@
 import type { Estimate } from '../../../entities/estimate'
-import { announcedName, teammateLabel } from '../../../entities/participant'
+import { announcedName, teammateLabel } from '../../../entities/session'
 
 export interface RevealedRow {
   participantId: string

@@ -1,8 +1,6 @@
 import { create } from 'zustand'
-import {
-  FACILITATOR_PARTICIPANT_ID,
-  getOrCreateParticipantId,
-} from '../../participant/@x/session'
+import { getOrCreateParticipantId } from '../api/participantIdentity'
+import { FACILITATOR_PARTICIPANT_ID } from './participantId'
 import type { LiveConnectionStatus, SessionMode, SessionRole } from './types'
 
 interface ConnectionStore {
