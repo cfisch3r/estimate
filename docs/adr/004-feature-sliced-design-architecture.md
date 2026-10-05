@@ -17,6 +17,19 @@
 > inspect cohesion, never as a finding or a gate — metrics like file length are weak
 > proxies, and a hard baseline invites gaming them. The ratchet mentioned in this
 > ADR's body was therefore not built.
+>
+> **Update 2026-10-05:** An architecture review revised parts of the slice mapping
+> below, which otherwise stands as the record of the original migration:
+>
+> | Concern | Where it lives now |
+> |---|---|
+> | `useLeaveWorkspace`, `useLeaveLiveSession`, `useStartSingleUser`, `useStartCollaborative`, `useJoinFlow`, `useReconnect` | `features/session-lifecycle/model` — user-facing use cases composing the three stores with navigation, so a feature rather than `entities/session/lib` (which no longer exists) |
+> | Stateful feature hooks in general | A slice's `model/` segment; `lib/` is for framework-free helpers only |
+> | Facilitator reveal / retry / finalize orchestration | `features/reveal-results/model/useRevealRound`; the aggregated-range display (`AggregatedRange`) is shared there between the facilitator panel and the participant's revealed view |
+> | `LiveSessionStrip` | `pages/workspace/ui` — it had a single consumer, so it was page-local UI, not part of the feature |
+> | Pure session policies (roster, snapshot building, resend decision, round membership) | `entities/session/model` |
+> | The cone-of-uncertainty guidance rule | `entities/estimate` (pure), with the feature only rendering it |
+> | Sibling-entity coupling (`entities/session` using `estimate` / `participant`) | FSD `@x` cross-import surfaces (`entities/<slice>/@x/session.ts`), replacing the earlier Steiger rule exemptions |
 
 ## Context
 

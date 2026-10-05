@@ -25,6 +25,12 @@ gets the facilitator to the correct reveal-without-them outcome).
 **Date:** 2026-09-15 (drafted 2026-09-12)
 **Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop"
 
+> Where the policies live: the pure decision rules — round membership and the wire roster,
+> the departed-participant name prune, the snapshot builder and the "does this submission
+> need re-sending" check — are framework-free modules in `entities/session/model`
+> (`roster.ts`, `snapshot.ts`, `resend.ts`), applied by `NetworkProvider`; the retry
+> policy itself stays in `entities/session/api/retryPolicy.ts`.
+>
 > For the current implementation plan and sequencing — which issues carry which element of
 > this decision, in what order, and what's blocked on what — see the Epic-0010 sub-issue list
 > on the project board, not this document. That ordering changes as work happens; this

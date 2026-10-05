@@ -68,7 +68,7 @@ Zustand `create()` callback. So:
 - Those four store actions became pure — they no longer touch navigation at
   all.
 - `startSingleUser`/`startCollaborative` gained two new composer hooks in
-  `entities/session/lib/` (`useStartSingleUser`, `useStartCollaborative`),
+  `features/session-lifecycle/model/` (`useStartSingleUser`, `useStartCollaborative`),
   each pairing the store action with `navigate('/workspace')`. This mirrors
   the pattern already established by `useLeaveWorkspace`/`useLeaveLiveSession`
   — a hook that composes a store action with something store-external — so
@@ -96,10 +96,14 @@ highlighting), computed by each caller page from its own
 purely prop-driven, with no router dependency of its own.
 
 *Amended 2026-10-02:* the sidebar later took over reading the session store and
-the router itself — it derives summary-screen state from `useLocation()` and
-takes only the layout props `hideSummaryButton` / `scrollableList` — because
-both consuming pages were repeating the same store and router wiring. The
-widget now depends on `react-router`.
+the router itself, because both consuming pages were repeating the same store and
+router wiring.
+
+*Amended 2026-10-05:* the sidebar's own Summary button was dead UI (Workspace's
+top bar carries the Summary link) and was removed, which also removed the widget's
+router dependency. It takes only the layout props `highlightActive` (off on the
+summary page, where no item is current) and `scrollableList`. The hooks named above
+live in `features/session-lifecycle` (see ADR-004's 2026-10-05 update).
 
 **ADR-005 amendment**: navigation is removed from that decomposition
 entirely. What was a four-store split there is now three — see ADR-005's
@@ -118,7 +122,7 @@ updated Context/Decision sections.
 **Negative / accepted trade-offs**
 - Touched all 9 consumer files (and their tests) that referenced
   `currentScreen`/`goToScreen`/`ScreenId` in one pass.
-- Two new composer hooks added to `entities/session/lib/`, growing that
+- Two new composer hooks added to `features/session-lifecycle/model/`, growing that
   segment's surface area.
 - Component tests that render anything touching navigation now need a
   `MemoryRouter` wrapper (or a mocked `useNavigate`) — a new fixed cost per

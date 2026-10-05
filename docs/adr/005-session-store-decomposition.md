@@ -26,7 +26,7 @@ before this split happens (see ADR-006). What's left is three concerns:
 (`updateItem`, listed here originally, was later replaced by `setItemTitle`, which changes only the title.)
 
 Around 20 files import `useSessionStore` (7 pages, `App`/`Header`,
-`NetworkProvider`, `entities/session/lib` hooks, plus tests). A single-user
+`NetworkProvider`, `features/session-lifecycle` hooks, plus tests). A single-user
 session never touches concern 2 at all; a manual-entry finalize
 (`finalizeItem`) never touches concern 3's round state. These are
 independent axes bolted together, not one cohesive domain object.

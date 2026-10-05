@@ -30,7 +30,7 @@ one layer down instead).
 | `app` | Bootstrap only: entry point, global providers, app-shell chrome that knows about screens/routing | `app/main.tsx`, `app/App.tsx`, `app/Header.tsx` |
 | `pages` | One slice per top-level screen/view | `pages/workspace`, `pages/join-session` |
 | `widgets` | Composite UI reused across *more than one* page | `widgets/session-sidebar` (used by `workspace` and `session-summary`) |
-| `features` | A user-facing use case/action | `features/estimate-round`, `features/reveal-results`, `features/submit-estimate` |
+| `features` | A user-facing use case/action | `features/estimate-round`, `features/reveal-results`, `features/submit-estimate`, `features/session-lifecycle` (start / join / leave / reconnect hooks that compose the stores with navigation) |
 | `entities` | A business noun and its data/logic | `entities/estimate`, `entities/session`, `entities/participant` |
 | `shared` | Business-agnostic UI primitives, generic hooks, copy | `shared/ui/Button`, `shared/lib/useConfirmArm` |
 
@@ -40,9 +40,15 @@ flow spanning multiple pages. Don't add it speculatively.
 ## Segments inside a slice
 
 Within a slice, split by technical role: `ui/` (components), `model/` (state,
-types), `api/` (external calls — network, storage), `lib/` (framework-free
-helpers specific to that slice). Not every slice needs every segment — add
-one when there's something to put in it.
+types, and the stateful hooks that expose a use case — `useX` hooks live here,
+not in `lib/`), `api/` (external calls — network, storage), `lib/`
+(framework-free helpers specific to that slice). Not every slice needs every
+segment — add one when there's something to put in it. Pure decision rules that
+more than one hook needs (e.g. `entities/session/model/roster.ts`) are plain
+modules in `model/`, unit-tested directly.
+
+Component CSS lives beside its component and is imported by it; `src/design/`
+holds only the design-system layer (`nocturne.css` and generic composed patterns).
 
 ## The public-API rule
 
@@ -51,6 +57,14 @@ into `entities/session/model/store.ts` directly from a page — import
 `useSessionStore` from `entities/session` (its barrel). Steiger enforces this
 (`fsd/no-public-api-sidestep`, `fsd/public-api`); a missing barrel is an error,
 not a style choice.
+
+## Cross-entity imports: `@x`
+
+When one entity genuinely needs another (e.g. `entities/session` using
+`entities/estimate`), don't add a Steiger exemption. Expose a narrow surface
+for that one consumer in `entities/<provider>/@x/<consumer>.ts` and import
+from there (see `entities/estimate/@x/session.ts`). Each coupling is then
+explicit, minimal and reviewable in one file.
 
 ## Where does new code belong?
 
@@ -87,9 +101,9 @@ Work through these in order — the first one that fits wins:
 - If it's genuinely new, give it its own `entities/<name>` (or
   `features/<name>` if it's an action, not a noun) rather than bolting it
   onto an unrelated existing slice — Steiger's `fsd/insignificant-slice`
-  warning is a hint to check this, not something to silence by default. Two
-  places in this repo intentionally suppress that warning
-  (`features/reveal-results`, `entities/participant`) with a documented
+  warning is a hint to check this, not something to silence by default. One
+  place in this repo intentionally suppresses that warning
+  (`features/submit-estimate`) with a documented
   reason in `steiger.config.ts` — follow that pattern (a comment explaining
   *why* the slice is real despite one consumer) rather than merging code
   back into a bigger slice just to satisfy the linter.
