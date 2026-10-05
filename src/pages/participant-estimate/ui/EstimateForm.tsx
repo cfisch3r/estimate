@@ -1,13 +1,13 @@
 import { useState } from 'react'
 import { Button, GuardNote, LiveRegion } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
-import type { EstimationUnit } from '../../../entities/estimate'
+import type { EstimateValues, EstimationUnit } from '../../../entities/estimate'
 import { ThreePointEstimateForm } from '../../../features/estimate-round'
 import type { SubmitResult } from '../../../features/submit-estimate'
 
 interface EstimateFormProps {
   unit: EstimationUnit
-  initial: { best: number; likely: number; worst: number } | null
+  initial: EstimateValues | null
   submitLabel: string
   focusOnMount?: boolean
   statusLine?: string

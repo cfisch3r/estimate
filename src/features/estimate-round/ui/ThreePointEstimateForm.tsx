@@ -7,9 +7,10 @@ import {
   computeCI90,
   RangeBar,
   UNIT_SUFFIX,
+  type EstimateValues,
   type EstimationUnit,
 } from '../../../entities/estimate'
-import { useThreePointDraft, type ThreePointInitial } from '../model/useThreePointDraft'
+import { useThreePointDraft } from '../model/useThreePointDraft'
 import { PhasePicker } from './PhasePicker'
 import { ThreePointEstimateFields } from './ThreePointEstimateFields'
 import { UncertaintyGuidanceNotes } from './UncertaintyGuidanceNotes'
@@ -27,18 +28,13 @@ interface InfoPopover {
 
 interface ThreePointEstimateFormProps {
   unit: EstimationUnit
-  initial: ThreePointInitial | null
+  initial: EstimateValues | null
   info: InfoPopover
   /** Focus the first input on mount. */
   focusOnMount?: boolean
   /** The actions below the form. Receives whether the draft is a valid estimate
    *  and its parsed values. */
-  footer: (draft: {
-    valid: boolean
-    best: number
-    likely: number
-    worst: number
-  }) => ReactNode
+  footer: (draft: { valid: boolean } & EstimateValues) => ReactNode
 }
 
 /** The Phase / Three-point / Range stack with the live bias guards, shared by the

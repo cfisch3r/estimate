@@ -5,11 +5,12 @@ import {
   useSessionStore,
   useConnectionStore,
   useRoundStore,
-  useNetworkSession,
 } from '../../../entities/session'
-import { LiveFacilitatorPanel, LiveSessionStrip } from '../../../features/reveal-results'
+import { LiveFacilitatorPanel } from '../../../features/reveal-results'
+import { useReconnect } from '../../../features/session-lifecycle'
 import { useItemNavigation } from '../model/useItemNavigation'
 import { ActiveItemPanel } from './ActiveItemPanel'
+import { LiveSessionStrip } from './LiveSessionStrip'
 import { WorkspaceEmptyState } from './WorkspaceEmptyState'
 import { WorkspaceTopBar } from './WorkspaceTopBar'
 
@@ -21,12 +22,8 @@ export function Workspace() {
   const connectionStatus = useConnectionStore((s) => s.connectionStatus)
   const peerCount = useConnectionStore((s) => s.peerCount)
   const hasEverConnected = useConnectionStore((s) => s.hasEverConnected)
-  const participantNames = useConnectionStore((s) => s.participantNames)
   const finalizeItem = useRoundStore((s) => s.finalizeItem)
-  const finalizeLiveItem = useRoundStore((s) => s.finalizeLiveItem)
-  const revealRound = useRoundStore((s) => s.revealRound)
-  const retryRound = useRoundStore((s) => s.retryRound)
-  const { connect } = useNetworkSession()
+  const { reconnect } = useReconnect()
   const { itemCount, activeItem, isFirst, isLast, allFinalized, goPrev, advance } =
     useItemNavigation()
 
@@ -47,7 +44,7 @@ export function Workspace() {
             connectionStatus={connectionStatus}
             peerCount={peerCount}
             hasEverConnected={hasEverConnected}
-            onReconnect={() => connect(sessionId)}
+            onReconnect={reconnect}
           />
         )}
 
@@ -60,10 +57,6 @@ export function Workspace() {
 
           <div className="workspace-detail-col">
             {activeItem ? (
-              // Reveal/Retry are local store mutations only — the store
-              // subscription in NetworkProvider broadcasts the resulting snapshot
-              // (revealed/round changed) to participants, so there's no separate
-              // wire event to send here.
               isLiveFacilitator ? (
                 <LiveFacilitatorPanel
                   key={activeItem.id}
@@ -71,10 +64,6 @@ export function Workspace() {
                   unit={unit}
                   isFirst={isFirst}
                   isLast={isLast}
-                  participantNames={participantNames}
-                  onReveal={revealRound}
-                  onRetry={retryRound}
-                  onFinalize={finalizeLiveItem}
                   onAdvance={advance}
                   onNavigatePrev={goPrev}
                 />

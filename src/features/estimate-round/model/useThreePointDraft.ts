@@ -4,6 +4,7 @@ import {
   uncertaintyGuidance,
   validateEstimateValues,
   type EstimateField,
+  type EstimateValues,
   type EstimationUnit,
   type GuardResult,
   type UncertaintyGuidance,
@@ -15,12 +16,6 @@ import {
 } from '../lib/describeEstimateIssue'
 import { usePhaseGuidance } from './usePhaseGuidance'
 import { useSettledIssue } from './useSettledIssue'
-
-export interface ThreePointInitial {
-  best: number
-  likely: number
-  worst: number
-}
 
 export interface ThreePointDraft {
   /** The raw text of each input. */
@@ -50,7 +45,7 @@ export interface ThreePointDraft {
  *  the participant's estimate view, the two places a person types their own
  *  three-point estimate. */
 export function useThreePointDraft(
-  initial: ThreePointInitial | null,
+  initial: EstimateValues | null,
   unit: EstimationUnit,
 ): ThreePointDraft {
   const [values, setValues] = useState<Record<EstimateField, string>>({

@@ -41,7 +41,6 @@ export function useParticipantRound() {
 
   const shared = {
     unit,
-    sessionId,
     kicker: formatSessionKicker(sessionName, sessionId),
     myName,
     connectionStatus,

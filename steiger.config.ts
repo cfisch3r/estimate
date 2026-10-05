@@ -11,22 +11,12 @@ export default defineConfig([
   // may use) rather than a rule exemption, so each coupling is explicit,
   // narrow and reviewable in one file per consumer.
   {
-    // `features/reveal-results` has one consumer today (pages/workspace) — kept
-    // as its own feature rather than folded into the page because it's a named,
-    // growing use case (facilitator reveal/retry), not incidental UI, per
-    // ADR-004. `entities/participant` has one direct consumer
-    // (pages/participant-estimate; entities/session reaches it only through its
-    // `@x` surface, which Steiger does not count) for the same reason it's a
-    // real, separately-testable domain noun, not incidental code.
-    // `features/submit-estimate` has one consumer
-    // (pages/participant-estimate) for the same reason: it's the participant's
-    // submit use case, kept out of `estimate-round`, which is form UI shared by
-    // both roles. Revisit any of them if they never gain a second consumer.
-    files: [
-      './src/features/reveal-results/**',
-      './src/features/submit-estimate/**',
-      './src/entities/participant/**',
-    ],
+    // `features/submit-estimate` has one consumer (pages/participant-estimate):
+    // it's the participant's submit use case, kept out of `estimate-round`,
+    // which is form UI shared by both roles, as a named, separately-testable
+    // use case rather than incidental page code. Revisit if it never gains a
+    // second consumer.
+    files: ['./src/features/submit-estimate/**'],
     rules: {
       'fsd/insignificant-slice': 'off',
     },
