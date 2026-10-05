@@ -1,13 +1,11 @@
 import { Button, NavRow } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
-import {
-  ItemDetailShell,
-  isFinalized,
-  type FinalizeResult,
-  type Item,
-} from '../../../entities/session'
+import { ItemDetailShell, isFinalized, type Item } from '../../../entities/session'
 import type { EstimationUnit } from '../../../entities/estimate'
-import { ThreePointEstimateForm } from '../../../features/estimate-round'
+import {
+  ThreePointEstimateForm,
+  type FinalizeResult,
+} from '../../../features/estimate-round'
 
 interface ActiveItemPanelProps {
   item: Item

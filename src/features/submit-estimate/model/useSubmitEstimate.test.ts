@@ -70,13 +70,48 @@ describe('useSubmitEstimate', () => {
     await waitFor(() => expect(result.current.deliveryState).toBe('not-delivered'))
   })
 
-  it('does not send an estimate the store rejects', () => {
+  it('does not record or send an invalid estimate', () => {
     setRound(false)
     const { result } = renderHook(() => useSubmitEstimate())
 
     let outcome: ReturnType<typeof result.current.submit> | undefined
     act(() => {
       outcome = result.current.submit(9, 4, 2)
+    })
+
+    expect(outcome?.ok).toBe(false)
+    expect(sendEstimateMock).not.toHaveBeenCalled()
+    expect(useRoundStore.getState().liveRound?.mySubmission).toBeNull()
+  })
+
+  it('records a valid estimate under the local participant id and sends it once', () => {
+    setRound(false)
+    const { result } = renderHook(() => useSubmitEstimate())
+
+    act(() => {
+      result.current.submit(2, 4, 8)
+    })
+
+    expect(useRoundStore.getState().liveRound?.mySubmission).toEqual({
+      best: 2,
+      likely: 4,
+      worst: 8,
+    })
+    expect(sendEstimateMock).toHaveBeenCalledTimes(1)
+    expect(sendEstimateMock).toHaveBeenCalledWith(
+      'item-1',
+      expect.objectContaining({ participantId: 'me', best: 2, likely: 4, worst: 8 }),
+      1,
+    )
+  })
+
+  it('fails without sending when there is no active round', () => {
+    useRoundStore.setState({ liveRound: null })
+    const { result } = renderHook(() => useSubmitEstimate())
+
+    let outcome: ReturnType<typeof result.current.submit> | undefined
+    act(() => {
+      outcome = result.current.submit(2, 4, 8)
     })
 
     expect(outcome?.ok).toBe(false)

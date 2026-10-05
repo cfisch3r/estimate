@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { createEstimate, type Estimate } from '../../estimate/@x/session'
+import {
+  aggregateEstimates,
+  createEstimate,
+  type Estimate,
+} from '../../estimate/@x/session'
 import { useRoundStore } from './round'
 import { useSessionStore } from './session'
 import { useConnectionStore } from './connection'
@@ -37,28 +41,22 @@ const snapshotItem = { id: 'item-1', title: 'Retry queue', description: 'backoff
 beforeEach(resetStore)
 
 describe('finalizeItem', () => {
-  it('rejects an invalid estimate and leaves the item unfinalized', () => {
-    const { addItem, selectItem } = useSessionStore.getState()
-    addItem('Only item')
-    const id = useSessionStore.getState().items[0]!.id
-    selectItem(id)
-
-    const result = useRoundStore.getState().finalizeItem(id, 10, 5, 3) // descending, invalid
-    expect(result.ok).toBe(false)
-    expect(useSessionStore.getState().items[0]!.finalResult).toBeNull()
-  })
-
-  it('records the aggregated result and leaves navigation to the caller', () => {
+  it('records the given aggregate as the item final result', () => {
     const { addItem } = useSessionStore.getState()
     addItem('First')
     addItem('Second')
     const [first] = useSessionStore.getState().items
 
-    const result = useRoundStore.getState().finalizeItem(first!.id, 2, 5, 8)
-    expect(result.ok).toBe(true)
+    useRoundStore
+      .getState()
+      .finalizeItem(
+        first!.id,
+        aggregateEstimates([makeEstimate({ best: 2, likely: 5, worst: 8 })]),
+      )
 
     const state = useSessionStore.getState()
     expect(state.items[0]!.finalResult).toMatchObject({ min: 2, expected: 5, max: 8 })
+    expect(state.items[1]!.finalResult).toBeNull()
   })
 })
 
@@ -168,8 +166,8 @@ describe('applySyncState', () => {
         { participantId: 'b', submitted: true, connected: true },
       ],
       submissions: [
-        { participantId: 'a', best: 2, likely: 4, worst: 8 },
-        { participantId: 'b', best: 3, likely: 5, worst: 9 },
+        makeEstimate({ participantId: 'a', best: 2, likely: 4, worst: 8 }),
+        makeEstimate({ participantId: 'b', best: 3, likely: 5, worst: 9 }),
       ],
       finalizedItemIds: [],
     })
@@ -437,32 +435,6 @@ describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
 
     expect(useSessionStore.getState().items[0]!.finalResult).toBeNull()
   })
-
-  it('finalizeLiveItem aggregates submissions and leaves navigation to the caller', () => {
-    seed({
-      revealed: true,
-      submissions: [
-        makeEstimate({ participantId: 'a', best: 2, likely: 4, worst: 8 }),
-        makeEstimate({ participantId: 'b', best: 4, likely: 6, worst: 12 }),
-      ],
-    })
-
-    const result = useRoundStore.getState().finalizeLiveItem('i1')
-
-    expect(result.ok).toBe(true)
-    expect(useSessionStore.getState().items[0]!.finalResult).toMatchObject({
-      min: 2,
-      expected: 5,
-      max: 12,
-    })
-  })
-
-  it('finalizeLiveItem fails when no submissions have arrived', () => {
-    seed()
-    const result = useRoundStore.getState().finalizeLiveItem('i1')
-    expect(result).toMatchObject({ ok: false })
-    expect(useSessionStore.getState().items[0]!.finalResult).toBeNull()
-  })
 })
 
 describe('submitEstimate', () => {
@@ -480,10 +452,13 @@ describe('submitEstimate', () => {
     })
   })
 
-  it('records a valid estimate under the local participant id', () => {
-    const result = useRoundStore.getState().submitEstimate(3, 5, 8)
+  it('records the estimate and its values as the local submission', () => {
+    useRoundStore
+      .getState()
+      .submitEstimate(
+        makeEstimate({ participantId: 'me-123', best: 3, likely: 5, worst: 8 }),
+      )
 
-    expect(result.ok).toBe(true)
     const round = useRoundStore.getState().liveRound!
     expect(round.mySubmission).toEqual({ best: 3, likely: 5, worst: 8 })
     expect(round.submissions).toHaveLength(1)
@@ -491,25 +466,26 @@ describe('submitEstimate', () => {
   })
 
   it('replaces the earlier submission on a revise', () => {
-    useRoundStore.getState().submitEstimate(3, 5, 8)
-    useRoundStore.getState().submitEstimate(3, 5, 13)
+    useRoundStore
+      .getState()
+      .submitEstimate(
+        makeEstimate({ participantId: 'me-123', best: 3, likely: 5, worst: 8 }),
+      )
+    useRoundStore
+      .getState()
+      .submitEstimate(
+        makeEstimate({ participantId: 'me-123', best: 3, likely: 5, worst: 13 }),
+      )
 
     const round = useRoundStore.getState().liveRound!
     expect(round.submissions).toHaveLength(1)
     expect(round.mySubmission).toEqual({ best: 3, likely: 5, worst: 13 })
   })
 
-  it('rejects a descending estimate without recording it', () => {
-    const result = useRoundStore.getState().submitEstimate(10, 5, 3)
-
-    expect(result).toMatchObject({ ok: false })
-    expect(useRoundStore.getState().liveRound!.mySubmission).toBeNull()
-  })
-
-  it('fails when there is no active round', () => {
+  it('is a no-op when there is no active round', () => {
     useRoundStore.setState({ liveRound: null })
-    const result = useRoundStore.getState().submitEstimate(3, 5, 8)
-    expect(result).toMatchObject({ ok: false })
+    useRoundStore.getState().submitEstimate(makeEstimate())
+    expect(useRoundStore.getState().liveRound).toBeNull()
   })
 })
 

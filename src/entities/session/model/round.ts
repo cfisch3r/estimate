@@ -1,32 +1,18 @@
 import { create } from 'zustand'
-import type { Estimate } from '../../estimate/@x/session'
-import { createEstimate, aggregateEstimates } from '../../estimate/@x/session'
-import { FACILITATOR_PARTICIPANT_ID } from './participantId'
+import type { AggregateResult, Estimate } from '../../estimate/@x/session'
 import { useConnectionStore } from './connection'
 import { isFinalized } from './item'
 import { patchItem, useSessionStore } from './session'
 import type { LiveRound, SessionSnapshot } from './types'
 
-export type FinalizeResult = { ok: true } | { ok: false; error: string }
-
-/** submitEstimate returns the stored Estimate so the caller broadcasts exactly
- *  what was recorded — no re-lookup by a key that might not round-trip. */
-type SubmitEstimateResult =
-  { ok: true; estimate: Estimate } | { ok: false; error: string }
-
 interface RoundStore {
   /** Participant-only view of the facilitator's current round; null otherwise. */
   liveRound: LiveRound | null
 
-  finalizeItem: (
-    id: string,
-    best: number,
-    likely: number,
-    worst: number,
-  ) => FinalizeResult
-  /** Facilitator: finalize a live item by aggregating the participant
-   *  submissions it has collected this round (Workspace state 1d). */
-  finalizeLiveItem: (id: string) => FinalizeResult
+  /** Record an already-computed aggregate as item `id`'s final result. The
+   *  caller (the finalize use case) validates and aggregates; this store only
+   *  holds state. */
+  finalizeItem: (id: string, finalResult: AggregateResult) => void
   /** Facilitator: reveal the current round's estimates for `id` (1c -> 1d). */
   revealRound: (id: string) => void
   /** Facilitator: discard this item's submissions and drop back to the waiting
@@ -41,8 +27,9 @@ interface RoundStore {
    *  — `sendEstimate` targets the facilitator only (ADR-003, "Single owner") —
    *  so there is no participant-side handling here. */
   applyRemoteEstimate: (itemId: string, estimate: Estimate, round?: number) => void
-  /** Participant: validate and record this client's own estimate for the round. */
-  submitEstimate: (best: number, likely: number, worst: number) => SubmitEstimateResult
+  /** Participant: record this client's own (already valid) estimate for the
+   *  round. No-op when there is no active round. */
+  submitEstimate: (estimate: Estimate) => void
   /** Drop the participant-side round view. Composed alongside `connection.ts`'s
    *  `leaveLiveSession`/`joinLiveSession` by the `useLeaveLiveSession` /
    *  `useJoinLiveSession` composer hooks (`features/session-lifecycle`), not
@@ -52,45 +39,10 @@ interface RoundStore {
   clearRound: () => void
 }
 
-function snapshotSubmissionsToEstimates(snapshot: SessionSnapshot): Estimate[] {
-  const estimates: Estimate[] = []
-  for (const raw of snapshot.submissions) {
-    const result = createEstimate(raw)
-    if (result.ok) estimates.push(result.value)
-  }
-  return estimates
-}
-
-export const useRoundStore = create<RoundStore>((set, get) => ({
+export const useRoundStore = create<RoundStore>((set) => ({
   liveRound: null,
 
-  finalizeItem: (id, best, likely, worst) => {
-    const estimateResult = createEstimate({
-      participantId: FACILITATOR_PARTICIPANT_ID,
-      best,
-      likely,
-      worst,
-    })
-    if (!estimateResult.ok) {
-      return estimateResult
-    }
-    const finalResult = aggregateEstimates([estimateResult.value])
-    patchItem(id, { finalResult })
-    return { ok: true }
-  },
-
-  finalizeLiveItem: (id) => {
-    const item = useSessionStore.getState().items.find((i) => i.id === id)
-    if (!item) {
-      return { ok: false, error: 'Unknown item.' }
-    }
-    if (item.submissions.length === 0) {
-      return { ok: false, error: 'No estimates have been submitted yet.' }
-    }
-    const finalResult = aggregateEstimates(item.submissions)
-    patchItem(id, { finalResult })
-    return { ok: true }
-  },
+  finalizeItem: (id, finalResult) => patchItem(id, { finalResult }),
 
   revealRound: (id) => patchItem(id, { revealed: true }),
 
@@ -139,9 +91,7 @@ export const useRoundStore = create<RoundStore>((set, get) => ({
       // Pre-reveal, estimate values never reach a participant at all (ADR-003,
       // "Single owner") — only the roster drives "N of M submitted". Post-reveal,
       // the snapshot's frozen submission set is the only source.
-      const submissions = snapshot.revealed
-        ? snapshotSubmissionsToEstimates(snapshot)
-        : []
+      const submissions = snapshot.revealed ? snapshot.submissions : []
       return {
         liveRound: {
           item: snapshot.currentItem,
@@ -188,38 +138,22 @@ export const useRoundStore = create<RoundStore>((set, get) => ({
     })
   },
 
-  submitEstimate: (best, likely, worst) => {
-    const { liveRound } = get()
-    if (!liveRound) {
-      return {
-        ok: false,
-        error:
-          'There is no active round to estimate. Wait for the facilitator to start an item.',
-      }
-    }
-    const { participantId } = useConnectionStore.getState()
-    const result = createEstimate({
-      participantId: participantId || 'me',
-      best,
-      likely,
-      worst,
-    })
-    if (!result.ok) {
-      return result
-    }
+  submitEstimate: (estimate) =>
     set((state) =>
       state.liveRound
         ? {
             liveRound: {
               ...state.liveRound,
-              mySubmission: { best, likely, worst },
-              submissions: upsertByParticipant(state.liveRound.submissions, result.value),
+              mySubmission: {
+                best: estimate.best,
+                likely: estimate.likely,
+                worst: estimate.worst,
+              },
+              submissions: upsertByParticipant(state.liveRound.submissions, estimate),
             },
           }
         : {},
-    )
-    return { ok: true, estimate: result.value }
-  },
+    ),
 
   clearRound: () => set({ liveRound: null }),
 }))

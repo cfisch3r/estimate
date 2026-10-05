@@ -3,7 +3,6 @@ import type {
   Estimate,
   EstimateValues,
   EstimationUnit,
-  RawEstimateInput,
 } from '../../estimate/@x/session'
 
 export interface Item {
@@ -90,7 +89,7 @@ export interface SessionSnapshot {
   /** The frozen submission set, populated only once `revealed` is true —
    *  pre-reveal this stays empty, since values must not reach participants
    *  before the reveal (ADR-003). */
-  submissions: RawEstimateInput[]
+  submissions: Estimate[]
   finalizedItemIds: string[]
 }
 

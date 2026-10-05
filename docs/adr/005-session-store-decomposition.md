@@ -4,6 +4,8 @@
 **Date:** 2026-09-29
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [006-router-adoption.md](006-router-adoption.md), issue #111
 
+> **Update 2026-10-05:** the round store no longer validates or aggregates. `finalizeLiveItem` was removed and `finalizeItem(id, result)` now takes an already-computed `AggregateResult`; `submitEstimate(estimate)` and `applyRemoteEstimate` take an already-valid `Estimate`, and `applySyncState` takes `Estimate[]` submissions (the wire layer validates them). `createEstimate` / `aggregateEstimates` are composed by `features/submit-estimate`, `features/reveal-results` and `features/estimate-round`. The action lists below record the original decomposition.
+
 ## Context
 
 `entities/session/model/store.ts` (486 lines) moved into its FSD home unchanged

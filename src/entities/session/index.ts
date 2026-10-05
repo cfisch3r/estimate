@@ -1,7 +1,6 @@
 export { useSessionStore } from './model/session'
 export { useConnectionStore } from './model/connection'
 export { useRoundStore } from './model/round'
-export type { FinalizeResult } from './model/round'
 export type {
   Item,
   LiveRound,
@@ -11,6 +10,7 @@ export type {
 } from './model/types'
 export { isFinalized } from './model/item'
 export { roundMemberIds } from './model/roster'
+export { FACILITATOR_PARTICIPANT_ID } from './model/participantId'
 export { announcedName, teammateLabel } from './model/participantLabel'
 
 export { generateSessionCode } from './api/sessionCode'

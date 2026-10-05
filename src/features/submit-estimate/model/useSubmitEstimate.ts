@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createEstimate } from '../../../entities/estimate'
 import {
   useConnectionStore,
   useNetworkSession,
@@ -28,17 +29,26 @@ export function useSubmitEstimate() {
   const [deliveryFailed, setDeliveryFailed] = useState(false)
 
   function submit(best: number, likely: number, worst: number): SubmitResult {
-    const result = submitEstimate(best, likely, worst)
-    if (result.ok) {
-      if (liveRound) {
-        setDeliveryFailed(false)
-        sendEstimate(liveRound.item.id, result.estimate, liveRound.round).catch(() => {
-          setDeliveryFailed(true)
-        })
+    if (!liveRound) {
+      return {
+        ok: false,
+        error:
+          'There is no active round to estimate. Wait for the facilitator to start an item.',
       }
-      return { ok: true }
     }
-    return result
+    const result = createEstimate({
+      participantId: participantId || 'me',
+      best,
+      likely,
+      worst,
+    })
+    if (!result.ok) return result
+    submitEstimate(result.value)
+    setDeliveryFailed(false)
+    sendEstimate(liveRound.item.id, result.value, liveRound.round).catch(() => {
+      setDeliveryFailed(true)
+    })
+    return { ok: true }
   }
 
   const myRosterEntry = liveRound?.roster.find(

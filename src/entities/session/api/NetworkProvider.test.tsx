@@ -7,6 +7,7 @@ import { useNetworkSession } from './useNetworkSession'
 import type { NetworkSessionApi } from './networkSessionContext'
 import { createEstimate, type EstimationUnit } from '../../estimate/@x/session'
 import { useSessionStore } from '../model/session'
+import { estimateOf } from '../model/testFixtures'
 import { useConnectionStore } from '../model/connection'
 import { useRoundStore } from '../model/round'
 import type {
@@ -809,7 +810,7 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       await Promise.resolve()
     })
-    act(() => useRoundStore.getState().submitEstimate(1, 2, 3))
+    act(() => useRoundStore.getState().submitEstimate(estimateOf('p1')))
     fakeSession.sendEstimate.mockClear()
 
     await act(async () => {
@@ -861,7 +862,7 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       await Promise.resolve()
     })
-    act(() => useRoundStore.getState().submitEstimate(1, 2, 3))
+    act(() => useRoundStore.getState().submitEstimate(estimateOf('p1')))
     fakeSession.sendEstimate.mockClear()
 
     await act(async () => {
@@ -908,7 +909,7 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       await Promise.resolve()
     })
-    act(() => useRoundStore.getState().submitEstimate(1, 2, 3))
+    act(() => useRoundStore.getState().submitEstimate(estimateOf('p1')))
     fakeSession.sendEstimate.mockClear()
     // First resend never settles within this test, so a second snapshot
     // arriving before it does must not fire a duplicate.

@@ -1,11 +1,8 @@
 import './workspace.css'
 import { Card } from '../../../shared/ui'
 import { SessionSidebar } from '../../../widgets/session-sidebar'
-import {
-  useSessionStore,
-  useConnectionStore,
-  useRoundStore,
-} from '../../../entities/session'
+import { useSessionStore, useConnectionStore } from '../../../entities/session'
+import { useFinalizeEstimate } from '../../../features/estimate-round'
 import { LiveFacilitatorPanel } from '../../../features/reveal-results'
 import { useReconnect } from '../../../features/session-lifecycle'
 import { useItemNavigation } from '../model/useItemNavigation'
@@ -22,7 +19,7 @@ export function Workspace() {
   const connectionStatus = useConnectionStore((s) => s.connectionStatus)
   const peerCount = useConnectionStore((s) => s.peerCount)
   const hasEverConnected = useConnectionStore((s) => s.hasEverConnected)
-  const finalizeItem = useRoundStore((s) => s.finalizeItem)
+  const finalizeItem = useFinalizeEstimate()
   const { reconnect } = useReconnect()
   const { itemCount, activeItem, isFirst, isLast, allFinalized, goPrev, advance } =
     useItemNavigation()

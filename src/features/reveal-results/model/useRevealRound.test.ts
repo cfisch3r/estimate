@@ -64,4 +64,23 @@ describe('useRevealRound', () => {
     expect(currentItem().finalResult).not.toBeNull()
     expect(useRoundStore.getState().liveRound).toBeNull()
   })
+
+  it('reports an unknown item when finalizing one that is gone', () => {
+    const { result } = renderHook(() => useRevealRound(currentItem()))
+    useSessionStore.setState({ items: [] })
+
+    expect(result.current.finalize()).toEqual({ ok: false, error: 'Unknown item.' })
+  })
+
+  it('aggregates the submissions present at call time, not at render time', () => {
+    const { result } = renderHook(() => useRevealRound(currentItem()))
+    const estimate = createEstimate({ participantId: 'p1', best: 2, likely: 4, worst: 8 })
+    if (!estimate.ok) throw new Error(estimate.error)
+    useSessionStore.setState((s) => ({
+      items: s.items.map((i) => ({ ...i, submissions: [estimate.value] })),
+    }))
+
+    expect(result.current.finalize()).toEqual({ ok: true })
+    expect(currentItem().finalResult).toMatchObject({ min: 2, max: 8 })
+  })
 })
