@@ -2,6 +2,7 @@ export type {
   AggregateStrategy,
   AggregateResult,
   GuardResult,
+  UncertaintyGuidance,
   EstimationUnit,
   UncertaintyLevel,
 } from './model/types'
@@ -37,6 +38,7 @@ export {
   checkFalsePrecision,
   checkOutlier,
   checkUncertaintyRange,
+  uncertaintyGuidance,
 } from './model/guards'
 export { RangeBar } from './ui/RangeBar'
 export { EstimateTriple } from './ui/EstimateTriple'

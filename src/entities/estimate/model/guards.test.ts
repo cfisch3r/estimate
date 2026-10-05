@@ -4,6 +4,7 @@ import {
   checkFalsePrecision,
   checkOutlier,
   checkUncertaintyRange,
+  uncertaintyGuidance,
 } from './guards'
 import { UNIT_GRANULARITY, UNCERTAINTY_GUIDANCE } from './types'
 import { est } from './testHelpers'
@@ -148,5 +149,51 @@ describe('checkUncertaintyRange', () => {
     // guidance ratio 1.5/0.67 ≈ 2.2388, actual ratio 15/10 = 1.5 -> 1 - 1.5/2.2388 ≈ 0.33
     const result = checkUncertaintyRange(10, 15, 'requirements-complete')
     expect(result.deviationPct).toBeCloseTo(0.33, 2)
+  })
+})
+
+describe('uncertaintyGuidance', () => {
+  it('derives the ceiling from best case and the phase guidance ratio', () => {
+    // Requirements Complete: ratio 1.5/0.67; best=10 -> guidanceHigh = 10 * 1.5/0.67
+    const { lowMult, highMult } = UNCERTAINTY_GUIDANCE['requirements-complete']
+    const result = uncertaintyGuidance(10, 15, 'requirements-complete')
+    expect(result?.guidanceHigh).toBe(10 * (highMult / lowMult))
+  })
+
+  it('reports a narrow range as not covered, with the nudge fired', () => {
+    const result = uncertaintyGuidance(10, 15, 'requirements-complete')
+    expect(result?.covered).toBe(false)
+    expect(result?.guard).toEqual(checkUncertaintyRange(10, 15, 'requirements-complete'))
+    expect(result?.guard.fired).toBe(true)
+  })
+
+  it('reports a worst case at exactly the ceiling as covered, with no nudge', () => {
+    const { lowMult, highMult } = UNCERTAINTY_GUIDANCE['requirements-complete']
+    const result = uncertaintyGuidance(
+      10,
+      10 * (highMult / lowMult),
+      'requirements-complete',
+    )
+    expect(result?.covered).toBe(true)
+    expect(result?.guard.fired).toBe(false)
+  })
+
+  it('reports a worst case beyond the ceiling as covered', () => {
+    expect(uncertaintyGuidance(10, 100, 'requirements-complete')?.covered).toBe(true)
+  })
+
+  it('is null for a non-positive best case', () => {
+    expect(uncertaintyGuidance(0, 10, 'requirements-complete')).toBeNull()
+    expect(uncertaintyGuidance(-5, 10, 'requirements-complete')).toBeNull()
+  })
+
+  it('is null when worst is below best', () => {
+    expect(uncertaintyGuidance(10, 5, 'requirements-complete')).toBeNull()
+  })
+
+  it('still gives guidance for a zero-width range', () => {
+    const result = uncertaintyGuidance(10, 10, 'requirements-complete')
+    expect(result?.covered).toBe(false)
+    expect(result?.guard.fired).toBe(true)
   })
 })

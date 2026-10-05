@@ -1,4 +1,4 @@
-import type { GuardResult, UncertaintyLevel } from './types'
+import type { GuardResult, UncertaintyGuidance, UncertaintyLevel } from './types'
 import type { Estimate } from './estimate'
 import { median } from './aggregate'
 import { UNCERTAINTY_GUIDANCE } from './types'
@@ -87,5 +87,28 @@ export function checkUncertaintyRange(
   return {
     fired: actualRatio < guidanceRatio,
     deviationPct: 1 - actualRatio / guidanceRatio,
+  }
+}
+
+/** The cone-of-uncertainty guidance for an entered range (PRD §6.1), in one
+ *  place so every consumer applies the same rule: the guidance ceiling
+ *  (`guidanceHigh = best * highMult/lowMult`), whether the entered worst case
+ *  already `covered`s it, and the `guard` nudge from `checkUncertaintyRange`.
+ *  Null when the range is not meaningful to anchor guidance to — a non-positive
+ *  best case, or worst below best (validation errors, not narrow-range signals). */
+export function uncertaintyGuidance(
+  best: number,
+  worst: number,
+  level: UncertaintyLevel,
+): UncertaintyGuidance | null {
+  if (best <= 0 || worst < best) {
+    return null
+  }
+  const { lowMult, highMult } = UNCERTAINTY_GUIDANCE[level]
+  const guidanceHigh = best * (highMult / lowMult)
+  return {
+    guidanceHigh,
+    covered: worst >= guidanceHigh,
+    guard: checkUncertaintyRange(best, worst, level),
   }
 }

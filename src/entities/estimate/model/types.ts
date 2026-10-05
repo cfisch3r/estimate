@@ -22,6 +22,17 @@ export interface GuardResult {
   deviationPct?: number
 }
 
+/** What the cone-of-uncertainty phase says about an entered best/worst range —
+ *  see `uncertaintyGuidance`. */
+export interface UncertaintyGuidance {
+  /** The ceiling the guidance expects the worst case to reach for this phase. */
+  guidanceHigh: number
+  /** The entered worst case already meets or exceeds `guidanceHigh`. */
+  covered: boolean
+  /** The "range too narrow for this phase" nudge. */
+  guard: GuardResult
+}
+
 export const ESTIMATION_UNITS = ['hours', 'days', 'weeks'] as const
 
 export type EstimationUnit = (typeof ESTIMATION_UNITS)[number]

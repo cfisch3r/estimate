@@ -104,16 +104,13 @@ export function ThreePointEstimateForm({
               ci90={computeCI90(draft.likelyNum, draft.bestNum, draft.worstNum)}
               unitSuffix={UNIT_SUFFIX[unit]}
               guidance={
-                draft.guidanceHigh !== null
-                  ? { guidanceHigh: draft.guidanceHigh }
-                  : undefined
+                draft.guidance ? { guidanceHigh: draft.guidance.guidanceHigh } : undefined
               }
             />
             <UncertaintyGuidanceNotes
-              guidanceHigh={draft.guidanceHigh}
+              guidance={draft.guidance}
               worst={draft.worstNum}
               unitSuffix={UNIT_SUFFIX[unit]}
-              uncertaintyGuard={draft.uncertaintyGuard}
             />
           </>
         ) : (

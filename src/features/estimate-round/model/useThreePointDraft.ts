@@ -1,9 +1,11 @@
 import { useState } from 'react'
 import {
   checkSymmetricRange,
+  uncertaintyGuidance,
   validateEstimateValues,
   type EstimationUnit,
   type GuardResult,
+  type UncertaintyGuidance,
 } from '../../../entities/estimate'
 import {
   describeEstimateIssue,
@@ -40,8 +42,8 @@ export interface ThreePointDraft {
   symmetricGuard: GuardResult | null
   phaseIndex: number
   setPhaseIndex: (index: number) => void
-  guidanceHigh: number | null
-  uncertaintyGuard: GuardResult | null
+  /** The phase's guidance for the entered range, or null until one is meaningful. */
+  guidance: UncertaintyGuidance | null
 }
 
 /** The raw best / likely / worst entry state plus everything derived from it —
@@ -87,11 +89,8 @@ export function useThreePointDraft(
     ? checkSymmetricRange(bestNum, likelyNum, worstNum)
     : null
 
-  const { phaseIndex, setPhaseIndex, guidanceHigh, uncertaintyGuard } = usePhaseGuidance(
-    bestNum,
-    worstNum,
-    allFilled,
-  )
+  const { phaseIndex, setPhaseIndex, level } = usePhaseGuidance()
+  const guidance = allFilled ? uncertaintyGuidance(bestNum, worstNum, level) : null
 
   return {
     best,
@@ -109,7 +108,6 @@ export function useThreePointDraft(
     symmetricGuard,
     phaseIndex,
     setPhaseIndex,
-    guidanceHigh,
-    uncertaintyGuard,
+    guidance,
   }
 }

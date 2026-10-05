@@ -1,13 +1,12 @@
-import type { GuardResult } from '../../../entities/estimate'
+import type { UncertaintyGuidance } from '../../../entities/estimate'
 import { ConfirmNote } from '../../../shared/ui/ConfirmNote'
 import { GuardNote } from '../../../shared/ui/GuardNote'
 import { formatValue } from '../../../shared/ui/format'
 
 interface UncertaintyGuidanceNotesProps {
-  guidanceHigh: number | null
+  guidance: UncertaintyGuidance | null
   worst: number
   unitSuffix: string
-  uncertaintyGuard: GuardResult | null
 }
 
 /** The two notes that accompany a guidance-aware RangeBar (PRD §6.1) — a calm
@@ -15,26 +14,25 @@ interface UncertaintyGuidanceNotesProps {
  *  ceiling, or a soft nudge when it's narrower than guidance. Shared by
  *  Workspace's ActiveItemPanel and ParticipantEstimateView's EstimateForm. */
 export function UncertaintyGuidanceNotes({
-  guidanceHigh,
+  guidance,
   worst,
   unitSuffix,
-  uncertaintyGuard,
 }: UncertaintyGuidanceNotesProps) {
-  if (guidanceHigh === null) {
+  if (guidance === null) {
     return null
   }
 
   return (
     <>
-      {worst >= guidanceHigh && (
+      {guidance.covered && (
         <ConfirmNote>
           Your worst case ({formatValue(worst)}
           {unitSuffix}) already covers this phase&rsquo;s guidance ceiling of{' '}
-          {formatValue(guidanceHigh)}
+          {formatValue(guidance.guidanceHigh)}
           {unitSuffix}.
         </ConfirmNote>
       )}
-      {uncertaintyGuard?.fired && (
+      {guidance.guard.fired && (
         <GuardNote variant="banner" headline="Narrow range for this phase">
           Teams at this stage typically see a wider spread between best and worst case.
         </GuardNote>
