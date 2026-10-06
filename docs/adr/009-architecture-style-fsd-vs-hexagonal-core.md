@@ -100,15 +100,15 @@ flowchart LR
   Net -->|validates with| Core
   Store -->|serialises with| Core
   AD -.->|WebRTC, relays, file and browser storage I/O| Ext
-  style UI fill:#f4f7fe,stroke:#4a63b8
-  style APP fill:#f2faf4,stroke:#3b8a4f
-  style DOM fill:#fff9ea,stroke:#b8862e
-  style AD fill:#faf2fb,stroke:#8a4a9c
-  classDef ui fill:#e8eefc,stroke:#4a63b8
-  classDef app fill:#e6f4ea,stroke:#3b8a4f
-  classDef dom fill:#fdf1d8,stroke:#b8862e
-  classDef ad fill:#f3e5f5,stroke:#8a4a9c
-  classDef ext fill:#ffffff,stroke:#666666,stroke-dasharray: 5 5
+  style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
+  style APP fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
+  style DOM fill:#fbe9bf,stroke:#9a6f1e,stroke-width:2px,color:#14171f
+  style AD fill:#ecd8f1,stroke:#7a3d8c,stroke-width:2px,color:#14171f
+  classDef ui fill:#b9ccf7,stroke:#3d56a6,color:#14171f
+  classDef app fill:#b2dfc0,stroke:#2f7a43,color:#14171f
+  classDef dom fill:#f6d891,stroke:#9a6f1e,color:#14171f
+  classDef ad fill:#dcbfe5,stroke:#7a3d8c,color:#14171f
+  classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
   class Pages,Features ui
   class UseCases app
   class Core dom
