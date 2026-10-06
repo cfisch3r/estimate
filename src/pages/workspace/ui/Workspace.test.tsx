@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { Workspace } from './Workspace'
@@ -198,7 +198,9 @@ describe('Workspace', () => {
     })
     renderWorkspace()
 
-    await user.click(screen.getByRole('button', { name: 'Typoo' }))
+    await user.click(
+      within(screen.getByRole('heading', { name: 'Typoo' })).getByRole('button'),
+    )
     const input = screen.getByLabelText('Item title')
     await user.clear(input)
     await user.type(input, 'Fixed title{Enter}')

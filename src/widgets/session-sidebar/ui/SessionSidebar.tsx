@@ -72,7 +72,12 @@ function SidebarRow({
        *  handler — a clickable div isn't keyboard-operable or announced as
        *  interactive to assistive tech, and the remove button below must stay
        *  a sibling rather than nested inside it. */}
-      <button type="button" className="session-sidebar-row-select" onClick={onSelect}>
+      <button
+        type="button"
+        className="session-sidebar-row-select"
+        aria-current={isActive ? 'true' : undefined}
+        onClick={onSelect}
+      >
         <DotsSixVerticalIcon size={14} className="session-sidebar-grip" />
         {finalized && (
           <CheckCircleIcon
@@ -81,7 +86,11 @@ function SidebarRow({
             style={{ color: 'var(--color-accent-300)', flex: 'none' }}
           />
         )}
-        {isActive && !finalized && <span className="session-sidebar-marker">▷</span>}
+        {isActive && !finalized && (
+          <span className="session-sidebar-marker" aria-hidden="true">
+            ▷
+          </span>
+        )}
         <span className="session-sidebar-row-label">{item.title}</span>
       </button>
       <Button

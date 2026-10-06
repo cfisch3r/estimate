@@ -19,3 +19,9 @@
   text-transform: uppercase;
   color: var(--color-neutral-400);
 }
+
+/* A label used as a programmatic focus target (tabindex="-1") is never reached
+   by Tab, so it needs no focus ring. */
+.group-box-label > span[tabindex='-1']:focus {
+  outline: none;
+}

@@ -66,6 +66,23 @@ describe('SessionSidebar', () => {
     )
   })
 
+  it('exposes the active row to assistive tech with aria-current and hides the decorative marker', () => {
+    renderSidebar({ activeItemId: '1' })
+
+    const active = screen.getByRole('button', { name: 'A' })
+    expect(active).toHaveAttribute('aria-current', 'true')
+    expect(screen.getByRole('button', { name: 'B' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByText('▷')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('sets no aria-current when the active highlight is turned off', () => {
+    renderSidebar({ activeItemId: '1' }, { highlightActive: false })
+
+    for (const button of screen.getAllByRole('button', { name: /^(A|B)$/ })) {
+      expect(button).not.toHaveAttribute('aria-current')
+    }
+  })
+
   it('selects the clicked item in the session store', async () => {
     const user = userEvent.setup()
     renderSidebar()

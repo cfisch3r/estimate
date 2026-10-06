@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode } from 'react'
+import type { HTMLAttributes, ReactNode, Ref } from 'react'
 import { InfoPopover } from './InfoPopover'
 import './group-box.css'
 
@@ -9,6 +9,9 @@ interface GroupBoxProps extends HTMLAttributes<HTMLDivElement> {
   onInfoOpen?: () => void
   onInfoClose?: () => void
   children: ReactNode
+  /** The label text, e.g. as a programmatic focus target: when given it is
+   *  focusable by script only (tabindex -1), never by Tab. */
+  labelRef?: Ref<HTMLSpanElement>
 }
 
 /** Bordered section with a heading and an optional click-to-open info icon —
@@ -23,12 +26,15 @@ export function GroupBox({
   onInfoClose,
   children,
   className,
+  labelRef,
   ...props
 }: GroupBoxProps) {
   return (
     <div className={['group-box', className].filter(Boolean).join(' ')} {...props}>
       <div className="group-box-label">
-        <span>{label}</span>
+        <span ref={labelRef} tabIndex={labelRef ? -1 : undefined}>
+          {label}
+        </span>
         {info && (
           <InfoPopover
             label={`About ${label.toLowerCase()}`}

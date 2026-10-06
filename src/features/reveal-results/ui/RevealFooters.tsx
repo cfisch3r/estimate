@@ -1,4 +1,4 @@
-import { Button, NavRow } from '../../../shared/ui'
+import { Button, LiveRegion, NavRow, VisuallyHidden } from '../../../shared/ui'
 import { useConfirmArm } from '../../../shared/lib/useConfirmArm'
 
 interface PreRevealFooterProps {
@@ -96,6 +96,11 @@ export function FinalizedFooter({
         >
           {reopenArmed ? 'Click again to reopen' : 'Reopen item'}
         </Button>
+        <LiveRegion>
+          <VisuallyHidden>
+            {reopenArmed ? 'Click Reopen item again to confirm.' : ''}
+          </VisuallyHidden>
+        </LiveRegion>
       </NavRow>
     </>
   )

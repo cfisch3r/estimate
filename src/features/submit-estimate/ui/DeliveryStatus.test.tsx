@@ -1,8 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { axe } from 'jest-axe'
 import { DeliveryStatus } from './DeliveryStatus'
 
 describe('DeliveryStatus', () => {
+  it.each(['sending', 'not-delivered', 'submitted'] as const)(
+    'has no axe violations in the %s state',
+    async (state) => {
+      const { container } = render(<DeliveryStatus state={state} />)
+
+      expect(
+        await axe(container, { rules: { 'color-contrast': { enabled: false } } }),
+      ).toHaveNoViolations()
+    },
+  )
+
   it('shows a sending notice while the send is in flight', () => {
     render(<DeliveryStatus state="sending" />)
 

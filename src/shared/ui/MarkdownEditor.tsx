@@ -62,6 +62,7 @@ export function MarkdownEditor({
           className={['md-tab', mode === 'write' && 'md-tab--active']
             .filter(Boolean)
             .join(' ')}
+          aria-pressed={mode === 'write'}
           onClick={() => setMode('write')}
         >
           Write
@@ -71,6 +72,7 @@ export function MarkdownEditor({
           className={['md-tab', mode === 'preview' && 'md-tab--active']
             .filter(Boolean)
             .join(' ')}
+          aria-pressed={mode === 'preview'}
           onClick={() => setMode('preview')}
         >
           Preview
