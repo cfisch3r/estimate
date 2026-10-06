@@ -1,19 +1,17 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { DotsSixVerticalIcon } from '@phosphor-icons/react/dist/csr/DotsSixVertical'
-import { NotebookIcon } from '@phosphor-icons/react/dist/csr/Notebook'
 import { CheckCircleIcon } from '@phosphor-icons/react/dist/csr/CheckCircle'
 import { PlusIcon } from '@phosphor-icons/react/dist/csr/Plus'
 import { XIcon } from '@phosphor-icons/react/dist/csr/X'
+import './session-sidebar.css'
 import { Button, Input } from '../../../shared/ui'
 import { useConfirmArm } from '../../../shared/lib/useConfirmArm'
-import { useNavigate, useLocation } from 'react-router'
-import { ROUTES } from '../../../shared/lib/routes'
-import { useSessionStore, type Item } from '../../../entities/session'
+import { useSessionStore, isFinalized, type Item } from '../../../entities/session'
 
 interface SessionSidebarProps {
-  /** Workspace's merged top bar carries its own Summary button now, so it hides
-   *  this one; SessionSummary (which has no top bar) still uses the built-in one. */
-  hideSummaryButton?: boolean
+  /** Whether the active item's row is highlighted. SessionSummary turns this
+   *  off — no single item is "current" on the summary page. */
+  highlightActive?: boolean
   /** The Workspace redesign's fixed-height, independently-scrolling item list —
    *  scoped to Workspace only (the handoff didn't cover SessionSummary), so
    *  SessionSummary opts out and keeps its original unbounded-height list. */
@@ -45,7 +43,7 @@ function SidebarRow({
   onDrop,
   onDragEnd,
 }: SidebarRowProps) {
-  const isFinalized = item.finalResult !== null
+  const finalized = isFinalized(item)
   const {
     armed,
     handleClick: armAndConfirmRemove,
@@ -74,16 +72,25 @@ function SidebarRow({
        *  handler — a clickable div isn't keyboard-operable or announced as
        *  interactive to assistive tech, and the remove button below must stay
        *  a sibling rather than nested inside it. */}
-      <button type="button" className="session-sidebar-row-select" onClick={onSelect}>
+      <button
+        type="button"
+        className="session-sidebar-row-select"
+        aria-current={isActive ? 'true' : undefined}
+        onClick={onSelect}
+      >
         <DotsSixVerticalIcon size={14} className="session-sidebar-grip" />
-        {isFinalized && (
+        {finalized && (
           <CheckCircleIcon
             size={13}
             weight="fill"
             style={{ color: 'var(--color-accent-300)', flex: 'none' }}
           />
         )}
-        {isActive && !isFinalized && <span className="session-sidebar-marker">▷</span>}
+        {isActive && !finalized && (
+          <span className="session-sidebar-marker" aria-hidden="true">
+            ▷
+          </span>
+        )}
         <span className="session-sidebar-row-label">{item.title}</span>
       </button>
       <Button
@@ -112,7 +119,7 @@ function SidebarRow({
 }
 
 export function SessionSidebar({
-  hideSummaryButton = false,
+  highlightActive = true,
   scrollableList = true,
 }: SessionSidebarProps) {
   const items = useSessionStore((s) => s.items)
@@ -121,11 +128,6 @@ export function SessionSidebar({
   const onReorder = useSessionStore((s) => s.reorderItems)
   const onRemove = useSessionStore((s) => s.removeItem)
   const onAdd = useSessionStore((s) => s.addItem)
-  const navigate = useNavigate()
-  const location = useLocation()
-  // Drives the Summary button's highlighted state.
-  const isSummaryScreen = location.pathname === ROUTES.summary
-  const onGoSummary = () => navigate(ROUTES.summary)
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [newItemTitle, setNewItemTitle] = useState('')
@@ -133,8 +135,7 @@ export function SessionSidebar({
   const prevItemCount = useRef(items.length)
   const [isScrollCapped, setIsScrollCapped] = useState(false)
 
-  const finalizedCount = items.filter((item) => item.finalResult !== null).length
-  const onSummary = isSummaryScreen
+  const finalizedCount = items.filter(isFinalized).length
 
   // A newly added item lands at the bottom of a capped-height, scrollable list
   // (see session-sidebar.css) — without this it's added out of view and only
@@ -165,7 +166,7 @@ export function SessionSidebar({
     <SidebarRow
       key={item.id}
       item={item}
-      isActive={!onSummary && item.id === activeItemId}
+      isActive={highlightActive && item.id === activeItemId}
       isDragged={dragIndex === index}
       isDropTarget={dragOverIndex === index && dragIndex !== index}
       onSelect={() => onSelect(item.id)}
@@ -217,12 +218,6 @@ export function SessionSidebar({
           <PlusIcon size={14} />
         </Button>
       </div>
-      {!hideSummaryButton && (
-        <Button variant={onSummary ? 'primary' : 'secondary'} block onClick={onGoSummary}>
-          <NotebookIcon size={15} />
-          Summary
-        </Button>
-      )}
     </aside>
   )
 }

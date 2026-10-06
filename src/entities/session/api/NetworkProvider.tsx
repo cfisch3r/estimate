@@ -2,15 +2,17 @@ import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { joinSession } from './session'
 import type { NetworkSession } from './session'
-import type { ConnectionState, ConnectionStatus } from './connection'
-import type { RosterEntry } from './actions'
+import type { ConnectionState } from './connection'
 import { NetworkSessionContext, type NetworkSessionApi } from './networkSessionContext'
 import { withKindDrivenRetry } from './retryPolicy'
 import { useSessionStore } from '../model/session'
 import { useConnectionStore } from '../model/connection'
 import { useRoundStore } from '../model/round'
-import { createEstimate } from '../../estimate'
-import type { SessionRole } from '../model/types'
+import { FACILITATOR_PARTICIPANT_ID } from '../model/participantId'
+import { needsResend } from '../model/resend'
+import { shouldPruneDeparted } from '../model/roster'
+import { buildSessionSnapshot, snapshotChangeKey } from '../model/snapshot'
+import type { ConnectionStatus, SessionRole } from '../model/types'
 
 /** For a participant, the transport can report `'connected'` the instant it
  *  reaches ANY peer — including another participant, never the facilitator.
@@ -30,37 +32,12 @@ function deriveConnectionStatus(
   return trackerStatus
 }
 
-/** The people in the round: every announced non-facilitator client, plus
- *  anyone whose submission arrived before their announce did. Values-free —
- *  this is what goes out over the wire (ADR-003, "Single owner"); the
- *  facilitator's own panel reads its local `item.submissions` for values
- *  instead. */
-function buildRoster(
-  participantNames: Record<string, string>,
-  submittedParticipantIds: readonly string[],
-  connectedParticipantIds: ReadonlySet<string>,
-): RosterEntry[] {
-  const submitted = new Set(submittedParticipantIds)
-  const ids = [
-    ...Object.keys(participantNames).filter((id) => id !== 'facilitator'),
-    ...submittedParticipantIds,
-  ]
-  const seen = new Set<string>()
-  const roster: RosterEntry[] = []
-  for (const id of ids) {
-    if (seen.has(id)) continue
-    seen.add(id)
-    roster.push({
-      participantId: id,
-      submitted: submitted.has(id),
-      connected: connectedParticipantIds.has(id),
-    })
-  }
-  return roster
-}
-
 /** Owns the single live NetworkSession for the app and bridges its events into the
- *  store, so screens only ever read connection state from `useSessionStore`. */
+ *  session, connection and round stores, so screens only ever read connection
+ *  state from `useConnectionStore` and round state from the round/session
+ *  stores. Wiring only: what a snapshot contains, when a submission needs
+ *  re-sending and when a departed participant is forgotten are pure policies in
+ *  `../model`. */
 export function NetworkProvider({ children }: { children: ReactNode }) {
   const sessionRef = useRef<NetworkSession | null>(null)
   const unsubscribeRef = useRef<(() => void) | null>(null)
@@ -108,35 +85,15 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
     // as the payload of a change broadcast and as the answer to a participant's
     // `requestSnapshot` pull.
     const computeSnapshot = () => {
-      const state = useSessionStore.getState()
-      const connection = useConnectionStore.getState()
-      const active = state.items.find((item) => item.id === state.activeItemId) ?? null
-      const currentItem = active
-        ? { id: active.id, title: active.title, description: active.description }
-        : null
-      const finalizedItemIds = state.items
-        .filter((item) => item.finalResult !== null)
-        .map((item) => item.id)
-      const revealed = active?.revealed ?? false
-      const round = active?.round ?? 0
-      // Estimate values reach participants only once revealed (ADR-003, "Single
-      // owner") — pre-reveal, the roster (below) is what drives "N of M submitted".
-      const submissions = revealed && active ? active.submissions : []
-      const roster = buildRoster(
-        connection.participantNames,
-        active?.submissions.map((s) => s.participantId) ?? [],
-        new Set(peerParticipants.values()),
-      )
-      return {
-        currentItem,
-        sessionName: state.sessionName,
-        unit: state.unit,
-        revealed,
-        round,
-        roster,
-        submissions,
-        finalizedItemIds,
-      }
+      const { sessionName, unit, items, activeItemId } = useSessionStore.getState()
+      return buildSessionSnapshot({
+        sessionName,
+        unit,
+        items,
+        activeItemId,
+        participantNames: useConnectionStore.getState().participantNames,
+        connectedParticipantIds: new Set(peerParticipants.values()),
+      })
     }
 
     // Broadcast on real changes, not on every unrelated store update (notes
@@ -151,15 +108,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       )
         return
       const snapshot = computeSnapshot()
-      const key = JSON.stringify({
-        currentItem: snapshot.currentItem,
-        sessionName: snapshot.sessionName,
-        unit: snapshot.unit,
-        revealed: snapshot.revealed,
-        round: snapshot.round,
-        roster: snapshot.roster,
-        finalizedItemIds: snapshot.finalizedItemIds,
-      })
+      const key = snapshotChangeKey(snapshot)
       if (key === lastSnapshotKey) return
       lastSnapshotKey = key
       sessionRef.current?.sendSyncState(snapshot)
@@ -172,7 +121,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
       const state = useConnectionStore.getState()
       if (state.mode !== 'live' || state.myName.trim().length === 0) return
       const participantId =
-        state.role === 'facilitator' ? 'facilitator' : state.participantId
+        state.role === 'facilitator' ? FACILITATOR_PARTICIPANT_ID : state.participantId
       if (participantId.length === 0) return
       sessionRef.current?.sendAnnounce({ participantId, name: state.myName })
     }
@@ -205,29 +154,19 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             if (
               role !== 'participant' ||
               !liveRound ||
-              liveRound.revealed ||
-              !liveRound.mySubmission
+              !needsResend(liveRound, participantId)
             ) {
               return
             }
-            const myEntry = liveRound.roster.find(
-              (entry) => entry.participantId === participantId,
-            )
-            if (myEntry?.submitted) return
             // A burst of snapshots (other participants submitting in quick
             // succession) can arrive before this participant's own roster entry
             // catches up — don't stack a second resend on top of one already
             // in flight for the same item/round.
             const resendKey = `${liveRound.item.id}:${liveRound.round}`
             if (resendInFlightKey === resendKey) return
-            const result = createEstimate({
-              participantId,
-              ...liveRound.mySubmission,
-            })
-            if (!result.ok) return
             resendInFlightKey = resendKey
             apiRef.current
-              ?.sendEstimate(liveRound.item.id, result.value, liveRound.round)
+              ?.sendEstimate(liveRound.item.id, liveRound.mySubmission, liveRound.round)
               .catch((error) => {
                 console.warn('Roster-triggered resend failed:', error)
               })
@@ -247,7 +186,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             // not polling — only re-pull if the facilitator's peerId actually
             // changed since the last pull.
             if (
-              announce.participantId === 'facilitator' &&
+              announce.participantId === FACILITATOR_PARTICIPANT_ID &&
               useConnectionStore.getState().role === 'participant'
             ) {
               facilitatorPeerId = peerId
@@ -279,7 +218,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             // have run with a stale, not-yet-cleared facilitatorPeerId. Clearing
             // lastPulledFacilitatorPeerId too lets a facilitator reconnect under a
             // new peerId re-trigger the snapshot pull instead of being deduped.
-            if (participantId === 'facilitator') {
+            if (participantId === FACILITATOR_PARTICIPANT_ID) {
               facilitatorPeerId = null
               lastPulledFacilitatorPeerId = null
               const current = sessionRef.current?.getConnectionState()
@@ -289,21 +228,17 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             // submitted" guard below) only exists on the facilitator's copy of
             // state.items, so this guard is meaningless on a participant client.
             if (useConnectionStore.getState().role !== 'facilitator') return
-            // Two tabs in one browser share a participantId (see the JoinSession
-            // warning): losing one connection must not prune a name still backed by
-            // another live connection.
-            const stillConnected = [...peerParticipants.values()].includes(participantId)
-            if (stillConnected) return
-            // A participant who already submitted keeps their estimate in the
-            // aggregate (ADR-003) — pruning their name would anonymise an otherwise
-            // still-attributed, already-recorded row on reveal.
             const state = useSessionStore.getState()
             const activeItem = state.items.find((item) => item.id === state.activeItemId)
-            const hasSubmitted =
-              activeItem?.submissions.some((s) => s.participantId === participantId) ??
-              false
-            if (hasSubmitted) return
-            useConnectionStore.getState().removeParticipant(participantId)
+            if (
+              shouldPruneDeparted(
+                participantId,
+                peerParticipants.values(),
+                activeItem?.submissions.map((s) => s.participantId) ?? [],
+              )
+            ) {
+              useConnectionStore.getState().removeParticipant(participantId)
+            }
           }),
           useSessionStore.subscribe(broadcastFacilitatorState),
           useConnectionStore.subscribe(broadcastFacilitatorState),

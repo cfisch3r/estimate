@@ -4,9 +4,10 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react'
+import './phase-picker.css'
 import { CaretLeftIcon } from '@phosphor-icons/react/dist/csr/CaretLeft'
 import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'
-import { UNCERTAINTY_LEVELS, UNCERTAINTY_GUIDANCE } from '../../../entities/estimate'
+import { UNCERTAINTY_LEVELS, UNCERTAINTY_GUIDANCE } from '../../../entities/session'
 
 interface PhasePickerProps {
   index: number
@@ -121,6 +122,9 @@ const CONE_PATH_LARGE = pathString(BASE_H)
 const FILL_PATH = buildFillPath(BASE_H)
 
 const PHASES = UNCERTAINTY_LEVELS.map((level) => UNCERTAINTY_GUIDANCE[level])
+const LAST = PHASES.length - 1
+/** Distance between two adjacent phases, as a percentage of the track. */
+const STEP_PCT = 100 / LAST
 
 const LOG_MIN = Math.log(0.2)
 const LOG_MAX = Math.log(5)
@@ -153,7 +157,7 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
   }, [])
 
   function snapTo(nextIndex: number) {
-    onChange(Math.max(0, Math.min(4, nextIndex)))
+    onChange(Math.max(0, Math.min(LAST, nextIndex)))
     setSnapping(true)
     if (snapTimeoutRef.current) {
       clearTimeout(snapTimeoutRef.current)
@@ -182,7 +186,7 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
       activeDragRef.current = null
       setDragPct((currentDragPct) => {
         if (currentDragPct != null) {
-          snapTo(Math.round(currentDragPct / 25))
+          snapTo(Math.round(currentDragPct / STEP_PCT))
         }
         return null
       })
@@ -195,7 +199,7 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
 
   const phase = PHASES[index]!
   const ratio = phase.highMult / phase.lowMult
-  const tickPercent = dragPct ?? index * 25
+  const tickPercent = dragPct ?? index * STEP_PCT
   const transitionMs = dragPct != null ? 0 : snapping ? SNAP_TRANSITION_MS : 0
   const barLeft = Math.max(0, logPct(phase.lowMult))
   const barRight = Math.max(0, 100 - logPct(phase.highMult))
@@ -327,7 +331,7 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
             ]
               .filter(Boolean)
               .join(' ')}
-            style={{ left: `${i * 25}%`, top: DIAMOND_TOP_LARGE }}
+            style={{ left: `${i * STEP_PCT}%`, top: DIAMOND_TOP_LARGE }}
             onPointerDown={(e) => e.stopPropagation()}
             onClick={() => snapTo(i)}
             aria-label={PHASES[i]!.label}
@@ -358,13 +362,13 @@ export function PhasePicker({ index, onChange, className }: PhasePickerProps) {
       </button>
       <button
         type="button"
-        className={['phase-picker-nudge', index === 4 && 'phase-picker-nudge--hidden']
+        className={['phase-picker-nudge', index === LAST && 'phase-picker-nudge--hidden']
           .filter(Boolean)
           .join(' ')}
         style={{ right: 6, top: DIAMOND_TOP_LARGE }}
         onClick={() => snapTo(index + 1)}
         aria-label="Next phase"
-        aria-disabled={index === 4}
+        aria-disabled={index === LAST}
       >
         <CaretRightIcon size={16} weight="bold" />
       </button>

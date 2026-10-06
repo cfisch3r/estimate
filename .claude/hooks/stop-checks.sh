@@ -1,8 +1,8 @@
 #!/bin/sh
 # Stop hook: once per turn, project-wide. Runs lint (oxlint, including the
 # jsx-a11y plugin), typecheck, the FSD architecture scan (Steiger), dead-code
-# detection (knip), and the full test suite with the entities/estimate
-# coverage threshold — in parallel, since none depends on another's output.
+# detection (knip), and the full test suite with the estimate-core
+# (entities/session/model/estimate) coverage threshold — in parallel, since none depends on another's output.
 # Blocks the Stop (forcing another turn) on failure so Claude fixes issues
 # before handing back to the user, rather than only finding out at PR/CI
 # time. See docs/adr/004-feature-sliced-design-architecture.md and

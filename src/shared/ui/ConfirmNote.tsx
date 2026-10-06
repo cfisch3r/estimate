@@ -1,5 +1,6 @@
 import type { HTMLAttributes } from 'react'
 import { CheckCircleIcon } from '@phosphor-icons/react/dist/csr/CheckCircle'
+import './confirm-note.css'
 
 interface ConfirmNoteProps extends HTMLAttributes<HTMLDivElement> {}
 

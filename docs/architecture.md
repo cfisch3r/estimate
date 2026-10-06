@@ -19,7 +19,7 @@ concretely works, how a session is saved/loaded (a real point of tension with th
 "no operated server" phrasing, since ADR-001's constraint is scoped to live sync, not
 storage), styling/design-system approach, hosting, and module structure.
 
-**As-built status.** The initial scaffold, the estimation engine (`entities/estimate`),
+**As-built status.** The initial scaffold, the estimation engine (`entities/session/model/estimate`),
 the Zustand store, the single-user (Manual) screens, the Trystero P2P network layer
 (`entities/session/api`), the Join Session screen, and the participant estimate round
 have all shipped (issues #1–#7), and the entry flow was rebuilt to a mode-selection
@@ -32,7 +32,7 @@ the Live-mode layer — the `entities/session/api` component breakdown, the join
 the estimate round, the connection state machine, and the store fields it added — see
 [concepts/collaboration-mode.md](concepts/collaboration-mode.md); this document keeps the
 decisions and rationale, that one tracks the implementation. Still open: connection-fallback
-UX (#9) and session save/load (`src/persistence/` is still a placeholder — session data is
+UX (#9) and session save/load (not built yet — session data is
 in-memory only; see #10).
 
 ## Confirmed decisions
@@ -44,7 +44,7 @@ in-memory only; see #10).
 - **Estimation unit:** configurable per session (facilitator picks hours/days/weeks), not fixed and not per-item. Resolves an inconsistency between PRD §5's worked example (days) and the prototype's hardcoded "weeks" — neither was a real decision. Requires a `unit` field on `Session` (not currently in PRD §8's data model sketch) and a small dropdown in the Workspace sidebar. The false-precision guard's rounding granularity derives from this field via a lookup (e.g. `{hours: 1, days: 0.5, weeks: 0.5}`, exact values tunable).
 - **Unit selector control:** a native `<select class="input">` in the Workspace sidebar — reuses Nocturne's existing generic input styling, no new component or design mock needed.
 - **Symmetric-range / false-precision nudge styling:** ship using the same plain `.card-meta` muted-caption treatment used elsewhere for inline hints (no distinct "nudge" component exists in Nocturne today). Explicitly logged as a fast-follow design polish item, not blocking MVP build — pragmatic since the guard thresholds themselves are still untuned and likely to change after real usage.
-- **Design system: port Nocturne as-is, no Tailwind migration.** Nocturne's canonical stylesheet (CSS custom properties + global component classes) is the single source of truth for tokens and components, per its own bundled readme; it is ported verbatim to `src/design/nocturne.css` (see `AGENTS.md` — that file stays an unmodified diff against its source; app-specific rules go in their own stylesheet, e.g. `radio-tile.css`, `item-description.css`). Considered and rejected migrating it to Tailwind: the values are hand-tuned/procedurally generated (non-round spacing scale, OKLCH color ramps) and re-expressing them in a second config risks fidelity drift plus an ongoing sync burden against `nocturne.css`, for a benefit (utility-class layout ergonomics) that doesn't clearly apply here since there's no existing Tailwind codebase to align with. Layout glue uses scoped CSS referencing Nocturne's existing `--space-*` variables instead.
+- **Design system: port Nocturne as-is, no Tailwind migration.** Nocturne's canonical stylesheet (CSS custom properties + global component classes) is the single source of truth for tokens and components, per its own bundled readme; it is ported verbatim to `src/design/nocturne.css` (see `AGENTS.md` — that file stays an unmodified diff against its source; app-specific rules go in their own stylesheet, e.g. `radio-tile.css`). Considered and rejected migrating it to Tailwind: the values are hand-tuned/procedurally generated (non-round spacing scale, OKLCH color ramps) and re-expressing them in a second config risks fidelity drift plus an ongoing sync burden against `nocturne.css`, for a benefit (utility-class layout ergonomics) that doesn't clearly apply here since there's no existing Tailwind codebase to align with. Layout glue uses scoped CSS referencing Nocturne's existing `--space-*` variables instead.
 
 ## Recommended stack
 
@@ -53,7 +53,7 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 
 **Tooling: oxlint for linting, not ESLint.** `create-vite`'s current default template ships oxlint (a faster, Rust-based linter) rather than ESLint + typescript-eslint. Functionally equivalent for this project's needs — TypeScript/React rule coverage, no custom rule authoring required — so adopted as scaffolded rather than swapped for the originally-assumed ESLint setup. Prettier still handles formatting (oxlint doesn't format).
 
-**State management: a single reducer/store (Zustand)** rather than scattered `useState`, since WebRTC peer events arrive asynchronously and out of order — the network and persistence layers act as adapters that dispatch into the same store, so Mode A (live) and Mode B (manual) differ only in which adapter is active, not in UI logic.
+**State management: a single reducer/store (Zustand)** rather than scattered `useState`, since WebRTC peer events arrive asynchronously and out of order — the network layer acts as an adapter that dispatches into the same stores, so Mode A (live) and Mode B (manual) differ only in which adapter is active, not in UI logic.
 
 **Hosting: static hosting**, currently IONOS Deploy Now (see [runbook.md](runbook.md)). No backend to provision or pay for — STUN servers and the P2P signaling network (below) are external services we don't operate.
 
@@ -72,9 +72,10 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 (`app/pages/widgets/features/entities/shared`), the full slice mapping, and the
 rationale. In brief, by architectural role rather than layer:
 
-- **The estimation engine** (`entities/estimate/model`, formerly `/calc`) — pure
+- **The estimation engine** (`entities/session/model/estimate`, formerly `/calc`) — pure
   functions: `aggregateEstimates()`, `computeCI90()` (McConnell's formula, PRD §5),
-  bias guards (symmetric-range, false-precision, outlier — PRD §6). Framework-free,
+  bias guards (symmetric-range, false-precision, outlier — PRD §6), and the
+  cone-of-uncertainty guidance rule (`uncertaintyGuidance`, PRD §6.1). Framework-free,
   unit-testable, identical between Mode A and Mode B.
 - **The P2P wire layer** (`entities/session/api`, formerly `/network`) — Trystero
   wrapper: room join/create, typed actions (`submitEstimate`, `syncState`, `announce`,
@@ -82,8 +83,21 @@ rationale. In brief, by architectural role rather than layer:
   round state (ADR-003, #60).
 - **The session stores** (`entities/session/model`, formerly `/state`) — three
   per-concern Zustand stores (ADR-005): `session.ts` (session domain data),
-  `connection.ts` (live-connection state), `round.ts` (round mechanics); network
-  and persistence are adapters dispatching into them.
+  `connection.ts` (live-connection state), `round.ts` (round mechanics); the network
+  layer is an adapter dispatching into them. The slice's public API exports narrowed views
+  of the connection and round stores (`publicStores.ts`) that hide the network-bridge
+  mutators; `NetworkProvider` writes through the internal stores. The stable per-browser
+  `participantId` helper lives in `entities/session/lib`, and `finalResultFor` is the
+  single finalize rule (aggregate the submissions, or fail with a message when there are
+  none). The session policies they and
+  `NetworkProvider` apply are pure modules beside them: `roster.ts` (round membership
+  via `roundMemberIds`, the wire roster, the departed-name prune rule), `snapshot.ts`
+  (building the facilitator's snapshot) and `resend.ts` (whether a participant's
+  submission needs re-sending), plus `item.ts` (`isFinalized`).
+- **Session use cases** (`features/session-lifecycle/model`) — the hooks that compose
+  the three stores with navigation: start single-user / collaborative, join, leave
+  (workspace or live session, including whether leaving needs a confirm click),
+  teardown and reconnect.
 - **Screens** (`pages/*`, formerly `/screens`) — one per PRD §7 screen (ModeSelect,
   Workspace, Join, Participant Estimate View, Summary, History). Built so far:
   ModeSelect, Workspace (single-user path, collaborative session-code strip, and the
@@ -93,26 +107,33 @@ rationale. In brief, by architectural role rather than layer:
   `store.liveRound`). Pages are kept thin: per-state panels, a `model/` read-model hook
   where the store reads are non-trivial, and the shared three-point entry form
   (`ThreePointEstimateForm`, `features/estimate-round`) used by both Workspace and the
-  participant view. The participant submit-and-delivery flow lives in
+  participant view; the same slice owns the single-user `useFinalizeEstimate` use case. The participant submit-and-delivery flow lives in
   `features/submit-estimate`, and `model/useFocusHeadingOnChange` moves focus to the new
   panel's heading when the round view changes.
 - **Design-system primitives** (`shared/ui`, formerly `/components`) — Button, Card,
-  Field, GuardNote, ConfirmNote, Tag, RadioTile, LiveRegion (a persistent
+  Field, GuardNote, ConfirmNote, GroupBox, InfoPopover, NavRow, Tag, RadioTile, BrandMark, Markdown / MarkdownEditor, LiveRegion (a persistent
   `status`/`alert` container for announcements), VisuallyHidden (screen-reader-only
   text) — thin wrappers / compositions over
   Nocturne classes. RadioTile is currently unreferenced (unused since the #34
   mode-select rebuild removed the RadioTile mode picker) but retained as a
   design-system primitive. `Header` moved to `app/` instead — it carries
   screen/mode-aware logic, not a business-agnostic primitive.
-- **CSS** (`src/design/`, unchanged by the FSD migration) — `nocturne.css` (verbatim
-  Nocturne port) + composed-pattern CSS built from its primitives: `radio-tile.css`,
-  `range-bar.css`, `session-sidebar.css`, `phase-picker.css`.
-- **Persistence** (`src/persistence/`, unchanged, still a placeholder) — session
-  save/load (JSON file export/import), CSV export, shareable-report-link encode/decode.
+- **CSS** — `src/design/` holds only the design-system layer: `nocturne.css` (verbatim
+  Nocturne port) and the generic composed patterns built from its primitives
+  (`radio-tile.css`, `markdown.css`). Component-owned styling lives beside its owner and
+  is imported by it: `range-bar.css` in `entities/session/ui/estimate`, `group-box.css`, `info-popover.css`, `nav-row.css` and `confirm-note.css` in `shared/ui` (beside the components that own them), `phase-picker.css` in
+  `features/estimate-round/ui`, `session-sidebar.css` in `widgets/session-sidebar/ui`,
+  `workspace.css` (`.workspace-*` rules only) in `pages/workspace/ui`, `header.css` in `app`.
+- **Persistence** — session save/load (JSON file export/import), CSV export and
+  shareable-report-link encode/decode have no home yet; there is no placeholder
+  directory. Under FSD each lands where its use case belongs: file (de)serialisation of
+  a session as a `features/` slice (a save/load use case) built on `entities/session`,
+  with any generic file/download helper in `shared/lib`, and the validation of loaded
+  data going through `createEstimate()`-style factories like every other adapter.
 
 The estimation engine's isolation as pure, framework-free functions is the single most load-bearing structural decision — PRD §4.2 and ADR-001 both require identical calculation/bias-guard behavior across both modes, and this makes it trivially unit-testable against the PRD §5–6 formulas independent of UI or networking.
 
-**Testing note (ADR-002):** browser-specific behavior — real reload/persistence, real P2P connection handling — is the trigger to add Playwright. The Trystero wire layer has shipped, but its jsdom-testable surface (actions, validation, state machine) doesn't yet trip that trigger — the #7 participant round, #8 facilitator reveal, and #60's `syncState`-only convergence (no separate reveal/roundReset events) all landed entirely in store + component tests. Real WebRTC peer connect/drop and real `/persistence` are what trip it. Scope it to a handful of golden-path smoke tests; keep edge cases in the estimation-engine/store/component tests. See ADR-002's 2026-09-07 update.
+**Testing note (ADR-002):** browser-specific behavior — real reload/persistence, real P2P connection handling — is the trigger to add Playwright. The Trystero wire layer has shipped, but its jsdom-testable surface (actions, validation, state machine) doesn't yet trip that trigger — the #7 participant round, #8 facilitator reveal, and #60's `syncState`-only convergence (no separate reveal/roundReset events) all landed entirely in store + component tests. Real WebRTC peer connect/drop and real file save/load are what trip it. Scope it to a handful of golden-path smoke tests; keep edge cases in the estimation-engine/store/component tests. See ADR-002's 2026-09-07 update.
 
 ## Estimation engine — detailed design
 
@@ -160,9 +181,9 @@ function checkOutlier(estimate: Estimate, allEstimates: Estimate[], thresholdPct
 function checkUncertaintyRange(best: number, worst: number, level: UncertaintyLevel): GuardResult
 ```
 
-`entities/estimate/model/estimate.ts` also exports `validateEstimateValues` — the numeric half of `createEstimate`'s invariant, usable for a live form preview before a participant exists; `createEstimate` runs it after its `participantId` check. It returns a `code` and the affected `fields` alongside the error text, and `features/estimate-round` (`lib/describeEstimateIssue.ts`) turns those into the actionable form messages (naming the numbers and what to change) and marks the offending inputs `aria-invalid` with `aria-describedby` pointing at the message. A problem first appears only after the entry has settled (~600 ms, `lib/useSettledIssue.ts`) or a field loses focus, so typing through an intermediate value doesn't flash it; an entry that is already invalid when the form opens is shown at once, a showing problem updates in place, a resolved one clears at once, and the submit button is never delayed.
+`entities/session/model/estimate/estimate.ts` also exports `validateEstimateValues` — the numeric half of `createEstimate`'s invariant, usable for a live form preview before a participant exists; `createEstimate` runs it after its `participantId` check. It returns a `code` and the affected `fields` alongside the error text, and `features/estimate-round` (`lib/describeEstimateIssue.ts`) turns those into the actionable form messages (naming the numbers and what to change) and marks the offending inputs `aria-invalid` with `aria-describedby` pointing at the message. A problem first appears only after the entry has settled (~600 ms, `model/useSettledIssue.ts`) or a field loses focus, so typing through an intermediate value doesn't flash it; an entry that is already invalid when the form opens is shown at once, a showing problem updates in place, a resolved one clears at once, and the submit button is never delayed.
 
-The PRD §6.1 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`features/estimate-round/ui/PhasePicker.tsx`), local to their own view (`features/estimate-round/lib/usePhaseGuidance.ts`, composed with the rest of the entry form by `ThreePointEstimateForm`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
+The PRD §6.1 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`features/estimate-round/ui/PhasePicker.tsx`), local to their own view (guidance derived inside `features/estimate-round/model/useThreePointDraft.ts`, composed with the rest of the entry form by `ThreePointEstimateForm`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
 
 **Tunable constants, not settled numbers:** the symmetric-range tolerance (proposed 15%) and outlier threshold (proposed: no range overlap, or `likely` deviates >40% of group spread) are UX-tuning parameters PRD leaves vague ("within a tolerance," "far from the group median") — ship as named constants, expect to retune after real sessions rather than treating these as final.
 
@@ -216,5 +237,6 @@ Remaining MVP work, tracked on the EstiMate Roadmap board:
 - **Outlier flag** — the reveal panel does not yet surface `checkOutlier()` on the
   per-participant list; the estimation-engine guard exists but nothing drives a UI flag from it.
 - **#9** — connection-fallback UX for peers that can't establish a direct connection.
-- **Persistence** — `src/persistence/` (session save/load via JSON file, CSV export,
-  shareable report link) is still a placeholder; save/load is tracked as #10.
+- **Persistence** — session save/load via JSON file, CSV export and the shareable
+  report link are not built yet and have no directory (see the Persistence note under
+  the module structure); save/load is tracked as #10.

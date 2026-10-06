@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
-import { ISSUE_SETTLE_MS } from '../lib/useSettledIssue'
+import { ISSUE_SETTLE_MS } from '../model/useSettledIssue'
 import { ThreePointEstimateForm } from './ThreePointEstimateForm'
 
 const info = { openKey: null, open: vi.fn(), close: vi.fn() }
@@ -41,21 +41,6 @@ describe('ThreePointEstimateForm', () => {
     expect(
       screen.queryByText(/Enter best, most likely and worst case/),
     ).not.toBeInTheDocument()
-  })
-
-  it("shows the caller's own error under its own headline while the draft is valid", () => {
-    render(
-      <ThreePointEstimateForm
-        unit="days"
-        initial={{ best: 1, likely: 3, worst: 8 }}
-        info={info}
-        error="Round closed"
-        footer={() => null}
-      />,
-    )
-
-    expect(screen.getByText("Couldn't submit")).toBeInTheDocument()
-    expect(screen.getByText('Round closed')).toBeInTheDocument()
   })
 
   it('explains an invalid entry and marks only the offending inputs', async () => {
@@ -108,7 +93,6 @@ describe('ThreePointEstimateForm', () => {
         unit="days"
         initial={null}
         info={info}
-        error="Round closed"
         footer={() => null}
       />,
     )
@@ -121,20 +105,6 @@ describe('ThreePointEstimateForm', () => {
       /Best case \(8 days\) is higher than Most likely/,
     )
     expect(nudge.closest('[role="status"]')).not.toBeNull()
-  })
-
-  it("announces the caller's error as an alert", () => {
-    render(
-      <ThreePointEstimateForm
-        unit="days"
-        initial={{ best: 1, likely: 3, worst: 8 }}
-        info={info}
-        error="Round closed"
-        footer={() => null}
-      />,
-    )
-
-    expect(screen.getByText('Round closed').closest('[role="alert"]')).not.toBeNull()
   })
 
   it('links the rounding note to its input', async () => {

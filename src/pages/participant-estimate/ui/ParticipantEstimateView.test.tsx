@@ -5,12 +5,18 @@ import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
 import { ParticipantEstimateView } from './ParticipantEstimateView'
 import { RECONNECT_GRACE_MS } from '../../../shared/lib/useConnectionPhase'
-import { createEstimate, type Estimate } from '../../../entities/estimate'
+import { createEstimate, type Estimate } from '../../../entities/session'
 import {
   useSessionStore,
   useConnectionStore,
   useRoundStore,
 } from '../../../entities/session'
+
+function mine(best: number, likely: number, worst: number): Estimate {
+  const result = createEstimate({ participantId: 'me-123', best, likely, worst })
+  if (!result.ok) throw new Error(result.error)
+  return result.value
+}
 
 const { disconnectMock, sendEstimateMock, navigateMock } = vi.hoisted(() => ({
   disconnectMock: vi.fn(),
@@ -268,7 +274,7 @@ describe('ParticipantEstimateView', () => {
       0,
     )
     expect(screen.getByText(/Waiting for the facilitator to reveal/)).toBeInTheDocument()
-    expect(useRoundStore.getState().liveRound?.mySubmission).toEqual({
+    expect(useRoundStore.getState().liveRound?.mySubmission).toMatchObject({
       best: 3,
       likely: 5,
       worst: 8,
@@ -414,7 +420,7 @@ describe('ParticipantEstimateView', () => {
         revealed: false,
         round: 0,
         roster: [{ participantId: 'me-123', submitted: true, connected: true }],
-        mySubmission: { best: 2, likely: 4, worst: 8 },
+        mySubmission: mine(2, 4, 8),
       },
     })
     renderView()
@@ -437,7 +443,7 @@ describe('ParticipantEstimateView', () => {
           { participantId: 'me-123', submitted: true, connected: true },
           { participantId: 'p2', submitted: true, connected: true },
         ],
-        mySubmission: { best: 3, likely: 5, worst: 8 },
+        mySubmission: mine(3, 5, 8),
       },
     })
     renderView()
@@ -465,7 +471,7 @@ describe('ParticipantEstimateView', () => {
         revealed: true,
         round: 0,
         roster: [],
-        mySubmission: { best: 3, likely: 5, worst: 8 },
+        mySubmission: mine(3, 5, 8),
       },
     })
     renderView()
@@ -490,7 +496,7 @@ describe('ParticipantEstimateView', () => {
         revealed: true,
         round: 0,
         roster: [],
-        mySubmission: { best: 3, likely: 5, worst: 8 },
+        mySubmission: mine(3, 5, 8),
       },
     })
     renderView()
@@ -509,7 +515,7 @@ describe('ParticipantEstimateView', () => {
       roster,
       mySubmission: null,
     }
-    const waiting = { ...estimating, mySubmission: { best: 2, likely: 4, worst: 8 } }
+    const waiting = { ...estimating, mySubmission: mine(2, 4, 8) }
     const revealed = {
       ...waiting,
       revealed: true,

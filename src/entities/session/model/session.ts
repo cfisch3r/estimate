@@ -1,5 +1,6 @@
 import { create } from 'zustand'
-import type { EstimationUnit } from '../../estimate'
+import type { EstimationUnit } from './estimate'
+import { isFinalized } from './item'
 import type { Item } from './types'
 
 interface SessionStore {
@@ -10,6 +11,10 @@ interface SessionStore {
 
   setSessionName: (name: string) => void
   setUnit: (unit: EstimationUnit) => void
+  /** Back to the default unit. A participant only ever inherits its unit from
+   *  the facilitator's snapshot (see round.ts's applySyncState), so leaving a
+   *  live session resets it, lest it leak into the next workspace. */
+  resetUnit: () => void
   addItem: (title: string, description?: string) => void
   setItemTitle: (id: string, title: string) => void
   removeItem: (id: string) => void
@@ -17,39 +22,33 @@ interface SessionStore {
   /** Passing null clears the selection (e.g. after finalizing the last item
    *  that still needed one), showing the "all items finalized" empty state. */
   selectItem: (id: string | null) => void
+  /** Select the first item that still needs an estimate (null if none). */
+  selectFirstPending: () => void
   setItemNotes: (id: string, notes: string) => void
   setItemDescription: (id: string, description: string) => void
-  /** Merge a round outcome into item `id`. Escape hatch for
-   *  `entities/session/model/round.ts` (a same-slice file, not a cross-slice
-   *  caller) to record round results onto an item without this store
-   *  needing to know about round mechanics — see ADR-005, Option D. Scoped
-   *  to round-owned fields only, so it can't be used to bypass `setItemTitle`/
-   *  `setItemNotes`/`setItemDescription`'s validation of the content fields
-   *  they own. */
-  patchItem: (
-    id: string,
-    patch: Partial<Pick<Item, 'finalResult' | 'revealed' | 'round' | 'submissions'>>,
-  ) => void
   /** Reset back to a blank workspace: no items, no session name, no
    *  selection. Composed with the other two stores' own leave-resets by
    *  `useLeaveWorkspace` (`features/session-lifecycle`) — see ADR-005. */
   clearSession: () => void
 }
 
-export function firstPendingItemId(items: Item[], excludeId?: string): string | null {
-  const pending = items.find((item) => item.id !== excludeId && item.finalResult === null)
+const DEFAULT_UNIT: EstimationUnit = 'days'
+
+function firstPendingItemId(items: Item[]): string | null {
+  const pending = items.find((item) => !isFinalized(item))
   return pending ? pending.id : null
 }
 
 export const useSessionStore = create<SessionStore>((set) => ({
   sessionName: '',
-  unit: 'days',
+  unit: DEFAULT_UNIT,
   items: [],
   activeItemId: null,
 
   setSessionName: (name) => set({ sessionName: name }),
 
   setUnit: (unit) => set({ unit }),
+  resetUnit: () => set({ unit: DEFAULT_UNIT }),
 
   addItem: (title, description = '') => {
     const trimmed = title.trim()
@@ -103,6 +102,8 @@ export const useSessionStore = create<SessionStore>((set) => ({
     }),
 
   selectItem: (id) => set({ activeItemId: id }),
+  selectFirstPending: () =>
+    set((state) => ({ activeItemId: firstPendingItemId(state.items) })),
 
   setItemNotes: (id, notes) =>
     set((state) => ({
@@ -116,10 +117,19 @@ export const useSessionStore = create<SessionStore>((set) => ({
       ),
     })),
 
-  patchItem: (id, patch) =>
-    set((state) => ({
-      items: state.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
-    })),
-
   clearSession: () => set({ items: [], sessionName: '', activeItemId: null }),
 }))
+
+/** Merge a round outcome into item `id`. Module-level (not a store action) and
+ *  consumed only by `round.ts`, so round mechanics stay out of this store's
+ *  interface — see ADR-005, Option D. Scoped to round-owned fields, so it can't
+ *  bypass `setItemTitle`/`setItemNotes`/`setItemDescription`'s validation of the
+ *  content fields they own. */
+export function patchItem(
+  id: string,
+  patch: Partial<Pick<Item, 'finalResult' | 'revealed' | 'round' | 'submissions'>>,
+): void {
+  useSessionStore.setState((state) => ({
+    items: state.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
+  }))
+}

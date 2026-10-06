@@ -6,7 +6,7 @@ import { MarkdownToolbar } from './MarkdownToolbar'
 
 /** MarkdownToolbar is stateless — it mutates whatever value/onChange it's
  *  given — so a small host wires it to a real textarea + ref the way
- *  Workspace's DescriptionField does. */
+ *  Workspace's MarkdownEditor does. */
 function Host({ initial = '' }: { initial?: string }) {
   const [value, setValue] = useState(initial)
   const textareaRef = useRef<HTMLTextAreaElement>(null)

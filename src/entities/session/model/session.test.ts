@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { useSessionStore } from './session'
+import { aggregateEstimates, createEstimate } from './estimate'
+import { patchItem, useSessionStore } from './session'
 
 function resetStore() {
   useSessionStore.setState({
@@ -92,7 +93,7 @@ describe('removeItem', () => {
 
 describe('patchItem', () => {
   it('merges the patch into only the targeted item', () => {
-    const { addItem, patchItem } = useSessionStore.getState()
+    const { addItem } = useSessionStore.getState()
     addItem('A')
     addItem('B')
     const [first, second] = useSessionStore.getState().items
@@ -105,6 +106,36 @@ describe('patchItem', () => {
       revealed: second!.revealed,
       round: second!.round,
     })
+  })
+})
+
+describe('selectFirstPending', () => {
+  it('selects the first item that has no final result yet', () => {
+    const { addItem } = useSessionStore.getState()
+    addItem('A')
+    addItem('B')
+    const [first, second] = useSessionStore.getState().items
+    const estimate = createEstimate({ participantId: 'p', best: 1, likely: 2, worst: 3 })
+    if (!estimate.ok) throw new Error(estimate.error)
+    patchItem(first!.id, { finalResult: aggregateEstimates([estimate.value]) })
+
+    useSessionStore.getState().selectFirstPending()
+
+    expect(useSessionStore.getState().activeItemId).toBe(second!.id)
+  })
+
+  it('clears the selection when there are no items', () => {
+    useSessionStore.getState().selectItem('stale')
+    useSessionStore.getState().selectFirstPending()
+    expect(useSessionStore.getState().activeItemId).toBeNull()
+  })
+})
+
+describe('resetUnit', () => {
+  it('returns the unit to the default', () => {
+    useSessionStore.getState().setUnit('weeks')
+    useSessionStore.getState().resetUnit()
+    expect(useSessionStore.getState().unit).toBe('days')
   })
 })
 

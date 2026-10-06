@@ -5,8 +5,9 @@ import type { ConnectionState } from './connection'
 import { NetworkProvider } from './NetworkProvider'
 import { useNetworkSession } from './useNetworkSession'
 import type { NetworkSessionApi } from './networkSessionContext'
-import { createEstimate, type EstimationUnit } from '../../estimate'
+import { createEstimate, type EstimationUnit } from '../model/estimate'
 import { useSessionStore } from '../model/session'
+import { estimateOf } from '../model/testFixtures'
 import { useConnectionStore } from '../model/connection'
 import { useRoundStore } from '../model/round'
 import type {
@@ -809,7 +810,8 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       await Promise.resolve()
     })
-    act(() => useRoundStore.getState().submitEstimate(1, 2, 3))
+    const mine = estimateOf('p-self')
+    act(() => useRoundStore.getState().submitEstimate(mine))
     fakeSession.sendEstimate.mockClear()
 
     await act(async () => {
@@ -825,12 +827,9 @@ describe('useNetworkSession', () => {
       await Promise.resolve()
     })
 
-    expect(fakeSession.sendEstimate).toHaveBeenCalledWith(
-      'i1',
-      expect.objectContaining({ participantId: 'p-self', best: 1, likely: 2, worst: 3 }),
-      0,
-      'peer-fac',
-    )
+    // The locally stored, already-validated estimate goes out as-is.
+    expect(fakeSession.sendEstimate).toHaveBeenCalledTimes(1)
+    expect(fakeSession.sendEstimate).toHaveBeenCalledWith('i1', mine, 0, 'peer-fac')
   })
 
   it('does not resend when the roster already shows this participant as submitted', async () => {
@@ -861,7 +860,7 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       await Promise.resolve()
     })
-    act(() => useRoundStore.getState().submitEstimate(1, 2, 3))
+    act(() => useRoundStore.getState().submitEstimate(estimateOf('p1')))
     fakeSession.sendEstimate.mockClear()
 
     await act(async () => {
@@ -908,7 +907,7 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       await Promise.resolve()
     })
-    act(() => useRoundStore.getState().submitEstimate(1, 2, 3))
+    act(() => useRoundStore.getState().submitEstimate(estimateOf('p1')))
     fakeSession.sendEstimate.mockClear()
     // First resend never settles within this test, so a second snapshot
     // arriving before it does must not fire a duplicate.

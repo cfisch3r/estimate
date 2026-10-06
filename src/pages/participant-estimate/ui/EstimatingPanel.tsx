@@ -1,7 +1,7 @@
 import { Card } from '../../../shared/ui'
-import type { EstimationUnit } from '../../../entities/estimate'
+import type { EstimationUnit } from '../../../entities/session'
 import type { LiveRound } from '../../../entities/session'
-import type { SubmitResult } from '../../../features/submit-estimate'
+import type { ActionResult } from '../../../entities/session'
 import { EstimateForm } from './EstimateForm'
 import { RoundCardHeader } from './RoundCardHeader'
 
@@ -9,7 +9,7 @@ interface EstimatingPanelProps {
   round: LiveRound
   unit: EstimationUnit
   kicker: string
-  onSubmit: (best: number, likely: number, worst: number) => SubmitResult
+  onSubmit: (best: number, likely: number, worst: number) => ActionResult
 }
 
 export function EstimatingPanel({ round, unit, kicker, onSubmit }: EstimatingPanelProps) {

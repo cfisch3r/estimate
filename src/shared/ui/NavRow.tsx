@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { CaretLeftIcon } from '@phosphor-icons/react/dist/csr/CaretLeft'
 import { Button } from './Button'
+import './nav-row.css'
 
 interface NavRowProps {
   isFirst: boolean
@@ -13,7 +14,7 @@ interface NavRowProps {
  *  the primary button (passed as `children`) does the finalize/advance. */
 export function NavRow({ isFirst, onNavigatePrev, children }: NavRowProps) {
   return (
-    <div className="workspace-navrow">
+    <div className="nav-row">
       <Button
         icon
         variant="secondary"

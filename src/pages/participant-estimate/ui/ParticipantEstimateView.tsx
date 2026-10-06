@@ -1,7 +1,6 @@
 import { Button, LiveRegion, VisuallyHidden } from '../../../shared/ui'
-import { useNetworkSession } from '../../../entities/session'
 import { useSubmitEstimate } from '../../../features/submit-estimate'
-import { useLeaveLiveSession } from '../../../features/session-lifecycle'
+import { useLeaveLiveSession, useReconnect } from '../../../features/session-lifecycle'
 import { useFocusHeadingOnChange } from '../model/useFocusHeadingOnChange'
 import { useParticipantRound } from '../model/useParticipantRound'
 import { useRoundAnnouncement } from '../model/useRoundAnnouncement'
@@ -13,9 +12,9 @@ import { WaitingPanel } from './WaitingPanel'
 
 export function ParticipantEstimateView() {
   const round = useParticipantRound()
-  const { sessionId, kicker, unit, connectionPhase } = round
+  const { kicker, unit, connectionPhase } = round
   const { submit, deliveryState } = useSubmitEstimate()
-  const { connect } = useNetworkSession()
+  const { reconnect, canReconnect } = useReconnect()
   const leave = useLeaveLiveSession()
   const panelRef = useFocusHeadingOnChange(
     `${round.view}:${round.liveRound?.item.id ?? ''}`,
@@ -48,6 +47,7 @@ export function ParticipantEstimateView() {
       panel = (
         <WaitingPanel
           round={round.liveRound}
+          mySubmission={round.mySubmission}
           unit={unit}
           kicker={kicker}
           onSubmit={submit}
@@ -91,8 +91,8 @@ export function ParticipantEstimateView() {
        *  yet. Only once that window passes is this a problem worth raising. */}
       <ConnectionNotices
         connectionPhase={connectionPhase}
-        onReconnect={() => sessionId && connect(sessionId)}
-        canReconnect={Boolean(sessionId)}
+        onReconnect={reconnect}
+        canReconnect={canReconnect}
       />
 
       <Button variant="ghost" onClick={leave}>

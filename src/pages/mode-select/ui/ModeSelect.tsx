@@ -1,14 +1,13 @@
 import { UserIcon } from '@phosphor-icons/react/dist/csr/User'
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree'
 import { SignInIcon } from '@phosphor-icons/react/dist/csr/SignIn'
-import { CardMeta, Tag } from '../../../shared/ui'
+import { BrandMark, CardMeta, Tag } from '../../../shared/ui'
 import { useNavigate } from 'react-router'
 import { ROUTES } from '../../../shared/lib/routes'
 import {
   useStartSingleUser,
   useStartCollaborative,
 } from '../../../features/session-lifecycle'
-import { BrandMark } from './BrandMark'
 import { ModeRow } from './ModeRow'
 
 export function ModeSelect() {
@@ -38,7 +37,7 @@ export function ModeSelect() {
           gap: 'var(--space-4)',
         }}
       >
-        <BrandMark />
+        <BrandMark width={46} height={34} />
         <div style={{ textAlign: 'center' }}>
           <h1 style={{ margin: 0, fontSize: 32 }}>EstiMate</h1>
           <p className="text-muted" style={{ margin: '8px 0 0', fontSize: 15 }}>

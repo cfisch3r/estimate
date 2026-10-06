@@ -62,6 +62,17 @@ inconsistently), with `status` for progress and `alert` only for failures that n
 action; `useFocusHeadingOnChange` hands focus to the new panel's heading when a view
 replaces the control that had it.
 
+*Later review fixes (2026-10):* `MarkdownEditor`, `DeliveryStatus` and the
+`LiveFacilitatorPanel` states each gained a jest-axe scan. Specific judgment calls
+that landed with them:
+
+| Pattern | Where |
+|---|---|
+| Focus returns to the Participants label when a revealed round is reopened or retried (the control that had focus unmounts) | `LiveFacilitatorPanel` |
+| The armed Reopen confirmation prompt is announced through a `LiveRegion` | `FinalizedFooter` |
+| `aria-pressed` on the Write / Preview toggle buttons | `MarkdownEditor` |
+| `aria-current` on the active row; the decorative marker is `aria-hidden` | `SessionSidebar` |
+
 ## Rationale
 
 - Mirroring the Steiger/oxlint + `architecture-review` split keeps the

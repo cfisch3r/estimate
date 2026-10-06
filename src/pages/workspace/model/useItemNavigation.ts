@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router'
 import { ROUTES } from '../../../shared/lib/routes'
-import { useSessionStore } from '../../../entities/session'
+import { useSessionStore, isFinalized } from '../../../entities/session'
 
 /** The workspace's active-item read-model plus the prev / advance moves between
  *  items. Both moves go to whichever item is adjacent in the sidebar's list order
@@ -18,8 +18,7 @@ export function useItemNavigation() {
   const activeItem = activeIndex === -1 ? null : items[activeIndex]!
   const isFirst = activeIndex <= 0
   const isLast = activeIndex === items.length - 1
-  const allFinalized =
-    items.length > 0 && items.every((item) => item.finalResult !== null)
+  const allFinalized = items.length > 0 && items.every(isFinalized)
 
   function goPrev() {
     if (activeIndex <= 0) return
@@ -33,7 +32,7 @@ export function useItemNavigation() {
       // *other* item's finalResult already reflects its pre-click state, so
       // this check doesn't need a fresh read from the store.
       const allFinalizedNow = items.every(
-        (item, idx) => idx === activeIndex || item.finalResult !== null,
+        (item, idx) => idx === activeIndex || isFinalized(item),
       )
       if (allFinalizedNow) {
         // Nothing left to work on — clear the selection so returning to the

@@ -8,8 +8,10 @@
 > `src/network/`) are as they were when this ADR and its 2026-09-07 update were written.
 > The `src/` tree was since reorganized to Feature-Sliced Design — see
 > [ADR-004](004-feature-sliced-design-architecture.md) for current locations
-> (`entities/estimate/model`, `entities/session/model`, `entities/session/api`). This
-> ADR's actual decision (defer Playwright) is unaffected.
+> (`entities/session/model/estimate`, `entities/session/model`, `entities/session/api`). This
+> ADR's actual decision (defer Playwright) is unaffected. `src/persistence/` (a `.gitkeep`
+> stub when this was written) has since been removed: save/load has no directory yet (see
+> [architecture.md](../architecture.md)), and `src/network/` became `entities/session/api`.
 
 ## Context
 

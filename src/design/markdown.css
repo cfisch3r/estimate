@@ -196,8 +196,8 @@
   border-bottom: 1px solid var(--color-divider);
 }
 
-/* Description textarea: grows with content (see DescriptionField's autosize
-   effect in Workspace.tsx) instead of the default drag handle, up to the
+/* Description textarea: grows with content (see MarkdownEditor's autosize
+   effect in shared/ui/MarkdownEditor.tsx) instead of the default drag handle, up to the
    same shared cap, then scrolls like the rendered views above. The element
    selector matches nocturne.css's `textarea.input` specificity so `resize:
    none` actually overrides that rule's `resize: vertical`. */

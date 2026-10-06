@@ -1,0 +1,69 @@
+/* Composed from Nocturne tokens for the redesigned Workspace screens: the merged
+   session card and its top bar / strip / body grid. Only rules for markup owned
+   by pages/workspace belong here; shared components (GroupBox, InfoPopover,
+   NavRow, ConfirmNote) carry their own stylesheet in shared/ui. Kept separate so
+   nocturne.css stays a verbatim, unmodified port. */
+
+.workspace-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.workspace-topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.workspace-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-6);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.workspace-body {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  align-items: stretch;
+}
+
+.workspace-sidebar-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  border-right: 1px solid var(--color-divider);
+  min-width: 0;
+}
+
+.workspace-detail-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  min-width: 0;
+}
+
+.workspace-empty-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+}
+
+@media (max-width: 720px) {
+  .workspace-body {
+    grid-template-columns: 1fr;
+  }
+  .workspace-sidebar-col {
+    border-right: none;
+    border-bottom: 1px solid var(--color-divider);
+  }
+}

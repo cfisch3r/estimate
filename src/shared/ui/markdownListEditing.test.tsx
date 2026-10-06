@@ -5,7 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { continueListOnEnter, indentListLine } from './markdownListEditing'
 
 /** A minimal host wiring the two handlers to a real textarea the way
- *  Workspace's DescriptionField does, so the tests exercise real
+ *  Workspace's MarkdownEditor does, so the tests exercise real
  *  selectionStart/selectionEnd and keydown behavior rather than calling the
  *  pure functions with hand-built fixtures. */
 function Host({ initial = '' }: { initial?: string }) {

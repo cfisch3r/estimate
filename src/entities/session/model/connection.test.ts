@@ -25,21 +25,6 @@ function resetStore() {
 
 beforeEach(resetStore)
 
-describe('startSingleUser', () => {
-  it('leaves nothing selected when there are no items', () => {
-    useConnectionStore.getState().startSingleUser()
-    expect(useSessionStore.getState().activeItemId).toBeNull()
-  })
-
-  it('selects the first pending item when items already exist', () => {
-    useSessionStore.getState().addItem('First item')
-    useSessionStore.getState().addItem('Second item')
-    useConnectionStore.getState().startSingleUser()
-    const state = useSessionStore.getState()
-    expect(state.activeItemId).toBe(state.items[0]?.id)
-  })
-})
-
 describe('startCollaborative', () => {
   it('enters a live facilitator session with no items yet', () => {
     useConnectionStore.getState().startCollaborative('K7F9Q2')
@@ -51,15 +36,14 @@ describe('startCollaborative', () => {
       sessionId: 'K7F9Q2',
       connectionStatus: 'connecting',
     })
-    expect(useSessionStore.getState().activeItemId).toBeNull()
   })
 
-  it('selects the first pending item when items already exist', () => {
+  it('leaves the item selection to the session store', () => {
     useSessionStore.getState().addItem('First item')
+    useSessionStore.getState().selectItem(null)
     useConnectionStore.getState().startCollaborative('K7F9Q2')
 
-    const session = useSessionStore.getState()
-    expect(session.activeItemId).toBe(session.items[0]?.id)
+    expect(useSessionStore.getState().activeItemId).toBeNull()
   })
 
   it("seeds the facilitator's own display name", () => {
@@ -114,11 +98,10 @@ describe('joinLiveSession', () => {
 })
 
 describe('leaveLiveSession', () => {
-  it('resets every live field, including the unit inherited from a facilitator snapshot', () => {
+  it('resets every live field', () => {
     useConnectionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
     useConnectionStore.getState().setConnectionStatus('connected')
     useConnectionStore.getState().setPeerCount(3)
-    useSessionStore.setState({ unit: 'weeks' })
 
     useConnectionStore.getState().leaveLiveSession()
 
@@ -131,8 +114,6 @@ describe('leaveLiveSession', () => {
       connectionStatus: 'idle',
       peerCount: 0,
     })
-    // a unit inherited from the facilitator must not leak past leave
-    expect(useSessionStore.getState().unit).toBe('days')
   })
 
   it('clears participantNames on leave', () => {

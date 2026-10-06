@@ -1,56 +1,6 @@
-import {
-  createEstimate,
-  isEstimationUnit,
-  type Estimate,
-  type EstimationUnit,
-  type RawEstimateInput,
-} from '../../estimate'
-
-/** The subset of an item a participant needs to render the read-only detail —
- *  broadcast by the facilitator so participants never hold the full item list. */
-interface SnapshotItem {
-  id: string
-  title: string
-  description: string
-}
-
-/** A values-free roster row for the current round (ADR-003, "Single owner").
- *  One structure, two renderings: the facilitator's participant panel and the
- *  participant's "N of M submitted" line both read this instead of raw
- *  submission values, which never reach a participant before reveal. */
-export interface RosterEntry {
-  participantId: string
-  submitted: boolean
-  connected: boolean
-}
-
-export interface SessionSnapshot {
-  currentItem: SnapshotItem | null
-  /** The facilitator's session name, so a participant's kicker can show "Sprint 42
-   *  estimates (7F QK 2M)" instead of the join code alone. Tolerated as missing
-   *  (defaults to '') the same way `unit`/`revealed` are, for an older peer. */
-  sessionName: string
-  /** The unit the facilitator is estimating in, so participant forms and bars
-   *  label values with the session's unit rather than their local default. */
-  unit: EstimationUnit
-  /** Whether the facilitator has revealed the current round. Lets a peer that
-   *  joins or reconnects mid-reveal land straight on the revealed view instead
-   *  of a dead estimate form. */
-  revealed: boolean
-  /** The active item's round number, bumped by Retry. Lets a participant that
-   *  reconnects after missing both a Reveal and a Retry tell the rounds apart
-   *  from the snapshot alone (ADR-003, "Versioned rounds"). */
-  round: number
-  /** Who's in and who has submitted this round, with no estimate values.
-   *  Drives a participant's "N of M submitted" line and the facilitator's
-   *  panel alike. */
-  roster: RosterEntry[]
-  /** The frozen submission set, populated only once `revealed` is true —
-   *  pre-reveal this stays empty, since values must not reach participants
-   *  before the reveal (ADR-003). */
-  submissions: RawEstimateInput[]
-  finalizedItemIds: string[]
-}
+import type { Estimate } from '../model/estimate'
+import { parseWireEstimate, parseWireUnit } from './wireParse'
+import type { RosterEntry, SessionSnapshot, SnapshotItem } from '../model/types'
 
 /** A participant's estimate plus the item it belongs to. The item id keeps a
  *  straggler (or peer-join re-broadcast) submission for a just-finalized item
@@ -151,26 +101,14 @@ function createSubscribable<T extends unknown[]>() {
   }
 }
 
-/** createEstimate() assumes a well-shaped RawEstimateInput (its existing callers all
- *  build one from form fields) and throws on null/missing fields rather than
- *  returning a Result. Peer messages are untrusted, so this boundary must not let
- *  that throw escape — it's caught and treated the same as a validation failure. */
-function safeCreateEstimate(input: unknown): ReturnType<typeof createEstimate> {
-  try {
-    return createEstimate(input as RawEstimateInput)
-  } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : String(error) }
-  }
-}
-
-/** Every submission is validated through createEstimate() before being kept —
+/** Every submission is validated through parseWireEstimate() before being kept —
  *  this is the "M5 must call createEstimate() on every incoming peer message"
  *  boundary check from the architecture doc, applied to snapshot payloads too. */
-function sanitizeSubmissions(submissions: unknown): RawEstimateInput[] {
+function sanitizeSubmissions(submissions: unknown): Estimate[] {
   if (!Array.isArray(submissions)) return []
-  const sanitized: RawEstimateInput[] = []
+  const sanitized: Estimate[] = []
   for (const submission of submissions) {
-    const result = safeCreateEstimate(submission)
+    const result = parseWireEstimate(submission)
     if (result.ok) {
       sanitized.push(result.value)
     } else {
@@ -237,7 +175,7 @@ function isValidSnapshotShape(data: unknown): data is SessionSnapshot {
 }
 
 /** The inbound estimate message: `{ itemId, estimate }`. The estimate itself is
- *  re-validated separately through `safeCreateEstimate`; this only checks the
+ *  re-validated separately through `parseWireEstimate`; this only checks the
  *  envelope. */
 function hasEstimateEnvelope(
   data: unknown,
@@ -280,7 +218,7 @@ function parseSnapshot(data: unknown): SessionSnapshot | null {
     // Tolerate a missing/unknown unit (e.g. a facilitator on an older build
     // mid-deploy) rather than dropping the whole snapshot — fall back to the
     // store default so the participant still gets the round.
-    unit: isEstimationUnit(data.unit) ? data.unit : 'days',
+    unit: parseWireUnit(data.unit, 'days'),
     // Same tolerance for `revealed` (older builds omit it): default to false.
     revealed: data.revealed === true,
     // Same tolerance for `round` (older builds omit it): default to 0.
@@ -310,7 +248,7 @@ export function createTypedActions(room: ActionRoom): TypedActions {
 
   submitEstimateAction.onRequest = (data, { peerId }) => {
     const { itemId, payload, round } = unwrapEstimateMessage(data)
-    const result = safeCreateEstimate(payload)
+    const result = parseWireEstimate(payload)
     if (!result.ok) {
       // Thrown from onRequest, this becomes the sender's rejection (a generic/
       // "rejected" kind) rather than a silently dropped message — our own

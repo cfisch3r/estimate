@@ -1,4 +1,4 @@
-export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
+import type { ConnectionStatus } from '../model/types'
 
 export interface ConnectionState {
   status: ConnectionStatus

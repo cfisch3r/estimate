@@ -1,25 +1,33 @@
 import { useEffect, useRef, useState } from 'react'
 import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
-import { Button, Card, GuardNote, LiveRegion, VisuallyHidden } from '../../../shared/ui'
+import { Button, Card, LiveRegion, VisuallyHidden } from '../../../shared/ui'
 import type { ConnectionPhase } from '../../../shared/lib/useConnectionPhase'
-import { EstimateTriple, type EstimationUnit } from '../../../entities/estimate'
+import {
+  EstimateTriple,
+  type ActionResult,
+  type EstimateValues,
+  type EstimationUnit,
+} from '../../../entities/session'
 import type { LiveRound } from '../../../entities/session'
-import type { DeliveryState, SubmitResult } from '../../../features/submit-estimate'
+import { DeliveryStatus, type DeliveryState } from '../../../features/submit-estimate'
 import { EstimateForm } from './EstimateForm'
 import { RoundCardHeader } from './RoundCardHeader'
 
 interface WaitingPanelProps {
   round: LiveRound
+  /** This participant's own submitted values — the panel only shows once they exist. */
+  mySubmission: EstimateValues
   unit: EstimationUnit
   kicker: string
-  onSubmit: (best: number, likely: number, worst: number) => SubmitResult
+  onSubmit: (best: number, likely: number, worst: number) => ActionResult
   deliveryState: DeliveryState
   connectionPhase: ConnectionPhase
 }
 
 export function WaitingPanel({
   round,
+  mySubmission: mine,
   unit,
   kicker,
   onSubmit,
@@ -30,7 +38,6 @@ export function WaitingPanel({
   const [updated, setUpdated] = useState(false)
   const reviseRef = useRef<HTMLButtonElement>(null)
   const wasEditing = useRef(false)
-  const mine = round.mySubmission!
 
   // Revise unmounts the button that had focus and Update unmounts the form: the
   // form focuses its own first input on mount, and Revise gets focus back here.
@@ -107,32 +114,9 @@ export function WaitingPanel({
           {/* When the facilitator link is down, that banner (rendered by the
            *  parent) already explains why nothing is arriving — this must not
            *  stack a second alarm on top of it. */}
-          <LiveRegion>
-            {connectionPhase !== 'lost' && deliveryState === 'sending' && (
-              <div
-                className="card-meta"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 'var(--space-2)',
-                }}
-              >
-                <CircleNotchIcon size={16} weight="bold" className="spin" />
-                Sending your estimate…
-              </div>
-            )}
-          </LiveRegion>
+          <DeliveryStatus state={deliveryState} suppressed={connectionPhase === 'lost'} />
           <LiveRegion>
             <VisuallyHidden>{updated ? 'Estimate updated.' : ''}</VisuallyHidden>
-          </LiveRegion>
-          <LiveRegion>
-            {connectionPhase !== 'lost' && deliveryState === 'not-delivered' && (
-              <GuardNote variant="banner" headline="Not delivered yet">
-                Your estimate hasn&apos;t reached the facilitator. It will retry
-                automatically.
-              </GuardNote>
-            )}
           </LiveRegion>
         </>
       )}

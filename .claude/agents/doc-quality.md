@@ -35,7 +35,7 @@ Use `git diff` / `git diff main...HEAD` as appropriate to see changes. Do **not*
 
 - Commands / scripts in `README.md` or `AGENTS.md` that don't match `package.json`.
 - Described module structure, file paths, or APIs that don't match `src/`.
-- Behavior described as working when the code isn't there yet (cross-check ADR-002's note about `src/network/` and `src/persistence/` being stubs).
+- Behavior described as working when the code isn't there yet (cross-check ADR-002's note about `src/network/` and `src/persistence/`, which no longer exist as directories).
 - Config / setup steps that don't match actual config files.
 
 **Cross-reference integrity (Medium)**:

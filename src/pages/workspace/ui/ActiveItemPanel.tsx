@@ -1,11 +1,7 @@
 import { Button, NavRow } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
-import {
-  ItemDetailShell,
-  type FinalizeResult,
-  type Item,
-} from '../../../entities/session'
-import type { EstimationUnit } from '../../../entities/estimate'
+import { ItemDetailShell, isFinalized, type Item } from '../../../entities/session'
+import type { ActionResult, EstimationUnit } from '../../../entities/session'
 import { ThreePointEstimateForm } from '../../../features/estimate-round'
 
 interface ActiveItemPanelProps {
@@ -13,7 +9,7 @@ interface ActiveItemPanelProps {
   unit: EstimationUnit
   isFirst: boolean
   isLast: boolean
-  onFinalize: (id: string, best: number, likely: number, worst: number) => FinalizeResult
+  onFinalize: (id: string, best: number, likely: number, worst: number) => ActionResult
   onAdvance: () => void
   onNavigatePrev: () => void
 }
@@ -27,7 +23,7 @@ export function ActiveItemPanel({
   onAdvance,
   onNavigatePrev,
 }: ActiveItemPanelProps) {
-  const isEdit = item.finalResult !== null
+  const isEdit = isFinalized(item)
   const info = useSingleInfoPopover<'description' | 'estimate' | 'phase' | 'range'>()
 
   const primaryLabel = isEdit
@@ -48,7 +44,7 @@ export function ActiveItemPanel({
       <ThreePointEstimateForm
         unit={unit}
         initial={
-          item.finalResult
+          isFinalized(item)
             ? {
                 best: item.finalResult.min,
                 likely: item.finalResult.expected,

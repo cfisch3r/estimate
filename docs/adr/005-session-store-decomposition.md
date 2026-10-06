@@ -4,6 +4,8 @@
 **Date:** 2026-09-29
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [006-router-adoption.md](006-router-adoption.md), issue #111
 
+> **Update 2026-10-05:** the round store no longer validates or aggregates. `finalizeLiveItem` was removed and `finalizeItem(id, result)` now takes an already-computed `AggregateResult`; `submitEstimate(estimate)` and `applyRemoteEstimate` take an already-valid `Estimate`, and `applySyncState` takes `Estimate[]` submissions (the wire layer validates them). `createEstimate` / `aggregateEstimates` are composed by `features/submit-estimate`, `features/reveal-results` and `features/estimate-round`. `finalResultFor` (`entities/session/model/finalResult.ts`) is the single finalize rule, and both finalize paths return the shared `ActionResult`. The slice's public API exports `useConnectionStore` / `useRoundStore` as narrowed views (`model/publicStores.ts`) without the bridge-only mutators (`setMode`, `setConnectionStatus`, `setPeerCount`, `applyParticipantName`, `removeParticipant`, `applySyncState`, `applyRemoteEstimate`); `NetworkProvider` writes through the internal stores. The action lists below record the original decomposition, and the diagrams are updated to the current actions and hooks.
+
 ## Context
 
 `entities/session/model/store.ts` (486 lines) moved into its FSD home unchanged
@@ -20,13 +22,13 @@ before this split happens (see ADR-006). What's left is three concerns:
 | # | Concern | State | Actions |
 |---|---|---|---|
 | 1 | Session domain data | `sessionName`, `unit`, `items`, `activeItemId` | `setSessionName`, `setUnit`, `addItem`, `setItemTitle`, `removeItem`, `reorderItems`, `selectItem`, `setItemNotes`, `setItemDescription` |
-| 2 | Live-connection state | `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `hasEverConnected`, `peerCount`, `participantNames` | `setMode`, `setConnectionStatus`, `setPeerCount`, `applyParticipantName`, `removeParticipant`, `startSingleUser`, `startCollaborative`, `joinLiveSession`, `leaveLiveSession` |
+| 2 | Live-connection state | `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `hasEverConnected`, `peerCount`, `participantNames` | `setMode`, `setConnectionStatus`, `setPeerCount`, `applyParticipantName`, `removeParticipant`, `startCollaborative`, `joinLiveSession`, `leaveLiveSession` |
 | 3 | Round mechanics | `liveRound` | `finalizeItem`, `finalizeLiveItem`, `revealRound`, `retryRound`, `applySyncState`, `applyRemoteEstimate`, `submitEstimate` |
 
 (`updateItem`, listed here originally, was later replaced by `setItemTitle`, which changes only the title.)
 
 Around 20 files import `useSessionStore` (7 pages, `App`/`Header`,
-`NetworkProvider`, `entities/session/lib` hooks, plus tests). A single-user
+`NetworkProvider`, `features/session-lifecycle` hooks, plus tests). A single-user
 session never touches concern 2 at all; a manual-entry finalize
 (`finalizeItem`) never touches concern 3's round state. These are
 independent axes bolted together, not one cohesive domain object.
@@ -128,7 +130,7 @@ sibling slices from importing each other. A store living inside one feature
 slice can't be a dependency of the other feature slice without violating that
 isolation rule — the exact problem ADR-004 hit with `network/actions.ts` and
 `RangeBar.tsx`, resolved there by pushing the shared thing down to
-`entities/session/api` and `entities/estimate/ui` respectively. The same fix
+`entities/session/api` and what is now `entities/session/ui/estimate` (originally `entities/estimate/ui`; see ADR-004's 2026-10-06 update) respectively. The same fix
 applies here: round mechanics stays at the `entities` layer, not `features`.
 
 ### Option D — Three stores, split along the three concerns (Decision)
@@ -157,6 +159,7 @@ flowchart TB
     direction LR
     EstimateRound["estimate-round<br/>[Submit Flow: Feature Slice]"]
     RevealResults["reveal-results<br/>[Facilitator Reveal/Retry: Feature Slice]"]
+    LeaveWorkspace["useLeaveWorkspace<br/>[Cross-Concern Composer: Hook in session-lifecycle]"]
   end
 
   subgraph SESSION["ENTITIES/SESSION"]
@@ -164,7 +167,6 @@ flowchart TB
     SessionStore["useSessionStore<br/>[Session Domain State: Zustand Store]"]
     ConnStore["useConnectionStore<br/>[Live Connection State: Zustand Store]"]
     RoundStore["useRoundStore<br/>[Round Mechanics State: Zustand Store]"]
-    LeaveWorkspace["useLeaveWorkspace<br/>[Cross-Concern Composer: Hook]"]
   end
 
   subgraph NET["ENTITIES/SESSION/API"]
@@ -175,7 +177,7 @@ flowchart TB
   LeaveWorkspace -->|clears items/sessionName| SessionStore
 
   EstimateRound -->|submitEstimate, reads liveRound| RoundStore
-  RevealResults -->|finalizeLiveItem, revealRound, retryRound| RoundStore
+  RevealResults -->|finalizeItem via useRevealRound.finalize, revealRound, retryRound| RoundStore
   RoundStore -->|writes finalResult/submissions| SessionStore
 
   NetworkProvider -.->|applySyncState, applyRemoteEstimate| RoundStore
@@ -184,8 +186,8 @@ flowchart TB
   classDef features fill:#fdf4ff,stroke:#a855f7,color:#581c87
   classDef session fill:#fff7ed,stroke:#f97316,color:#7c2d12
   classDef net fill:#f0fdf4,stroke:#22c55e,color:#14532d
-  class EstimateRound,RevealResults features
-  class SessionStore,ConnStore,RoundStore,LeaveWorkspace session
+  class EstimateRound,RevealResults,LeaveWorkspace features
+  class SessionStore,ConnStore,RoundStore session
   class NetworkProvider net
   style FEATURES fill:#fdf4ff,stroke:#a855f7,stroke-width:2px
   style SESSION fill:#fff7ed,stroke:#f97316,stroke-width:2px
@@ -207,9 +209,9 @@ Legend: solid = synchronous call, numbered by call order.
 
 ```mermaid
 flowchart LR
-  Facilitator["Facilitator clicks Finalize<br/>[User Action]"] -->|1| RevealResults["reveal-results feature<br/>[React Component]"]
-  RevealResults -->|2 calls finalizeLiveItem id| RoundStore["useRoundStore<br/>[entities/session/model]"]
-  RoundStore -->|3 aggregates submissions, reads items via| SessionStore["useSessionStore<br/>[entities/session/model]"]
+  Facilitator["Facilitator clicks Finalize<br/>[User Action]"] -->|1| RevealResults["reveal-results feature<br/>[useRevealRound Hook]"]
+  RevealResults -->|"2 finalResultFor(submissions), then finalizeItem(id, result)"| RoundStore["useRoundStore<br/>[entities/session/model]"]
+  RevealResults -->|"3 reads item submissions at call time"| SessionStore["useSessionStore<br/>[entities/session/model]"]
   RoundStore -->|4 writes finalResult| SessionStore
 
   classDef action fill:#f1f5f9,stroke:#64748b,color:#0f172a
@@ -220,7 +222,7 @@ flowchart LR
   class RoundStore,SessionStore session
 ```
 
-Steps 3 and 4 are a same-slice file import (`round.ts` importing
+Step 4 is a same-slice file import (`round.ts` importing
 `session.ts`, both inside `entities/session/model/`), not a cross-slice call —
 this is what Option C got wrong by placing round mechanics one layer up.
 
@@ -267,8 +269,9 @@ scope entirely — see ADR-006, which must land first.
 **Follow-ups / revisit triggers**
 - Implemented in issue #111: `entities/session/model/session.ts`,
   `connection.ts`, and `round.ts` replace the monolithic `store.ts`, with
-  cross-store writes (`round.ts` → `session.ts`'s `patchItem`,
-  `connection.ts` → `session.ts`'s item-selection setters) exactly as
+  cross-store writes (`round.ts` → `session.ts`'s `patchItem`; since
+  refined, `connection.ts` no longer touches `session.ts` — the item-selection
+  and unit-reset steps moved into the composer hooks) as
   diagrammed above, and the `leaveWorkspace`/`leaveLiveSession` compositions
   moved to `features/session-lifecycle`'s composer hooks.
 - Revisit Option B (split `items` into its own entity) if Roadmap Building

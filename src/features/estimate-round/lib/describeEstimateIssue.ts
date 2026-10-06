@@ -4,7 +4,8 @@ import {
   type EstimateField,
   type EstimateValuesError,
   type EstimationUnit,
-} from '../../../entities/estimate'
+} from '../../../entities/session'
+import { ESTIMATE_FIELD_LABEL } from './estimateFieldLabel'
 
 /** What to tell the person about a rejected best / likely / worst entry: a short
  *  headline, one sentence saying what is wrong and with which numbers, and the
@@ -21,12 +22,6 @@ interface Values {
   worst: number | null
 }
 
-const FIELD_LABEL: Record<EstimateField, string> = {
-  best: 'Best case',
-  likely: 'Most likely',
-  worst: 'Worst case',
-}
-
 function withUnit(value: number, unit: EstimationUnit): string {
   const name = value === 1 ? unit.slice(0, -1) : unit
   return `${formatValue(value)} ${name}`
@@ -35,8 +30,8 @@ function withUnit(value: number, unit: EstimationUnit): string {
 function describeField(field: EstimateField, values: Values, unit: EstimationUnit) {
   const value = values[field]
   return value === null
-    ? FIELD_LABEL[field]
-    : `${FIELD_LABEL[field]} (${withUnit(value, unit)})`
+    ? ESTIMATE_FIELD_LABEL[field]
+    : `${ESTIMATE_FIELD_LABEL[field]} (${withUnit(value, unit)})`
 }
 
 function orderingIssue(
@@ -47,7 +42,7 @@ function orderingIssue(
 ): EstimateIssue {
   return {
     headline: 'Out of order',
-    message: `${describeField(lower, values, unit)} is higher than ${describeField(higher, values, unit)}. Lower ${FIELD_LABEL[lower]} or raise ${FIELD_LABEL[higher]}.`,
+    message: `${describeField(lower, values, unit)} is higher than ${describeField(higher, values, unit)}. Lower ${ESTIMATE_FIELD_LABEL[lower]} or raise ${ESTIMATE_FIELD_LABEL[higher]}.`,
     fields: [lower, higher],
   }
 }
@@ -72,7 +67,7 @@ export function describeEstimateIssue(
         fields: error.fields,
       }
     case 'not-finite': {
-      const labels = error.fields.map((field) => FIELD_LABEL[field])
+      const labels = error.fields.map((field) => ESTIMATE_FIELD_LABEL[field])
       return {
         headline: 'Enter a number',
         message: `${labels.join(' and ')} must be a number. Enter a value in ${unit}.`,

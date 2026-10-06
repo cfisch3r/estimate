@@ -4,7 +4,7 @@
 **Implementation:** **partially built.** This records a decision, not shipped
 behaviour — the Decision section below is written in the present tense for readability.
 Stable client identity has landed (#50): `participantId` is a per-browser id persisted via
-`getOrCreateParticipantId()`, and a `peerId ↔ participantId` map lets the facilitator prune
+`getOrCreateParticipantId()` (`entities/session/lib/participantIdentity.ts`), and a `peerId ↔ participantId` map lets the facilitator prune
 `participantNames` on `onPeerLeave`. Versioned rounds have also landed (#51): `Item` /
 `SessionSnapshot` / `LiveRound` carry a `round: number`, bumped by `retryRound`, and
 `applySyncState` resets round-local state on any round change rather than only on a
@@ -16,7 +16,8 @@ Acknowledged submissions with a kind-driven retry policy has also landed (#61):
 `submitEstimate` is a targeted request/response to the facilitator's peerId, both it and
 `requestSnapshot` retry only a `timeout` failure (kind-driven, via the shared
 `withKindDrivenRetry` helper), and a participant's roster entry — not the ack — is what a
-snapshot-driven convergence check resends against. Role-asymmetric link state has also landed,
+snapshot-driven convergence check resends against. The resend sends `LiveRound.mySubmission`,
+the already-validated `Estimate`, as-is; `parseWireEstimate` only ever sees untrusted wire input. Role-asymmetric link state has also landed,
 narrowed in scope (#62): a participant's `connectionStatus` now only reaches `'connected'` once
 the facilitator's own `announce` is confirmed, not on any peer, and the facilitator distinguishes
 "nobody has joined yet" from "everyone who was here has left." Deferred from #62's original
@@ -25,6 +26,12 @@ gets the facilitator to the correct reveal-without-them outcome).
 **Date:** 2026-09-15 (drafted 2026-09-12)
 **Related:** [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [../concepts/collaboration-mode.md](../concepts/collaboration-mode.md) §"Why connections drop"
 
+> Where the policies live: the pure decision rules — round membership and the wire roster,
+> the departed-participant name prune, the snapshot builder and the "does this submission
+> need re-sending" check — are framework-free modules in `entities/session/model`
+> (`roster.ts`, `snapshot.ts`, `resend.ts`), applied by `NetworkProvider`; the retry
+> policy itself stays in `entities/session/api/retryPolicy.ts`.
+>
 > For the current implementation plan and sequencing — which issues carry which element of
 > this decision, in what order, and what's blocked on what — see the Epic-0010 sub-issue list
 > on the project board, not this document. That ordering changes as work happens; this
@@ -169,6 +176,10 @@ delivered*). When the facilitator link is down, that banner owns the explanation
 delivery state defers to it rather than stacking a second alarm.
 
 ### Stable client identity
+
+Participants without an announced name are shown as "Teammate N" by the single shared
+`participantLabels(ids, names, self?)` rule (`entities/session/model/participantLabel.ts`),
+used by both the facilitator's roster and the participant's revealed list.
 
 `participantId` is persisted per browser (`localStorage`) and reused across joins. The
 facilitator maintains a `peerId ↔ participantId` map from inbound `announce`, pruned on

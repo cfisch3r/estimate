@@ -1,6 +1,4 @@
-import type { AggregateResult, Estimate } from '../../estimate'
-import type { ConnectionStatus } from '../api/connection'
-import type { RosterEntry } from '../api/actions'
+import type { AggregateResult, Estimate, EstimationUnit } from './estimate'
 
 export interface Item {
   id: string
@@ -37,13 +35,66 @@ export interface LiveRound {
   /** Who's in and who has submitted this round, with no estimate values
    *  (ADR-003, "Single owner"). Drives the "N of M submitted" line. */
   roster: RosterEntry[]
-  /** This participant's own most recent submitted values, or null before submitting. */
-  mySubmission: { best: number; likely: number; worst: number } | null
+  /** This participant's own most recent submitted estimate (already validated),
+   *  or null before submitting. Kept whole so a resend can send it as-is. */
+  mySubmission: Estimate | null
+}
+
+/** A values-free roster row for the current round (ADR-003, "Single owner").
+ *  One structure, two renderings: the facilitator's participant panel and the
+ *  participant's "N of M submitted" line both read this instead of raw
+ *  submission values, which never reach a participant before reveal. */
+export interface RosterEntry {
+  participantId: string
+  submitted: boolean
+  connected: boolean
+}
+
+/** The subset of an item a participant needs to render the read-only detail —
+ *  broadcast by the facilitator so participants never hold the full item list. */
+export interface SnapshotItem {
+  id: string
+  title: string
+  description: string
+}
+
+/** The facilitator's authoritative round state, as broadcast to (or pulled by)
+ *  participants (ADR-003). Built by `buildSessionSnapshot`, applied by
+ *  `applySyncState`; the wire layer (`api/actions.ts`) only carries it. */
+export interface SessionSnapshot {
+  currentItem: SnapshotItem | null
+  /** The facilitator's session name, so a participant's kicker can show "Sprint 42
+   *  estimates (7F QK 2M)" instead of the join code alone. Tolerated as missing
+   *  (defaults to '') the same way `unit`/`revealed` are, for an older peer. */
+  sessionName: string
+  /** The unit the facilitator is estimating in, so participant forms and bars
+   *  label values with the session's unit rather than their local default. */
+  unit: EstimationUnit
+  /** Whether the facilitator has revealed the current round. Lets a peer that
+   *  joins or reconnects mid-reveal land straight on the revealed view instead
+   *  of a dead estimate form. */
+  revealed: boolean
+  /** The active item's round number, bumped by Retry. Lets a participant that
+   *  reconnects after missing both a Reveal and a Retry tell the rounds apart
+   *  from the snapshot alone (ADR-003, "Versioned rounds"). */
+  round: number
+  /** Who's in and who has submitted this round, with no estimate values.
+   *  Drives a participant's "N of M submitted" line and the facilitator's
+   *  panel alike. */
+  roster: RosterEntry[]
+  /** The frozen submission set, populated only once `revealed` is true —
+   *  pre-reveal this stays empty, since values must not reach participants
+   *  before the reveal (ADR-003). */
+  submissions: Estimate[]
+  finalizedItemIds: string[]
 }
 
 export type SessionMode = 'manual' | 'live'
 
 export type SessionRole = 'facilitator' | 'participant'
+
+/** The transport's view of the link to the session. */
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 
 /** The network layer's ConnectionStatus, plus 'idle' for "not in a live session". */
 export type LiveConnectionStatus = ConnectionStatus | 'idle'
