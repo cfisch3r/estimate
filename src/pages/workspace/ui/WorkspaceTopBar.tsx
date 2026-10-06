@@ -4,7 +4,7 @@ import { NotebookIcon } from '@phosphor-icons/react/dist/csr/Notebook'
 import { Button, Input, Select } from '../../../shared/ui'
 import { ROUTES } from '../../../shared/lib/routes'
 import { useSessionStore } from '../../../entities/session'
-import type { EstimationUnit } from '../../../entities/estimate'
+import type { EstimationUnit } from '../../../entities/session'
 
 /** The merged card's top bar: editable session name, estimation unit, and the
  *  Summary shortcut. */

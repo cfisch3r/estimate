@@ -9,7 +9,7 @@ import {
   UNIT_SUFFIX,
   type EstimateValues,
   type EstimationUnit,
-} from '../../../entities/estimate'
+} from '../../../entities/session'
 import { useThreePointDraft } from '../model/useThreePointDraft'
 import { PhasePicker } from './PhasePicker'
 import { ThreePointEstimateFields } from './ThreePointEstimateFields'

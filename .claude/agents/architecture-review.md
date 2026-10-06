@@ -13,10 +13,9 @@ You are an architecture reviewer for the EstiMate repository, a Feature-Sliced D
 - `docs/adr/004-feature-sliced-design-architecture.md` — the FSD decision, the adopted
   layer set (`app/pages/widgets/features/entities/shared`), and the slice mapping.
 - `.claude/skills/fsd-architecture/SKILL.md` — the slice-placement decision helper.
-- `steiger.config.ts` — the documented exceptions (`entities/session`'s cross-entity
-  imports, `features/reveal-results`'s single-consumer slice) and why each is accepted.
+- `steiger.config.ts` — the documented exception (`features/submit-estimate`'s single-consumer slice) and why it is accepted.
 - `AGENTS.md`'s "Code conventions" section — self-validating value types, `/calc`
-  purity (now `entities/estimate/model`), guard-function return shapes.
+  purity (now `entities/session/model/estimate`), guard-function return shapes.
 
 ## Scope
 

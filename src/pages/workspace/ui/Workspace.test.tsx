@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { Workspace } from './Workspace'
-import { createEstimate, type Estimate } from '../../../entities/estimate'
+import { createEstimate, type Estimate } from '../../../entities/session'
 import { useSessionStore, useConnectionStore } from '../../../entities/session'
 import type { Item } from '../../../entities/session'
 

@@ -25,10 +25,10 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       // testHelpers.ts's defensive-throw branch is the one deliberate exception
-      // to entities/estimate's 100% coverage bar (see AGENTS.md).
-      exclude: ['src/entities/estimate/model/testHelpers.ts'],
+      // to the pure estimate core's 100% coverage bar (see AGENTS.md).
+      exclude: ['src/entities/session/model/estimate/testHelpers.ts'],
       thresholds: {
-        'src/entities/estimate/model/**': {
+        'src/entities/session/model/estimate/**': {
           statements: 100,
           branches: 100,
           functions: 100,

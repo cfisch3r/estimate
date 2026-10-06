@@ -6,7 +6,7 @@ import {
   UNIT_SUFFIX,
   type Estimate,
   type EstimationUnit,
-} from '../../../entities/estimate'
+} from '../../../entities/session'
 
 interface AggregatedRangeProps {
   submissions: Estimate[]

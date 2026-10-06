@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { AggregateResult, Estimate } from '../../estimate/@x/session'
+import type { AggregateResult, Estimate } from './estimate'
 import { useConnectionStore } from './connection'
 import { isFinalized } from './item'
 import { patchItem, useSessionStore } from './session'

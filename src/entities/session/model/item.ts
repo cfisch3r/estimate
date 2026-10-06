@@ -1,4 +1,4 @@
-import type { AggregateResult } from '../../estimate/@x/session'
+import type { AggregateResult } from './estimate'
 import type { Item } from './types'
 
 /** Whether an item's estimate has been finalized — narrows `finalResult` to

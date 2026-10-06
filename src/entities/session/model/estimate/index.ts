@@ -5,7 +5,7 @@ export type {
   UncertaintyGuidance,
   EstimationUnit,
   UncertaintyLevel,
-} from './model/types'
+} from './types'
 export {
   DEFAULT_STRATEGY,
   UNIT_GRANULARITY,
@@ -15,7 +15,7 @@ export {
   UNCERTAINTY_LEVELS,
   UNCERTAINTY_GUIDANCE,
   DEFAULT_UNCERTAINTY_INDEX,
-} from './model/types'
+} from './types'
 export type {
   Estimate,
   EstimateField,
@@ -25,20 +25,14 @@ export type {
   OrderViolation,
   RawEstimateInput,
   Result,
-} from './model/estimate'
-export {
-  createEstimate,
-  findOrderViolation,
-  validateEstimateValues,
-} from './model/estimate'
-export { aggregateEstimates } from './model/aggregate'
-export { computeCI90 } from './model/ci90'
+} from './estimate'
+export { createEstimate, findOrderViolation, validateEstimateValues } from './estimate'
+export { aggregateEstimates } from './aggregate'
+export { computeCI90 } from './ci90'
 export {
   checkSymmetricRange,
   checkFalsePrecision,
   checkOutlier,
   checkUncertaintyRange,
   uncertaintyGuidance,
-} from './model/guards'
-export { RangeBar } from './ui/RangeBar'
-export { EstimateTriple } from './ui/EstimateTriple'
+} from './guards'

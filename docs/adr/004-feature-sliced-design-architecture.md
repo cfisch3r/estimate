@@ -32,6 +32,8 @@
 > | Sibling-entity coupling (`entities/session` using `estimate`) | FSD `@x` cross-import surfaces (`entities/<slice>/@x/session.ts`), replacing the earlier Steiger rule exemptions |
 >
 > **Update 2026-10-05 (later):** `entities/participant` held only the facilitator id constant, the localStorage identity helper and two label helpers, all effectively owned by `entities/session`, so it was folded in (`model/participantId.ts`, `model/participantLabel.ts`, `api/participantIdentity.ts`). `announcedName` / `teammateLabel` are exported from the session barrel for the reveal views.
+>
+> **Update 2026-10-06:** `entities/estimate` was merged into `entities/session`. Estimates are value objects owned by the session's rounds and items, not an independent entity, and the separate slice existed only to produce the `@x` cross-import surface. The pure core (types, `createEstimate`, aggregation, CI90, guards, uncertainty guidance) now lives in `entities/session/model/estimate/` with its own `index.ts` and an unchanged 100% coverage threshold; `RangeBar` and `EstimateTriple` live in `entities/session/ui/estimate/`. Session-internal code imports the core directly; features, pages and widgets use the `entities/session` barrel. The `@x` surface is gone, and the two mapping rows above that name `entities/estimate` and `@x` describe the earlier shape.
 
 ## Context
 
@@ -153,7 +155,7 @@ filenames or from the file's original directory:
 - `components/RangeBar.tsx` is used by both `features/estimate-round` (the manual
   three-point estimate flow) and `features/reveal-results` (the facilitator's
   aggregated-range display) — the same same-layer-sibling problem as
-  `network/actions.ts`. It became `entities/estimate/ui/RangeBar.tsx`.
+  `network/actions.ts`. It became `entities/estimate/ui/RangeBar.tsx` (now `entities/session/ui/estimate/RangeBar.tsx`, see the 2026-10-06 update).
 
 ## Rationale
 

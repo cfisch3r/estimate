@@ -1,4 +1,4 @@
-import { aggregateEstimates, createEstimate } from '../../../entities/estimate'
+import { aggregateEstimates, createEstimate } from '../../../entities/session'
 import { FACILITATOR_PARTICIPANT_ID, useRoundStore } from '../../../entities/session'
 
 export type FinalizeResult = { ok: true } | { ok: false; error: string }

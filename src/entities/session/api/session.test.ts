@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { joinSession } from './session'
-import { createEstimate } from '../../estimate/@x/session'
+import { createEstimate } from '../model/estimate'
 
 const { joinRoomMock, fakeRoom } = vi.hoisted(() => {
   const actionsByName: Record<

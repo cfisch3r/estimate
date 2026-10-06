@@ -1,4 +1,4 @@
-import { aggregateEstimates } from '../../../entities/estimate'
+import { aggregateEstimates } from '../../../entities/session'
 import {
   useConnectionStore,
   useRoundStore,

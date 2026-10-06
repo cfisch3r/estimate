@@ -130,7 +130,7 @@ sibling slices from importing each other. A store living inside one feature
 slice can't be a dependency of the other feature slice without violating that
 isolation rule — the exact problem ADR-004 hit with `network/actions.ts` and
 `RangeBar.tsx`, resolved there by pushing the shared thing down to
-`entities/session/api` and `entities/estimate/ui` respectively. The same fix
+`entities/session/api` and what is now `entities/session/ui/estimate` (originally `entities/estimate/ui`; see ADR-004's 2026-10-06 update) respectively. The same fix
 applies here: round mechanics stays at the `entities` layer, not `features`.
 
 ### Option D — Three stores, split along the three concerns (Decision)

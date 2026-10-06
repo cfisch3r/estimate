@@ -1,4 +1,4 @@
-import type { EstimateValues } from '../../estimate/@x/session'
+import type { EstimateValues } from './estimate'
 import type { LiveRound } from './types'
 
 /** Participant: whether this client's own submission needs re-sending, judged

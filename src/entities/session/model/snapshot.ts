@@ -1,7 +1,7 @@
 import { isFinalized } from './item'
 import { buildRoster } from './roster'
 import type { Item, SessionSnapshot } from './types'
-import type { EstimationUnit } from '../../estimate/@x/session'
+import type { EstimationUnit } from './estimate'
 
 interface SnapshotInput {
   sessionName: string

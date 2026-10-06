@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createEstimate } from '../../../entities/estimate'
+import { createEstimate } from '../../../entities/session'
 import {
   useConnectionStore,
   useNetworkSession,

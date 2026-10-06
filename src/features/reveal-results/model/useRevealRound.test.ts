@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
-import { createEstimate } from '../../../entities/estimate'
+import { createEstimate } from '../../../entities/session'
 import {
   useConnectionStore,
   useRoundStore,

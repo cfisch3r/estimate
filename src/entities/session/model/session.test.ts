@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { aggregateEstimates, createEstimate } from '../../estimate/@x/session'
+import { aggregateEstimates, createEstimate } from './estimate'
 import { patchItem, useSessionStore } from './session'
 
 function resetStore() {

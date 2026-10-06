@@ -8,7 +8,7 @@
 > `src/network/`) are as they were when this ADR and its 2026-09-07 update were written.
 > The `src/` tree was since reorganized to Feature-Sliced Design — see
 > [ADR-004](004-feature-sliced-design-architecture.md) for current locations
-> (`entities/estimate/model`, `entities/session/model`, `entities/session/api`). This
+> (`entities/session/model/estimate`, `entities/session/model`, `entities/session/api`). This
 > ADR's actual decision (defer Playwright) is unaffected.
 
 ## Context

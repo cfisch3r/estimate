@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { createEstimate } from '../../../entities/estimate'
+import { createEstimate } from '../../../entities/session'
 import { AggregatedRange } from './AggregatedRange'
 
 function estimate(participantId: string, best: number, likely: number, worst: number) {

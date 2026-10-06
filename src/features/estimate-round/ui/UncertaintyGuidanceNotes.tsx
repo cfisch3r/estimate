@@ -1,4 +1,4 @@
-import type { UncertaintyGuidance } from '../../../entities/estimate'
+import type { UncertaintyGuidance } from '../../../entities/session'
 import { ConfirmNote } from '../../../shared/ui/ConfirmNote'
 import { GuardNote } from '../../../shared/ui/GuardNote'
 import { formatValue } from '../../../shared/ui/format'

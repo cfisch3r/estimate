@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEstimate } from '../../../entities/estimate'
+import { createEstimate } from '../../../entities/session'
 import type { Item } from '../../../entities/session'
 import { buildRoster } from './roster'
 

@@ -1,4 +1,4 @@
-import type { Estimate } from '../../estimate/@x/session'
+import type { Estimate } from '../model/estimate'
 import { parseWireEstimate, parseWireUnit } from './wireParse'
 import type { RosterEntry, SessionSnapshot, SnapshotItem } from '../model/types'
 

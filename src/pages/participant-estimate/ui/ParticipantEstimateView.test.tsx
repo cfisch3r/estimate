@@ -5,7 +5,7 @@ import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
 import { ParticipantEstimateView } from './ParticipantEstimateView'
 import { RECONNECT_GRACE_MS } from '../../../shared/lib/useConnectionPhase'
-import { createEstimate, type Estimate } from '../../../entities/estimate'
+import { createEstimate, type Estimate } from '../../../entities/session'
 import {
   useSessionStore,
   useConnectionStore,

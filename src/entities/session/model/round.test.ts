@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import {
-  aggregateEstimates,
-  createEstimate,
-  type Estimate,
-} from '../../estimate/@x/session'
+import { aggregateEstimates, createEstimate, type Estimate } from './estimate'
 import { useRoundStore } from './round'
 import { useSessionStore } from './session'
 import { useConnectionStore } from './connection'

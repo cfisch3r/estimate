@@ -1,7 +1,7 @@
 import { Button, NavRow } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import { ItemDetailShell, isFinalized, type Item } from '../../../entities/session'
-import type { EstimationUnit } from '../../../entities/estimate'
+import type { EstimationUnit } from '../../../entities/session'
 import {
   ThreePointEstimateForm,
   type FinalizeResult,

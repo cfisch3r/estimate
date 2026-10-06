@@ -1,4 +1,4 @@
-import type { Estimate } from '../../../entities/estimate'
+import type { Estimate } from '../../../entities/session'
 import { announcedName, teammateLabel } from '../../../entities/session'
 
 export interface RevealedRow {

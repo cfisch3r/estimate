@@ -7,7 +7,7 @@ import {
   EstimateTriple,
   type EstimateValues,
   type EstimationUnit,
-} from '../../../entities/estimate'
+} from '../../../entities/session'
 import type { LiveRound } from '../../../entities/session'
 import {
   DeliveryStatus,

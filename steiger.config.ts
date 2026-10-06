@@ -6,10 +6,6 @@ import fsd from '@feature-sliced/steiger-plugin'
 // enforcing it with Steiger rather than duplicating boundary rules in oxlint.
 export default defineConfig([
   ...fsd.configs.recommended,
-  // Cross-imports between sibling entities go through FSD's `@x` notation
-  // (e.g. `entities/estimate/@x/session.ts`, the surface `entities/session`
-  // may use) rather than a rule exemption, so each coupling is explicit,
-  // narrow and reviewable in one file per consumer.
   {
     // `features/submit-estimate` has one consumer (pages/participant-estimate):
     // it's the participant's submit use case, kept out of `estimate-round`,

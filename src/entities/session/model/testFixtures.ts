@@ -1,5 +1,5 @@
-import { aggregateEstimates, createEstimate } from '../../estimate/@x/session'
-import type { Estimate } from '../../estimate/@x/session'
+import { aggregateEstimates, createEstimate } from './estimate'
+import type { Estimate } from './estimate'
 import type { Item } from './types'
 
 export function estimateOf(

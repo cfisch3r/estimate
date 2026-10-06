@@ -1,7 +1,7 @@
 import { createConnectionTracker, type ConnectionState } from './connection'
 import { createTypedActions, type ParticipantAnnounce } from './actions'
 import type { SessionSnapshot } from '../model/types'
-import type { Estimate } from '../../estimate/@x/session'
+import type { Estimate } from '../model/estimate'
 
 type Unsubscribe = () => void
 

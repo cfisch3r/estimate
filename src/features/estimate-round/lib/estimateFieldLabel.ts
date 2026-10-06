@@ -1,4 +1,4 @@
-import type { EstimateField } from '../../../entities/estimate'
+import type { EstimateField } from '../../../entities/session'
 
 /** The visible name of each best / likely / worst field — the one spelling used
  *  by the inputs' labels and by the validation messages that refer to them. */

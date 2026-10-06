@@ -7,7 +7,7 @@ import {
 import './phase-picker.css'
 import { CaretLeftIcon } from '@phosphor-icons/react/dist/csr/CaretLeft'
 import { CaretRightIcon } from '@phosphor-icons/react/dist/csr/CaretRight'
-import { UNCERTAINTY_LEVELS, UNCERTAINTY_GUIDANCE } from '../../../entities/estimate'
+import { UNCERTAINTY_LEVELS, UNCERTAINTY_GUIDANCE } from '../../../entities/session'
 
 interface PhasePickerProps {
   index: number

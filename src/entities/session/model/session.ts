@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { EstimationUnit } from '../../estimate/@x/session'
+import type { EstimationUnit } from './estimate'
 import { isFinalized } from './item'
 import type { Item } from './types'
 

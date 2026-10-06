@@ -8,7 +8,7 @@ import {
   type EstimationUnit,
   type GuardResult,
   type UncertaintyGuidance,
-} from '../../../entities/estimate'
+} from '../../../entities/session'
 import {
   describeEstimateIssue,
   describePartialOrdering,

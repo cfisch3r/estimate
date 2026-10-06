@@ -3,7 +3,7 @@ import type {
   Estimate,
   EstimateValues,
   EstimationUnit,
-} from '../../estimate/@x/session'
+} from './estimate'
 
 export interface Item {
   id: string

@@ -1,4 +1,4 @@
-import type { EstimateValues } from '../../../entities/estimate'
+import type { EstimateValues } from '../../../entities/session'
 import {
   announcedName,
   roundMemberIds,

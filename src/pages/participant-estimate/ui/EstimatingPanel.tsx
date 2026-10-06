@@ -1,5 +1,5 @@
 import { Card } from '../../../shared/ui'
-import type { EstimationUnit } from '../../../entities/estimate'
+import type { EstimationUnit } from '../../../entities/session'
 import type { LiveRound } from '../../../entities/session'
 import type { SubmitResult } from '../../../features/submit-estimate'
 import { EstimateForm } from './EstimateForm'

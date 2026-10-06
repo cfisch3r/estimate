@@ -31,7 +31,7 @@ one layer down instead).
 | `pages` | One slice per top-level screen/view | `pages/workspace`, `pages/join-session` |
 | `widgets` | Composite UI reused across *more than one* page | `widgets/session-sidebar` (used by `workspace` and `session-summary`) |
 | `features` | A user-facing use case/action | `features/estimate-round`, `features/reveal-results`, `features/submit-estimate`, `features/session-lifecycle` (start / join / leave / reconnect hooks that compose the stores with navigation) |
-| `entities` | A business noun and its data/logic | `entities/estimate`, `entities/session` |
+| `entities` | A business noun and its data/logic | `entities/session` (sessions, rounds, items and the estimate value objects they own) |
 | `shared` | Business-agnostic UI primitives, generic hooks, copy | `shared/ui/Button`, `shared/lib/useConfirmArm` |
 
 `processes` is not in use — nothing today needs a cross-feature orchestrated
@@ -60,20 +60,26 @@ not a style choice.
 
 ## Cross-entity imports: `@x`
 
-When one entity genuinely needs another (e.g. `entities/session` using
-`entities/estimate`), don't add a Steiger exemption. Expose a narrow surface
-for that one consumer in `entities/<provider>/@x/<consumer>.ts` and import
-from there (see `entities/estimate/@x/session.ts`). Each coupling is then
-explicit, minimal and reviewable in one file.
+There is currently only one entity (`entities/session`), so no cross-entity
+imports exist and no `@x` surfaces are in use. `entities/estimate` used to be a
+separate slice reached through `@x`; it was merged into `entities/session`
+because estimates are value objects owned by the session's rounds, not an
+independent entity (see ADR-004's 2026-10-06 update). If a genuinely independent
+second entity ever needs another, expose a narrow
+`entities/<provider>/@x/<consumer>.ts` surface rather than adding a Steiger
+exemption. Inside a slice, a self-contained pure subfolder with its own
+`index.ts` (like `entities/session/model/estimate/`) is imported relatively by
+the slice's own code; code outside the slice goes through the slice barrel.
 
 ## Where does new code belong?
 
 Work through these in order — the first one that fits wins:
 
 1. **Is it a business noun with its own data shape, independent of any
-   specific user action?** (e.g. a Story Point estimate, a roadmap item) →
+   specific user action?** (e.g. a roadmap item; a value object owned by an
+   existing entity, like an estimate, stays inside that entity) →
    `entities/<noun>`. Put its type, validation, and any generic display
-   component (like `entities/estimate/ui/RangeBar.tsx`) here.
+   component (like `entities/session/ui/estimate/RangeBar.tsx`) here.
 2. **Is it one user-facing action/workflow built on top of one or more
    entities?** (e.g. "estimate a round", "reveal results", "assign story
    points") → `features/<verb-noun>`. If two features would need the exact
@@ -96,7 +102,7 @@ Work through these in order — the first one that fits wins:
 ### Before adding a new entity or feature (e.g. Story Points, Roadmap)
 
 - Check whether the new concept is really a new entity, or an existing one
-  (`estimate`, `session`) with an extra field. Prefer
+  (`session`) with an extra field. Prefer
   extending an existing entity over creating a near-duplicate.
 - If it's genuinely new, give it its own `entities/<name>` (or
   `features/<name>` if it's an action, not a noun) rather than bolting it

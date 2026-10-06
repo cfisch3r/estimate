@@ -1,7 +1,7 @@
 import { GroupBox, LiveRegion, Tag, VisuallyHidden } from '../../../shared/ui'
 import { PARTICIPANT_ESTIMATES_INFO } from '../../../shared/copy'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
-import { EstimateTriple, type EstimationUnit } from '../../../entities/estimate'
+import { EstimateTriple, type EstimationUnit } from '../../../entities/session'
 import { isFinalized, ItemDetailShell, type Item } from '../../../entities/session'
 import { useRevealRound } from '../model/useRevealRound'
 import { AggregatedRange } from './AggregatedRange'
