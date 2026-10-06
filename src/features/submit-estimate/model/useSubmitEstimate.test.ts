@@ -92,7 +92,8 @@ describe('useSubmitEstimate', () => {
       result.current.submit(2, 4, 8)
     })
 
-    expect(useRoundStore.getState().liveRound?.mySubmission).toEqual({
+    expect(useRoundStore.getState().liveRound?.mySubmission).toMatchObject({
+      participantId: 'me',
       best: 2,
       likely: 4,
       worst: 8,
@@ -112,6 +113,50 @@ describe('useSubmitEstimate', () => {
     let outcome: ReturnType<typeof result.current.submit> | undefined
     act(() => {
       outcome = result.current.submit(2, 4, 8)
+    })
+
+    expect(outcome?.ok).toBe(false)
+    expect(sendEstimateMock).not.toHaveBeenCalled()
+  })
+
+  it('sends the item id and round the store holds at call time, not at render time', () => {
+    setRound(false)
+    const { result } = renderHook(() => useSubmitEstimate())
+    // A submit closure captured before the facilitator moved to the next round.
+    const staleSubmit = result.current.submit
+    act(() => {
+      useRoundStore.setState((state) => ({
+        liveRound: state.liveRound && {
+          ...state.liveRound,
+          item: { id: 'item-2', title: 'Next', description: '' },
+          round: 3,
+        },
+      }))
+    })
+
+    act(() => {
+      staleSubmit(2, 4, 8)
+    })
+
+    expect(sendEstimateMock).toHaveBeenCalledTimes(1)
+    expect(sendEstimateMock).toHaveBeenCalledWith(
+      'item-2',
+      expect.objectContaining({ best: 2, likely: 4, worst: 8 }),
+      3,
+    )
+  })
+
+  it('fails without sending when the round was cleared after the last render', () => {
+    setRound(false)
+    const { result } = renderHook(() => useSubmitEstimate())
+    const staleSubmit = result.current.submit
+    act(() => {
+      useRoundStore.setState({ liveRound: null })
+    })
+
+    let outcome: ReturnType<typeof staleSubmit> | undefined
+    act(() => {
+      outcome = staleSubmit(2, 4, 8)
     })
 
     expect(outcome?.ok).toBe(false)

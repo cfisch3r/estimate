@@ -1,4 +1,5 @@
 export type {
+  ActionResult,
   Estimate,
   EstimateField,
   EstimateValues,
@@ -25,8 +26,7 @@ export {
 } from './model/estimate'
 
 export { useSessionStore } from './model/session'
-export { useConnectionStore } from './model/connection'
-export { useRoundStore } from './model/round'
+export { useConnectionStore, useRoundStore } from './model/publicStores'
 export type {
   Item,
   LiveRound,
@@ -36,8 +36,9 @@ export type {
 } from './model/types'
 export { isFinalized } from './model/item'
 export { roundMemberIds } from './model/roster'
+export { finalResultFor } from './model/finalResult'
 export { FACILITATOR_PARTICIPANT_ID } from './model/participantId'
-export { announcedName, teammateLabel } from './model/participantLabel'
+export { participantLabels } from './model/participantLabel'
 
 export { generateSessionCode } from './api/sessionCode'
 export { NetworkProvider } from './api/NetworkProvider'

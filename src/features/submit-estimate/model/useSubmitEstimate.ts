@@ -1,12 +1,11 @@
 import { useState } from 'react'
-import { createEstimate } from '../../../entities/session'
 import {
+  createEstimate,
   useConnectionStore,
   useNetworkSession,
   useRoundStore,
+  type ActionResult,
 } from '../../../entities/session'
-
-export type SubmitResult = { ok: true } | { ok: false; error: string }
 
 /** Where this participant's own estimate stands with the facilitator, derived
  *  rather than tracked as its own store field: `submitted` comes straight from
@@ -28,8 +27,12 @@ export function useSubmitEstimate() {
   // is reflected below purely through the roster, without touching this flag.
   const [deliveryFailed, setDeliveryFailed] = useState(false)
 
-  function submit(best: number, likely: number, worst: number): SubmitResult {
-    if (!liveRound) {
+  function submit(best: number, likely: number, worst: number): ActionResult {
+    // Read the round at call time, not from the render closure: the store write
+    // below uses call-time state, so the existence check and the item id / round
+    // sent to the facilitator must come from the same snapshot of it.
+    const round = useRoundStore.getState().liveRound
+    if (!round) {
       return {
         ok: false,
         error:
@@ -45,7 +48,7 @@ export function useSubmitEstimate() {
     if (!result.ok) return result
     submitEstimate(result.value)
     setDeliveryFailed(false)
-    sendEstimate(liveRound.item.id, result.value, liveRound.round).catch(() => {
+    sendEstimate(round.item.id, result.value, round.round).catch(() => {
       setDeliveryFailed(true)
     })
     return { ok: true }

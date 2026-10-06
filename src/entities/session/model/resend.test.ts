@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest'
+import { createEstimate, type Estimate } from './estimate'
 import { needsResend } from './resend'
 import type { LiveRound } from './types'
+
+function mine(best: number, likely: number, worst: number): Estimate {
+  const result = createEstimate({ participantId: 'me', best, likely, worst })
+  if (!result.ok) throw new Error(result.error)
+  return result.value
+}
 
 function round(overrides: Partial<LiveRound> = {}): LiveRound {
   return {
@@ -9,7 +16,7 @@ function round(overrides: Partial<LiveRound> = {}): LiveRound {
     revealed: false,
     round: 0,
     roster: [{ participantId: 'me', submitted: false, connected: true }],
-    mySubmission: { best: 1, likely: 2, worst: 3 },
+    mySubmission: mine(1, 2, 3),
     ...overrides,
   }
 }

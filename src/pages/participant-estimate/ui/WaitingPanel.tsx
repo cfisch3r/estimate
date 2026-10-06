@@ -5,15 +5,12 @@ import { Button, Card, LiveRegion, VisuallyHidden } from '../../../shared/ui'
 import type { ConnectionPhase } from '../../../shared/lib/useConnectionPhase'
 import {
   EstimateTriple,
+  type ActionResult,
   type EstimateValues,
   type EstimationUnit,
 } from '../../../entities/session'
 import type { LiveRound } from '../../../entities/session'
-import {
-  DeliveryStatus,
-  type DeliveryState,
-  type SubmitResult,
-} from '../../../features/submit-estimate'
+import { DeliveryStatus, type DeliveryState } from '../../../features/submit-estimate'
 import { EstimateForm } from './EstimateForm'
 import { RoundCardHeader } from './RoundCardHeader'
 
@@ -23,7 +20,7 @@ interface WaitingPanelProps {
   mySubmission: EstimateValues
   unit: EstimationUnit
   kicker: string
-  onSubmit: (best: number, likely: number, worst: number) => SubmitResult
+  onSubmit: (best: number, likely: number, worst: number) => ActionResult
   deliveryState: DeliveryState
   connectionPhase: ConnectionPhase
 }

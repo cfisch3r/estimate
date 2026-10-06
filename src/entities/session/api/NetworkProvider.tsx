@@ -8,7 +8,6 @@ import { withKindDrivenRetry } from './retryPolicy'
 import { useSessionStore } from '../model/session'
 import { useConnectionStore } from '../model/connection'
 import { useRoundStore } from '../model/round'
-import { parseWireEstimate } from './wireParse'
 import { FACILITATOR_PARTICIPANT_ID } from '../model/participantId'
 import { needsResend } from '../model/resend'
 import { shouldPruneDeparted } from '../model/roster'
@@ -165,14 +164,9 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             // in flight for the same item/round.
             const resendKey = `${liveRound.item.id}:${liveRound.round}`
             if (resendInFlightKey === resendKey) return
-            const result = parseWireEstimate({
-              participantId,
-              ...liveRound.mySubmission,
-            })
-            if (!result.ok) return
             resendInFlightKey = resendKey
             apiRef.current
-              ?.sendEstimate(liveRound.item.id, result.value, liveRound.round)
+              ?.sendEstimate(liveRound.item.id, liveRound.mySubmission, liveRound.round)
               .catch((error) => {
                 console.warn('Roster-triggered resend failed:', error)
               })

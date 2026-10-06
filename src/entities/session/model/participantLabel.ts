@@ -13,3 +13,23 @@ export function announcedName(
 export function teammateLabel(ordinal: number): string {
   return `Teammate ${ordinal}`
 }
+
+/** The display labels for `ids`, in order — the single labelling rule both
+ *  reveal screens use, so a given peer reads the same on the facilitator's and
+ *  the participant's view. An announced name wins; otherwise the peer gets
+ *  "Teammate N", where N counts *every* non-self id up to and including it
+ *  (named or not). Counting named peers too is what keeps a peer's number
+ *  stable when a different peer's announce arrives later. `self`, when given,
+ *  is labelled as such and consumes no number. */
+export function participantLabels(
+  ids: readonly string[],
+  names: Record<string, string>,
+  self?: { id: string; label: string },
+): string[] {
+  let ordinal = 0
+  return ids.map((id) => {
+    if (self && id === self.id) return self.label
+    ordinal += 1
+    return announcedName(names, id) ?? teammateLabel(ordinal)
+  })
+}

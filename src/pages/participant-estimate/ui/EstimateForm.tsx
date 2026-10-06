@@ -3,7 +3,7 @@ import { Button, GuardNote, LiveRegion } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import type { EstimateValues, EstimationUnit } from '../../../entities/session'
 import { ThreePointEstimateForm } from '../../../features/estimate-round'
-import type { SubmitResult } from '../../../features/submit-estimate'
+import type { ActionResult } from '../../../entities/session'
 
 interface EstimateFormProps {
   unit: EstimationUnit
@@ -11,7 +11,7 @@ interface EstimateFormProps {
   submitLabel: string
   focusOnMount?: boolean
   statusLine?: string
-  onSubmit: (best: number, likely: number, worst: number) => SubmitResult
+  onSubmit: (best: number, likely: number, worst: number) => ActionResult
 }
 
 /** The estimating (5c) and revise-before-reveal (5d) form: the shared

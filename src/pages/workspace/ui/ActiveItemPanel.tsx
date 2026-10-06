@@ -1,18 +1,15 @@
 import { Button, NavRow } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import { ItemDetailShell, isFinalized, type Item } from '../../../entities/session'
-import type { EstimationUnit } from '../../../entities/session'
-import {
-  ThreePointEstimateForm,
-  type FinalizeResult,
-} from '../../../features/estimate-round'
+import type { ActionResult, EstimationUnit } from '../../../entities/session'
+import { ThreePointEstimateForm } from '../../../features/estimate-round'
 
 interface ActiveItemPanelProps {
   item: Item
   unit: EstimationUnit
   isFirst: boolean
   isLast: boolean
-  onFinalize: (id: string, best: number, likely: number, worst: number) => FinalizeResult
+  onFinalize: (id: string, best: number, likely: number, worst: number) => ActionResult
   onAdvance: () => void
   onNavigatePrev: () => void
 }

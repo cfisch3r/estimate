@@ -1,4 +1,4 @@
-import type { EstimateValues } from './estimate'
+import type { Estimate } from './estimate'
 import type { LiveRound } from './types'
 
 /** Participant: whether this client's own submission needs re-sending, judged
@@ -9,7 +9,7 @@ import type { LiveRound } from './types'
 export function needsResend(
   liveRound: LiveRound | null,
   participantId: string,
-): liveRound is LiveRound & { mySubmission: EstimateValues } {
+): liveRound is LiveRound & { mySubmission: Estimate } {
   if (!liveRound || liveRound.revealed || !liveRound.mySubmission) return false
   const myEntry = liveRound.roster.find((entry) => entry.participantId === participantId)
   return !myEntry?.submitted

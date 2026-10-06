@@ -5,7 +5,7 @@ import { isFinalized } from './item'
 import { patchItem, useSessionStore } from './session'
 import type { LiveRound, SessionSnapshot } from './types'
 
-interface RoundStore {
+export interface RoundStore {
   /** Participant-only view of the facilitator's current round; null otherwise. */
   liveRound: LiveRound | null
 
@@ -144,11 +144,7 @@ export const useRoundStore = create<RoundStore>((set) => ({
         ? {
             liveRound: {
               ...state.liveRound,
-              mySubmission: {
-                best: estimate.best,
-                likely: estimate.likely,
-                worst: estimate.worst,
-              },
+              mySubmission: estimate,
               submissions: upsertByParticipant(state.liveRound.submissions, estimate),
             },
           }

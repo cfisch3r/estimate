@@ -5,6 +5,12 @@ import { useSessionStore } from './session'
 import { useConnectionStore } from './connection'
 import type { Item } from './types'
 
+function mine(best: number, likely: number, worst: number): Estimate {
+  const result = createEstimate({ participantId: 'me-123', best, likely, worst })
+  if (!result.ok) throw new Error(result.error)
+  return result.value
+}
+
 function resetStore() {
   useSessionStore.setState({
     sessionName: '',
@@ -116,7 +122,7 @@ describe('applySyncState', () => {
         revealed: false,
         round: 0,
         roster: [],
-        mySubmission: { best: 2, likely: 4, worst: 8 },
+        mySubmission: mine(2, 4, 8),
       },
     })
 
@@ -135,7 +141,7 @@ describe('applySyncState', () => {
     })
 
     const round = useRoundStore.getState().liveRound
-    expect(round?.mySubmission).toEqual({ best: 2, likely: 4, worst: 8 })
+    expect(round?.mySubmission).toMatchObject({ best: 2, likely: 4, worst: 8 })
     expect(round?.submissions).toEqual([])
   })
 
@@ -181,7 +187,7 @@ describe('applySyncState', () => {
         revealed: true,
         round: 0,
         roster: [],
-        mySubmission: { best: 2, likely: 4, worst: 8 },
+        mySubmission: mine(2, 4, 8),
       },
     })
 
@@ -211,7 +217,7 @@ describe('applySyncState', () => {
         revealed: false,
         round: 0,
         roster: [],
-        mySubmission: { best: 2, likely: 4, worst: 8 },
+        mySubmission: mine(2, 4, 8),
       },
     })
 
@@ -262,7 +268,7 @@ describe('applySyncState', () => {
         revealed: true,
         round: 0,
         roster: [],
-        mySubmission: { best: 2, likely: 4, worst: 8 },
+        mySubmission: mine(2, 4, 8),
       },
     })
 
@@ -456,7 +462,7 @@ describe('submitEstimate', () => {
       )
 
     const round = useRoundStore.getState().liveRound!
-    expect(round.mySubmission).toEqual({ best: 3, likely: 5, worst: 8 })
+    expect(round.mySubmission).toMatchObject({ best: 3, likely: 5, worst: 8 })
     expect(round.submissions).toHaveLength(1)
     expect(round.submissions[0]).toMatchObject({ participantId: 'me-123', best: 3 })
   })
@@ -475,7 +481,7 @@ describe('submitEstimate', () => {
 
     const round = useRoundStore.getState().liveRound!
     expect(round.submissions).toHaveLength(1)
-    expect(round.mySubmission).toEqual({ best: 3, likely: 5, worst: 13 })
+    expect(round.mySubmission).toMatchObject({ best: 3, likely: 5, worst: 13 })
   })
 
   it('is a no-op when there is no active round', () => {

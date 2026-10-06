@@ -10,7 +10,7 @@ interface RangeBarProps {
   unitSuffix: string
   /** When set, the bar also shows the cone-of-uncertainty guidance ceiling (PRD
    *  §6.1) — the caller computes it (`bestCase * highMult/lowMult`, anchored to
-   *  Best Case) once via `usePhaseGuidance` and passes the number through, so the
+   *  Best Case) once via `useThreePointDraft` and passes the number through, so the
    *  formula lives in exactly one place. Omitted entirely, the bar renders exactly
    *  as it always has. */
   guidance?: { guidanceHigh: number }

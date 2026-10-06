@@ -8,9 +8,9 @@ export default defineConfig([
   ...fsd.configs.recommended,
   {
     // `features/submit-estimate` has one consumer (pages/participant-estimate):
-    // it's the participant's submit use case, kept out of `estimate-round`,
-    // which is form UI shared by both roles, as a named, separately-testable
-    // use case rather than incidental page code. Revisit if it never gains a
+    // it's the participant's submit use case, kept out of `estimate-round`
+    // (three-point entry plus the single-user finalize use case) as a named,
+    // separately-testable use case rather than incidental page code. Revisit if it never gains a
     // second consumer.
     files: ['./src/features/submit-estimate/**'],
     rules: {

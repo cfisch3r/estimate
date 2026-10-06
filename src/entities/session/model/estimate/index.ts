@@ -17,6 +17,7 @@ export {
   DEFAULT_UNCERTAINTY_INDEX,
 } from './types'
 export type {
+  ActionResult,
   Estimate,
   EstimateField,
   EstimateValues,

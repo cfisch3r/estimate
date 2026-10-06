@@ -810,7 +810,8 @@ describe('useNetworkSession', () => {
       emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
       await Promise.resolve()
     })
-    act(() => useRoundStore.getState().submitEstimate(estimateOf('p1')))
+    const mine = estimateOf('p-self')
+    act(() => useRoundStore.getState().submitEstimate(mine))
     fakeSession.sendEstimate.mockClear()
 
     await act(async () => {
@@ -826,12 +827,9 @@ describe('useNetworkSession', () => {
       await Promise.resolve()
     })
 
-    expect(fakeSession.sendEstimate).toHaveBeenCalledWith(
-      'i1',
-      expect.objectContaining({ participantId: 'p-self', best: 1, likely: 2, worst: 3 }),
-      0,
-      'peer-fac',
-    )
+    // The locally stored, already-validated estimate goes out as-is.
+    expect(fakeSession.sendEstimate).toHaveBeenCalledTimes(1)
+    expect(fakeSession.sendEstimate).toHaveBeenCalledWith('i1', mine, 0, 'peer-fac')
   })
 
   it('does not resend when the roster already shows this participant as submitted', async () => {

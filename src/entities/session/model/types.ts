@@ -1,9 +1,4 @@
-import type {
-  AggregateResult,
-  Estimate,
-  EstimateValues,
-  EstimationUnit,
-} from './estimate'
+import type { AggregateResult, Estimate, EstimationUnit } from './estimate'
 
 export interface Item {
   id: string
@@ -40,8 +35,9 @@ export interface LiveRound {
   /** Who's in and who has submitted this round, with no estimate values
    *  (ADR-003, "Single owner"). Drives the "N of M submitted" line. */
   roster: RosterEntry[]
-  /** This participant's own most recent submitted values, or null before submitting. */
-  mySubmission: EstimateValues | null
+  /** This participant's own most recent submitted estimate (already validated),
+   *  or null before submitting. Kept whole so a resend can send it as-is. */
+  mySubmission: Estimate | null
 }
 
 /** A values-free roster row for the current round (ADR-003, "Single owner").

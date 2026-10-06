@@ -12,6 +12,10 @@ export interface RawEstimateInput extends EstimateValues {
 
 export type Result<T> = { ok: true; value: T } | { ok: false; error: string }
 
+/** The outcome of a use case that produces no value, only success or a
+ *  user-facing reason it was refused (submit, finalize). */
+export type ActionResult = { ok: true } | { ok: false; error: string }
+
 declare const EstimateBrand: unique symbol
 
 /** Only producible via createEstimate() — the single point where the best <= likely

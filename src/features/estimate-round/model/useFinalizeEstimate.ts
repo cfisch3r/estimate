@@ -1,7 +1,10 @@
-import { aggregateEstimates, createEstimate } from '../../../entities/session'
-import { FACILITATOR_PARTICIPANT_ID, useRoundStore } from '../../../entities/session'
-
-export type FinalizeResult = { ok: true } | { ok: false; error: string }
+import {
+  createEstimate,
+  FACILITATOR_PARTICIPANT_ID,
+  finalResultFor,
+  useRoundStore,
+  type ActionResult,
+} from '../../../entities/session'
 
 /** The single-user finalize use case: the facilitator's own three-point estimate
  *  for an item is validated, aggregated, and recorded as the item's final result.
@@ -14,7 +17,7 @@ export function useFinalizeEstimate() {
     best: number,
     likely: number,
     worst: number,
-  ): FinalizeResult {
+  ): ActionResult {
     const estimate = createEstimate({
       participantId: FACILITATOR_PARTICIPANT_ID,
       best,
@@ -22,7 +25,9 @@ export function useFinalizeEstimate() {
       worst,
     })
     if (!estimate.ok) return estimate
-    finalizeItem(id, aggregateEstimates([estimate.value]))
+    const result = finalResultFor([estimate.value])
+    if (!result.ok) return result
+    finalizeItem(id, result.value)
     return { ok: true }
   }
 }

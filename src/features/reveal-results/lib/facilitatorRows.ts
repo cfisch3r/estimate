@@ -1,35 +1,32 @@
 import type { EstimateValues } from '../../../entities/session'
-import {
-  announcedName,
-  roundMemberIds,
-  teammateLabel,
-  type Item,
-} from '../../../entities/session'
+import { participantLabels, roundMemberIds, type Item } from '../../../entities/session'
 
-export interface FacilitatorRosterRow {
+export interface FacilitatorRow {
   id: string
   label: string
   submission: EstimateValues | null
 }
 
 /** The people the facilitator is waiting on, labelled and paired with their
- *  submitted values (membership comes from `roundMemberIds`). Announced names
- *  win; the rest get a stable "Teammate N". */
-export function buildRoster(
+ *  submitted values (membership comes from `roundMemberIds`; labels from the
+ *  shared `participantLabels` rule, so a peer reads the same here as on a
+ *  participant's revealed list). Distinct from the values-free wire roster
+ *  built by the session entity. */
+export function buildFacilitatorRows(
   item: Item,
   participantNames: Record<string, string>,
-): FacilitatorRosterRow[] {
+): FacilitatorRow[] {
   const submissionById = new Map(item.submissions.map((s) => [s.participantId, s]))
-  let teammateNo = 0
-  return roundMemberIds(
+  const ids = roundMemberIds(
     participantNames,
     item.submissions.map((s) => s.participantId),
-  ).map((id) => {
-    const named = announcedName(participantNames, id)
+  )
+  const labels = participantLabels(ids, participantNames)
+  return ids.map((id, index) => {
     const submission = submissionById.get(id)
     return {
       id,
-      label: named ?? teammateLabel(++teammateNo),
+      label: labels[index]!,
       submission: submission
         ? { best: submission.best, likely: submission.likely, worst: submission.worst }
         : null,

@@ -1,6 +1,2 @@
-export {
-  useSubmitEstimate,
-  type DeliveryState,
-  type SubmitResult,
-} from './model/useSubmitEstimate'
+export { useSubmitEstimate, type DeliveryState } from './model/useSubmitEstimate'
 export { DeliveryStatus } from './ui/DeliveryStatus'
