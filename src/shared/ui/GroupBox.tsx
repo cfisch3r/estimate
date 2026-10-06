@@ -1,5 +1,6 @@
 import type { HTMLAttributes, ReactNode } from 'react'
 import { InfoPopover } from './InfoPopover'
+import './group-box.css'
 
 interface GroupBoxProps extends HTMLAttributes<HTMLDivElement> {
   label: string

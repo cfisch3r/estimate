@@ -1,0 +1,19 @@
+.confirm-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-divider);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  color: var(--color-neutral-300);
+  line-height: 1.4;
+}
+
+.confirm-note svg {
+  flex: none;
+  color: var(--color-accent-400);
+  margin-top: 1px;
+}

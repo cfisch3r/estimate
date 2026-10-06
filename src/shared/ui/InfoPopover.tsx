@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { InfoIcon } from '@phosphor-icons/react/dist/csr/Info'
+import './info-popover.css'
 
 interface InfoPopoverProps {
   label: string
