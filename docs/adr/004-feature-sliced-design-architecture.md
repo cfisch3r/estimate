@@ -18,22 +18,30 @@
 > proxies, and a hard baseline invites gaming them. The ratchet mentioned in this
 > ADR's body was therefore not built.
 >
-> **Update 2026-10-05:** An architecture review revised parts of the slice mapping
-> below, which otherwise stands as the record of the original migration:
->
-> | Concern | Where it lives now |
-> |---|---|
-> | `useLeaveWorkspace`, `useLeaveLiveSession`, `useStartSingleUser`, `useStartCollaborative`, `useJoinFlow`, `useReconnect` | `features/session-lifecycle/model` — user-facing use cases composing the three stores with navigation, so a feature rather than `entities/session/lib` (which no longer exists) |
-> | Stateful feature hooks in general | A slice's `model/` segment; `lib/` is for framework-free helpers only |
-> | Facilitator reveal / retry / finalize orchestration | `features/reveal-results/model/useRevealRound`; the aggregated-range display (`AggregatedRange`) is shared there between the facilitator panel and the participant's revealed view |
-> | `LiveSessionStrip` | `pages/workspace/ui` — it had a single consumer, so it was page-local UI, not part of the feature |
-> | Pure session policies (roster, snapshot building, resend decision, round membership) | `entities/session/model` |
-> | The cone-of-uncertainty guidance rule | `entities/estimate` (pure), with the feature only rendering it |
-> | Sibling-entity coupling (`entities/session` using `estimate`) | FSD `@x` cross-import surfaces (`entities/<slice>/@x/session.ts`), replacing the earlier Steiger rule exemptions |
->
-> **Update 2026-10-05 (later):** `entities/participant` held only the facilitator id constant, the localStorage identity helper and two label helpers, all effectively owned by `entities/session`, so it was folded in (`model/participantId.ts`, `model/participantLabel.ts`, `api/participantIdentity.ts`). `announcedName` / `teammateLabel` are exported from the session barrel for the reveal views.
->
-> **Update 2026-10-06:** `entities/estimate` was merged into `entities/session`. Estimates are value objects owned by the session's rounds and items, not an independent entity, and the separate slice existed only to produce the `@x` cross-import surface. The pure core (types, `createEstimate`, aggregation, CI90, guards, uncertainty guidance) now lives in `entities/session/model/estimate/` with its own `index.ts` and an unchanged 100% coverage threshold; `RangeBar` and `EstimateTriple` live in `entities/session/ui/estimate/`. Session-internal code imports the core directly; features, pages and widgets use the `entities/session` barrel. The `@x` surface is gone, and the two mapping rows above that name `entities/estimate` and `@x` describe the earlier shape.
+> **Update 2026-10-06:** the slice mapping was revised after architecture reviews. The
+> "Confirmed slice mapping" section below records the original migration; where it and
+> the "Current slice mapping" section differ, the latter wins.
+
+## Current slice mapping
+
+As of 2026-10-06, superseding the original mapping where they differ:
+
+| Concern | Where it lives now |
+|---|---|
+| Session, rounds, items and the estimate value objects they own | `entities/session` — the only entity slice. `entities/estimate` and `entities/participant` were merged into it: estimates are value objects owned by the session's rounds and items, not an independent entity |
+| Pure estimate core (types, `createEstimate`, aggregation, CI90, guards, uncertainty guidance) | `entities/session/model/estimate/` with its own `index.ts`; the 100% coverage threshold is unchanged. Session-internal code imports it directly; everything outside uses the `entities/session` barrel |
+| `RangeBar`, `EstimateTriple` | `entities/session/ui/estimate/` |
+| Facilitator id constant, label rule | `entities/session/model/participantId.ts`, `participantLabel.ts` |
+| Stable per-browser participant id helper | `entities/session/lib/participantIdentity.ts` |
+| Cross-entity imports (`@x`) | None: with one entity slice there is nothing to cross, and the `@x` surfaces were removed |
+| Pure session policies (roster, snapshot building, resend decision, round membership, finalize rule) | `entities/session/model` |
+| `useLeaveWorkspace`, `useLeaveLiveSession`, `useStartSingleUser`, `useStartCollaborative`, `useJoinFlow`, `useReconnect` and the other session-lifecycle hooks | `features/session-lifecycle/model` — user-facing use cases composing the three stores with navigation (`entities/session/lib` holds only the participant identity helper) |
+| Stateful feature hooks in general | A slice's `model/` segment; `lib/` is for framework-free helpers only |
+| Facilitator reveal / retry / finalize use case | `features/reveal-results/model/useRevealRound`; `AggregatedRange` is shared there between the facilitator panel and the participant's revealed view |
+| Single-user finalize use case, three-point entry form and guidance | `features/estimate-round` |
+| Participant submit-and-delivery use case | `features/submit-estimate` |
+| `LiveSessionStrip` | `pages/workspace/ui` — single consumer, so page-local UI |
+| Steiger exemptions | One: `fsd/insignificant-slice` is off for `features/submit-estimate` (single consumer, kept as a named use case); see `steiger.config.ts` |
 
 ## Context
 
@@ -135,8 +143,8 @@ filenames or from the file's original directory:
   shared wire layer both features depend on downward, not a feature slice itself.
 - `hooks/useLeaveWorkspace.ts` looked workspace-page-specific from its name, but
   the global `Header` (rendered on every screen, not just Workspace) also needs it
-  for its "leave" button — so it's really an `entities/session` action, not a
-  page-local one. It's `entities/session/lib/useLeaveWorkspace.ts`. The same
+  for its "leave" button — so it's really a session action, not a
+  page-local one. It was placed at `entities/session/lib/useLeaveWorkspace.ts` (now `features/session-lifecycle/model`, see the current slice mapping). The same
   discovery moved `Header` itself out of `shared/ui` (which should stay
   business-agnostic) into `app/` — it carries screen/mode-aware logic, which isn't
   a generic UI primitive.
@@ -144,18 +152,17 @@ filenames or from the file's original directory:
   both the `join-session` and `participant-estimate` pages. `useConnectionPhase`
   is fully generic (no domain imports at all) and went to `shared/lib`;
   `useLeaveLiveSession` composes `entities/session` state and went to
-  `entities/session/lib`, alongside `useLeaveWorkspace`.
+  `entities/session/lib`, alongside `useLeaveWorkspace` (both now in `features/session-lifecycle/model`, see the current slice mapping).
 - `features/submit-estimate` holds the participant's submit-and-delivery use case
   (record locally, send to the facilitator, track delivery). It sits apart from
-  `estimate-round`, which stays form and guidance UI shared with the facilitator's
-  Workspace.
+  `estimate-round`, which stays the three-point form, guidance and single-user finalize use case.
 - `screens/SessionSidebar.tsx` is used by both the `workspace` and
   `session-summary` pages — the concrete trigger for adding the `widgets` layer
   (see Decision above). It's `widgets/session-sidebar`.
 - `components/RangeBar.tsx` is used by both `features/estimate-round` (the manual
   three-point estimate flow) and `features/reveal-results` (the facilitator's
   aggregated-range display) — the same same-layer-sibling problem as
-  `network/actions.ts`. It became `entities/estimate/ui/RangeBar.tsx` (now `entities/session/ui/estimate/RangeBar.tsx`, see the 2026-10-06 update).
+  `network/actions.ts`. It became `entities/estimate/ui/RangeBar.tsx` (now `entities/session/ui/estimate/RangeBar.tsx`, see the current slice mapping).
 
 ## Rationale
 

@@ -4,7 +4,7 @@
 **Date:** 2026-09-29
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [006-router-adoption.md](006-router-adoption.md), issue #111
 
-> **Update 2026-10-05:** the round store no longer validates or aggregates. `finalizeLiveItem` was removed and `finalizeItem(id, result)` now takes an already-computed `AggregateResult`; `submitEstimate(estimate)` and `applyRemoteEstimate` take an already-valid `Estimate`, and `applySyncState` takes `Estimate[]` submissions (the wire layer validates them). `createEstimate` / `aggregateEstimates` are composed by `features/submit-estimate`, `features/reveal-results` and `features/estimate-round`. The action lists below record the original decomposition.
+> **Update 2026-10-05:** the round store no longer validates or aggregates. `finalizeLiveItem` was removed and `finalizeItem(id, result)` now takes an already-computed `AggregateResult`; `submitEstimate(estimate)` and `applyRemoteEstimate` take an already-valid `Estimate`, and `applySyncState` takes `Estimate[]` submissions (the wire layer validates them). `createEstimate` / `aggregateEstimates` are composed by `features/submit-estimate`, `features/reveal-results` and `features/estimate-round`. `finalResultFor` (`entities/session/model/finalResult.ts`) is the single finalize rule, and both finalize paths return the shared `ActionResult`. The slice's public API exports `useConnectionStore` / `useRoundStore` as narrowed views (`model/publicStores.ts`) without the bridge-only mutators (`setMode`, `setConnectionStatus`, `setPeerCount`, `applyParticipantName`, `removeParticipant`, `applySyncState`, `applyRemoteEstimate`); `NetworkProvider` writes through the internal stores. The action lists below record the original decomposition, and the diagrams are updated to the current actions and hooks.
 
 ## Context
 
@@ -159,6 +159,7 @@ flowchart TB
     direction LR
     EstimateRound["estimate-round<br/>[Submit Flow: Feature Slice]"]
     RevealResults["reveal-results<br/>[Facilitator Reveal/Retry: Feature Slice]"]
+    LeaveWorkspace["useLeaveWorkspace<br/>[Cross-Concern Composer: Hook in session-lifecycle]"]
   end
 
   subgraph SESSION["ENTITIES/SESSION"]
@@ -166,7 +167,6 @@ flowchart TB
     SessionStore["useSessionStore<br/>[Session Domain State: Zustand Store]"]
     ConnStore["useConnectionStore<br/>[Live Connection State: Zustand Store]"]
     RoundStore["useRoundStore<br/>[Round Mechanics State: Zustand Store]"]
-    LeaveWorkspace["useLeaveWorkspace<br/>[Cross-Concern Composer: Hook]"]
   end
 
   subgraph NET["ENTITIES/SESSION/API"]
@@ -177,7 +177,7 @@ flowchart TB
   LeaveWorkspace -->|clears items/sessionName| SessionStore
 
   EstimateRound -->|submitEstimate, reads liveRound| RoundStore
-  RevealResults -->|finalizeLiveItem, revealRound, retryRound| RoundStore
+  RevealResults -->|finalizeItem via useRevealRound.finalize, revealRound, retryRound| RoundStore
   RoundStore -->|writes finalResult/submissions| SessionStore
 
   NetworkProvider -.->|applySyncState, applyRemoteEstimate| RoundStore
@@ -186,8 +186,8 @@ flowchart TB
   classDef features fill:#fdf4ff,stroke:#a855f7,color:#581c87
   classDef session fill:#fff7ed,stroke:#f97316,color:#7c2d12
   classDef net fill:#f0fdf4,stroke:#22c55e,color:#14532d
-  class EstimateRound,RevealResults features
-  class SessionStore,ConnStore,RoundStore,LeaveWorkspace session
+  class EstimateRound,RevealResults,LeaveWorkspace features
+  class SessionStore,ConnStore,RoundStore session
   class NetworkProvider net
   style FEATURES fill:#fdf4ff,stroke:#a855f7,stroke-width:2px
   style SESSION fill:#fff7ed,stroke:#f97316,stroke-width:2px
@@ -209,9 +209,9 @@ Legend: solid = synchronous call, numbered by call order.
 
 ```mermaid
 flowchart LR
-  Facilitator["Facilitator clicks Finalize<br/>[User Action]"] -->|1| RevealResults["reveal-results feature<br/>[React Component]"]
-  RevealResults -->|2 calls finalizeLiveItem id| RoundStore["useRoundStore<br/>[entities/session/model]"]
-  RoundStore -->|3 aggregates submissions, reads items via| SessionStore["useSessionStore<br/>[entities/session/model]"]
+  Facilitator["Facilitator clicks Finalize<br/>[User Action]"] -->|1| RevealResults["reveal-results feature<br/>[useRevealRound Hook]"]
+  RevealResults -->|"2 finalResultFor(submissions), then finalizeItem(id, result)"| RoundStore["useRoundStore<br/>[entities/session/model]"]
+  RevealResults -->|"3 reads item submissions at call time"| SessionStore["useSessionStore<br/>[entities/session/model]"]
   RoundStore -->|4 writes finalResult| SessionStore
 
   classDef action fill:#f1f5f9,stroke:#64748b,color:#0f172a
@@ -222,7 +222,7 @@ flowchart LR
   class RoundStore,SessionStore session
 ```
 
-Steps 3 and 4 are a same-slice file import (`round.ts` importing
+Step 4 is a same-slice file import (`round.ts` importing
 `session.ts`, both inside `entities/session/model/`), not a cross-slice call —
 this is what Option C got wrong by placing round mechanics one layer up.
 

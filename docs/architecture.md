@@ -84,7 +84,12 @@ rationale. In brief, by architectural role rather than layer:
 - **The session stores** (`entities/session/model`, formerly `/state`) — three
   per-concern Zustand stores (ADR-005): `session.ts` (session domain data),
   `connection.ts` (live-connection state), `round.ts` (round mechanics); the network
-  layer is an adapter dispatching into them. The session policies they and
+  layer is an adapter dispatching into them. The slice's public API exports narrowed views
+  of the connection and round stores (`publicStores.ts`) that hide the network-bridge
+  mutators; `NetworkProvider` writes through the internal stores. The stable per-browser
+  `participantId` helper lives in `entities/session/lib`, and `finalResultFor` is the
+  single finalize rule (aggregate the submissions, or fail with a message when there are
+  none). The session policies they and
   `NetworkProvider` apply are pure modules beside them: `roster.ts` (round membership
   via `roundMemberIds`, the wire roster, the departed-name prune rule), `snapshot.ts`
   (building the facilitator's snapshot) and `resend.ts` (whether a participant's
@@ -102,11 +107,11 @@ rationale. In brief, by architectural role rather than layer:
   `store.liveRound`). Pages are kept thin: per-state panels, a `model/` read-model hook
   where the store reads are non-trivial, and the shared three-point entry form
   (`ThreePointEstimateForm`, `features/estimate-round`) used by both Workspace and the
-  participant view. The participant submit-and-delivery flow lives in
+  participant view; the same slice owns the single-user `useFinalizeEstimate` use case. The participant submit-and-delivery flow lives in
   `features/submit-estimate`, and `model/useFocusHeadingOnChange` moves focus to the new
   panel's heading when the round view changes.
 - **Design-system primitives** (`shared/ui`, formerly `/components`) — Button, Card,
-  Field, GuardNote, ConfirmNote, Tag, RadioTile, BrandMark, Markdown / MarkdownEditor, LiveRegion (a persistent
+  Field, GuardNote, ConfirmNote, GroupBox, InfoPopover, NavRow, Tag, RadioTile, BrandMark, Markdown / MarkdownEditor, LiveRegion (a persistent
   `status`/`alert` container for announcements), VisuallyHidden (screen-reader-only
   text) — thin wrappers / compositions over
   Nocturne classes. RadioTile is currently unreferenced (unused since the #34
@@ -116,9 +121,9 @@ rationale. In brief, by architectural role rather than layer:
 - **CSS** — `src/design/` holds only the design-system layer: `nocturne.css` (verbatim
   Nocturne port) and the generic composed patterns built from its primitives
   (`radio-tile.css`, `markdown.css`). Component-owned styling lives beside its owner and
-  is imported by it: `range-bar.css` in `entities/session/ui/estimate`, `phase-picker.css` in
+  is imported by it: `range-bar.css` in `entities/session/ui/estimate`, `group-box.css`, `info-popover.css`, `nav-row.css` and `confirm-note.css` in `shared/ui` (beside the components that own them), `phase-picker.css` in
   `features/estimate-round/ui`, `session-sidebar.css` in `widgets/session-sidebar/ui`,
-  `workspace.css` in `pages/workspace/ui`, `header.css` in `app`.
+  `workspace.css` (`.workspace-*` rules only) in `pages/workspace/ui`, `header.css` in `app`.
 - **Persistence** — session save/load (JSON file export/import), CSV export and
   shareable-report-link encode/decode have no home yet; there is no placeholder
   directory. Under FSD each lands where its use case belongs: file (de)serialisation of
@@ -178,7 +183,7 @@ function checkUncertaintyRange(best: number, worst: number, level: UncertaintyLe
 
 `entities/session/model/estimate/estimate.ts` also exports `validateEstimateValues` — the numeric half of `createEstimate`'s invariant, usable for a live form preview before a participant exists; `createEstimate` runs it after its `participantId` check. It returns a `code` and the affected `fields` alongside the error text, and `features/estimate-round` (`lib/describeEstimateIssue.ts`) turns those into the actionable form messages (naming the numbers and what to change) and marks the offending inputs `aria-invalid` with `aria-describedby` pointing at the message. A problem first appears only after the entry has settled (~600 ms, `model/useSettledIssue.ts`) or a field loses focus, so typing through an intermediate value doesn't flash it; an entry that is already invalid when the form opens is shown at once, a showing problem updates in place, a resolved one clears at once, and the submit button is never delayed.
 
-The PRD §6.1 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`features/estimate-round/ui/PhasePicker.tsx`), local to their own view (`features/estimate-round/model/usePhaseGuidance.ts`, composed with the rest of the entry form by `ThreePointEstimateForm`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
+The PRD §6.1 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`features/estimate-round/ui/PhasePicker.tsx`), local to their own view (guidance derived inside `features/estimate-round/model/useThreePointDraft.ts`, composed with the rest of the entry form by `ThreePointEstimateForm`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
 
 **Tunable constants, not settled numbers:** the symmetric-range tolerance (proposed 15%) and outlier threshold (proposed: no range overlap, or `likely` deviates >40% of group spread) are UX-tuning parameters PRD leaves vague ("within a tolerance," "far from the group median") — ship as named constants, expect to retune after real sessions rather than treating these as final.
 

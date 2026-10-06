@@ -47,7 +47,9 @@ segment — add one when there's something to put in it. Pure decision rules tha
 more than one hook needs (e.g. `entities/session/model/roster.ts`) are plain
 modules in `model/`, unit-tested directly.
 
-Component CSS lives beside its component and is imported by it; `src/design/`
+Component CSS lives beside its component and is imported by it (shared
+components' sheets sit in `shared/ui/*.css`; `pages/workspace/ui/workspace.css`
+holds `.workspace-*` rules only); `src/design/`
 holds only the design-system layer (`nocturne.css` and generic composed patterns).
 
 ## The public-API rule
@@ -56,7 +58,10 @@ Only a slice's `index.ts` is importable from outside that slice. Never reach
 into `entities/session/model/store.ts` directly from a page — import
 `useSessionStore` from `entities/session` (its barrel). Steiger enforces this
 (`fsd/no-public-api-sidestep`, `fsd/public-api`); a missing barrel is an error,
-not a style choice.
+not a style choice. A barrel may export a narrowed view instead of the raw
+object: `entities/session` exports `useConnectionStore` / `useRoundStore` as types
+without the network-bridge mutators (`model/publicStores.ts`), and
+`NetworkProvider` writes through the internal stores.
 
 ## Cross-entity imports: `@x`
 
