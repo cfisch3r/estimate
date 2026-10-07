@@ -140,7 +140,8 @@ current state:
 Zustand stays out of the domain so that the domain's "no framework, no I/O" rule
 stays literal. Today the four stores (`session`, `round`, `connection`,
 `publicStores`) are the only files in `entities/session/model` that import a
-package; the other modules there are already pure, which supports the split. The
+package; the other modules there import only each other (the connection store
+also imports the identity helper from `lib/`; see stage 2), which supports the split. The
 connection store holds state about the link, not about the estimate; it is written
 mostly by the network adapter and stays an application store, with its pure rules
 (for example which departed participants to prune) in the domain. The facilitator
@@ -173,7 +174,7 @@ Each stage ends with all CI checks green and can be the last one.
 ### Enforcement
 
 Both enforcement questions were checked in a throwaway copy of the repo before this
-ADR was proposed, using the installed Steiger 0.7.0 / plugin 0.8.0 and oxlint 1.78.0.
+ADR was proposed, using the installed Steiger 0.7.0 with `@feature-sliced/steiger-plugin` 0.8.0 and oxlint 1.78.0.
 
 **FSD for the UI only (Steiger).** Running `steiger ./<ui-folder>` on a folder that
 contains only `app`, `pages`, `widgets`, `features` and `shared` works as needed:
