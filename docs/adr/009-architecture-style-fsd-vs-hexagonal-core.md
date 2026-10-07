@@ -67,8 +67,11 @@ how the round is written, not part of this one.
 Target shape (a sketch: the UI lane is simplified, and edges point from the
 depending lane to the one it imports from).
 
-Legend: solid arrow = import dependency; dotted double arrow = I/O between an
-adapter and an external system; dashed box = external system.
+Legend: solid arrow = depends on and calls (the arrow points at the callee; a double
+arrow goes both ways); dashed arrow = implements an interface owned by the target
+lane and is wired in at composition time, so the target calls it at runtime through
+that interface while the source-code dependency still points inward; dashed box =
+external system.
 
 ```mermaid
 flowchart TB
@@ -79,7 +82,8 @@ flowchart TB
   end
   subgraph APP["APPLICATION"]
     direction TB
-    UseCases["Use cases<br/>[Hooks and Zustand stores]"]
+    UseCases["Use cases<br/>[Hooks]"]
+    Stores["State stores<br/>[Zustand stores]"]
   end
   subgraph DOM["DOMAIN"]
     direction TB
@@ -95,12 +99,15 @@ flowchart TB
   Features -->|calls| UseCases
   Features -->|types and display rules| Core
   UseCases -->|rules and value types| Core
-  Net -->|dispatches into| UseCases
-  Store -->|loads and saves through| UseCases
+  UseCases -->|reads and writes| Stores
+  Net -->|dispatches peer messages into| UseCases
+  Net -->|subscribes for snapshot broadcast| Stores
+  Store -->|imports sessions through| UseCases
   Net -->|validates with| Core
   Store -->|serialises with| Core
-  Ext <-.->|WebRTC and relays| Net
-  Ext <-.->|file and browser storage| Store
+  Ext <-->|WebRTC and relays| Net
+  Ext <-->|file and browser storage| Store
+  AD -.->|implements application ports| APP
   style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   style APP fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
   style DOM fill:#fbe9bf,stroke:#9a6f1e,stroke-width:2px,color:#14171f
@@ -111,7 +118,7 @@ flowchart TB
   classDef ad fill:#dcbfe5,stroke:#7a3d8c,color:#14171f
   classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
   class Pages,Features ui
-  class UseCases app
+  class UseCases,Stores app
   class Core dom
   class Net,Store ad
   class Ext ext
@@ -120,9 +127,10 @@ flowchart TB
 | Box | Lane | Responsibility |
 |---|---|---|
 | **Estimate and session rules** | Domain | Everything pure: `Estimate` and its factory, aggregation, guards, uncertainty guidance, item and round types, roster, snapshot and resend policies, label rules, the finalize rule. No React, no I/O. Keeps the 100% coverage threshold. |
-| **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, and the stores they write to (including the connection store). Replaces today's use-case hooks in `features/` and the stores in `entities/session/model`. |
-| **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. Calls the use cases when a peer message arrives. |
-| **Storage, export, import** | Adapters | Participant-identity storage today; future save/load, CSV and link export, and backlog import. |
+| **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, written as straight-line code: read state, call a domain decision, write state, trigger an effect. Owns the interfaces (ports) that adapters implement, such as the peer transport (today `NetworkSessionApi`). Replaces today's use-case hooks in `features/`. |
+| **State stores** | Application | The Zustand stores holding the current session, round and connection state (see "Where state lives"). Replaces the stores in `entities/session/model`. |
+| **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. Calls the use cases when a peer message arrives, broadcasts the facilitator's snapshot when the stores change, and implements the peer-transport port the use cases send through. |
+| **Storage, export, import** | Adapters | Participant-identity storage today; future save/load, CSV and link export, and backlog import. Implements the storage port; imports go in through the use cases. |
 | **Features** | UI | UI-only features and their components. They call use cases; they no longer own them. |
 | **Pages and widgets** | UI | Screens and widgets composed from features and shared UI, plus routing (ADR-006) and the design system. |
 | **Peers, relays, browser storage** | External | Not part of the codebase. |
@@ -135,24 +143,48 @@ current state:
 | Lane | Holds | Example |
 |---|---|---|
 | Domain | The state **shapes** and the **pure transitions** over them, as `(state, event) -> new state` | `Item`, `LiveRound`, reveal and retry of a round, versioned-round rule (ADR-003), applying a snapshot, `finalResultFor` |
-| Application | The Zustand **stores** that hold the current state and call those transitions | the session, round and connection stores as thin holders |
+| Application | The Zustand **stores** that hold the current state, and the use cases that operate on them | the session, round and connection stores; submit, reveal, finalize |
 | UI | Short-lived state belonging to one component | the estimate draft, the selected phase, whether a popover is open |
 
-Zustand stays out of the domain so that the domain's "no framework, no I/O" rule
-stays literal. Today the four stores (`session`, `round`, `connection`,
-`publicStores`) are the only files in `entities/session/model` that import a
-package; the other modules there import only each other (the connection store
-also imports the identity helper from `lib/`; see stage 2), which supports the split. The
-connection store holds state about the link, not about the estimate; it is written
-mostly by the network adapter and stays an application store, with its pure rules
-(for example which departed participants to prune) in the domain. The facilitator
-remains the authority (ADR-003): their store holds the full round state and
+**This lane is not stateless, unlike textbook hexagonal architecture.** A browser app
+has one long-lived, in-process state with one implementation, so a port in front of it
+would add ceremony and nothing to swap. Keeping the stores in the application lane
+needs no exception to the inward-only dependency rule, because nothing outward is
+imported. What it gives up is the textbook claim that the application layer holds no
+state.
+
+**Ports exist only at external boundaries.** The peer transport already has one:
+`NetworkSessionApi` is an interface that the use cases depend on and React context
+injects, and the test relay (ADR-007) is a second implementation behind the signaling
+contract. In the hybrid, the interface is owned by the application lane and the
+Trystero adapter implements it (the dashed edge in the diagram). The same shape fits
+the storage adapter later. Adapters that drive the app, such as incoming peer
+messages, call the use cases directly and need no port. The network adapter also reads
+state by subscribing to the stores to broadcast the facilitator's snapshot, which is an
+inward dependency and needs no port either.
+
+**Use cases are straight-line.** Because they call the stores directly, they are tested
+against the real stores (as the hook tests do today), not against fakes. That is only
+acceptable if they contain no rules: any `if` that expresses a business rule moves into a
+pure domain function with full branch coverage. A review of the 2026-10-05 refactor
+found a real bug in exactly such a hook (a stale read of the round at call time), so
+this has to be kept true rather than assumed. The `architecture-review` pass should
+check it.
+
+Zustand stays out of the domain so that the domain's "no framework, no I/O" rule stays
+literal. Today the four stores (`session`, `round`, `connection`, `publicStores`) are the
+only files in `entities/session/model` that import a package; the other modules there
+import only each other (the connection store also imports the identity helper from
+`lib/`; see stage 2), which supports the split. The connection store holds state about
+the link, not about the estimate; it is written mostly by the network adapter, with its
+pure rules (for example which departed participants to prune) in the domain. The
+facilitator remains the authority (ADR-003): their store holds the full round state and
 participants hold a derived snapshot; both shapes are domain types.
 
-Moving the transition logic out of the stores' `set(...)` calls is the riskiest part
-of stage 3, and most store tests would be rewritten against the pure functions. It
-also makes option D (an explicit state machine) a small step later, since the
-transitions are already pure functions of state and event.
+Moving the transition logic out of the stores' `set(...)` calls is the riskiest part of
+stage 3, and most store tests would be rewritten against the pure functions. It also
+makes option D (an explicit state machine) a small step later, since the transitions are
+already pure functions of state and event.
 
 ### Staging
 
