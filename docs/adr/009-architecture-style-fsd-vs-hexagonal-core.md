@@ -67,11 +67,11 @@ how the round is written, not part of this one.
 Target shape (a sketch: the UI lane is simplified, and edges point from the
 depending lane to the one it imports from).
 
-Legend: solid arrow = import dependency; dotted arrow = I/O to an external system;
-dashed box = external system.
+Legend: solid arrow = import dependency; dotted double arrow = I/O between an
+adapter and an external system; dashed box = external system.
 
 ```mermaid
-flowchart LR
+flowchart TB
   subgraph UI["UI (FSD)"]
     direction TB
     Pages["Pages and widgets<br/>[React Components]"]
@@ -99,7 +99,8 @@ flowchart LR
   Store -->|loads and saves through| UseCases
   Net -->|validates with| Core
   Store -->|serialises with| Core
-  AD -.->|WebRTC, relays, file and browser storage I/O| Ext
+  Ext <-.->|WebRTC and relays| Net
+  Ext <-.->|file and browser storage| Store
   style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   style APP fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
   style DOM fill:#fbe9bf,stroke:#9a6f1e,stroke-width:2px,color:#14171f
