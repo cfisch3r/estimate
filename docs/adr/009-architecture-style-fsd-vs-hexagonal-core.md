@@ -126,6 +126,32 @@ flowchart LR
 | **Pages and widgets** | UI | Screens and widgets composed from features and shared UI, plus routing (ADR-006) and the design system. |
 | **Peers, relays, browser storage** | External | Not part of the codebase. |
 
+### Where state lives
+
+State shapes and state transitions are separated from the thing that holds the
+current state:
+
+| Lane | Holds | Example |
+|---|---|---|
+| Domain | The state **shapes** and the **pure transitions** over them, as `(state, event) -> new state` | `Item`, `LiveRound`, reveal and retry of a round, versioned-round rule (ADR-003), applying a snapshot, `finalResultFor` |
+| Application | The Zustand **stores** that hold the current state and call those transitions | the session, round and connection stores as thin holders |
+| UI | Short-lived state belonging to one component | the estimate draft, the selected phase, whether a popover is open |
+
+Zustand stays out of the domain so that the domain's "no framework, no I/O" rule
+stays literal. Today the four stores (`session`, `round`, `connection`,
+`publicStores`) are the only files in `entities/session/model` that import a
+package; the other modules there are already pure, which supports the split. The
+connection store holds state about the link, not about the estimate; it is written
+mostly by the network adapter and stays an application store, with its pure rules
+(for example which departed participants to prune) in the domain. The facilitator
+remains the authority (ADR-003): their store holds the full round state and
+participants hold a derived snapshot; both shapes are domain types.
+
+Moving the transition logic out of the stores' `set(...)` calls is the riskiest part
+of stage 3, and most store tests would be rewritten against the pure functions. It
+also makes option D (an explicit state machine) a small step later, since the
+transitions are already pure functions of state and event.
+
 ### Staging
 
 1. **Extract the domain.** Move `entities/session/model/estimate/` and the other pure
@@ -146,11 +172,37 @@ Each stage ends with all CI checks green and can be the last one.
 
 ### Enforcement
 
-Steiger can keep checking the UI part, but it cannot express "domain imports
-nothing" or "adapters depend inward only". Those rules need a different checker.
-Candidates are oxlint's `no-restricted-imports` (not enabled in `.oxlintrc.json`
-today) or a dedicated dependency-boundary tool. Choosing the tool is part of stage 1
-and is not decided here.
+Both enforcement questions were checked in a throwaway copy of the repo before this
+ADR was proposed, using the installed Steiger 0.7.0 / plugin 0.8.0 and oxlint 1.78.0.
+
+**FSD for the UI only (Steiger).** Running `steiger ./<ui-folder>` on a folder that
+contains only `app`, `pages`, `widgets`, `features` and `shared` works as needed:
+it reports `fsd/forbidden-imports` for both an upward import and a sibling-slice
+import, the `entities` layer is optional (a tree without it passes), and files outside
+the given root are not checked at all. So Steiger can keep guarding the UI after the
+split, and it will not see imports that leave the UI folder (see below).
+
+**Domain and application boundaries (oxlint `no-restricted-imports`).** A per-folder
+override in `.oxlintrc.json` can express the rules, with these properties:
+
+- It flagged imports of outer lanes (`../ui/**`, `../adapters/**`, `../application/**`
+  from `domain/`; `ui` and `adapters` from `application/`), imports of any package
+  from `domain/` (including ones never listed, such as a newly added library), and
+  left in-domain relative imports alone, including nested ones.
+- The package allow-list and the outer-lane ban must be in **one** `patterns` group,
+  with the negations (`!./**`, `!../**`) before the outer-lane patterns. Two separate
+  groups interfere: the wider negation cancelled the outer-lane ban. This is
+  gitignore-style last-match-wins ordering.
+- The patterns are path-based, so they depend on the repo using relative imports (it
+  does; there are no path aliases). Introducing an alias would require adding it to
+  the patterns.
+- It cannot tell a use case from an adapter by what it imports, only by folder, so the
+  folder layout is what carries the rule.
+
+Imports from the UI into `application/` or `domain/` leave Steiger's root and are
+therefore not checked by it; they are allowed by design, and the reverse direction
+is covered by the oxlint rule above. A dedicated dependency-boundary tool is not
+needed for these rules.
 
 ## Consequences
 
@@ -176,14 +228,13 @@ and is not decided here.
 - Losing Steiger's coverage of the non-UI code in exchange for a different enforcement
   mechanism.
 
-## Open questions
+## Questions settled here and questions deferred
 
-- Where should stores live: in `application/` with the use cases, or in `domain/`
-  as state holders? (Today's stores contain both.)
-- Can Steiger be scoped to the UI folder only, and does it still require an
-  `entities` layer there for UI-only entity components (for example `RangeBar`)?
-- Should the round be written as an explicit state machine (option D), and with a
-  library or a hand-rolled reducer? This is a separate decision.
-- Folder names and whether `domain` needs internal sub-structure per concept.
-- How the connection store gets the participant identity without depending on an
-  adapter (see stage 2).
+| Question | Status |
+|---|---|
+| Where do the stores live? | Settled: application lane; shapes and transitions in the domain (see "Where state lives") |
+| Can Steiger be scoped to the UI folder, and is an `entities` layer required there? | Settled by a check: yes, and no (see "Enforcement") |
+| Can the domain and adapter boundaries be enforced with current tooling? | Settled by a check: yes, with oxlint (see "Enforcement") |
+| Should the round be an explicit state machine, and with what? | Deferred to a separate decision; the pure transitions from stage 3 are its prerequisite |
+| How does the connection store get the participant identity without depending on an adapter? | Deferred to stage 2 (inject it, or create it at the composition point) |
+| Folder names and the domain's internal structure per concept | Deferred to stage 1 |
