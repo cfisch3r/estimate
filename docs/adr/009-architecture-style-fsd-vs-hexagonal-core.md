@@ -202,9 +202,9 @@ this has to be kept true rather than assumed. The `architecture-review` pass sho
 check it.
 
 Zustand stays out of the domain so that the domain's "no framework, no I/O" rule stays
-literal. Today the four stores (`session`, `round`, `connection`, `publicStores`) are the
-only files in `entities/session/model` that import a package; the other modules there
-import only each other (the connection store also imports the identity helper from
+literal. The four stores (`session`, `round`, `connection`, `publicStores`) are the
+only files in `entities/session/model` that import a package; the pure modules that
+used to sit beside them now live in `src/domain/` (stage 1) and import only each other (the connection store also imports the identity helper from
 `lib/`; see stage 2), which supports the split. The connection store holds state about
 the link, not about the estimate; it is written mostly by the network adapter, with its
 pure rules (for example which departed participants to prune) in the domain. The
@@ -218,7 +218,7 @@ already pure functions of state and event.
 
 ### Staging
 
-1. **Extract the domain.** Move `entities/session/model/estimate/` and the other pure
+1. **Extract the domain (done).** Move `entities/session/model/estimate/` and the other pure
    modules (`item`, `types`, `participantId`, `participantLabel`, `roster`, `snapshot`,
    `resend`, `finalResult`) into a `src/domain/` folder with an enforced "imports nothing
    outside `domain/`" rule. This alone removes the weakest point left after the

@@ -67,7 +67,8 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 
 ## Module structure
 
-`src/` is organized by Feature-Sliced Design (FSD) — see
+`src/` is organized by Feature-Sliced Design (FSD), except `src/domain/`, which sits
+outside FSD as the pure core ([ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)) — see
 [ADR-004](adr/004-feature-sliced-design-architecture.md) for the adopted layer set
 (`app/pages/widgets/features/entities/shared`), the full slice mapping, and the
 rationale. In brief, by architectural role rather than layer:
@@ -90,7 +91,7 @@ rationale. In brief, by architectural role rather than layer:
   `participantId` helper lives in `entities/session/lib`, and `finalResultFor` is the
   single finalize rule (aggregate the submissions, or fail with a message when there are
   none). The session policies they and
-  `NetworkProvider` apply are pure modules beside them: `roster.ts` (round membership
+  `NetworkProvider` apply are pure modules in `src/domain/` (ADR-009 stage 1): `roster.ts` (round membership
   via `roundMemberIds`, the wire roster, the departed-name prune rule), `snapshot.ts`
   (building the facilitator's snapshot) and `resend.ts` (whether a participant's
   submission needs re-sending), plus `item.ts` (`isFinalized`).

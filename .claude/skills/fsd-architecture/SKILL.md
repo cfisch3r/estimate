@@ -45,7 +45,8 @@ not in `lib/`), `api/` (external calls — network, storage), `lib/`
 (framework-free helpers specific to that slice). Not every slice needs every
 segment — add one when there's something to put in it. Pure decision rules that
 more than one hook needs belong in `src/domain/` (e.g. `domain/roster.ts`, ADR-009
-stage 1), unit-tested directly; `src/domain/` is outside FSD and imports nothing from
+stage 1), unit-tested directly; `src/domain/` (including `domain/estimate/`, which keeps its own
+`index.ts`) is outside FSD and imports nothing from
 outside itself (enforced by oxlint).
 
 Component CSS lives beside its component and is imported by it (shared
@@ -56,7 +57,7 @@ holds only the design-system layer (`nocturne.css` and generic composed patterns
 ## The public-API rule
 
 Only a slice's `index.ts` is importable from outside that slice. Never reach
-into `entities/session/model/store.ts` directly from a page — import
+into `entities/session/model/session.ts` directly from a page — import
 `useSessionStore` from `entities/session` (its barrel). Steiger enforces this
 (`fsd/no-public-api-sidestep`, `fsd/public-api`); a missing barrel is an error,
 not a style choice. A barrel may export a narrowed view instead of the raw
@@ -73,8 +74,7 @@ because estimates are value objects owned by the session's rounds, not an
 independent entity (see ADR-004's 2026-10-06 update). If a genuinely independent
 second entity ever needs another, expose a narrow
 `entities/<provider>/@x/<consumer>.ts` surface rather than adding a Steiger
-exemption. The pure subfolder `domain/estimate/` (with its own `index.ts`) lives outside FSD in
-`src/domain/`; the `entities/session` barrel re-exports what the UI needs.
+exemption.
 
 ## Where does new code belong?
 
