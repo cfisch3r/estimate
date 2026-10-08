@@ -1,7 +1,11 @@
 import { create } from 'zustand'
 import type { AggregateResult, Estimate } from '../../domain/estimate'
 import { useConnectionStore } from './connection'
-import { isFinalized } from '../../domain/item'
+import {
+  acceptRemoteEstimate,
+  recordOwnSubmission,
+  retryRoundPatch,
+} from '../../domain/round'
 import { patchItem, useSessionStore } from './session'
 import type { LiveRound, SessionSnapshot } from '../../domain/types'
 
@@ -49,18 +53,7 @@ export const useRoundStore = create<RoundStore>((set) => ({
   retryRound: (id) => {
     const item = useSessionStore.getState().items.find((i) => i.id === id)
     if (!item) return
-    // Discards the round's submissions and returns it to the waiting state.
-    // Also used, behind a confirm step in the UI, to reopen an already-finalized
-    // item — clearing `finalResult` so a stale range doesn't linger next to the
-    // new round. Bumping `round` is what lets a participant that reconnects after
-    // missing both the Reveal and this Retry tell the new round apart from the
-    // old one (ADR-003, "Versioned rounds") — see `applySyncState`.
-    patchItem(id, {
-      submissions: [],
-      revealed: false,
-      round: item.round + 1,
-      finalResult: null,
-    })
+    patchItem(id, retryRoundPatch(item))
   },
 
   applySyncState: (snapshot) =>
@@ -110,56 +103,16 @@ export const useRoundStore = create<RoundStore>((set) => ({
 
   applyRemoteEstimate: (itemId, estimate, round) => {
     const session = useSessionStore.getState()
-    // Facilitator-only: `sendEstimate` targets the facilitator alone, so a
-    // participant never receives another peer's estimate (ADR-003, "Single
-    // owner") and this handler is never invoked on a participant client.
-    // Only record if this submission is for the item the round is running on
-    // — a straggler for a just-finalized item must not seed the next round —
-    // and only while that round is still open: a late submission must not
-    // move a range the group has seen.
     const active = session.items.find((item) => item.id === session.activeItemId)
-    if (
-      !active ||
-      // An empty itemId is a pre-#8 peer's bare estimate — record it against
-      // the active round (legacy behaviour) rather than dropping it.
-      (itemId && itemId !== active.id) ||
-      active.revealed ||
-      isFinalized(active) ||
-      // A round mismatch means this submission belongs to a round the
-      // participant hasn't caught up past yet (a stale in-flight send from
-      // before a Retry). A missing `round` (older build) bypasses this
-      // check rather than being treated as stale.
-      (round !== undefined && round !== active.round)
-    ) {
-      return
-    }
-    patchItem(active.id, {
-      submissions: upsertByParticipant(active.submissions, estimate),
-    })
+    const submissions = acceptRemoteEstimate(active, itemId, estimate, round)
+    if (active && submissions) patchItem(active.id, { submissions })
   },
 
   submitEstimate: (estimate) =>
-    set((state) =>
-      state.liveRound
-        ? {
-            liveRound: {
-              ...state.liveRound,
-              mySubmission: estimate,
-              submissions: upsertByParticipant(state.liveRound.submissions, estimate),
-            },
-          }
-        : {},
-    ),
+    set((state) => {
+      const liveRound = recordOwnSubmission(state.liveRound, estimate)
+      return liveRound ? { liveRound } : {}
+    }),
 
   clearRound: () => set({ liveRound: null }),
 }))
-
-/** Upsert `next` into `list` keyed by participantId — last write wins, insertion
- *  order (and thus submission order) preserved for existing entries. */
-function upsertByParticipant(list: Estimate[], next: Estimate): Estimate[] {
-  const index = list.findIndex((e) => e.participantId === next.participantId)
-  if (index === -1) return [...list, next]
-  const copy = [...list]
-  copy[index] = next
-  return copy
-}
