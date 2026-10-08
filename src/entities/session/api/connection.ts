@@ -1,4 +1,4 @@
-import type { ConnectionStatus } from '../model/types'
+import type { ConnectionStatus } from '../../../domain/types'
 
 export interface ConnectionState {
   status: ConnectionStatus

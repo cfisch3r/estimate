@@ -220,7 +220,7 @@ already pure functions of state and event.
 
 1. **Extract the domain.** Move `entities/session/model/estimate/` and the other pure
    modules (`item`, `types`, `participantId`, `participantLabel`, `roster`, `snapshot`,
-   `resend`, `finalResult`) into a `domain/` folder with an enforced "imports nothing
+   `resend`, `finalResult`) into a `src/domain/` folder with an enforced "imports nothing
    outside `domain/`" rule. This alone removes the weakest point left after the
    2026-10-05/06 refactor (a convention-only boundary).
 2. **Extract the adapters.** Move `entities/session/api/` (transport, wire parsing,

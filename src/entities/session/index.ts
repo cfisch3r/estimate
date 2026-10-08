@@ -8,7 +8,7 @@ export type {
   GuardResult,
   UncertaintyGuidance,
   UncertaintyLevel,
-} from './model/estimate'
+} from '../../domain/estimate'
 export {
   aggregateEstimates,
   checkFalsePrecision,
@@ -23,7 +23,7 @@ export {
   UNIT_SUFFIX,
   uncertaintyGuidance,
   validateEstimateValues,
-} from './model/estimate'
+} from '../../domain/estimate'
 
 export { useSessionStore } from './model/session'
 export { useConnectionStore, useRoundStore } from './model/publicStores'
@@ -33,12 +33,12 @@ export type {
   SessionMode,
   SessionRole,
   LiveConnectionStatus,
-} from './model/types'
-export { isFinalized } from './model/item'
-export { roundMemberIds } from './model/roster'
-export { finalResultFor } from './model/finalResult'
-export { FACILITATOR_PARTICIPANT_ID } from './model/participantId'
-export { participantLabels } from './model/participantLabel'
+} from '../../domain/types'
+export { isFinalized } from '../../domain/item'
+export { roundMemberIds } from '../../domain/roster'
+export { finalResultFor } from '../../domain/finalResult'
+export { FACILITATOR_PARTICIPANT_ID } from '../../domain/participantId'
+export { participantLabels } from '../../domain/participantLabel'
 
 export { generateSessionCode } from './api/sessionCode'
 export { NetworkProvider } from './api/NetworkProvider'

@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { aggregateEstimates, createEstimate, type Estimate } from './estimate'
+import {
+  aggregateEstimates,
+  createEstimate,
+  type Estimate,
+} from '../../../domain/estimate'
 import { useRoundStore } from './round'
 import { useSessionStore } from './session'
 import { useConnectionStore } from './connection'
-import type { Item } from './types'
+import type { Item } from '../../../domain/types'
 
 function mine(best: number, likely: number, worst: number): Estimate {
   const result = createEstimate({ participantId: 'me-123', best, likely, worst })
