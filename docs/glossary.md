@@ -18,7 +18,8 @@ doc, add it here instead of guessing.
 | **Port** | An interface owned by the application layer that an outbound adapter implements, for example `NetworkSessionApi` (in `src/application/ports`). Ports exist only at external boundaries. | |
 | **Composition time** | The moment the app is wired together (ADR-009): the place that picks which adapter implements which port. Not runtime logic. | |
 | **Use case** | One user or peer intent run end to end (submit, reveal, retry, finalize, join, leave). Straight-line code: read state, call a domain decision, write state, trigger an effect. Rules belong in pure domain functions. | |
-| **State store** | A Zustand store that holds the current in-process state (session, round, connection). | |
+| **State store** | A Zustand store that holds the current in-process state (session, round, connection). Its actions only change that store's own state, usually by calling a pure domain rule (`set(state => rule(state, input))`). | |
+| **Store action vs use case** | The test: does the code reach outside one store? If it reads or writes another store, calls a port, or triggers an effect (network, id generation), it is a use case; the stores must not call each other. If it only transforms its own store's state, it is a store action that calls a domain rule. The UI may call a few trivial field setters on the store directly; everything else goes through a use case. | |
 | **Layer view** / **component view** | The two kinds of diagram in ADR-009: layers and their dependencies, and the boxes inside each layer. | |
 | **Lane** | Only the name of a Mermaid subgraph in our diagram convention (AGENTS.md). Never used for architecture itself. | |
 
