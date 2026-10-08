@@ -294,7 +294,7 @@ already pure functions of state and event.
    stores are not moved into the UI: the network code and the use cases write them too,
    so a UI-owned store would have forced a storage port. The round store's
    `applySyncState` became `applyRoundSnapshot`, since it adopts only the round part of a
-   snapshot (`applyFacilitatorSnapshot` applies the whole thing); the dead `setMode` was
+   snapshot (`applyFacilitatorSnapshot` applies the whole thing); the title rule behind `setItemTitle` is now the domain's `renameItem` (a blank title is ignored, as for a new item, so an item cannot lose its name — the one small behaviour change in this stage); the dead `setMode` was
    removed.
 
 Each stage ends with all CI checks green and can be the last one.

@@ -73,3 +73,11 @@ export function moveItem(
 export function updateItem(items: Item[], id: string, patch: Partial<Item>): Item[] {
   return items.map((item) => (item.id === id ? { ...item, ...patch } : item))
 }
+
+/** Rename item `id` to the trimmed `title`. A blank title is a no-op (`null`), the
+ *  same rule `appendItem` applies, so an item can never end up without a title. */
+export function renameItem(items: Item[], id: string, title: string): Item[] | null {
+  const trimmed = title.trim()
+  if (trimmed.length === 0) return null
+  return updateItem(items, id, { title: trimmed })
+}

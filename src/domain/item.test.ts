@@ -5,6 +5,7 @@ import {
   isFinalized,
   moveItem,
   removeItemFrom,
+  renameItem,
   updateItem,
 } from './item'
 import { finalizedItemOf, itemOf } from './testFixtures'
@@ -141,5 +142,23 @@ describe('updateItem', () => {
   it('leaves every item untouched for an unknown id', () => {
     const items = [itemOf({ id: 'a' })]
     expect(updateItem(items, 'zzz', { notes: 'n' })).toEqual(items)
+  })
+})
+
+describe('renameItem', () => {
+  const items = [itemOf({ id: 'a', title: 'Old' }), itemOf({ id: 'b', title: 'Other' })]
+
+  it('renames the matching item to the trimmed title', () => {
+    const next = renameItem(items, 'a', '  New  ')
+    expect(next?.map((i) => i.title)).toEqual(['New', 'Other'])
+  })
+
+  it('is a no-op for a blank title, like appendItem', () => {
+    expect(renameItem(items, 'a', '   ')).toBeNull()
+    expect(renameItem(items, 'a', '')).toBeNull()
+  })
+
+  it('leaves every item untouched for an unknown id', () => {
+    expect(renameItem(items, 'zzz', 'New')).toEqual(items)
   })
 })
