@@ -11,29 +11,12 @@ import { withKindDrivenRetry } from './useCases/retryPolicy'
 import { useSessionStore } from './stores/session'
 import { useConnectionStore } from './stores/connection'
 import { useRoundStore } from './stores/round'
+import { deriveConnectionStatus } from '../domain/connection'
 import { FACILITATOR_PARTICIPANT_ID } from '../domain/participantId'
 import { needsResend } from '../domain/resend'
 import { shouldPruneDeparted } from '../domain/roster'
 import { buildSessionSnapshot, snapshotChangeKey } from '../domain/snapshot'
 import type { ConnectionStatus, SessionRole } from '../domain/types'
-
-/** For a participant, the transport can report `'connected'` the instant it
- *  reaches ANY peer — including another participant, never the facilitator.
- *  Only once the facilitator's own peerId is confirmed (via its `announce`)
- *  is a participant actually "in" the session; until then this holds it at
- *  `'connecting'`, the same state used before any peer at all has joined. A
- *  facilitator's status passes through unchanged — it already means "at
- *  least one peer is here" for that role. */
-function deriveConnectionStatus(
-  role: SessionRole,
-  trackerStatus: ConnectionStatus,
-  hasFacilitatorLink: boolean,
-): ConnectionStatus {
-  if (role === 'participant' && trackerStatus === 'connected' && !hasFacilitatorLink) {
-    return 'connecting'
-  }
-  return trackerStatus
-}
 
 /** Owns the single live NetworkSession for the app and bridges its events into the
  *  session, connection and round stores, so screens only ever read connection
