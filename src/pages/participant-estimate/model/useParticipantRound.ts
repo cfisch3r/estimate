@@ -2,12 +2,8 @@ import {
   useConnectionPhase,
   type ConnectionPhase,
 } from '../../../shared/lib/useConnectionPhase'
-import {
-  useConnectionStore,
-  useRoundStore,
-  useSessionStore,
-  type LiveRound,
-} from '../../../entities/session'
+import { useConnectionStore, useRoundStore, useSessionStore } from '../../../application'
+import type { LiveRound } from '../../../domain/types'
 
 /** "{sessionName} ({sessionId})" once the facilitator's session name has
  *  reached this client (see the sync protocol's `sessionName` field) — falls

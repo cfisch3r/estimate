@@ -1,11 +1,7 @@
 import { useState } from 'react'
-import {
-  createEstimate,
-  useConnectionStore,
-  useNetworkSession,
-  useRoundStore,
-  type ActionResult,
-} from '../../../entities/session'
+import { createEstimate, type ActionResult } from '../../domain/estimate'
+import { useConnectionStore, useRoundStore } from '../stores'
+import { useNetworkSession } from '../ports/useNetworkSession'
 
 /** Where this participant's own estimate stands with the facilitator, derived
  *  rather than tracked as its own store field: `submitted` comes straight from

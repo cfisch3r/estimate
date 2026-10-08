@@ -3,14 +3,15 @@ import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { Button, Card, LiveRegion, VisuallyHidden } from '../../../shared/ui'
 import type { ConnectionPhase } from '../../../shared/lib/useConnectionPhase'
-import {
-  EstimateTriple,
-  type ActionResult,
-  type EstimateValues,
-  type EstimationUnit,
-} from '../../../entities/session'
-import type { LiveRound } from '../../../entities/session'
-import { DeliveryStatus, type DeliveryState } from '../../../features/submit-estimate'
+import { EstimateTriple } from '../../../entities/session'
+import type {
+  ActionResult,
+  EstimateValues,
+  EstimationUnit,
+} from '../../../domain/estimate'
+import type { LiveRound } from '../../../domain/types'
+import { DeliveryStatus } from './DeliveryStatus'
+import type { DeliveryState } from '../../../application'
 import { EstimateForm } from './EstimateForm'
 import { RoundCardHeader } from './RoundCardHeader'
 

@@ -4,17 +4,17 @@ import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
 import { ModeSelect } from './ModeSelect'
-import { useSessionStore, useConnectionStore } from '../../../entities/session'
+import { useSessionStore, useConnectionStore } from '../../../application'
 
 const { connectMock, navigateMock } = vi.hoisted(() => ({
   connectMock: vi.fn(),
   navigateMock: vi.fn(),
 }))
 
-vi.mock('../../../entities/session/api/sessionCode', () => ({
+vi.mock('../../../application/useCases/sessionCode', () => ({
   generateSessionCode: () => 'LIVECODE',
 }))
-vi.mock('../../../entities/session/api/useNetworkSession', () => ({
+vi.mock('../../../application/ports/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: connectMock, disconnect: vi.fn() }),
 }))
 vi.mock('react-router', async (importOriginal) => {

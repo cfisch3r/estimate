@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { Estimate } from '../../../domain/estimate'
+import type { Estimate } from '../../domain/estimate'
 
 export interface NetworkSessionApi {
   /** Join the Trystero room for `sessionId` and mirror its connection state into the store.

@@ -1,9 +1,9 @@
 import { create } from 'zustand'
-import type { AggregateResult, Estimate } from '../../../domain/estimate'
+import type { AggregateResult, Estimate } from '../../domain/estimate'
 import { useConnectionStore } from './connection'
-import { isFinalized } from '../../../domain/item'
+import { isFinalized } from '../../domain/item'
 import { patchItem, useSessionStore } from './session'
-import type { LiveRound, SessionSnapshot } from '../../../domain/types'
+import type { LiveRound, SessionSnapshot } from '../../domain/types'
 
 export interface RoundStore {
   /** Participant-only view of the facilitator's current round; null otherwise. */

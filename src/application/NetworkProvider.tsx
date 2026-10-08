@@ -1,18 +1,21 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { joinSession } from '../../../adapters/network/session'
-import type { NetworkSession } from '../../../adapters/network/session'
-import type { ConnectionState } from '../../../adapters/network/connection'
-import { NetworkSessionContext, type NetworkSessionApi } from './networkSessionContext'
-import { withKindDrivenRetry } from './retryPolicy'
-import { useSessionStore } from '../model/session'
-import { useConnectionStore } from '../model/connection'
-import { useRoundStore } from '../model/round'
-import { FACILITATOR_PARTICIPANT_ID } from '../../../domain/participantId'
-import { needsResend } from '../../../domain/resend'
-import { shouldPruneDeparted } from '../../../domain/roster'
-import { buildSessionSnapshot, snapshotChangeKey } from '../../../domain/snapshot'
-import type { ConnectionStatus, SessionRole } from '../../../domain/types'
+import { joinSession } from '../adapters/network/session'
+import type { NetworkSession } from '../adapters/network/session'
+import type { ConnectionState } from '../adapters/network/connection'
+import {
+  NetworkSessionContext,
+  type NetworkSessionApi,
+} from './ports/networkSessionContext'
+import { withKindDrivenRetry } from './useCases/retryPolicy'
+import { useSessionStore } from './stores/session'
+import { useConnectionStore } from './stores/connection'
+import { useRoundStore } from './stores/round'
+import { FACILITATOR_PARTICIPANT_ID } from '../domain/participantId'
+import { needsResend } from '../domain/resend'
+import { shouldPruneDeparted } from '../domain/roster'
+import { buildSessionSnapshot, snapshotChangeKey } from '../domain/snapshot'
+import type { ConnectionStatus, SessionRole } from '../domain/types'
 
 /** For a participant, the transport can report `'connected'` the instant it
  *  reaches ANY peer — including another participant, never the facilitator.
@@ -37,7 +40,7 @@ function deriveConnectionStatus(
  *  state from `useConnectionStore` and round state from the round/session
  *  stores. Wiring only: what a snapshot contains, when a submission needs
  *  re-sending and when a departed participant is forgotten are pure policies in
- *  `../model`. */
+ *  `src/domain`. */
 export function NetworkProvider({ children }: { children: ReactNode }) {
   const sessionRef = useRef<NetworkSession | null>(null)
   const unsubscribeRef = useRef<(() => void) | null>(null)

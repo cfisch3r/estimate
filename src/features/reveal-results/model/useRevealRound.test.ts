@@ -1,12 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
-import { createEstimate } from '../../../entities/session'
-import {
-  useConnectionStore,
-  useRoundStore,
-  useSessionStore,
-  type Item,
-} from '../../../entities/session'
+import { createEstimate } from '../../../domain/estimate'
+import { useConnectionStore, useRoundStore, useSessionStore } from '../../../application'
+import type { Item } from '../../../domain/types'
 import { useRevealRound } from './useRevealRound'
 
 function currentItem(): Item {

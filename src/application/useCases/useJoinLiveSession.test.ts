@@ -1,16 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createElement, type ReactNode } from 'react'
 import { renderHook } from '@testing-library/react'
-import {
-  ParticipantIdentityContext,
-  useConnectionStore,
-  useRoundStore,
-} from '../../../entities/session'
+import { ParticipantIdentityContext } from '../ports/participantIdentityContext'
+import { useConnectionStore, useRoundStore } from '../stores'
 import { useJoinLiveSession } from './useJoinLiveSession'
 
 const { connectMock } = vi.hoisted(() => ({ connectMock: vi.fn() }))
 
-vi.mock('../../../entities/session/api/useNetworkSession', () => ({
+vi.mock('../ports/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: connectMock }),
 }))
 

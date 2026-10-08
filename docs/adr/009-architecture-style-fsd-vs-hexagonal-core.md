@@ -1,6 +1,6 @@
 # ADR-009: Architecture Style — FSD Everywhere vs. a Hexagonal Core with an FSD UI
 
-**Status:** Accepted (2026-10-08); stages 1 and 2 done (domain in `src/domain/`, adapters in `src/adapters/`)
+**Status:** Accepted (2026-10-08); stages 1 and 2 done, stage 3 in progress (3a done)
 **Date:** 2026-10-06
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [005-session-store-decomposition.md](005-session-store-decomposition.md), [003-session-reliability-model.md](003-session-reliability-model.md), [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [006-router-adoption.md](006-router-adoption.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md)
 
@@ -157,8 +157,8 @@ flowchart LR
 | Box | Layer | Responsibility |
 |---|---|---|
 | **Estimate and session rules** | Domain | Everything pure: `Estimate` and its factory, aggregation, guards, uncertainty guidance, item and round types, roster, snapshot and resend policies, label rules, the finalize rule. No React, no I/O. Keeps the 100% coverage threshold. |
-| **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, written as straight-line code: read state, call a domain decision, write state, trigger an effect. Owns the interfaces (ports) that adapters implement, such as the peer transport (today `NetworkSessionApi`). Replaces today's use-case hooks in `features/`. |
-| **State stores** | Application | The Zustand stores holding the current session, round and connection state (see "Where state lives"). Replaces the stores in `entities/session/model`. |
+| **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, written as straight-line code: read state, call a domain decision, write state, trigger an effect. Owns the interfaces (ports) that adapters implement, such as the peer transport (today `NetworkSessionApi`). Replaces the use-case hooks that were in `features/` (stage 3a: now `src/application/useCases`; `features/` keeps thin navigation wrappers). |
+| **State stores** | Application | The Zustand stores holding the current session, round and connection state (see "Where state lives"). Lives in `src/application/stores` (stage 3a). |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. Calls the use cases when a peer message arrives, broadcasts the facilitator's snapshot when the stores change, and implements the peer-transport port the use cases send through. |
 | **Storage and export** | Adapters | Participant-identity storage today; future save/load and CSV and link export. Called by the application through the storage port it implements (an outbound adapter). An import adapter (backlog import, a later phase) would be a separate inbound adapter that calls the use cases, added when that phase is designed. |
 | **Features** | UI | UI-only features and their components. They call use cases; they no longer own them. |
@@ -203,7 +203,7 @@ check it.
 
 Zustand stays out of the domain so that the domain's "no framework, no I/O" rule stays
 literal. The four stores (`session`, `round`, `connection`, `publicStores`) are the
-only files in `entities/session/model` that import a package; the pure modules that
+only files in `src/application/stores` that import a package; the pure modules that
 used to sit beside them now live in `src/domain/` (stage 1) and import only each other (stage 2 removed the connection store's one adapter import, the identity helper: the store now receives the id as an argument), which supports the split. The connection store holds state about
 the link, not about the estimate; it is written mostly by the network adapter, with its
 pure rules (for example which departed participants to prune) in the domain. The
@@ -234,11 +234,32 @@ already pure functions of state and event.
    passes it to `joinLiveSession` as an argument, so the store imports no adapter.
    `ConnectionStatus` moved into `src/domain/types.ts` because both the adapter and the
    store need it. `NetworkProvider`, the `NetworkSessionApi` port, `retryPolicy` and
-   `sessionCode` stay in `entities/session/api` until stage 3. That is a temporary state: the
-   provider sits in an FSD layer (the UI side) yet imports adapters, so the oxlint rule carries
-   one named exception for it, to be removed in stage 3.
-3. **Extract the application layer.** Move the stores and use-case hooks into
-   `application/`. The FSD `features` layer keeps only UI.
+   `sessionCode` stayed in `entities/session/api` until stage 3a moved them to `src/application`.
+   `NetworkProvider` still imports the network adapter, so the oxlint rule carries
+   one named exception for it, to be removed in stage 3c.
+3. **Extract the application layer (in progress).** Move the stores and use-case hooks into
+   `application/`. The FSD `features` layer keeps only UI. Sub-steps: 3a moves the code
+   (done); 3b, 3c and 3d are pending (3c splits `NetworkProvider`).
+   As built in 3a: `src/application/` holds `stores/` (`session`, `round`, `connection`,
+   `publicStores`, and `index.ts`, which the use cases import), `ports/`
+   (`NetworkSessionApi` and `ParticipantIdentityApi` with their React contexts and hooks),
+   `useCases/` (join, teardown, reconnect, start collaborative, start single-user, close
+   workspace, reveal actions, submit estimate, finalize estimate, plus `retryPolicy` and
+   `sessionCode`, each beside its only consumer) and `NetworkProvider.tsx`, which still holds the connect, resend, pull,
+   prune and broadcast logic. `src/application/index.ts` is the layer's barrel and the only
+   thing the UI imports from it. The use cases contain no navigation: `features/session-lifecycle`
+   keeps thin wrappers that add it (`useStartCollaborative`, `useStartSingleUser`,
+   `useLeaveWorkspace`, `useLeaveLiveSession`) plus the UI flow `useJoinFlow`, and
+   `features/reveal-results`' `useRevealRound` is the labelled roster view plus `useRevealActions`.
+   `entities/session` now holds only UI (`ItemDetailShell`, `EstimateTriple`, `RangeBar`,
+   `DescriptionField`) and its barrel exports only the first three; UI code imports
+   domain symbols from `src/domain` directly. Enforcement as built: an oxlint override on
+   `src/application/**` lets it import the domain and itself only (no FSD layers, no
+   adapters), with a second override naming `NetworkProvider.tsx` and its test as the one
+   temporary exception allowed to import `adapters/network/session` and
+   `adapters/network/connection`. The adapters rule and the "only `app/` composes adapters" rule
+   are unchanged. A guard test, `src/viMockPaths.test.ts`, fails when a relative `vi.mock`
+   target does not resolve, so a moved module cannot leave a mock pointing at a file that no longer exists (it does not detect a mock of a module the code under test stopped importing).
 
 Each stage ends with all CI checks green and can be the last one.
 
@@ -310,4 +331,4 @@ needed for these rules.
 | Can the domain and adapter boundaries be enforced with current tooling? | Settled by a check: yes, with oxlint (see "Enforcement") |
 | Should the round be an explicit state machine, and with what? | Deferred to a separate decision; the pure transitions from stage 3 are its prerequisite |
 | How does the connection store get the participant identity without depending on an adapter? | Settled in stage 2: the join use case reads it through an application-owned port, provided in `app/App.tsx`, and passes it to the store as an argument |
-| Folder names and the domain's internal structure per concept | Settled in stage 1: a flat `src/domain/` with an `estimate/` subfolder; adapters settled in stage 2 as `adapters/network` and `adapters/storage`; the application layer's folder is decided in stage 3 |
+| Folder names and the domain's internal structure per concept | Settled in stage 1: a flat `src/domain/` with an `estimate/` subfolder; adapters settled in stage 2 as `adapters/network` and `adapters/storage`; the application layer's folder settled in stage 3a as `src/application` with `stores`, `ports` and `useCases` |

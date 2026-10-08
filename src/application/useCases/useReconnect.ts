@@ -1,4 +1,5 @@
-import { useConnectionStore, useNetworkSession } from '../../../entities/session'
+import { useConnectionStore } from '../stores'
+import { useNetworkSession } from '../ports/useNetworkSession'
 
 /** Re-open the peer connection to the current session after it dropped or a
  *  join failed. `canReconnect` is false when there is no session to rejoin. */

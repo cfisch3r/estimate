@@ -10,7 +10,7 @@ import {
   type EstimationUnit,
   type GuardResult,
   type UncertaintyGuidance,
-} from '../../../entities/session'
+} from '../../../domain/estimate'
 import {
   describeEstimateIssue,
   describePartialOrdering,

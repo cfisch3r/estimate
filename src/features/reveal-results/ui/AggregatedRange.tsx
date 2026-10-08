@@ -2,11 +2,11 @@ import { GroupBox } from '../../../shared/ui'
 import { RANGE_INFO } from '../../../shared/copy'
 import {
   aggregateEstimates,
-  RangeBar,
   UNIT_SUFFIX,
   type Estimate,
   type EstimationUnit,
-} from '../../../entities/session'
+} from '../../../domain/estimate'
+import { RangeBar } from '../../../entities/session'
 
 interface AggregatedRangeProps {
   submissions: Estimate[]

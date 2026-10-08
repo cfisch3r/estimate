@@ -2,15 +2,10 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router'
-import {
-  useConnectionStore,
-  useRoundStore,
-  useSessionStore,
-} from '../../../entities/session'
+import { useConnectionStore, useRoundStore, useSessionStore } from '../../../application'
 import { ROUTES } from '../../../shared/lib/routes'
 import { useLeaveLiveSession } from './useLeaveLiveSession'
 import { useLeaveWorkspace } from './useLeaveWorkspace'
-import { useReconnect } from './useReconnect'
 import { useStartCollaborative } from './useStartCollaborative'
 import { useStartSingleUser } from './useStartSingleUser'
 
@@ -19,7 +14,7 @@ const { connectMock, disconnectMock } = vi.hoisted(() => ({
   disconnectMock: vi.fn(),
 }))
 
-vi.mock('../../../entities/session/api/useNetworkSession', () => ({
+vi.mock('../../../application/ports/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: connectMock, disconnect: disconnectMock }),
 }))
 
@@ -156,28 +151,5 @@ describe('useLeaveWorkspace needsConfirm', () => {
     const { result } = renderWithPath(useLeaveWorkspace, ROUTES.workspace)
 
     expect(result.current.value.needsConfirm).toBe(true)
-  })
-})
-
-describe('useReconnect', () => {
-  it('reconnects to the current session code', () => {
-    useConnectionStore.setState({ sessionId: 'K7F9Q2' })
-    const { result } = renderWithPath(useReconnect)
-
-    expect(result.current.value.canReconnect).toBe(true)
-    act(() => result.current.value.reconnect())
-
-    expect(connectMock).toHaveBeenCalledTimes(1)
-    expect(connectMock).toHaveBeenCalledWith('K7F9Q2')
-  })
-
-  it('does nothing without a session to rejoin', () => {
-    useConnectionStore.setState({ sessionId: null })
-    const { result } = renderWithPath(useReconnect)
-
-    expect(result.current.value.canReconnect).toBe(false)
-    act(() => result.current.value.reconnect())
-
-    expect(connectMock).not.toHaveBeenCalled()
   })
 })

@@ -59,7 +59,7 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 
 ## P2P live-sync layer (Mode A)
 
-- **Room identity:** `generateSessionCode()` (`entities/session/api/sessionCode.ts`) produces a 6-char Crockford-base32 code at session creation (crypto RNG, ambiguous glyphs removed) — short enough to read aloud or paste into chat. It is the Trystero `roomId`, with a fixed `appId` (`estimate-app-v1`) namespacing EstiMate's rooms. *(The proposal assumed a nanoid embedded in a `/join/<id>` deep link; the as-built code ships the human-shareable code with no deep-link route — see the concept doc's "Known MVP gaps".)*
+- **Room identity:** `generateSessionCode()` (`application/useCases/sessionCode.ts`) produces a 6-char Crockford-base32 code at session creation (crypto RNG, ambiguous glyphs removed) — short enough to read aloud or paste into chat. It is the Trystero `roomId`, with a fixed `appId` (`estimate-app-v1`) namespacing EstiMate's rooms. *(The proposal assumed a nanoid embedded in a `/join/<id>` deep link; the as-built code ships the human-shareable code with no deep-link route — see the concept doc's "Known MVP gaps".)*
 - **Signaling strategy:** Trystero's **Nostr strategy** (`trystero/nostr`) as the default — this is the library's own default and top recommendation, backed by hundreds of independent public relays (most redundancy of the decentralized options), no account/config required, matches ADR-001's "no server we operate." Library's own robustness ranking for the decentralized strategies: Nostr → MQTT → BitTorrent → IPFS. Supabase/Firebase strategies exist but require configuring your own project (not zero-setup); a self-hosted WebSocket relay strategy also exists as an explicit escape hatch if the public networks prove unreliable, mirroring ADR-001's bring-your-own-TURN framing. Verified against current Trystero docs (trystero.dev, github.com/dmotz/trystero).
 - **Room privacy:** `roomId` = the shared session code — this is the invite mechanism. `joinSession()` accepts an optional `password` (Trystero AES-GCM encrypts the signaling handshake); without it the roomId is visible as metadata on the public signaling medium. The 6-char code is already hard to guess, but a password closes the gap cheaply if a session warrants it.
 - **Data sync model: facilitator-owned, not CRDT.** **(Superseded 2026-09-15 by [ADR-003](adr/003-session-reliability-model.md), "Single owner" landed in #60.)** The facilitator's `items[]` is the sole source of truth for submissions, reveal state, and finalization; a participant's `liveRound` is a projection of the facilitator's `syncState` snapshot plus its own pending submission. A participant's `submitEstimate` is a targeted send to the facilitator's peerId only — it never reaches other participants, closing the pre-reveal estimate-value leak. This works because the PRD's aggregation (min of Best, max of Worst, median of Likely) is order-independent and idempotent on the facilitator's own accumulated list — no conflict resolution needed, and Mode A/B can share one calculation engine.
@@ -78,15 +78,15 @@ rationale. In brief, by architectural role rather than layer:
   bias guards (symmetric-range, false-precision, outlier — PRD §6), and the
   cone-of-uncertainty guidance rule (`uncertaintyGuidance`, PRD §6.1). Framework-free,
   unit-testable, identical between Mode A and Mode B.
-- **The P2P wire layer** (`adapters/network`, with `NetworkProvider` still in `entities/session/api` until ADR-009 stage 3; formerly `/network`) — Trystero
+- **The P2P wire layer** (`adapters/network`, with `NetworkProvider` in `src/application`, importing the adapter as a named temporary exception until ADR-009 stage 3c; formerly `/network`) — Trystero
   wrapper: room join/create, typed actions (`submitEstimate`, `syncState`, `announce`,
   `requestSnapshot` request/response), connection-state hooks, facilitator-authoritative
   round state (ADR-003, #60).
-- **The session stores** (`entities/session/model`, formerly `/state`) — three
+- **The session stores** (`application/stores`, formerly `/state`) — three
   per-concern Zustand stores (ADR-005): `session.ts` (session domain data),
   `connection.ts` (live-connection state), `round.ts` (round mechanics); the network
-  layer is an adapter dispatching into them. The slice's public API exports narrowed views
-  of the connection and round stores (`publicStores.ts`) that hide the network-bridge
+  layer is an adapter dispatching into them. The application barrel exports narrowed views
+  of the connection and round stores (`stores/publicStores.ts`) that hide the network-bridge
   mutators; `NetworkProvider` writes through the internal stores. The stable per-browser
   `participantId` helper lives in `adapters/storage` (the join use case reaches it through an identity port), and `finalResultFor` is the
   single finalize rule (aggregate the submissions, or fail with a message when there are
@@ -95,10 +95,12 @@ rationale. In brief, by architectural role rather than layer:
   via `roundMemberIds`, the wire roster, the departed-name prune rule), `snapshot.ts`
   (building the facilitator's snapshot) and `resend.ts` (whether a participant's
   submission needs re-sending), plus `item.ts` (`isFinalized`).
-- **Session use cases** (`features/session-lifecycle/model`) — the hooks that compose
-  the three stores with navigation: start single-user / collaborative, join, leave
-  (workspace or live session, including whether leaving needs a confirm click),
-  teardown and reconnect.
+- **Session use cases** (`application/useCases`) — the hooks that compose the three
+  stores: start single-user / collaborative, join, teardown, reconnect, close workspace,
+  submit, reveal / retry / finalize. They contain no navigation; `features/session-lifecycle`
+  keeps thin wrappers that add it (start, leave workspace or live session, including whether
+  leaving needs a confirm click) plus the `useJoinFlow` UI flow. The UI imports the layer only
+  through `src/application/index.ts`.
 - **Screens** (`pages/*`, formerly `/screens`) — one per PRD §7 screen (ModeSelect,
   Workspace, Join, Participant Estimate View, Summary, History). Built so far:
   ModeSelect, Workspace (single-user path, collaborative session-code strip, and the
@@ -108,8 +110,7 @@ rationale. In brief, by architectural role rather than layer:
   `store.liveRound`). Pages are kept thin: per-state panels, a `model/` read-model hook
   where the store reads are non-trivial, and the shared three-point entry form
   (`ThreePointEstimateForm`, `features/estimate-round`) used by both Workspace and the
-  participant view; the same slice owns the single-user `useFinalizeEstimate` use case. The participant submit-and-delivery flow lives in
-  `features/submit-estimate`, and `model/useFocusHeadingOnChange` moves focus to the new
+  participant view; the single-user `useFinalizeEstimate` and participant `useSubmitEstimate` use cases live in `application/useCases`, the delivery-status UI is `pages/participant-estimate/ui/DeliveryStatus`, and `model/useFocusHeadingOnChange` moves focus to the new
   panel's heading when the round view changes.
 - **Design-system primitives** (`shared/ui`, formerly `/components`) — Button, Card,
   Field, GuardNote, ConfirmNote, GroupBox, InfoPopover, NavRow, Tag, RadioTile, BrandMark, Markdown / MarkdownEditor, LiveRegion (a persistent
@@ -128,7 +129,7 @@ rationale. In brief, by architectural role rather than layer:
 - **Persistence** — session save/load (JSON file export/import), CSV export and
   shareable-report-link encode/decode have no home yet; there is no placeholder
   directory. Under FSD each lands where its use case belongs: file (de)serialisation of
-  a session as a `features/` slice (a save/load use case) built on `entities/session`,
+  a session as a `features/` slice (a save/load use case) built on the application layer,
   with any generic file/download helper in `shared/lib`, and the validation of loaded
   data going through `createEstimate()`-style factories like every other adapter.
 

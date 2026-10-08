@@ -6,7 +6,9 @@ import { XIcon } from '@phosphor-icons/react/dist/csr/X'
 import './session-sidebar.css'
 import { Button, Input } from '../../../shared/ui'
 import { useConfirmArm } from '../../../shared/lib/useConfirmArm'
-import { useSessionStore, isFinalized, type Item } from '../../../entities/session'
+import { useSessionStore } from '../../../application'
+import { isFinalized } from '../../../domain/item'
+import type { Item } from '../../../domain/types'
 
 interface SessionSidebarProps {
   /** Whether the active item's row is highlighted. SessionSummary turns this

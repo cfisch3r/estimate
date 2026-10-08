@@ -3,15 +3,15 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import App from './App'
-import { useSessionStore, useConnectionStore } from '../entities/session'
+import { useSessionStore, useConnectionStore } from '../application'
 
-vi.mock('../entities/session/api/sessionCode', () => ({
+vi.mock('../application/useCases/sessionCode', () => ({
   generateSessionCode: () => 'LIVECODE',
 }))
-vi.mock('../entities/session/api/NetworkProvider', () => ({
+vi.mock('../application/NetworkProvider', () => ({
   NetworkProvider: ({ children }: { children: ReactNode }) => children,
 }))
-vi.mock('../entities/session/api/useNetworkSession', () => ({
+vi.mock('../application/ports/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: vi.fn(), disconnect: vi.fn() }),
 }))
 

@@ -1,11 +1,7 @@
-import {
-  useConnectionStore,
-  useNetworkSession,
-  useRoundStore,
-  useSessionStore,
-} from '../../../entities/session'
+import { useConnectionStore, useRoundStore, useSessionStore } from '../stores'
+import { useNetworkSession } from '../ports/useNetworkSession'
 
-/** Slice-internal: drop the P2P connection and reset everything a live session
+/** Drop the P2P connection and reset everything a live session
  *  leaves behind outside the item list — the connection store, the
  *  participant-side round view, and the unit a participant inherited from the
  *  facilitator's snapshot. Composed here rather than inside any one store

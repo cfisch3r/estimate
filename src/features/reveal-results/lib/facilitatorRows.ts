@@ -1,5 +1,7 @@
-import type { EstimateValues } from '../../../entities/session'
-import { participantLabels, roundMemberIds, type Item } from '../../../entities/session'
+import type { EstimateValues } from '../../../domain/estimate'
+import { participantLabels } from '../../../domain/participantLabel'
+import { roundMemberIds } from '../../../domain/roster'
+import type { Item } from '../../../domain/types'
 
 export interface FacilitatorRow {
   id: string

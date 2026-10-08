@@ -1,6 +1,6 @@
 import { Card, CardBody, CardKicker, CardTitle } from '../../../shared/ui'
 import type { ConnectionPhase } from '../../../shared/lib/useConnectionPhase'
-import type { LiveConnectionStatus } from '../../../entities/session'
+import type { LiveConnectionStatus } from '../../../domain/types'
 
 interface LobbyPanelProps {
   kicker: string

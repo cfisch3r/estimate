@@ -5,11 +5,11 @@ import { LiveRegion } from '../../../shared/ui/LiveRegion'
 import { PHASE_INFO, RANGE_INFO } from '../../../shared/copy'
 import {
   computeCI90,
-  RangeBar,
   UNIT_SUFFIX,
   type EstimateValues,
   type EstimationUnit,
-} from '../../../entities/session'
+} from '../../../domain/estimate'
+import { RangeBar } from '../../../entities/session'
 import { useThreePointDraft } from '../model/useThreePointDraft'
 import { PhasePicker } from './PhasePicker'
 import { ThreePointEstimateFields } from './ThreePointEstimateFields'

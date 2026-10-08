@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createEstimate, type Estimate } from '../../../entities/session'
+import { createEstimate, type Estimate } from '../../../domain/estimate'
 import { buildRevealedRows } from './buildRevealedRows'
 
 function est(participantId: string): Estimate {

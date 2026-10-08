@@ -3,14 +3,14 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { Header } from './Header'
-import { useSessionStore, useConnectionStore } from '../entities/session'
+import { useSessionStore, useConnectionStore } from '../application'
 
 const { disconnectMock, navigateMock } = vi.hoisted(() => ({
   disconnectMock: vi.fn(),
   navigateMock: vi.fn(),
 }))
 
-vi.mock('../entities/session/api/useNetworkSession', () => ({
+vi.mock('../application/ports/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: vi.fn(), disconnect: disconnectMock }),
 }))
 

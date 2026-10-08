@@ -1,5 +1,5 @@
-import type { Estimate } from '../../../entities/session'
-import { participantLabels } from '../../../entities/session'
+import type { Estimate } from '../../../domain/estimate'
+import { participantLabels } from '../../../domain/participantLabel'
 
 export interface RevealedRow {
   participantId: string
