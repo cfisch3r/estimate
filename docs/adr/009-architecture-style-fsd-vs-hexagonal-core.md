@@ -64,14 +64,47 @@ the first two.
 valuable and can be stopped after.** Treat D as a separate follow-up decision about
 how the round is written, not part of this one.
 
-Target shape (a sketch: the UI lane is simplified). Features and adapters may also use
-domain types directly; those edges are left out to keep the diagram readable.
+Target shape, in two views. Features and adapters may also use domain types directly;
+those edges are left out to keep the diagrams readable.
+
+**Lane view: what depends on what.**
 
 Legend: solid arrow = calls (the arrow points at the callee; a double arrow goes both
 ways). When the callee is an adapter, the call goes through an interface that the
-application lane owns, so the source-code dependency still points inward. Dashed arrow =
-the adapter implements that interface, wired in at composition time. Dashed box =
+application lane owns, so the source-code dependency still points inward. Dashed amber
+arrow = the adapter implements that interface, wired in at composition time. Dashed box =
 external system.
+
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 150, "padding": 14}}}%%
+flowchart LR
+  UI["UI (FSD)<br/>[Pages, widgets, features]"]
+  APP["APPLICATION<br/>[Use cases, state stores]"]
+  DOM["DOMAIN<br/>[Pure rules and value types]"]
+  AD["ADAPTERS<br/>[Network, storage, export]"]
+  Ext["Peers, relays, browser storage<br/>[External systems]"]
+  UI -->|calls| APP
+  APP -->|uses rules| DOM
+  APP <-->|peer messages in,<br/>calls out via ports| AD
+  AD -.->|implements ports| APP
+  AD <-->|I/O| Ext
+  linkStyle 3 stroke:#d98a1c,stroke-width:3px,stroke-dasharray:7 5
+  classDef ui fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
+  classDef app fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
+  classDef dom fill:#fbe9bf,stroke:#9a6f1e,stroke-width:2px,color:#14171f
+  classDef ad fill:#ecd8f1,stroke:#7a3d8c,stroke-width:2px,color:#14171f
+  classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
+  class UI ui
+  class APP app
+  class DOM dom
+  class AD ad
+  class Ext ext
+```
+
+**Component view: what is inside each lane.**
+
+Legend: same notation as above. The ports and the "implements" relationship appear in the
+lane view only.
 
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 70, "rankSpacing": 90, "padding": 14}}}%%
@@ -105,7 +138,6 @@ flowchart LR
   Net -->|reads state for<br/>snapshot broadcast| Stores
   Net <-->|WebRTC, relays| Ext
   Store <-->|files, browser storage| Ext
-  AD -.->|implements ports| APP
   style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   style APP fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
   style DOM fill:#fbe9bf,stroke:#9a6f1e,stroke-width:2px,color:#14171f
