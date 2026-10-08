@@ -11,6 +11,7 @@ import { withKindDrivenRetry } from './useCases/retryPolicy'
 import { useSessionStore } from './stores/session'
 import { useConnectionStore } from './stores/connection'
 import { useRoundStore } from './stores/round'
+import { applyFacilitatorSnapshot } from './useCases/applyFacilitatorSnapshot'
 import { deriveConnectionStatus } from '../domain/connection'
 import { FACILITATOR_PARTICIPANT_ID } from '../domain/participantId'
 import { needsResend } from '../domain/resend'
@@ -128,7 +129,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
             useRoundStore.getState().applyRemoteEstimate(itemId, estimate, round),
           ),
           session.onSyncState((snapshot) => {
-            useRoundStore.getState().applySyncState(snapshot)
+            applyFacilitatorSnapshot(snapshot)
             // Correctness rests on this, not on sendEstimate's ack (ADR-003,
             // "Acknowledged submissions"): on every snapshot, check whether this
             // participant's own submission actually landed, and re-send if not.
@@ -184,7 +185,7 @@ export function NetworkProvider({ children }: { children: ReactNode }) {
                   if (!session) return Promise.reject(new Error('No active session'))
                   return session.requestSnapshot(peerId)
                 })
-                  .then((snapshot) => useRoundStore.getState().applySyncState(snapshot))
+                  .then((snapshot) => applyFacilitatorSnapshot(snapshot))
                   .catch((error) => {
                     console.warn('requestSnapshot pull failed after retries:', error)
                   })

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   acceptRemoteEstimate,
+  adoptSnapshot,
   recordOwnSubmission,
   retryRoundPatch,
+  sessionFieldsFromSnapshot,
   upsertByParticipant,
 } from './round'
 import { estimateOf, finalizedItemOf, itemOf } from './testFixtures'
-import type { LiveRound } from './types'
+import type { LiveRound, SessionSnapshot } from './types'
 
 describe('upsertByParticipant', () => {
   it('appends a new participant', () => {
@@ -130,5 +132,121 @@ describe('recordOwnSubmission', () => {
     const after = recordOwnSubmission(recordOwnSubmission(round, first), revised)
     expect(after?.mySubmission).toEqual(revised)
     expect(after?.submissions).toEqual([revised])
+  })
+})
+
+const currentItem = { id: 'i1', title: 'Retry queue', description: 'backoff' }
+
+function snapshotOf(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
+  return {
+    currentItem,
+    sessionName: 'Sprint 42',
+    unit: 'weeks',
+    revealed: false,
+    round: 0,
+    roster: [{ participantId: 'a', submitted: true, connected: true }],
+    submissions: [],
+    finalizedItemIds: [],
+    ...overrides,
+  }
+}
+
+function roundOf(overrides: Partial<LiveRound> = {}): LiveRound {
+  return {
+    item: currentItem,
+    submissions: [],
+    revealed: false,
+    round: 0,
+    roster: [],
+    mySubmission: null,
+    ...overrides,
+  }
+}
+
+describe('adoptSnapshot', () => {
+  it('creates a round from the snapshot when there was none', () => {
+    expect(adoptSnapshot(null, snapshotOf())).toEqual({
+      item: currentItem,
+      submissions: [],
+      revealed: false,
+      round: 0,
+      roster: [{ participantId: 'a', submitted: true, connected: true }],
+      mySubmission: null,
+    })
+  })
+
+  it('clears the round when the facilitator has no active item', () => {
+    expect(
+      adoptSnapshot(roundOf({ revealed: true }), snapshotOf({ currentItem: null })),
+    ).toBeNull()
+  })
+
+  it('holds no estimate values pre-reveal, whatever the snapshot carries', () => {
+    const next = adoptSnapshot(
+      null,
+      snapshotOf({ revealed: false, submissions: [estimateOf('a')] }),
+    )
+    expect(next?.submissions).toEqual([])
+  })
+
+  it('adopts the frozen submission set once revealed', () => {
+    const frozen = [estimateOf('a'), estimateOf('b')]
+    const next = adoptSnapshot(null, snapshotOf({ revealed: true, submissions: frozen }))
+    expect(next).toMatchObject({ revealed: true, submissions: frozen })
+  })
+
+  it('keeps the own submission across a same-item, same-round snapshot', () => {
+    const mine = estimateOf('me')
+    const next = adoptSnapshot(roundOf({ mySubmission: mine }), snapshotOf())
+    expect(next?.mySubmission).toEqual(mine)
+  })
+
+  it('drops the own submission when the round was retried (round bumped)', () => {
+    const next = adoptSnapshot(
+      roundOf({ mySubmission: estimateOf('me') }),
+      snapshotOf({ round: 1 }),
+    )
+    expect(next).toMatchObject({ round: 1, mySubmission: null })
+  })
+
+  it('drops the own submission when a retry was missed along with the reveal', () => {
+    const previous = roundOf({
+      revealed: false,
+      round: 0,
+      mySubmission: estimateOf('me'),
+    })
+    const next = adoptSnapshot(previous, snapshotOf({ revealed: true, round: 2 }))
+    expect(next).toMatchObject({ revealed: true, round: 2, mySubmission: null })
+  })
+
+  it('drops the own submission when the facilitator moved to another item', () => {
+    const next = adoptSnapshot(
+      roundOf({ mySubmission: estimateOf('me') }),
+      snapshotOf({ currentItem: { id: 'i2', title: 'Other', description: '' } }),
+    )
+    expect(next).toMatchObject({ item: { id: 'i2' }, mySubmission: null })
+  })
+
+  it('lands a peer that joins mid-reveal on the revealed view', () => {
+    const next = adoptSnapshot(
+      null,
+      snapshotOf({ revealed: true, submissions: [estimateOf('a')] }),
+    )
+    expect(next?.revealed).toBe(true)
+  })
+})
+
+describe('sessionFieldsFromSnapshot', () => {
+  it('lets a participant adopt the facilitator name and unit', () => {
+    expect(sessionFieldsFromSnapshot('participant', snapshotOf())).toEqual({
+      sessionName: 'Sprint 42',
+      unit: 'weeks',
+    })
+  })
+
+  it('never lets an echoed snapshot overwrite the facilitator own name', () => {
+    expect(sessionFieldsFromSnapshot('facilitator', snapshotOf())).toEqual({
+      unit: 'weeks',
+    })
   })
 })

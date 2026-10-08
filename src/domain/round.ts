@@ -1,6 +1,7 @@
 import type { Estimate } from './estimate'
 import { isFinalized } from './item'
-import type { Item, LiveRound } from './types'
+import type { EstimationUnit } from './estimate'
+import type { Item, LiveRound, SessionRole, SessionSnapshot } from './types'
 
 /** Upsert `next` into `list` keyed by participantId — last write wins, insertion
  *  order (and thus submission order) preserved for existing entries. */
@@ -69,4 +70,51 @@ export function recordOwnSubmission(
     mySubmission: estimate,
     submissions: upsertByParticipant(liveRound.submissions, estimate),
   }
+}
+
+/** The participant's round view after adopting the facilitator's broadcast
+ *  snapshot, or `null` when the facilitator has no active item. */
+export function adoptSnapshot(
+  previous: LiveRound | null,
+  snapshot: SessionSnapshot,
+): LiveRound | null {
+  if (snapshot.currentItem === null) return null
+  // A same-item snapshot whose round differs from what we last saw is a Retry —
+  // whether or not we saw the Reveal in between. Drop the stale round-local state
+  // so a peer doesn't sit in the waiting view for the new round. Retry always
+  // bumps `round`, so this covers a missed Reveal and a missed Retry alike — see
+  // ADR-003, "Versioned rounds".
+  const carryOver =
+    previous !== null &&
+    previous.item.id === snapshot.currentItem.id &&
+    previous.round === snapshot.round
+  return {
+    item: snapshot.currentItem,
+    // Pre-reveal, estimate values never reach a participant at all (ADR-003,
+    // "Single owner") — only the roster drives "N of M submitted". Post-reveal,
+    // the snapshot's frozen submission set is the only source.
+    submissions: snapshot.revealed ? snapshot.submissions : [],
+    // The facilitator's snapshot is authoritative for reveal state (it's pulled on
+    // every connect/reconnect, unlike a one-shot event), so a peer joining or
+    // reconnecting mid-reveal lands on the revealed view and a peer that missed a
+    // Retry is un-latched.
+    revealed: snapshot.revealed,
+    round: snapshot.round,
+    roster: snapshot.roster,
+    mySubmission: carryOver ? previous.mySubmission : null,
+  }
+}
+
+/** The session-level fields a participant takes from a snapshot. Only a
+ *  participant ever receives another client's broadcast (the facilitator is the
+ *  sole sender), so the name is adopted for that role only: a stray or
+ *  self-received snapshot must never overwrite the facilitator's own name with an
+ *  echo. Participants estimate in the facilitator's unit, not their local default. */
+export function sessionFieldsFromSnapshot(
+  role: SessionRole,
+  snapshot: SessionSnapshot,
+): { sessionName?: string; unit: EstimationUnit } {
+  return role === 'participant'
+    ? { sessionName: snapshot.sessionName, unit: snapshot.unit }
+    : { unit: snapshot.unit }
 }

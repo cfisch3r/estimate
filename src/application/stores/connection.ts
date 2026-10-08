@@ -95,8 +95,7 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
   leaveLiveSession: () => {
     set({ ...CONNECTION_DEFAULTS })
     // The other two stores are cleared alongside this by the composer hooks in
-    // features/session-lifecycle, not here: round.ts reads this store's `role`
-    // and session.ts is a sibling, so reaching into either from here would
-    // couple the stores (see ADR-005).
+    // application/useCases, not here: the stores stay independent of each other
+    // (see ADR-005).
   },
 }))
