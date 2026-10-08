@@ -6,7 +6,7 @@ import { XIcon } from '@phosphor-icons/react/dist/csr/X'
 import './session-sidebar.css'
 import { Button, Input } from '../../../shared/ui'
 import { useConfirmArm } from '../../../shared/lib/useConfirmArm'
-import { useSessionStore } from '../../../application'
+import { useItemActions, useSessionStore } from '../../../application'
 import { isFinalized } from '../../../domain/item'
 import type { Item } from '../../../domain/types'
 
@@ -127,9 +127,11 @@ export function SessionSidebar({
   const items = useSessionStore((s) => s.items)
   const activeItemId = useSessionStore((s) => s.activeItemId)
   const onSelect = useSessionStore((s) => s.selectItem)
-  const onReorder = useSessionStore((s) => s.reorderItems)
-  const onRemove = useSessionStore((s) => s.removeItem)
-  const onAdd = useSessionStore((s) => s.addItem)
+  const {
+    addItem: onAdd,
+    removeItem: onRemove,
+    reorderItems: onReorder,
+  } = useItemActions()
   const [dragIndex, setDragIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
   const [newItemTitle, setNewItemTitle] = useState('')

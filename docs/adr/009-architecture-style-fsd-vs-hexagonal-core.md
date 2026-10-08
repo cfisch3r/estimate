@@ -1,6 +1,6 @@
 # ADR-009: Architecture Style — FSD Everywhere vs. a Hexagonal Core with an FSD UI
 
-**Status:** Accepted (2026-10-08); stages 1 and 2 done, stage 3 in progress (3a and 3b-1 done)
+**Status:** Accepted (2026-10-08); stages 1 and 2 done, stage 3 in progress (3a, 3b-1 and 3b-2 done)
 **Date:** 2026-10-06
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [005-session-store-decomposition.md](005-session-store-decomposition.md), [003-session-reliability-model.md](003-session-reliability-model.md), [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [006-router-adoption.md](006-router-adoption.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md)
 
@@ -279,10 +279,20 @@ already pure functions of state and event.
    `useRevealActions`). The round store no longer reads the connection store, so the
    store import cycle risk noted in ADR-005 is gone.
 
-   Planned for 3b-2: narrowing the UI-visible store types and adding `useItemActions`.
-   The UI-access rule that goes with it (decided 2026-10-08, implemented in 3b-2): the UI
-   may read state with selectors; writes that carry a rule go through use cases; trivial
-   setters stay directly callable.
+   As built in 3b-2: the UI-access rule (decided 2026-10-08). The UI may read store state
+   with selectors and may call the trivial field setters directly (`setSessionName`,
+   `setUnit`, `selectItem`, `setItemTitle`, `setItemNotes`, `setItemDescription`). Every
+   write that carries a rule goes through a use case: `useItemActions` (add, remove,
+   reorder) joins `useRevealActions`, `useJoinLiveSession`, `useCloseWorkspace` and the
+   rest. `stores/publicStores.ts` now gives the UI explicit state-only views plus those
+   setters for all three stores, so calling any other action from the UI is a compile
+   error (pinned by type tests), and the barrel-only lint rule keeps the UI from importing
+   the full stores that use cases and `NetworkProvider` use (`stores/index.ts`). The
+   stores are not moved into the UI: the network code and the use cases write them too,
+   so a UI-owned store would have forced a storage port. The round store's
+   `applySyncState` became `applyRoundSnapshot`, since it adopts only the round part of a
+   snapshot (`applyFacilitatorSnapshot` applies the whole thing); the dead `setMode` was
+   removed.
 
 Each stage ends with all CI checks green and can be the last one.
 

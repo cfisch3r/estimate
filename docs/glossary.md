@@ -47,7 +47,7 @@ and use "lane" and "slice" in their own sense. They are not rewritten.
 | **Round** | One pass of everyone estimating one item; the facilitator can retry it. |
 | **Submission** | One participant's estimate for the current round. |
 | **Roster** | The values-free list of who has submitted, sent in the snapshot ([ADR-003](adr/003-session-reliability-model.md)). |
-| **Snapshot** | A derived, read-only copy of the facilitator's round state that participants hold (applied via `applySyncState` to a `LiveRound`). The facilitator stays the authority. |
+| **Snapshot** | A derived, read-only copy of the facilitator's round state that participants hold (applied via `applyRoundSnapshot` to a `LiveRound`). The facilitator stays the authority. |
 | **Connection state** | The status of the peer link. It describes the link, not the estimate, so it is outside the aggregate. |
 | **Participant identity** | A participant's stable client id. Also outside the aggregate. |
 

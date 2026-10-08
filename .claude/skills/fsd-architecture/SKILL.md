@@ -59,9 +59,10 @@ Only a slice's `index.ts` is importable from outside that slice. Never reach
 into a slice's internals directly from a page — import from its barrel (stores and use-case hooks come from the `src/application` barrel). Steiger enforces this
 (`fsd/no-public-api-sidestep`, `fsd/public-api`); a missing barrel is an error,
 not a style choice. A barrel may export a narrowed view instead of the raw
-object: `src/application` exports `useConnectionStore` / `useRoundStore` as types
-without the network-bridge mutators (`stores/publicStores.ts`), and
-`NetworkProvider` writes through the internal stores.
+object: `src/application` exports `useSessionStore` / `useConnectionStore` /
+`useRoundStore` as state-only types plus a few trivial field setters
+(`stores/publicStores.ts`); every rule-bearing write is a use-case hook, and use cases
+and `NetworkProvider` write through the full stores.
 
 ## Cross-entity imports: `@x`
 

@@ -25,7 +25,6 @@ export interface ConnectionStore {
    *  join; filled from peers' `announce` messages. */
   participantNames: Record<string, string>
 
-  setMode: (mode: SessionMode) => void
   setConnectionStatus: (status: LiveConnectionStatus) => void
   setPeerCount: (count: number) => void
   /** Record a peer's (or own) `participantId -> display name` mapping. */
@@ -65,8 +64,6 @@ const CONNECTION_DEFAULTS = {
 
 export const useConnectionStore = create<ConnectionStore>((set) => ({
   ...CONNECTION_DEFAULTS,
-
-  setMode: (mode) => set({ mode }),
 
   setConnectionStatus: (status) => set((state) => withConnectionStatus(state, status)),
 

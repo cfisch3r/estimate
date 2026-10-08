@@ -9,7 +9,7 @@ import {
 } from '../../domain/item'
 import type { Item } from '../../domain/types'
 
-interface SessionStore {
+export interface SessionStore {
   sessionName: string
   unit: EstimationUnit
   items: Item[]

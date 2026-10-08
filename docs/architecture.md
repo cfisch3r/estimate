@@ -86,8 +86,9 @@ rationale. In brief, by architectural role rather than layer:
   per-concern Zustand stores (ADR-005): `session.ts` (session domain data),
   `connection.ts` (live-connection state), `round.ts` (round mechanics); the network
   layer is an adapter dispatching into them. The application barrel exports narrowed views
-  of the connection and round stores (`stores/publicStores.ts`) that hide the network-bridge
-  mutators; `NetworkProvider` writes through the internal stores. The stable per-browser
+  of the three stores (`stores/publicStores.ts`): state plus the trivial field setters, with
+  every rule-bearing write behind a use case (`useItemActions`, `useRevealActions`, ...);
+  use cases and `NetworkProvider` write through the full stores. The stable per-browser
   `participantId` helper lives in `adapters/storage` (the join use case reaches it through an identity port), and `finalResultFor` is the
   single finalize rule (aggregate the submissions, or fail with a message when there are
   none). The session policies they and
@@ -232,7 +233,7 @@ dispatches inbound `onEstimate` / `onSyncState` / `onAnnounce`, answers a peer's
 (now carrying a values-free `roster`) on every real change. The epic-0010 screen review
 (#34) rebuilt the entry flow to a mode-selection screen plus the unified Workspace. (#39,
 the session unit on the wire, is done — `unit` on `SessionSnapshot`, broadcast on change,
-adopted by `applySyncState`.) The PRD §6.1 cone-of-uncertainty guard (issue #17) is also
+adopted by `applyRoundSnapshot`.) The PRD §6.1 cone-of-uncertainty guard (issue #17) is also
 done — `checkUncertaintyRange`, the Phase Picker, and the guidance-aware `RangeBar` states,
 wired into both the Workspace's own-estimate panel and the Participant Estimate View.
 
