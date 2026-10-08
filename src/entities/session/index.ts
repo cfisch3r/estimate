@@ -27,13 +27,8 @@ export {
 
 export { useSessionStore } from './model/session'
 export { useConnectionStore, useRoundStore } from './model/publicStores'
-export type {
-  Item,
-  LiveRound,
-  SessionMode,
-  SessionRole,
-  LiveConnectionStatus,
-} from '../../domain/types'
+export type { Item, LiveRound, SessionMode, SessionRole } from '../../domain/types'
+export type { LiveConnectionStatus } from './model/connectionStatus'
 export { isFinalized } from '../../domain/item'
 export { roundMemberIds } from '../../domain/roster'
 export { finalResultFor } from '../../domain/finalResult'

@@ -257,6 +257,7 @@ override in `.oxlintrc.json` can express the rules, with these properties:
   with the negations (`!./**`, `!../**`) before the outer-layer patterns. Two separate
   groups interfere: the wider negation cancelled the outer-layer ban. This is
   gitignore-style last-match-wins ordering.
+- As built in stage 1 the group is `["**", "!./**", ...]` with a re-ban for specifiers that climb out (`./../**`) and, in subfolders, `!../*` (a sibling at the domain root) followed by `../../**`. `no-restricted-globals` also bans I/O globals (`window`, `fetch`, `localStorage`, ...). `vitest` is allowed only in test files and fixtures.
 - The patterns are path-based, so they depend on the repo using relative imports (it
   does; there are no path aliases). Introducing an alias would require adding it to
   the patterns.
@@ -301,4 +302,4 @@ needed for these rules.
 | Can the domain and adapter boundaries be enforced with current tooling? | Settled by a check: yes, with oxlint (see "Enforcement") |
 | Should the round be an explicit state machine, and with what? | Deferred to a separate decision; the pure transitions from stage 3 are its prerequisite |
 | How does the connection store get the participant identity without depending on an adapter? | Deferred to stage 2 (inject it, or create it at the composition point) |
-| Folder names and the domain's internal structure per concept | Deferred to stage 1 |
+| Folder names and the domain's internal structure per concept | Settled in stage 1: a flat `src/domain/` with an `estimate/` subfolder; folder names for adapters and application are decided in their stages |

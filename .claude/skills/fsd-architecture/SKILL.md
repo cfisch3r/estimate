@@ -46,7 +46,7 @@ not in `lib/`), `api/` (external calls — network, storage), `lib/`
 segment — add one when there's something to put in it. Pure decision rules that
 more than one hook needs belong in `src/domain/` (e.g. `domain/roster.ts`, ADR-009
 stage 1), unit-tested directly; `src/domain/` (including `domain/estimate/`, which keeps its own
-`index.ts`) is outside FSD and imports nothing from
+`index.ts`) is outside FSD. The UI keeps importing domain symbols through the `entities/session` barrel until stage 3 and imports nothing from
 outside itself (enforced by oxlint).
 
 Component CSS lives beside its component and is imported by it (shared

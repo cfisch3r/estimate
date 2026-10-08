@@ -12,7 +12,8 @@ import { FACILITATOR_PARTICIPANT_ID } from '../../../domain/participantId'
 import { needsResend } from '../../../domain/resend'
 import { shouldPruneDeparted } from '../../../domain/roster'
 import { buildSessionSnapshot, snapshotChangeKey } from '../../../domain/snapshot'
-import type { ConnectionStatus, SessionRole } from '../../../domain/types'
+import type { SessionRole } from '../../../domain/types'
+import type { ConnectionStatus } from '../model/connectionStatus'
 
 /** For a participant, the transport can report `'connected'` the instant it
  *  reaches ANY peer — including another participant, never the facilitator.
