@@ -1,6 +1,6 @@
-import { finalResultFor } from '../../domain/finalResult'
 import type { ActionResult } from '../../domain/estimate'
 import { useRoundStore, useSessionStore } from '../stores'
+import { finalizeWith } from './finalizeWith'
 
 interface RevealActions {
   reveal: () => void
@@ -20,7 +20,6 @@ interface RevealActions {
 export function useRevealActions(itemId: string): RevealActions {
   const revealRound = useRoundStore((s) => s.revealRound)
   const retryRound = useRoundStore((s) => s.retryRound)
-  const finalizeItem = useRoundStore((s) => s.finalizeItem)
 
   return {
     reveal: () => revealRound(itemId),
@@ -30,10 +29,7 @@ export function useRevealActions(itemId: string): RevealActions {
       // submission that landed since the last render is still aggregated.
       const current = useSessionStore.getState().items.find((i) => i.id === itemId)
       if (!current) return { ok: false, error: 'Unknown item.' }
-      const result = finalResultFor(current.submissions)
-      if (!result.ok) return result
-      finalizeItem(current.id, result.value)
-      return { ok: true }
+      return finalizeWith(current.id, current.submissions)
     },
   }
 }
