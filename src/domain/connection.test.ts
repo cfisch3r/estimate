@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   deriveConnectionStatus,
   facilitatorStart,
+  leavingNeedsConfirm,
   normalizeSessionCode,
   participantJoin,
   withConnectionStatus,
@@ -97,5 +98,17 @@ describe('withConnectionStatus', () => {
     expect(
       withConnectionStatus({ hasEverConnected: false }, 'idle').hasEverConnected,
     ).toBe(false)
+  })
+})
+
+describe('leavingNeedsConfirm', () => {
+  it.each([
+    ['live', 2, true],
+    ['live', 1, true],
+    ['live', 0, false],
+    ['manual', 0, false],
+    ['manual', 3, false],
+  ] as const)('mode %s with %i peers -> %s', (mode, peers, expected) => {
+    expect(leavingNeedsConfirm(mode, peers)).toBe(expected)
   })
 })

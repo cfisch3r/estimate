@@ -11,7 +11,7 @@ import type {
 } from '../../../domain/estimate'
 import type { LiveRound } from '../../../domain/types'
 import { DeliveryStatus } from './DeliveryStatus'
-import type { DeliveryState } from '../../../application'
+import type { DeliveryState } from '../../../domain/delivery'
 import { EstimateForm } from './EstimateForm'
 import { RoundCardHeader } from './RoundCardHeader'
 

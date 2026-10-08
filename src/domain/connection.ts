@@ -92,3 +92,9 @@ export function withConnectionStatus(
     hasEverConnected: previous.hasEverConnected || status === 'connected',
   }
 }
+
+/** Leaving a live session that still has peers is destructive for them too, so
+ *  the caller should ask for a second click first. */
+export function leavingNeedsConfirm(mode: SessionMode, peerCount: number): boolean {
+  return mode === 'live' && peerCount > 0
+}

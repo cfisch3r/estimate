@@ -1,15 +1,9 @@
 import { useState } from 'react'
+import { deliveryStateFor } from '../../domain/delivery'
 import { createEstimate, type ActionResult } from '../../domain/estimate'
+import { LOCAL_PARTICIPANT_ID } from '../../domain/participantId'
 import { useConnectionStore, useRoundStore } from '../stores'
 import { useNetworkSession } from '../ports/useNetworkSession'
-
-/** Where this participant's own estimate stands with the facilitator, derived
- *  rather than tracked as its own store field: `submitted` comes straight from
- *  the roster (the actual convergence proof, per ADR-003), so a background
- *  resend that lands is reflected automatically with no wiring back to the
- *  caller. `sending` / `not-delivered` describe only the most recent local
- *  send attempt. */
-export type DeliveryState = 'sending' | 'submitted' | 'not-delivered'
 
 /** The participant-side submit use case: record the estimate locally, then send
  *  it to the facilitator and track whether that send failed. */
@@ -36,7 +30,7 @@ export function useSubmitEstimate() {
       }
     }
     const result = createEstimate({
-      participantId: participantId || 'me',
+      participantId: participantId || LOCAL_PARTICIPANT_ID,
       best,
       likely,
       worst,
@@ -50,14 +44,7 @@ export function useSubmitEstimate() {
     return { ok: true }
   }
 
-  const myRosterEntry = liveRound?.roster.find(
-    (entry) => entry.participantId === participantId,
-  )
-  const deliveryState: DeliveryState = myRosterEntry?.submitted
-    ? 'submitted'
-    : deliveryFailed
-      ? 'not-delivered'
-      : 'sending'
+  const deliveryState = deliveryStateFor(liveRound?.roster, participantId, deliveryFailed)
 
   return { submit, deliveryState }
 }
