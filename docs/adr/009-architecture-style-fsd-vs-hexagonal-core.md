@@ -64,13 +64,13 @@ the first two.
 valuable and can be stopped after.** Treat D as a separate follow-up decision about
 how the round is written, not part of this one.
 
-Target shape (a sketch: the UI lane is simplified, and edges point from the
-depending lane to the one it imports from).
+Target shape (a sketch: the UI lane is simplified). Features and adapters may also use
+domain types directly; those edges are left out to keep the diagram readable.
 
-Legend: solid arrow = depends on and calls (the arrow points at the callee; a double
-arrow goes both ways); dashed arrow = implements an interface owned by the target
-lane and is wired in at composition time, so the target calls it at runtime through
-that interface while the source-code dependency still points inward; dashed box =
+Legend: solid arrow = calls (the arrow points at the callee; a double arrow goes both
+ways). When the callee is an adapter, the call goes through an interface that the
+application lane owns, so the source-code dependency still points inward. Dashed arrow =
+the adapter implements that interface, wired in at composition time. Dashed box =
 external system.
 
 ```mermaid
@@ -85,27 +85,25 @@ flowchart TB
     UseCases["Use cases<br/>[Hooks]"]
     Stores["State stores<br/>[Zustand stores]"]
   end
-  subgraph DOM["DOMAIN"]
-    direction TB
-    Core["Estimate and session rules<br/>[Pure functions and value types]"]
-  end
   subgraph AD["ADAPTERS"]
     direction TB
     Net["Network and wire parsing<br/>[Trystero adapter]"]
     Store["Storage and export<br/>[Browser and file adapters]"]
   end
+  subgraph DOM["DOMAIN"]
+    direction TB
+    Core["Estimate and session rules<br/>[Pure functions and value types]"]
+  end
   Ext["Peers, relays, browser storage<br/>[External systems]"]
   Pages -->|composes| Features
   Features -->|calls| UseCases
-  Features -->|types and display rules| Core
   UseCases -->|rules and value types| Core
   UseCases -->|reads and writes| Stores
-  Net -->|dispatches peer messages into| UseCases
+  UseCases <-->|peer messages in, sends through peer-transport port| Net
+  UseCases -->|saves through storage port| Store
   Net -->|subscribes for snapshot broadcast| Stores
-  Net -->|validates with| Core
-  Store -->|serialises with| Core
-  Ext <-->|WebRTC and relays| Net
-  Ext <-->|file and browser storage| Store
+  Net <-->|WebRTC and relays| Ext
+  Store <-->|file and browser storage| Ext
   AD -.->|implements application ports| APP
   style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   style APP fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
