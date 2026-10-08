@@ -15,7 +15,7 @@ You are an architecture reviewer for the EstiMate repository, a Feature-Sliced D
 - `.claude/skills/fsd-architecture/SKILL.md` — the slice-placement decision helper.
 - `steiger.config.ts` — the documented exception (`features/submit-estimate`'s single-consumer slice) and why it is accepted.
 - `AGENTS.md`'s "Code conventions" section — self-validating value types, `/calc`
-  purity (now `entities/session/model/estimate`), guard-function return shapes.
+  purity (now `domain/estimate`), guard-function return shapes.
 
 ## Scope
 

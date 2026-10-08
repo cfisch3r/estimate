@@ -3,7 +3,12 @@
   "plugins": ["react", "typescript", "oxc", "jsx-a11y"],
   "rules": {
     "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }],
+    "react/only-export-components": [
+      "warn",
+      {
+        "allowConstantExport": true
+      }
+    ],
     "jsx-a11y/alt-text": "error",
     "jsx-a11y/anchor-ambiguous-text": "error",
     "jsx-a11y/anchor-has-content": "error",
@@ -40,5 +45,137 @@
     "jsx-a11y/role-supports-aria-props": "error",
     "jsx-a11y/scope": "error",
     "jsx-a11y/tabindex-no-positive": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["src/domain/*.ts"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**", "!./**", "./../**"],
+                "message": "The domain imports nothing outside src/domain (ADR-009)."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "window",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "document",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "localStorage",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "sessionStorage",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "fetch",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "navigator",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "crypto",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "setTimeout",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "setInterval",
+            "message": "The domain does no I/O (ADR-009)."
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/domain/*/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**", "!./**", "!../*", "./../**", "../../**"],
+                "message": "The domain imports nothing outside src/domain (ADR-009)."
+              }
+            ]
+          }
+        ],
+        "no-restricted-globals": [
+          "error",
+          {
+            "name": "window",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "document",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "localStorage",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "sessionStorage",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "fetch",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "navigator",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "crypto",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "setTimeout",
+            "message": "The domain does no I/O (ADR-009)."
+          },
+          {
+            "name": "setInterval",
+            "message": "The domain does no I/O (ADR-009)."
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/domain/**/*.test.ts",
+        "src/domain/testFixtures.ts",
+        "src/domain/estimate/testHelpers.ts"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**", "!./**", "!../*", "!vitest", "./../**", "../../**"],
+                "message": "The domain imports nothing outside src/domain (ADR-009)."
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }

@@ -1,6 +1,6 @@
 # ADR-009: Architecture Style — FSD Everywhere vs. a Hexagonal Core with an FSD UI
 
-**Status:** Accepted (2026-10-08); stage 1 in progress
+**Status:** Accepted (2026-10-08); stage 1 done (domain extracted to `src/domain/`)
 **Date:** 2026-10-06
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [005-session-store-decomposition.md](005-session-store-decomposition.md), [003-session-reliability-model.md](003-session-reliability-model.md), [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [006-router-adoption.md](006-router-adoption.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md)
 
@@ -202,9 +202,9 @@ this has to be kept true rather than assumed. The `architecture-review` pass sho
 check it.
 
 Zustand stays out of the domain so that the domain's "no framework, no I/O" rule stays
-literal. Today the four stores (`session`, `round`, `connection`, `publicStores`) are the
-only files in `entities/session/model` that import a package; the other modules there
-import only each other (the connection store also imports the identity helper from
+literal. The four stores (`session`, `round`, `connection`, `publicStores`) are the
+only files in `entities/session/model` that import a package; the pure modules that
+used to sit beside them now live in `src/domain/` (stage 1) and import only each other (the connection store also imports the identity helper from
 `lib/`; see stage 2), which supports the split. The connection store holds state about
 the link, not about the estimate; it is written mostly by the network adapter, with its
 pure rules (for example which departed participants to prune) in the domain. The
@@ -218,9 +218,9 @@ already pure functions of state and event.
 
 ### Staging
 
-1. **Extract the domain.** Move `entities/session/model/estimate/` and the other pure
+1. **Extract the domain (done).** Move `entities/session/model/estimate/` and the other pure
    modules (`item`, `types`, `participantId`, `participantLabel`, `roster`, `snapshot`,
-   `resend`, `finalResult`) into a `domain/` folder with an enforced "imports nothing
+   `resend`, `finalResult`) into a `src/domain/` folder with an enforced "imports nothing
    outside `domain/`" rule. This alone removes the weakest point left after the
    2026-10-05/06 refactor (a convention-only boundary).
 2. **Extract the adapters.** Move `entities/session/api/` (transport, wire parsing,
@@ -257,6 +257,7 @@ override in `.oxlintrc.json` can express the rules, with these properties:
   with the negations (`!./**`, `!../**`) before the outer-layer patterns. Two separate
   groups interfere: the wider negation cancelled the outer-layer ban. This is
   gitignore-style last-match-wins ordering.
+- As built in stage 1 the group is `["**", "!./**", ...]` with a re-ban for specifiers that climb out (`./../**`) and, in subfolders, `!../*` (a sibling at the domain root) followed by `../../**`. `no-restricted-globals` also bans I/O globals (`window`, `fetch`, `localStorage`, ...). `vitest` is allowed only in test files and fixtures.
 - The patterns are path-based, so they depend on the repo using relative imports (it
   does; there are no path aliases). Introducing an alias would require adding it to
   the patterns.
@@ -301,4 +302,4 @@ needed for these rules.
 | Can the domain and adapter boundaries be enforced with current tooling? | Settled by a check: yes, with oxlint (see "Enforcement") |
 | Should the round be an explicit state machine, and with what? | Deferred to a separate decision; the pure transitions from stage 3 are its prerequisite |
 | How does the connection store get the participant identity without depending on an adapter? | Deferred to stage 2 (inject it, or create it at the composition point) |
-| Folder names and the domain's internal structure per concept | Deferred to stage 1 |
+| Folder names and the domain's internal structure per concept | Settled in stage 1: a flat `src/domain/` with an `estimate/` subfolder; folder names for adapters and application are decided in their stages |

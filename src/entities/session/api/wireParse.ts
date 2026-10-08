@@ -3,7 +3,7 @@ import {
   isEstimationUnit,
   type EstimationUnit,
   type RawEstimateInput,
-} from '../model/estimate'
+} from '../../../domain/estimate'
 
 /** The wire layer's anti-corruption boundary for estimates: every estimate that
  *  crosses the network — an incoming peer message, a snapshot's frozen

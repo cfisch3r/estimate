@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createTypedActions, MAX_ANNOUNCE_NAME_LENGTH, type ActionRoom } from './actions'
-import { createEstimate } from '../model/estimate'
+import { createEstimate } from '../../../domain/estimate'
 
 function makeFakeAction() {
   return {

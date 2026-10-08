@@ -5,18 +5,13 @@ import type { ConnectionState } from './connection'
 import { NetworkProvider } from './NetworkProvider'
 import { useNetworkSession } from './useNetworkSession'
 import type { NetworkSessionApi } from './networkSessionContext'
-import { createEstimate, type EstimationUnit } from '../model/estimate'
+import { createEstimate, type EstimationUnit } from '../../../domain/estimate'
 import { useSessionStore } from '../model/session'
-import { estimateOf } from '../model/testFixtures'
+import { estimateOf } from '../../../domain/testFixtures'
 import { useConnectionStore } from '../model/connection'
 import { useRoundStore } from '../model/round'
-import type {
-  Item,
-  LiveRound,
-  SessionMode,
-  SessionRole,
-  LiveConnectionStatus,
-} from '../model/types'
+import type { Item, LiveRound, SessionMode, SessionRole } from '../../../domain/types'
+import type { LiveConnectionStatus } from '../model/connectionStatus'
 
 type SessionPatch = Partial<{
   sessionName: string

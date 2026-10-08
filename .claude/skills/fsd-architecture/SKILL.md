@@ -44,8 +44,10 @@ types, and the stateful hooks that expose a use case — `useX` hooks live here,
 not in `lib/`), `api/` (external calls — network, storage), `lib/`
 (framework-free helpers specific to that slice). Not every slice needs every
 segment — add one when there's something to put in it. Pure decision rules that
-more than one hook needs (e.g. `entities/session/model/roster.ts`) are plain
-modules in `model/`, unit-tested directly.
+more than one hook needs belong in `src/domain/` (e.g. `domain/roster.ts`, ADR-009
+stage 1), unit-tested directly; `src/domain/` (including `domain/estimate/`, which keeps its own
+`index.ts`) is outside FSD. The UI keeps importing domain symbols through the `entities/session` barrel until stage 3 and imports nothing from
+outside itself (enforced by oxlint).
 
 Component CSS lives beside its component and is imported by it (shared
 components' sheets sit in `shared/ui/*.css`; `pages/workspace/ui/workspace.css`
@@ -55,7 +57,7 @@ holds only the design-system layer (`nocturne.css` and generic composed patterns
 ## The public-API rule
 
 Only a slice's `index.ts` is importable from outside that slice. Never reach
-into `entities/session/model/store.ts` directly from a page — import
+into `entities/session/model/session.ts` directly from a page — import
 `useSessionStore` from `entities/session` (its barrel). Steiger enforces this
 (`fsd/no-public-api-sidestep`, `fsd/public-api`); a missing barrel is an error,
 not a style choice. A barrel may export a narrowed view instead of the raw
@@ -72,9 +74,7 @@ because estimates are value objects owned by the session's rounds, not an
 independent entity (see ADR-004's 2026-10-06 update). If a genuinely independent
 second entity ever needs another, expose a narrow
 `entities/<provider>/@x/<consumer>.ts` surface rather than adding a Steiger
-exemption. Inside a slice, a self-contained pure subfolder with its own
-`index.ts` (like `entities/session/model/estimate/`) is imported relatively by
-the slice's own code; code outside the slice goes through the slice barrel.
+exemption.
 
 ## Where does new code belong?
 

@@ -1,6 +1,6 @@
-import type { Estimate } from '../model/estimate'
+import type { Estimate } from '../../../domain/estimate'
 import { parseWireEstimate, parseWireUnit } from './wireParse'
-import type { RosterEntry, SessionSnapshot, SnapshotItem } from '../model/types'
+import type { RosterEntry, SessionSnapshot, SnapshotItem } from '../../../domain/types'
 
 /** A participant's estimate plus the item it belongs to. The item id keeps a
  *  straggler (or peer-join re-broadcast) submission for a just-finalized item

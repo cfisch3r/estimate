@@ -19,7 +19,7 @@ concretely works, how a session is saved/loaded (a real point of tension with th
 "no operated server" phrasing, since ADR-001's constraint is scoped to live sync, not
 storage), styling/design-system approach, hosting, and module structure.
 
-**As-built status.** The initial scaffold, the estimation engine (`entities/session/model/estimate`),
+**As-built status.** The initial scaffold, the estimation engine (`domain/estimate`),
 the Zustand store, the single-user (Manual) screens, the Trystero P2P network layer
 (`entities/session/api`), the Join Session screen, and the participant estimate round
 have all shipped (issues #1–#7), and the entry flow was rebuilt to a mode-selection
@@ -67,12 +67,13 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 
 ## Module structure
 
-`src/` is organized by Feature-Sliced Design (FSD) — see
+`src/` is organized by Feature-Sliced Design (FSD), except `src/domain/`, which sits
+outside FSD as the pure core ([ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)) — see
 [ADR-004](adr/004-feature-sliced-design-architecture.md) for the adopted layer set
 (`app/pages/widgets/features/entities/shared`), the full slice mapping, and the
 rationale. In brief, by architectural role rather than layer:
 
-- **The estimation engine** (`entities/session/model/estimate`, formerly `/calc`) — pure
+- **The estimation engine** (`domain/estimate`, formerly `/calc`) — pure
   functions: `aggregateEstimates()`, `computeCI90()` (McConnell's formula, PRD §5),
   bias guards (symmetric-range, false-precision, outlier — PRD §6), and the
   cone-of-uncertainty guidance rule (`uncertaintyGuidance`, PRD §6.1). Framework-free,
@@ -90,7 +91,7 @@ rationale. In brief, by architectural role rather than layer:
   `participantId` helper lives in `entities/session/lib`, and `finalResultFor` is the
   single finalize rule (aggregate the submissions, or fail with a message when there are
   none). The session policies they and
-  `NetworkProvider` apply are pure modules beside them: `roster.ts` (round membership
+  `NetworkProvider` apply are pure modules in `src/domain/` (ADR-009 stage 1): `roster.ts` (round membership
   via `roundMemberIds`, the wire roster, the departed-name prune rule), `snapshot.ts`
   (building the facilitator's snapshot) and `resend.ts` (whether a participant's
   submission needs re-sending), plus `item.ts` (`isFinalized`).
@@ -181,7 +182,7 @@ function checkOutlier(estimate: Estimate, allEstimates: Estimate[], thresholdPct
 function checkUncertaintyRange(best: number, worst: number, level: UncertaintyLevel): GuardResult
 ```
 
-`entities/session/model/estimate/estimate.ts` also exports `validateEstimateValues` — the numeric half of `createEstimate`'s invariant, usable for a live form preview before a participant exists; `createEstimate` runs it after its `participantId` check. It returns a `code` and the affected `fields` alongside the error text, and `features/estimate-round` (`lib/describeEstimateIssue.ts`) turns those into the actionable form messages (naming the numbers and what to change) and marks the offending inputs `aria-invalid` with `aria-describedby` pointing at the message. A problem first appears only after the entry has settled (~600 ms, `model/useSettledIssue.ts`) or a field loses focus, so typing through an intermediate value doesn't flash it; an entry that is already invalid when the form opens is shown at once, a showing problem updates in place, a resolved one clears at once, and the submit button is never delayed.
+`domain/estimate/estimate.ts` also exports `validateEstimateValues` — the numeric half of `createEstimate`'s invariant, usable for a live form preview before a participant exists; `createEstimate` runs it after its `participantId` check. It returns a `code` and the affected `fields` alongside the error text, and `features/estimate-round` (`lib/describeEstimateIssue.ts`) turns those into the actionable form messages (naming the numbers and what to change) and marks the offending inputs `aria-invalid` with `aria-describedby` pointing at the message. A problem first appears only after the entry has settled (~600 ms, `model/useSettledIssue.ts`) or a field loses focus, so typing through an intermediate value doesn't flash it; an entry that is already invalid when the form opens is shown at once, a showing problem updates in place, a resolved one clears at once, and the submit button is never delayed.
 
 The PRD §6.1 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`features/estimate-round/ui/PhasePicker.tsx`), local to their own view (guidance derived inside `features/estimate-round/model/useThreePointDraft.ts`, composed with the rest of the entry form by `ThreePointEstimateForm`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
 
