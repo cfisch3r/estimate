@@ -7,7 +7,7 @@ import {
   NetworkSessionContext,
   type NetworkSessionApi,
 } from './ports/networkSessionContext'
-import { withKindDrivenRetry } from './lib/retryPolicy'
+import { withKindDrivenRetry } from './useCases/retryPolicy'
 import { useSessionStore } from './stores/session'
 import { useConnectionStore } from './stores/connection'
 import { useRoundStore } from './stores/round'

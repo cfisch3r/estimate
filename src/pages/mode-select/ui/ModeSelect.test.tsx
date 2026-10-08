@@ -11,7 +11,7 @@ const { connectMock, navigateMock } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
 }))
 
-vi.mock('../../../application/lib/sessionCode', () => ({
+vi.mock('../../../application/useCases/sessionCode', () => ({
   generateSessionCode: () => 'LIVECODE',
 }))
 vi.mock('../../../application/ports/useNetworkSession', () => ({

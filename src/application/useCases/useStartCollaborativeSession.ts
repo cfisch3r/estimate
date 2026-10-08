@@ -1,6 +1,6 @@
 import { useConnectionStore, useSessionStore } from '../stores'
 import { useNetworkSession } from '../ports/useNetworkSession'
-import { generateSessionCode } from '../lib/sessionCode'
+import { generateSessionCode } from './sessionCode'
 
 /** Start a facilitator-hosted live session: generate its join code, select the
  *  first pending item, and open the peer connection. Navigation is the caller's. */

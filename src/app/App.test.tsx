@@ -5,7 +5,7 @@ import type { ReactNode } from 'react'
 import App from './App'
 import { useSessionStore, useConnectionStore } from '../application'
 
-vi.mock('../application/lib/sessionCode', () => ({
+vi.mock('../application/useCases/sessionCode', () => ({
   generateSessionCode: () => 'LIVECODE',
 }))
 vi.mock('../application/NetworkProvider', () => ({

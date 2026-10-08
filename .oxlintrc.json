@@ -236,7 +236,6 @@
                   "**/application/stores/**",
                   "**/application/ports/**",
                   "**/application/useCases/**",
-                  "**/application/lib/**",
                   "**/application/NetworkProvider"
                 ],
                 "message": "Import from the application barrel (src/application), not past it (ADR-009)."
@@ -258,7 +257,6 @@
                   "**/application/stores/**",
                   "**/application/ports/**",
                   "**/application/useCases/**",
-                  "**/application/lib/**",
                   "**/application/NetworkProvider"
                 ],
                 "message": "Import from the application barrel (src/application), not past it (ADR-009)."

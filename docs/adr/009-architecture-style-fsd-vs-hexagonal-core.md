@@ -243,9 +243,9 @@ already pure functions of state and event.
    As built in 3a: `src/application/` holds `stores/` (`session`, `round`, `connection`,
    `publicStores`, and `index.ts`, which the use cases import), `ports/`
    (`NetworkSessionApi` and `ParticipantIdentityApi` with their React contexts and hooks),
-   `lib/` (`retryPolicy`, `sessionCode`), `useCases/` (join, teardown, reconnect, start
-   collaborative, start single-user, close workspace, reveal actions, submit estimate,
-   finalize estimate) and `NetworkProvider.tsx`, which still holds the connect, resend, pull,
+   `useCases/` (join, teardown, reconnect, start collaborative, start single-user, close
+   workspace, reveal actions, submit estimate, finalize estimate, plus `retryPolicy` and
+   `sessionCode`, each beside its only consumer) and `NetworkProvider.tsx`, which still holds the connect, resend, pull,
    prune and broadcast logic. `src/application/index.ts` is the layer's barrel and the only
    thing the UI imports from it. The use cases contain no navigation: `features/session-lifecycle`
    keeps thin wrappers that add it (`useStartCollaborative`, `useStartSingleUser`,
@@ -331,4 +331,4 @@ needed for these rules.
 | Can the domain and adapter boundaries be enforced with current tooling? | Settled by a check: yes, with oxlint (see "Enforcement") |
 | Should the round be an explicit state machine, and with what? | Deferred to a separate decision; the pure transitions from stage 3 are its prerequisite |
 | How does the connection store get the participant identity without depending on an adapter? | Settled in stage 2: the join use case reads it through an application-owned port, provided in `app/App.tsx`, and passes it to the store as an argument |
-| Folder names and the domain's internal structure per concept | Settled in stage 1: a flat `src/domain/` with an `estimate/` subfolder; adapters settled in stage 2 as `adapters/network` and `adapters/storage`; the application layer's folder settled in stage 3a as `src/application` with `stores`, `ports`, `lib` and `useCases` |
+| Folder names and the domain's internal structure per concept | Settled in stage 1: a flat `src/domain/` with an `estimate/` subfolder; adapters settled in stage 2 as `adapters/network` and `adapters/storage`; the application layer's folder settled in stage 3a as `src/application` with `stores`, `ports` and `useCases` |

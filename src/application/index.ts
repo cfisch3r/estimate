@@ -1,7 +1,6 @@
 export { useSessionStore, useConnectionStore, useRoundStore } from './stores'
 export { NetworkProvider } from './NetworkProvider'
 export { useNetworkSession } from './ports/useNetworkSession'
-export { generateSessionCode } from './lib/sessionCode'
 export {
   ParticipantIdentityContext,
   useParticipantIdentity,
