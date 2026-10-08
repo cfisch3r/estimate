@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { SessionSummary } from './SessionSummary'
-import { useSessionStore } from '../../../application'
+import { useSessionStore } from '../../../application/testing'
 import type { Item } from '../../../domain/types'
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))

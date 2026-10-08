@@ -2,7 +2,12 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router'
-import { useConnectionStore, useRoundStore, useSessionStore } from '../../../application'
+import {
+  resetConnectionStore,
+  useConnectionStore,
+  useRoundStore,
+  useSessionStore,
+} from '../../../application/testing'
 import { itemOf } from '../../../domain/testFixtures'
 import { ROUTES } from '../../../shared/lib/routes'
 import { useLeaveLiveSession } from './useLeaveLiveSession'
@@ -27,18 +32,6 @@ function renderWithPath<T>(hook: () => T, initialPath: string = ROUTES.modeSelec
   })
 }
 
-const DISCONNECTED = {
-  mode: 'manual',
-  role: 'facilitator',
-  sessionId: null,
-  myName: '',
-  participantId: '',
-  connectionStatus: 'idle',
-  hasEverConnected: false,
-  peerCount: 0,
-  participantNames: {},
-} as const
-
 function seedItems(...titles: string[]) {
   useSessionStore.setState({
     items: titles.map((title, i) => itemOf({ id: `item-${i}`, title })),
@@ -55,7 +48,7 @@ beforeEach(() => {
     items: [],
     activeItemId: null,
   })
-  useConnectionStore.setState(DISCONNECTED)
+  resetConnectionStore()
   useRoundStore.setState({ liveRound: null })
 })
 

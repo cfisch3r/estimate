@@ -2,57 +2,62 @@ import { describe, expect, expectTypeOf, it } from 'vitest'
 import { useConnectionStore as internalConnection } from './connection'
 import { useRoundStore as internalRound } from './round'
 import { useSessionStore as internalSession } from './session'
-import { useConnectionStore, useRoundStore, useSessionStore } from './publicStores'
+import {
+  useConnectionStore,
+  useRoundStore,
+  useSessionStore,
+  type PublicConnectionStore,
+  type PublicRoundStore,
+  type PublicSessionStore,
+} from './publicStores'
 
 describe('public store views', () => {
-  it('are the same stores the network bridge writes to', () => {
+  it('are the same stores the use cases and the network bridge write to', () => {
     expect(useConnectionStore).toBe(internalConnection)
     expect(useRoundStore).toBe(internalRound)
     expect(useSessionStore).toBe(internalSession)
   })
 
-  it('keep the transport-driven mutators out of the public type', () => {
-    const connection = useConnectionStore.getState()
-    const round = useRoundStore.getState()
-
-    expectTypeOf(connection).not.toHaveProperty('setMode')
-    expectTypeOf(connection).not.toHaveProperty('setConnectionStatus')
-    expectTypeOf(connection).not.toHaveProperty('setPeerCount')
-    expectTypeOf(connection).not.toHaveProperty('applyParticipantName')
-    expectTypeOf(connection).not.toHaveProperty('removeParticipant')
-    expectTypeOf(round).not.toHaveProperty('applyRoundSnapshot')
-    expectTypeOf(round).not.toHaveProperty('applyRemoteEstimate')
+  // These are exact key lists on purpose: widening what the UI can see of a store
+  // has to come with a change here (ADR-009).
+  it('expose the session state and only the trivial field setters', () => {
+    expectTypeOf<keyof PublicSessionStore>().toEqualTypeOf<
+      | 'sessionName'
+      | 'unit'
+      | 'items'
+      | 'activeItemId'
+      | 'setSessionName'
+      | 'setUnit'
+      | 'selectItem'
+      | 'setItemTitle'
+      | 'setItemNotes'
+      | 'setItemDescription'
+    >()
   })
 
-  it('keep every rule-bearing write behind a use case', () => {
-    const connection = useConnectionStore.getState()
-    const round = useRoundStore.getState()
-    const session = useSessionStore.getState()
-
-    expectTypeOf(connection).not.toHaveProperty('startCollaborative')
-    expectTypeOf(connection).not.toHaveProperty('joinLiveSession')
-    expectTypeOf(connection).not.toHaveProperty('leaveLiveSession')
-    expectTypeOf(round).not.toHaveProperty('revealRound')
-    expectTypeOf(round).not.toHaveProperty('retryRound')
-    expectTypeOf(round).not.toHaveProperty('finalizeItem')
-    expectTypeOf(round).not.toHaveProperty('submitEstimate')
-    expectTypeOf(round).not.toHaveProperty('clearRound')
-    expectTypeOf(session).not.toHaveProperty('addItem')
-    expectTypeOf(session).not.toHaveProperty('removeItem')
-    expectTypeOf(session).not.toHaveProperty('reorderItems')
-    expectTypeOf(session).not.toHaveProperty('selectFirstPending')
-    expectTypeOf(session).not.toHaveProperty('resetUnit')
-    expectTypeOf(session).not.toHaveProperty('clearSession')
+  it('expose the connection state and no actions', () => {
+    expectTypeOf<keyof PublicConnectionStore>().toEqualTypeOf<
+      | 'mode'
+      | 'role'
+      | 'sessionId'
+      | 'myName'
+      | 'participantId'
+      | 'connectionStatus'
+      | 'hasEverConnected'
+      | 'peerCount'
+      | 'participantNames'
+    >()
   })
 
-  it('leave the trivial field setters callable from the UI', () => {
-    const session = useSessionStore.getState()
+  it('expose the round view and no actions', () => {
+    expectTypeOf<keyof PublicRoundStore>().toEqualTypeOf<'liveRound'>()
+  })
 
-    expectTypeOf(session).toHaveProperty('setSessionName')
-    expectTypeOf(session).toHaveProperty('setUnit')
-    expectTypeOf(session).toHaveProperty('selectItem')
-    expectTypeOf(session).toHaveProperty('setItemTitle')
-    expectTypeOf(session).toHaveProperty('setItemNotes')
-    expectTypeOf(session).toHaveProperty('setItemDescription')
+  it('offer reads only: no setState, so state cannot be written around the use cases', () => {
+    expectTypeOf(useSessionStore).not.toHaveProperty('setState')
+    expectTypeOf(useConnectionStore).not.toHaveProperty('setState')
+    expectTypeOf(useRoundStore).not.toHaveProperty('setState')
+    expectTypeOf(useSessionStore).toHaveProperty('getState')
+    expectTypeOf(useSessionStore).toHaveProperty('subscribe')
   })
 })

@@ -4,11 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { JoinSession } from './JoinSession'
 import { RECONNECT_GRACE_MS } from '../../../shared/lib/useConnectionPhase'
-import {
-  ParticipantIdentityContext,
-  useSessionStore,
-  useConnectionStore,
-} from '../../../application'
+import { ParticipantIdentityContext } from '../../../application'
+import { useSessionStore, useConnectionStore } from '../../../application/testing'
 
 const { connectMock, disconnectMock, navigateMock } = vi.hoisted(() => ({
   connectMock: vi.fn(),

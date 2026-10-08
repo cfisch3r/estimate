@@ -285,9 +285,11 @@ already pure functions of state and event.
    `setUnit`, `selectItem`, `setItemTitle`, `setItemNotes`, `setItemDescription`). Every
    write that carries a rule goes through a use case: `useItemActions` (add, remove,
    reorder) joins `useRevealActions`, `useJoinLiveSession`, `useCloseWorkspace` and the
-   rest. `stores/publicStores.ts` now gives the UI explicit state-only views plus those
-   setters for all three stores, so calling any other action from the UI is a compile
-   error (pinned by type tests), and the barrel-only lint rule keeps the UI from importing
+   rest. `stores/publicStores.ts` now gives the UI explicit, read-only, state-only views plus
+   those setters for all three stores (selectors, `getState` and `subscribe`, no `setState`),
+   so calling any other action, or writing state around the use cases, is a compile error
+   (pinned by exact-key type tests). Tests that seed state import the full stores from
+   `application/testing`, which the lint rule allows in test files only, and the barrel-only lint rule keeps the UI from importing
    the full stores that use cases and `NetworkProvider` use (`stores/index.ts`). The
    stores are not moved into the UI: the network code and the use cases write them too,
    so a UI-owned store would have forced a storage port. The round store's

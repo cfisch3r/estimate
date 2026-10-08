@@ -61,7 +61,7 @@ into a slice's internals directly from a page — import from its barrel (stores
 not a style choice. A barrel may export a narrowed view instead of the raw
 object: `src/application` exports `useSessionStore` / `useConnectionStore` /
 `useRoundStore` as state-only types plus a few trivial field setters
-(`stores/publicStores.ts`); every rule-bearing write is a use-case hook, and use cases
+(`stores/publicStores.ts`, read-only: no `setState`; tests seed state through `application/testing`); every rule-bearing write is a use-case hook, and use cases
 and `NetworkProvider` write through the full stores.
 
 ## Cross-entity imports: `@x`

@@ -4,7 +4,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
 import { SessionSidebar } from './SessionSidebar'
-import { useSessionStore } from '../../../application'
+import { useSessionStore } from '../../../application/testing'
 import type { Item } from '../../../domain/types'
 
 function item(id: string, title: string, finalResult: Item['finalResult'] = null): Item {

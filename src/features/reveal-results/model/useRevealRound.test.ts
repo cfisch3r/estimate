@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { createEstimate } from '../../../domain/estimate'
-import { useConnectionStore, useRoundStore, useSessionStore } from '../../../application'
+import {
+  useConnectionStore,
+  useRoundStore,
+  useSessionStore,
+} from '../../../application/testing'
 import type { Item } from '../../../domain/types'
 import { itemOf } from '../../../domain/testFixtures'
 import { useRevealRound } from './useRevealRound'

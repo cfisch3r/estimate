@@ -6,7 +6,11 @@ import { MemoryRouter } from 'react-router'
 import { ParticipantEstimateView } from './ParticipantEstimateView'
 import { RECONNECT_GRACE_MS } from '../../../shared/lib/useConnectionPhase'
 import { createEstimate, type Estimate } from '../../../domain/estimate'
-import { useSessionStore, useConnectionStore, useRoundStore } from '../../../application'
+import {
+  useSessionStore,
+  useConnectionStore,
+  useRoundStore,
+} from '../../../application/testing'
 
 function mine(best: number, likely: number, worst: number): Estimate {
   const result = createEstimate({ participantId: 'me-123', best, likely, worst })

@@ -39,17 +39,8 @@ export interface ConnectionStore {
   leaveLiveSession: () => void
 }
 
-const CONNECTION_DEFAULTS = {
-  mode: 'manual',
-  role: 'facilitator',
-  sessionId: null,
-  myName: '',
-  participantId: '',
-  connectionStatus: 'idle',
-  hasEverConnected: false,
-  peerCount: 0,
-  participantNames: {},
-} as const satisfies Pick<
+/** The connection fields that are state rather than actions. */
+export type ConnectionState = Pick<
   ConnectionStore,
   | 'mode'
   | 'role'
@@ -61,6 +52,18 @@ const CONNECTION_DEFAULTS = {
   | 'peerCount'
   | 'participantNames'
 >
+
+const CONNECTION_DEFAULTS = {
+  mode: 'manual',
+  role: 'facilitator',
+  sessionId: null,
+  myName: '',
+  participantId: '',
+  connectionStatus: 'idle',
+  hasEverConnected: false,
+  peerCount: 0,
+  participantNames: {},
+} as const satisfies ConnectionState
 
 export const useConnectionStore = create<ConnectionStore>((set) => ({
   ...CONNECTION_DEFAULTS,
