@@ -271,7 +271,7 @@ already pure functions of state and event.
    `acceptRemoteEstimate` (the ADR-003 drop rules), `recordOwnSubmission`, `adoptSnapshot`
    (versioned rounds, reveal-gated submissions, `mySubmission` carry-over) and
    `sessionFieldsFromSnapshot`. `delivery.ts` holds the `DeliveryState` type and
-   `deliveryStateFor` (no longer exported by the application barrel), `navigation.ts`
+   `deliveryStateFor` (called by `useSubmitEstimate`; the UI imports the `DeliveryState` type from `src/domain/delivery`), `navigation.ts`
    holds `advanceFrom` and `previousItemId`, and `participantId.ts` gained
    `LOCAL_PARTICIPANT_ID`. Two application additions: `useCases/applyFacilitatorSnapshot.ts`
    (not a hook; writes the session name and unit, then the round view) and
@@ -280,7 +280,7 @@ already pure functions of state and event.
    store import cycle risk noted in ADR-005 is gone.
 
    Planned for 3b-2: narrowing the UI-visible store types and adding `useItemActions`.
-   The UI-access rule that goes with it (decided 2026-10-09, implemented in 3b-2): the UI
+   The UI-access rule that goes with it (decided 2026-10-08, implemented in 3b-2): the UI
    may read state with selectors; writes that carry a rule go through use cases; trivial
    setters stay directly callable.
 
