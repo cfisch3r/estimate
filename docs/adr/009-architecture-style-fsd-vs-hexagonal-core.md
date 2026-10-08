@@ -204,8 +204,7 @@ check it.
 Zustand stays out of the domain so that the domain's "no framework, no I/O" rule stays
 literal. The four stores (`session`, `round`, `connection`, `publicStores`) are the
 only files in `entities/session/model` that import a package; the pure modules that
-used to sit beside them now live in `src/domain/` (stage 1) and import only each other (the connection store also imports the identity helper from
-`lib/`; see stage 2), which supports the split. The connection store holds state about
+used to sit beside them now live in `src/domain/` (stage 1) and import only each other (stage 2 removed the connection store's one adapter import, the identity helper: the store now receives the id as an argument), which supports the split. The connection store holds state about
 the link, not about the estimate; it is written mostly by the network adapter, with its
 pure rules (for example which departed participants to prune) in the domain. The
 facilitator remains the authority (ADR-003): their store holds the full round state and
@@ -310,5 +309,5 @@ needed for these rules.
 | Can Steiger be scoped to the UI folder, and is an `entities` layer required there? | Settled by a check: yes, and no (see "Enforcement") |
 | Can the domain and adapter boundaries be enforced with current tooling? | Settled by a check: yes, with oxlint (see "Enforcement") |
 | Should the round be an explicit state machine, and with what? | Deferred to a separate decision; the pure transitions from stage 3 are its prerequisite |
-| How does the connection store get the participant identity without depending on an adapter? | Deferred to stage 2 (inject it, or create it at the composition point) |
-| Folder names and the domain's internal structure per concept | Settled in stage 1: a flat `src/domain/` with an `estimate/` subfolder; folder names for adapters and application are decided in their stages |
+| How does the connection store get the participant identity without depending on an adapter? | Settled in stage 2: the join use case reads it through an application-owned port, provided in `app/App.tsx`, and passes it to the store as an argument |
+| Folder names and the domain's internal structure per concept | Settled in stage 1: a flat `src/domain/` with an `estimate/` subfolder; adapters settled in stage 2 as `adapters/network` and `adapters/storage`; the application layer's folder is decided in stage 3 |

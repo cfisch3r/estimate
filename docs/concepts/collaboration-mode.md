@@ -20,9 +20,9 @@ snapshot itself via `requestSnapshot` rather than waiting for the facilitator to
 ## Component view
 
 Level-3 (component) view. Each box carries its `[type]`; responsibilities are in the table
-below. Lanes are grouped by FSD slice/segment (see
+below. Lanes follow FSD slice/segment (see
 [ADR-004](../adr/004-feature-sliced-design-architecture.md) — a single source directory no
-longer maps to one lane the way `src/network` once did). Lines: **solid** = synchronous call,
+longer maps to one lane the way `src/network` once did) or, for `src/domain` and `src/adapters`, ADR-009 layers. Lines: **solid** = synchronous call,
 **dotted** = asynchronous callback / event / read, `<-->` = bidirectional.
 
 ```mermaid
@@ -111,8 +111,8 @@ flowchart TD
   class MS,JS,PEV,WS ui
   class UCP shared
   class SessStore,ConnStore,RoundStore state
-  class NP,Hook br
-  class JSN,Act,Conn,Code pcore
+  class NP,Hook,Code br
+  class JSN,Act,Conn pcore
   class Calc,Policies pure
   class Trystero ext
 
@@ -143,7 +143,7 @@ flowchart TD
 | **typed actions** | Module | Defines the wire actions — two message actions (`syncState`, `announce`) and two request/response actions (`submitEstimate`, `requestSnapshot`) — serialises outbound messages, and validates every inbound message (through `parseWireEstimate` — `createEstimate` — for estimates, which is why only untrusted wire input goes through it; shape checks for the rest) before surfacing it. `submitEstimate` sends an `{ itemId, round, estimate }` envelope as a request, targeted with `{ target: facilitatorPeerId, timeoutMs: 800 }` so it reaches the facilitator only (a straggler submission for a finished item can be dropped rather than mis-recorded); the facilitator's `onRequest` handler acks with `EstimateAck` (`{ ok: true }`) or throws on a malformed payload, surfacing as a typed rejection (`error.kind`: `timeout` \| `disconnected` \| `aborted` \| a generic rejection) that the caller's shared retry policy keys on (ADR-003, "Acknowledged submissions", #61). `syncState` carries `sessionName`, `unit`, `revealed`, `round`, a values-free `roster: Array<{ participantId, submitted, connected }>`, and — once `revealed` — the frozen `submissions` set. `sessionName` follows the same missing-field tolerance as `unit`/`revealed`/`round` (defaults to `''` if an older peer omits it), and drives the participant kicker's "name (code)" display, falling back to the code alone when empty. `requestSnapshot` lets a peer that just connected or reconnected pull the current `syncState` payload directly from the facilitator instead of waiting for a push, on the same request/retry pattern as `submitEstimate`. `announce` carries a `participantId -> display name` pair, kept off the pure `Estimate` type. |
 | **connection tracker** | Module | State machine over peer join/leave and join errors → `connecting` / `connected` / `disconnected` plus the peer list; notifies subscribers on change. (`idle` is store-only — the "not in a live session" default in `LiveConnectionStatus`; the tracker starts at `connecting`.) |
 | **generateSessionCode** | Function | Returns a 6-char Crockford-base32 code (crypto RNG, ambiguous characters removed), used as both the shareable code and the Trystero room id. |
-| **estimation engine** | Pure Module | Existing framework-free math (`createEstimate`, `aggregateEstimates`, `computeCI90`, guards) in `domain/estimate`. `createEstimate` / `isEstimationUnit` are reached from `entities/session/api/wireParse.ts` (`parseWireEstimate`, `parseWireUnit`), the single anti-corruption boundary for peer input; `createEstimate` and `aggregateEstimates` are otherwise called by the feature use-case hooks, not by the stores. |
+| **estimation engine** | Pure Module | Existing framework-free math (`createEstimate`, `aggregateEstimates`, `computeCI90`, guards) in `domain/estimate`. `createEstimate` / `isEstimationUnit` are reached from `adapters/network/wireParse.ts` (`parseWireEstimate`, `parseWireUnit`), the single anti-corruption boundary for peer input; `createEstimate` and `aggregateEstimates` are otherwise called by the feature use-case hooks, not by the stores. |
 | **trystero/nostr** | Library (external) | Third-party. Establishes the WebRTC peer mesh and uses Nostr relays for signalling only — no session data is stored on any relay. |
 
 ## Join sequence (#6)
