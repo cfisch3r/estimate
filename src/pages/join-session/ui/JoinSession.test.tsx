@@ -4,7 +4,11 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { JoinSession } from './JoinSession'
 import { RECONNECT_GRACE_MS } from '../../../shared/lib/useConnectionPhase'
-import { useSessionStore, useConnectionStore } from '../../../entities/session'
+import {
+  ParticipantIdentityContext,
+  useSessionStore,
+  useConnectionStore,
+} from '../../../entities/session'
 
 const { connectMock, disconnectMock, navigateMock } = vi.hoisted(() => ({
   connectMock: vi.fn(),
@@ -16,10 +20,6 @@ vi.mock('../../../entities/session/api/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: connectMock, disconnect: disconnectMock }),
 }))
 
-vi.mock('../../../entities/session/api/participantIdentityContext', () => ({
-  useParticipantIdentity: () => ({ getOrCreateParticipantId: () => 'p-1' }),
-}))
-
 vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router')>()
   return { ...actual, useNavigate: () => navigateMock }
@@ -27,9 +27,13 @@ vi.mock('react-router', async (importOriginal) => {
 
 function renderJoinSession() {
   return render(
-    <MemoryRouter>
-      <JoinSession />
-    </MemoryRouter>,
+    <ParticipantIdentityContext.Provider
+      value={{ getOrCreateParticipantId: () => 'p-1' }}
+    >
+      <MemoryRouter>
+        <JoinSession />
+      </MemoryRouter>
+    </ParticipantIdentityContext.Provider>,
   )
 }
 

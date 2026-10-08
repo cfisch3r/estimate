@@ -195,7 +195,17 @@
                   "react",
                   "react-dom",
                   "react/**",
-                  "zustand"
+                  "zustand",
+                  "react-dom/**",
+                  "zustand/**",
+                  "react-router",
+                  "react-router/**",
+                  "**/features",
+                  "**/pages",
+                  "**/widgets",
+                  "**/app",
+                  "**/entities",
+                  "**/shared"
                 ],
                 "message": "Adapters may import the domain, packages other than React/Zustand, and each other only (ADR-009)."
               }
@@ -232,7 +242,21 @@
         "src/entities/session/api/NetworkProvider.test.tsx"
       ],
       "rules": {
-        "no-restricted-imports": "off"
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/adapters/**",
+                  "!**/adapters/network/session",
+                  "!**/adapters/network/connection"
+                ],
+                "message": "NetworkProvider (temporary, until ADR-009 stage 3) may import only the network session adapter."
+              }
+            ]
+          }
+        ]
       }
     }
   ]
