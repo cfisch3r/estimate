@@ -74,7 +74,8 @@ the adapter implements that interface, wired in at composition time. Dashed box 
 external system.
 
 ```mermaid
-flowchart TB
+%%{init: {"flowchart": {"nodeSpacing": 70, "rankSpacing": 90, "padding": 14}}}%%
+flowchart LR
   subgraph UI["UI (FSD)"]
     direction TB
     Pages["Pages and widgets<br/>[React Components]"]
@@ -97,14 +98,14 @@ flowchart TB
   Ext["Peers, relays, browser storage<br/>[External systems]"]
   Pages -->|composes| Features
   Features -->|calls| UseCases
-  UseCases -->|rules and value types| Core
+  UseCases -->|uses rules| Core
   UseCases -->|reads and writes| Stores
-  UseCases <-->|peer messages in, sends through peer-transport port| Net
-  UseCases -->|saves through storage port| Store
-  Net -->|subscribes for snapshot broadcast| Stores
-  Net <-->|WebRTC and relays| Ext
-  Store <-->|file and browser storage| Ext
-  AD -.->|implements application ports| APP
+  UseCases <-->|peer messages in,<br/>calls out via port| Net
+  UseCases -->|saves via port| Store
+  Net -->|reads state for<br/>snapshot broadcast| Stores
+  Net <-->|WebRTC, relays| Ext
+  Store <-->|files, browser storage| Ext
+  AD -.->|implements ports| APP
   style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   style APP fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
   style DOM fill:#fbe9bf,stroke:#9a6f1e,stroke-width:2px,color:#14171f
