@@ -237,9 +237,42 @@
       }
     },
     {
+      "files": ["src/application/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/features",
+                  "**/features/**",
+                  "**/pages",
+                  "**/pages/**",
+                  "**/widgets",
+                  "**/widgets/**",
+                  "**/app",
+                  "**/app/**",
+                  "**/entities",
+                  "**/entities/**",
+                  "**/shared",
+                  "**/shared/**"
+                ],
+                "message": "The application layer imports only the domain and itself; UI layers are above it (ADR-009)."
+              },
+              {
+                "group": ["**/adapters/**"],
+                "message": "The application layer owns ports; only app/ wires adapters (ADR-009)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "files": [
-        "src/entities/session/api/NetworkProvider.tsx",
-        "src/entities/session/api/NetworkProvider.test.tsx"
+        "src/application/NetworkProvider.tsx",
+        "src/application/NetworkProvider.test.tsx"
       ],
       "rules": {
         "no-restricted-imports": [
@@ -248,11 +281,28 @@
             "patterns": [
               {
                 "group": [
+                  "**/features",
+                  "**/features/**",
+                  "**/pages",
+                  "**/pages/**",
+                  "**/widgets",
+                  "**/widgets/**",
+                  "**/app",
+                  "**/app/**",
+                  "**/entities",
+                  "**/entities/**",
+                  "**/shared",
+                  "**/shared/**"
+                ],
+                "message": "The application layer imports only the domain and itself; UI layers are above it (ADR-009)."
+              },
+              {
+                "group": [
                   "**/adapters/**",
                   "!**/adapters/network/session",
                   "!**/adapters/network/connection"
                 ],
-                "message": "NetworkProvider (temporary, until ADR-009 stage 3) may import only the network session adapter."
+                "message": "NetworkProvider (temporary, until ADR-009 stage 3c) may import only the network session adapter."
               }
             ]
           }

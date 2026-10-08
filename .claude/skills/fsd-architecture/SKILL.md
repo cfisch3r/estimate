@@ -30,8 +30,8 @@ one layer down instead).
 | `app` | Bootstrap only: entry point, global providers, app-shell chrome that knows about screens/routing | `app/main.tsx`, `app/App.tsx`, `app/Header.tsx` |
 | `pages` | One slice per top-level screen/view | `pages/workspace`, `pages/join-session` |
 | `widgets` | Composite UI reused across *more than one* page | `widgets/session-sidebar` (used by `workspace` and `session-summary`) |
-| `features` | A user-facing use case/action | `features/estimate-round`, `features/reveal-results`, `features/submit-estimate`, `features/session-lifecycle` (start / join / leave / reconnect hooks that compose the stores with navigation) |
-| `entities` | A business noun and its data/logic | `entities/session` (sessions, rounds, items and the estimate value objects they own) |
+| `features` | A user-facing use case/action | `features/estimate-round`, `features/reveal-results`, `features/submit-estimate`, `features/session-lifecycle` (thin start / leave wrappers that add navigation to the application use cases, plus the join flow) |
+| `entities` | A business noun and its data/logic | `entities/session` (session UI only: `ItemDetailShell`, `EstimateTriple`, `RangeBar`, `DescriptionField`; stores and use cases live in `src/application`) |
 | `shared` | Business-agnostic UI primitives, generic hooks, copy | `shared/ui/Button`, `shared/lib/useConfirmArm` |
 
 `processes` is not in use — nothing today needs a cross-feature orchestrated
@@ -46,8 +46,7 @@ not in `lib/`), `api/` (external calls — network, storage), `lib/`
 segment — add one when there's something to put in it. Pure decision rules that
 more than one hook needs belong in `src/domain/` (e.g. `domain/roster.ts`, ADR-009
 stage 1), unit-tested directly; `src/domain/` (including `domain/estimate/`, which keeps its own
-`index.ts`) is outside FSD. The UI keeps importing domain symbols through the `entities/session` barrel until stage 3 and imports nothing from
-outside itself (enforced by oxlint).
+`index.ts`) is outside FSD. The domain imports nothing outside itself (enforced by oxlint). `src/application/` (ADR-009 stage 3a: `stores`, `ports`, `lib`, `useCases`, `NetworkProvider`) is outside FSD too and imports only the domain and itself (enforced by oxlint). UI code imports domain symbols from `src/domain` directly and stores and use-case hooks from the `src/application` barrel; navigation stays in `features/`.
 
 Component CSS lives beside its component and is imported by it (shared
 components' sheets sit in `shared/ui/*.css`; `pages/workspace/ui/workspace.css`
@@ -57,12 +56,11 @@ holds only the design-system layer (`nocturne.css` and generic composed patterns
 ## The public-API rule
 
 Only a slice's `index.ts` is importable from outside that slice. Never reach
-into `entities/session/model/session.ts` directly from a page — import
-`useSessionStore` from `entities/session` (its barrel). Steiger enforces this
+into a slice's internals directly from a page — import from its barrel (stores and use-case hooks come from the `src/application` barrel). Steiger enforces this
 (`fsd/no-public-api-sidestep`, `fsd/public-api`); a missing barrel is an error,
 not a style choice. A barrel may export a narrowed view instead of the raw
-object: `entities/session` exports `useConnectionStore` / `useRoundStore` as types
-without the network-bridge mutators (`model/publicStores.ts`), and
+object: `src/application` exports `useConnectionStore` / `useRoundStore` as types
+without the network-bridge mutators (`stores/publicStores.ts`), and
 `NetworkProvider` writes through the internal stores.
 
 ## Cross-entity imports: `@x`
