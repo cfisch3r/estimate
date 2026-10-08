@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildSessionSnapshot, snapshotChangeKey } from './snapshot'
+import {
+  buildSessionSnapshot,
+  sessionFieldsFromSnapshot,
+  snapshotChangeKey,
+} from './snapshot'
 import { estimateOf, finalizedItemOf, itemOf } from './testFixtures'
+import type { SessionSnapshot } from './types'
 
 const base = {
   sessionName: 'Sprint 42',
@@ -72,5 +77,33 @@ describe('snapshotChangeKey', () => {
     expect(snapshotChangeKey({ ...snapshot, round: snapshot.round + 1 })).not.toBe(
       snapshotChangeKey(snapshot),
     )
+  })
+})
+
+function snapshotOf(): SessionSnapshot {
+  return {
+    currentItem: null,
+    sessionName: 'Sprint 42',
+    unit: 'weeks',
+    revealed: false,
+    round: 0,
+    roster: [],
+    submissions: [],
+    finalizedItemIds: [],
+  }
+}
+
+describe('sessionFieldsFromSnapshot', () => {
+  it('lets a participant adopt the facilitator name and unit', () => {
+    expect(sessionFieldsFromSnapshot('participant', snapshotOf())).toEqual({
+      sessionName: 'Sprint 42',
+      unit: 'weeks',
+    })
+  })
+
+  it('never lets an echoed snapshot overwrite the facilitator own name', () => {
+    expect(sessionFieldsFromSnapshot('facilitator', snapshotOf())).toEqual({
+      unit: 'weeks',
+    })
   })
 })

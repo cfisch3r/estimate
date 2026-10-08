@@ -13,5 +13,5 @@ export { useStartCollaborativeSession } from './useCases/useStartCollaborativeSe
 export { useStartSingleUserSession } from './useCases/useStartSingleUserSession'
 export { useCloseWorkspace } from './useCases/useCloseWorkspace'
 export { useRevealActions } from './useCases/useRevealActions'
-export { useSubmitEstimate, type DeliveryState } from './useCases/useSubmitEstimate'
+export { useSubmitEstimate } from './useCases/useSubmitEstimate'
 export { useFinalizeEstimate } from './useCases/useFinalizeEstimate'

@@ -94,7 +94,9 @@ rationale. In brief, by architectural role rather than layer:
   `NetworkProvider` apply are pure modules in `src/domain/` (ADR-009 stage 1): `roster.ts` (round membership
   via `roundMemberIds`, the wire roster, the departed-name prune rule), `snapshot.ts`
   (building the facilitator's snapshot) and `resend.ts` (whether a participant's
-  submission needs re-sending), plus `item.ts` (`isFinalized`).
+  submission needs re-sending), plus `item.ts` (`isFinalized` and the item-list rules) and, since stage 3b-1, `connection.ts`, `round.ts`, `delivery.ts` and `navigation.ts`: the transitions that used to sit inside the stores'
+  `set(...)` calls. The stores only hold state and call the transition functions (use cases and one page hook call the rest); the snapshot adoption that spans
+  stores is the `applyFacilitatorSnapshot` use case, so the round store no longer reads the connection store.
 - **Session use cases** (`application/useCases`) — the hooks that compose the three
   stores: start single-user / collaborative, join, teardown, reconnect, close workspace,
   submit, reveal / retry / finalize. They contain no navigation; `features/session-lifecycle`

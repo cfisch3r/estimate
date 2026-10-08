@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import type { EstimationUnit } from '../../domain/estimate'
-import { isFinalized } from '../../domain/item'
+import {
+  appendItem,
+  firstPendingItemId,
+  moveItem,
+  removeItemFrom,
+  updateItem,
+} from '../../domain/item'
 import type { Item } from '../../domain/types'
 
 interface SessionStore {
@@ -12,7 +18,7 @@ interface SessionStore {
   setSessionName: (name: string) => void
   setUnit: (unit: EstimationUnit) => void
   /** Back to the default unit. A participant only ever inherits its unit from
-   *  the facilitator's snapshot (see round.ts's applySyncState), so leaving a
+   *  the facilitator's snapshot (see `useCases/applyFacilitatorSnapshot.ts`), so leaving a
    *  live session resets it, lest it leak into the next workspace. */
   resetUnit: () => void
   addItem: (title: string, description?: string) => void
@@ -34,11 +40,6 @@ interface SessionStore {
 
 const DEFAULT_UNIT: EstimationUnit = 'days'
 
-function firstPendingItemId(items: Item[]): string | null {
-  const pending = items.find((item) => !isFinalized(item))
-  return pending ? pending.id : null
-}
-
 export const useSessionStore = create<SessionStore>((set) => ({
   sessionName: '',
   unit: DEFAULT_UNIT,
@@ -50,55 +51,21 @@ export const useSessionStore = create<SessionStore>((set) => ({
   setUnit: (unit) => set({ unit }),
   resetUnit: () => set({ unit: DEFAULT_UNIT }),
 
-  addItem: (title, description = '') => {
-    const trimmed = title.trim()
-    if (trimmed.length === 0) return
-    set((state) => {
-      const newItem: Item = {
-        id: crypto.randomUUID(),
-        title: trimmed,
-        description,
-        notes: '',
-        finalResult: null,
-        submissions: [],
-        revealed: false,
-        round: 0,
-      }
-      return {
-        items: [...state.items, newItem],
-        // Adding the first item to an empty workspace selects it, so the
-        // panel switches from the "add an item" empty state to the widget.
-        activeItemId: state.activeItemId ?? newItem.id,
-      }
-    })
-  },
+  addItem: (title, description = '') =>
+    set(
+      (state) =>
+        appendItem(state, { id: crypto.randomUUID(), title, description }) ?? state,
+    ),
 
   setItemTitle: (id, title) =>
-    set((state) => ({
-      items: state.items.map((item) =>
-        item.id === id ? { ...item, title: title.trim() } : item,
-      ),
-    })),
+    set((state) => ({ items: updateItem(state.items, id, { title: title.trim() }) })),
 
-  removeItem: (id) =>
-    set((state) => {
-      const items = state.items.filter((item) => item.id !== id)
-      if (state.activeItemId !== id) {
-        return { items }
-      }
-      // The removed item was the active one — fall back to the next pending
-      // item so the panel doesn't drop to the empty state while work remains.
-      return { items, activeItemId: firstPendingItemId(items) }
-    }),
+  removeItem: (id) => set((state) => removeItemFrom(state, id)),
 
   reorderItems: (fromIndex, toIndex) =>
     set((state) => {
-      const items = [...state.items]
-      const moved = items[fromIndex]
-      if (!moved) return {}
-      items.splice(fromIndex, 1)
-      items.splice(toIndex, 0, moved)
-      return { items }
+      const items = moveItem(state.items, fromIndex, toIndex)
+      return items ? { items } : {}
     }),
 
   selectItem: (id) => set({ activeItemId: id }),
@@ -106,16 +73,10 @@ export const useSessionStore = create<SessionStore>((set) => ({
     set((state) => ({ activeItemId: firstPendingItemId(state.items) })),
 
   setItemNotes: (id, notes) =>
-    set((state) => ({
-      items: state.items.map((item) => (item.id === id ? { ...item, notes } : item)),
-    })),
+    set((state) => ({ items: updateItem(state.items, id, { notes }) })),
 
   setItemDescription: (id, description) =>
-    set((state) => ({
-      items: state.items.map((item) =>
-        item.id === id ? { ...item, description } : item,
-      ),
-    })),
+    set((state) => ({ items: updateItem(state.items, id, { description }) })),
 
   clearSession: () => set({ items: [], sessionName: '', activeItemId: null }),
 }))
@@ -129,7 +90,5 @@ export function patchItem(
   id: string,
   patch: Partial<Pick<Item, 'finalResult' | 'revealed' | 'round' | 'submissions'>>,
 ): void {
-  useSessionStore.setState((state) => ({
-    items: state.items.map((item) => (item.id === id ? { ...item, ...patch } : item)),
-  }))
+  useSessionStore.setState((state) => ({ items: updateItem(state.items, id, patch) }))
 }

@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router'
 import { ROUTES } from '../../../shared/lib/routes'
 import { useSessionStore } from '../../../application'
 import { isFinalized } from '../../../domain/item'
+import { advanceFrom, previousItemId } from '../../../domain/navigation'
 
 /** The workspace's active-item read-model plus the prev / advance moves between
  *  items. Both moves go to whichever item is adjacent in the sidebar's list order
@@ -22,29 +23,19 @@ export function useItemNavigation() {
   const allFinalized = items.length > 0 && items.every(isFinalized)
 
   function goPrev() {
-    if (activeIndex <= 0) return
-    selectItem(items[activeIndex - 1]!.id)
+    const previous = previousItemId(items, activeIndex)
+    if (previous !== null) selectItem(previous)
   }
 
   function advance() {
-    if (activeIndex === -1) return
-    if (activeIndex === items.length - 1) {
-      // The item at activeIndex was just (re-)finalized by the caller — every
-      // *other* item's finalResult already reflects its pre-click state, so
-      // this check doesn't need a fresh read from the store.
-      const allFinalizedNow = items.every(
-        (item, idx) => idx === activeIndex || isFinalized(item),
-      )
-      if (allFinalizedNow) {
-        // Nothing left to work on — clear the selection so returning to the
-        // workspace (e.g. via Summary's "Back to item") shows the "all items
-        // finalized" empty state instead of reopening this now-done item.
-        selectItem(null)
-      }
-      navigate(ROUTES.summary)
-    } else {
-      selectItem(items[activeIndex + 1]!.id)
+    const move = advanceFrom(items, activeIndex)
+    if (move.kind === 'none') return
+    if (move.kind === 'select') {
+      selectItem(move.itemId)
+      return
     }
+    if (move.clearSelection) selectItem(null)
+    navigate(ROUTES.summary)
   }
 
   return {

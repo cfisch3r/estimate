@@ -1,3 +1,4 @@
+import { leavingNeedsConfirm } from '../../domain/connection'
 import { useConnectionStore, useSessionStore } from '../stores'
 import { useTeardownLiveSession } from './useTeardownLiveSession'
 
@@ -20,6 +21,6 @@ export function useCloseWorkspace(): {
       teardownLiveSession()
       clearSession()
     },
-    needsConfirm: mode === 'live' && peerCount > 0,
+    needsConfirm: leavingNeedsConfirm(mode, peerCount),
   }
 }

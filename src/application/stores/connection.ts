@@ -1,5 +1,9 @@
 import { create } from 'zustand'
-import { FACILITATOR_PARTICIPANT_ID } from '../../domain/participantId'
+import {
+  facilitatorStart,
+  participantJoin,
+  withConnectionStatus,
+} from '../../domain/connection'
 import type { LiveConnectionStatus, SessionMode, SessionRole } from '../../domain/types'
 
 export interface ConnectionStore {
@@ -64,11 +68,7 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
 
   setMode: (mode) => set({ mode }),
 
-  setConnectionStatus: (status) =>
-    set((state) => ({
-      connectionStatus: status,
-      hasEverConnected: state.hasEverConnected || status === 'connected',
-    })),
+  setConnectionStatus: (status) => set((state) => withConnectionStatus(state, status)),
 
   setPeerCount: (count) => set({ peerCount: count }),
 
@@ -83,42 +83,19 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
       return { participantNames: rest }
     }),
 
-  startCollaborative: (sessionCode) => {
-    set({
-      mode: 'live',
-      role: 'facilitator',
-      sessionId: sessionCode,
-      myName: 'Facilitator',
-      participantNames: { [FACILITATOR_PARTICIPANT_ID]: 'Facilitator' },
-      connectionStatus: 'connecting',
-      hasEverConnected: false,
-      peerCount: 0,
-    })
-  },
+  startCollaborative: (sessionCode) => set(facilitatorStart(sessionCode)),
 
   joinLiveSession: (sessionCode, name, participantId) => {
-    const code = sessionCode.trim().toUpperCase()
-    const trimmedName = name.trim()
-    if (code.length === 0 || trimmedName.length === 0) return false
-    set({
-      mode: 'live',
-      role: 'participant',
-      sessionId: code,
-      myName: trimmedName,
-      participantId,
-      participantNames: { [participantId]: trimmedName },
-      connectionStatus: 'connecting',
-      hasEverConnected: false,
-      peerCount: 0,
-    })
+    const entry = participantJoin(sessionCode, name, participantId)
+    if (entry === null) return false
+    set(entry)
     return true
   },
 
   leaveLiveSession: () => {
     set({ ...CONNECTION_DEFAULTS })
     // The other two stores are cleared alongside this by the composer hooks in
-    // features/session-lifecycle, not here: round.ts reads this store's `role`
-    // and session.ts is a sibling, so reaching into either from here would
-    // couple the stores (see ADR-005).
+    // application/useCases, not here: the stores stay independent of each other
+    // (see ADR-005).
   },
 }))

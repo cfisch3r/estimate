@@ -45,7 +45,7 @@ not in `lib/`), `api/` (external calls — network, storage), `lib/`
 (framework-free helpers specific to that slice). Not every slice needs every
 segment — add one when there's something to put in it. Pure decision rules that
 more than one hook needs belong in `src/domain/` (e.g. `domain/roster.ts`, ADR-009
-stage 1), unit-tested directly; `src/domain/` (including `domain/estimate/`, which keeps its own
+stage 1; store transitions such as `domain/round.ts` and `domain/connection.ts`, stage 3b-1: stores hold state and call these), unit-tested directly; `src/domain/` (including `domain/estimate/`, which keeps its own
 `index.ts`) is outside FSD. The domain imports nothing outside itself (enforced by oxlint). `src/application/` (ADR-009 stage 3a: `stores`, `ports`, `useCases`, `NetworkProvider`) is outside FSD too and imports only the domain and itself (enforced by oxlint). UI code imports domain symbols from `src/domain` directly and stores and use-case hooks from the `src/application` barrel; navigation stays in `features/`.
 
 Component CSS lives beside its component and is imported by it (shared
