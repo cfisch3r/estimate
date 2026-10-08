@@ -5,13 +5,13 @@ import type { ReactNode } from 'react'
 import App from './App'
 import { useSessionStore, useConnectionStore } from '../entities/session'
 
-vi.mock('../entities/session/api/sessionCode', () => ({
+vi.mock('../application/lib/sessionCode', () => ({
   generateSessionCode: () => 'LIVECODE',
 }))
-vi.mock('../entities/session/api/NetworkProvider', () => ({
+vi.mock('../application/NetworkProvider', () => ({
   NetworkProvider: ({ children }: { children: ReactNode }) => children,
 }))
-vi.mock('../entities/session/api/useNetworkSession', () => ({
+vi.mock('../application/ports/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: vi.fn(), disconnect: vi.fn() }),
 }))
 

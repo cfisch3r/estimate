@@ -4,7 +4,7 @@ import {
   finalResultFor,
   useRoundStore,
   type ActionResult,
-} from '../../../entities/session'
+} from '../../entities/session'
 
 /** The single-user finalize use case: the facilitator's own three-point estimate
  *  for an item is validated, aggregated, and recorded as the item's final result.

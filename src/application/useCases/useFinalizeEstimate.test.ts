@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
-import { useSessionStore } from '../../../entities/session'
+import { useSessionStore } from '../../entities/session'
 import { useFinalizeEstimate } from './useFinalizeEstimate'
 
 beforeEach(() => {

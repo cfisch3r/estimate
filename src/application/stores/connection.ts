@@ -1,10 +1,10 @@
 import { create } from 'zustand'
-import { FACILITATOR_PARTICIPANT_ID } from '../../../domain/participantId'
+import { FACILITATOR_PARTICIPANT_ID } from '../../domain/participantId'
 import type {
   LiveConnectionStatus,
   SessionMode,
   SessionRole,
-} from '../../../domain/types'
+} from '../../domain/types'
 
 export interface ConnectionStore {
   mode: SessionMode

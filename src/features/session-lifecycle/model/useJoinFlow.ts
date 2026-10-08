@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router'
 import { useConnectionStore } from '../../../entities/session'
 import { useConnectionPhase } from '../../../shared/lib/useConnectionPhase'
 import { ROUTES } from '../../../shared/lib/routes'
-import { useJoinLiveSession } from './useJoinLiveSession'
+import { useJoinLiveSession } from '../../../application/useCases/useJoinLiveSession'
 
 /** The participant's join attempt as a small flow: `join` starts it, `connecting`
  *  / `failed` describe where it stands, and it navigates onward to the estimate

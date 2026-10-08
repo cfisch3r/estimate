@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router'
 import { useConnectionStore, useSessionStore } from '../../../entities/session'
 import { ROUTES } from '../../../shared/lib/routes'
-import { useTeardownLiveSession } from './useTeardownLiveSession'
+import { useTeardownLiveSession } from '../../../application/useCases/useTeardownLiveSession'
 
 /** Tear down the workspace entirely: the live session (if any), then the item
  *  list, then navigate to mode-select. Distinct from `useLeaveLiveSession`

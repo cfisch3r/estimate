@@ -3,7 +3,7 @@ import {
   useNetworkSession,
   useRoundStore,
   useSessionStore,
-} from '../../../entities/session'
+} from '../../entities/session'
 
 /** Slice-internal: drop the P2P connection and reset everything a live session
  *  leaves behind outside the item list — the connection store, the

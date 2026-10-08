@@ -10,7 +10,7 @@ import {
 import { ROUTES } from '../../../shared/lib/routes'
 import { useLeaveLiveSession } from './useLeaveLiveSession'
 import { useLeaveWorkspace } from './useLeaveWorkspace'
-import { useReconnect } from './useReconnect'
+import { useReconnect } from '../../../application/useCases/useReconnect'
 import { useStartCollaborative } from './useStartCollaborative'
 import { useStartSingleUser } from './useStartSingleUser'
 
@@ -19,7 +19,7 @@ const { connectMock, disconnectMock } = vi.hoisted(() => ({
   disconnectMock: vi.fn(),
 }))
 
-vi.mock('../../../entities/session/api/useNetworkSession', () => ({
+vi.mock('../../../application/ports/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: connectMock, disconnect: disconnectMock }),
 }))
 

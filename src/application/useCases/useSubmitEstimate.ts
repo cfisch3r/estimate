@@ -5,7 +5,7 @@ import {
   useNetworkSession,
   useRoundStore,
   type ActionResult,
-} from '../../../entities/session'
+} from '../../entities/session'
 
 /** Where this participant's own estimate stands with the facilitator, derived
  *  rather than tracked as its own store field: `submitted` comes straight from

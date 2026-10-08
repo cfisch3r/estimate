@@ -1,6 +1,6 @@
 import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import { GuardNote, LiveRegion } from '../../../shared/ui'
-import type { DeliveryState } from '../model/useSubmitEstimate'
+import type { DeliveryState } from '../../../application/useCases/useSubmitEstimate'
 
 interface DeliveryStatusProps {
   state: DeliveryState

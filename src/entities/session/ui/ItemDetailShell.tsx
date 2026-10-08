@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Field, FieldLabel, Textarea, EditableTitle } from '../../../shared/ui'
-import { useSessionStore } from '../model/session'
+import { useSessionStore } from '../../../application/stores/session'
 import type { Item } from '../../../domain/types'
 import { DescriptionField } from './DescriptionField'
 

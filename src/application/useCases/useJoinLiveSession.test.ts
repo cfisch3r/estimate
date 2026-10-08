@@ -5,12 +5,12 @@ import {
   ParticipantIdentityContext,
   useConnectionStore,
   useRoundStore,
-} from '../../../entities/session'
+} from '../../entities/session'
 import { useJoinLiveSession } from './useJoinLiveSession'
 
 const { connectMock } = vi.hoisted(() => ({ connectMock: vi.fn() }))
 
-vi.mock('../../../entities/session/api/useNetworkSession', () => ({
+vi.mock('../ports/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: connectMock }),
 }))
 

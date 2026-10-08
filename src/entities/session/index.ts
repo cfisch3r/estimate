@@ -25,8 +25,8 @@ export {
   validateEstimateValues,
 } from '../../domain/estimate'
 
-export { useSessionStore } from './model/session'
-export { useConnectionStore, useRoundStore } from './model/publicStores'
+export { useSessionStore } from '../../application/stores/session'
+export { useConnectionStore, useRoundStore } from '../../application/stores/publicStores'
 export type {
   Item,
   LiveRound,
@@ -41,14 +41,14 @@ export { finalResultFor } from '../../domain/finalResult'
 export { FACILITATOR_PARTICIPANT_ID } from '../../domain/participantId'
 export { participantLabels } from '../../domain/participantLabel'
 
-export { generateSessionCode } from './api/sessionCode'
-export { NetworkProvider } from './api/NetworkProvider'
-export { useNetworkSession } from './api/useNetworkSession'
+export { generateSessionCode } from '../../application/lib/sessionCode'
+export { NetworkProvider } from '../../application/NetworkProvider'
+export { useNetworkSession } from '../../application/ports/useNetworkSession'
 export {
   ParticipantIdentityContext,
   useParticipantIdentity,
-} from './api/participantIdentityContext'
-export type { ParticipantIdentityApi } from './api/participantIdentityContext'
+} from '../../application/ports/participantIdentityContext'
+export type { ParticipantIdentityApi } from '../../application/ports/participantIdentityContext'
 
 export { ItemDetailShell } from './ui/ItemDetailShell'
 export { EstimateTriple } from './ui/estimate/EstimateTriple'

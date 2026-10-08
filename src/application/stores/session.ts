@@ -1,7 +1,7 @@
 import { create } from 'zustand'
-import type { EstimationUnit } from '../../../domain/estimate'
-import { isFinalized } from '../../../domain/item'
-import type { Item } from '../../../domain/types'
+import type { EstimationUnit } from '../../domain/estimate'
+import { isFinalized } from '../../domain/item'
+import type { Item } from '../../domain/types'
 
 interface SessionStore {
   sessionName: string
