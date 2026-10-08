@@ -16,7 +16,6 @@ import { FACILITATOR_PARTICIPANT_ID } from '../domain/participantId'
 import { needsResend } from '../domain/resend'
 import { shouldPruneDeparted } from '../domain/roster'
 import { buildSessionSnapshot, snapshotChangeKey } from '../domain/snapshot'
-import type { ConnectionStatus, SessionRole } from '../domain/types'
 
 /** Owns the single live NetworkSession for the app and bridges its events into the
  *  session, connection and round stores, so screens only ever read connection
