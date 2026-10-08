@@ -1,3 +1,4 @@
+import { normalizeSessionCode } from '../../domain/connection'
 import { useConnectionStore, useRoundStore } from '../stores'
 import { useNetworkSession } from '../ports/useNetworkSession'
 import { useParticipantIdentity } from '../ports/participantIdentityContext'
@@ -14,7 +15,7 @@ export function useJoinLiveSession(): (sessionCode: string, name: string) => voi
   const { getOrCreateParticipantId } = useParticipantIdentity()
 
   return (sessionCode, name) => {
-    const code = sessionCode.trim().toUpperCase()
+    const code = normalizeSessionCode(sessionCode)
     if (joinLiveSession(code, name, getOrCreateParticipantId())) {
       clearRound()
       connect(code)
