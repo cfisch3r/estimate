@@ -4,6 +4,11 @@
 **Date:** 2026-09-29
 **Related:** `.oxlintrc.json`, `steiger.config.ts`, `docs/concepts/` (diagram conventions), issues #111, #112
 
+> **Update 2026-10-08:** [ADR-009](009-architecture-style-fsd-vs-hexagonal-core.md) was
+> accepted. FSD stays the architecture for the UI only; the domain, use cases and
+> adapters move out in three stages. Until a stage lands, the layout described here still
+> applies to the code that has not moved.
+>
 > **Update 2026-09-30:** Issue #111 (store decomposition) landed — see
 > [ADR-005](005-session-store-decomposition.md) for the three-store shape.
 > Issue #112 (oxlint metrics ratchet) remains staged. The Context/Consequences/
