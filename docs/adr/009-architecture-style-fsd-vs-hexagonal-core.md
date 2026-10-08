@@ -37,7 +37,7 @@ The PRD describes a product whose weight is not in its UI composition:
 
 | Requirement (PRD) | Implication |
 |---|---|
-| Two session modes on one domain: live (P2P) and manual (§4.1) | One domain core with two drivers |
+| Two session modes on one domain: live (P2P) and manual (§4.1) | One domain core with two entry points |
 | Serverless P2P with graceful degradation (§9, ADR-001, ADR-003) | The transport is infrastructure with real logic, and is already swapped in tests (ADR-007) |
 | Persistence, CSV export, shareable link (§2, §9; not built) | More adapters around the same core |
 | Bias guards and three-point calculations (§5, §6) | The pure, heavily tested part is the product's value |
@@ -64,14 +64,14 @@ the first two.
 valuable and can be stopped after.** Treat D as a separate follow-up decision about
 how the round is written, not part of this one.
 
-Target shape, in two views. Features and adapters may also use domain types directly;
+Target structure, in two views. Features and adapters may also use domain types directly;
 those edges are left out to keep the diagrams readable.
 
-**Lane view: what depends on what.**
+**Layer view: what depends on what.**
 
 Legend: solid arrow = calls (the arrow points at the callee; a double arrow goes both
 ways). When the callee is an adapter, the call goes through an interface that the
-application lane owns, so the source-code dependency still points inward. Dashed amber
+application layer owns, so the source-code dependency still points inward. Dashed amber
 arrow = the adapter implements that interface, wired in at composition time. Dashed box =
 external system.
 
@@ -101,10 +101,10 @@ flowchart LR
   class Ext ext
 ```
 
-**Component view: what is inside each lane.**
+**Component view: what is inside each layer.**
 
 Legend: same notation as above. The ports and the "implements" relationship appear in the
-lane view only.
+layer view only.
 
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 70, "rankSpacing": 90, "padding": 14}}}%%
@@ -154,31 +154,31 @@ flowchart LR
   class Ext ext
 ```
 
-| Box | Lane | Responsibility |
+| Box | Layer | Responsibility |
 |---|---|---|
 | **Estimate and session rules** | Domain | Everything pure: `Estimate` and its factory, aggregation, guards, uncertainty guidance, item and round types, roster, snapshot and resend policies, label rules, the finalize rule. No React, no I/O. Keeps the 100% coverage threshold. |
 | **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, written as straight-line code: read state, call a domain decision, write state, trigger an effect. Owns the interfaces (ports) that adapters implement, such as the peer transport (today `NetworkSessionApi`). Replaces today's use-case hooks in `features/`. |
 | **State stores** | Application | The Zustand stores holding the current session, round and connection state (see "Where state lives"). Replaces the stores in `entities/session/model`. |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. Calls the use cases when a peer message arrives, broadcasts the facilitator's snapshot when the stores change, and implements the peer-transport port the use cases send through. |
-| **Storage and export** | Adapters | Participant-identity storage today; future save/load and CSV and link export. Driven by the application through the storage port it implements. An import adapter (backlog import, a later phase) would be a separate driving adapter that calls the use cases, added when that phase is designed. |
+| **Storage and export** | Adapters | Participant-identity storage today; future save/load and CSV and link export. Called by the application through the storage port it implements (an outbound adapter). An import adapter (backlog import, a later phase) would be a separate inbound adapter that calls the use cases, added when that phase is designed. |
 | **Features** | UI | UI-only features and their components. They call use cases; they no longer own them. |
 | **Pages and widgets** | UI | Screens and widgets composed from features and shared UI, plus routing (ADR-006) and the design system. |
 | **Peers, relays, browser storage** | External | Not part of the codebase. |
 
 ### Where state lives
 
-State shapes and state transitions are separated from the thing that holds the
+State types and state transitions are separated from the thing that holds the
 current state:
 
-| Lane | Holds | Example |
+| Layer | Holds | Example |
 |---|---|---|
-| Domain | The state **shapes** and the **pure transitions** over them, as `(state, event) -> new state` | `Item`, `LiveRound`, reveal and retry of a round, versioned-round rule (ADR-003), applying a snapshot, `finalResultFor` |
+| Domain | The state **types** and the **pure transitions** over them, as `(state, event) -> new state` | `Item`, `LiveRound`, reveal and retry of a round, versioned-round rule (ADR-003), applying a snapshot, `finalResultFor` |
 | Application | The Zustand **stores** that hold the current state, and the use cases that operate on them | the session, round and connection stores; submit, reveal, finalize |
 | UI | Short-lived state belonging to one component | the estimate draft, the selected phase, whether a popover is open |
 
-**This lane is not stateless, unlike textbook hexagonal architecture.** A browser app
+**This layer is not stateless, unlike textbook hexagonal architecture.** A browser app
 has one long-lived, in-process state with one implementation, so a port in front of it
-would add ceremony and nothing to swap. Keeping the stores in the application lane
+would add ceremony and nothing to swap. Keeping the stores in the application layer
 needs no exception to the inward-only dependency rule, because nothing outward is
 imported. What it gives up is the textbook claim that the application layer holds no
 state.
@@ -186,9 +186,9 @@ state.
 **Ports exist only at external boundaries.** The peer transport already has one:
 `NetworkSessionApi` is an interface that the use cases depend on and React context
 injects, and the test relay (ADR-007) is a second implementation behind the signaling
-contract. In the hybrid, the interface is owned by the application lane and the
-Trystero adapter implements it (the dashed edge in the diagram). The same shape fits
-the storage adapter later. Adapters that drive the app, such as incoming peer
+contract. In the hybrid, the interface is owned by the application layer and the
+Trystero adapter implements it (the dashed edge in the diagram). The same pattern fits
+the storage adapter later. Inbound adapters, such as incoming peer
 messages, call the use cases directly and need no port. The network adapter also reads
 state by subscribing to the stores to broadcast the facilitator's snapshot, which is an
 inward dependency and needs no port either.
@@ -209,7 +209,7 @@ import only each other (the connection store also imports the identity helper fr
 the link, not about the estimate; it is written mostly by the network adapter, with its
 pure rules (for example which departed participants to prune) in the domain. The
 facilitator remains the authority (ADR-003): their store holds the full round state and
-participants hold a derived snapshot; both shapes are domain types.
+participants hold a derived snapshot; both are domain types.
 
 Moving the transition logic out of the stores' `set(...)` calls is the riskiest part of
 stage 3, and most store tests would be rewritten against the pure functions. It also
@@ -249,13 +249,13 @@ split, and it will not see imports that leave the UI folder (see below).
 **Domain and application boundaries (oxlint `no-restricted-imports`).** A per-folder
 override in `.oxlintrc.json` can express the rules, with these properties:
 
-- It flagged imports of outer lanes (`../ui/**`, `../adapters/**`, `../application/**`
+- It flagged imports of outer layers (`../ui/**`, `../adapters/**`, `../application/**`
   from `domain/`; `ui` and `adapters` from `application/`), imports of any package
   from `domain/` (including ones never listed, such as a newly added library), and
   left in-domain relative imports alone, including nested ones.
-- The package allow-list and the outer-lane ban must be in **one** `patterns` group,
-  with the negations (`!./**`, `!../**`) before the outer-lane patterns. Two separate
-  groups interfere: the wider negation cancelled the outer-lane ban. This is
+- The package allow-list and the outer-layer ban must be in **one** `patterns` group,
+  with the negations (`!./**`, `!../**`) before the outer-layer patterns. Two separate
+  groups interfere: the wider negation cancelled the outer-layer ban. This is
   gitignore-style last-match-wins ordering.
 - The patterns are path-based, so they depend on the repo using relative imports (it
   does; there are no path aliases). Introducing an alias would require adding it to
@@ -296,7 +296,7 @@ needed for these rules.
 
 | Question | Status |
 |---|---|
-| Where do the stores live? | Settled: application lane; shapes and transitions in the domain (see "Where state lives") |
+| Where do the stores live? | Settled: application layer; types and transitions in the domain (see "Where state lives") |
 | Can Steiger be scoped to the UI folder, and is an `entities` layer required there? | Settled by a check: yes, and no (see "Enforcement") |
 | Can the domain and adapter boundaries be enforced with current tooling? | Settled by a check: yes, with oxlint (see "Enforcement") |
 | Should the round be an explicit state machine, and with what? | Deferred to a separate decision; the pure transitions from stage 3 are its prerequisite |
