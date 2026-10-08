@@ -20,7 +20,7 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/adr/006-router-adoption.md` — accepted decision on replacing the hand-rolled `currentScreen`/`goToScreen` navigation state with `react-router`, resolving an FSD layer-direction conflict ADR-005 hit
 - `docs/adr/008-accessibility-testing-strategy.md` — accepted decision on the three-layer automated accessibility stack (oxlint `jsx-a11y`, `jest-axe` component scans, real-browser `@axe-core/playwright` e2e scans) and the deliberate, tracked `color-contrast` exclusion (issue #123)
 - `docs/adr/009-architecture-style-fsd-vs-hexagonal-core.md` — **proposed** (not yet accepted) decision on replacing FSD-everywhere with a hexagonal core plus an FSD UI, staged in three steps. ADR-004 and ADR-005 remain the governing architecture until it is accepted; read it before proposing structural moves of non-UI code
-- `docs/glossary.md` — the architecture vocabulary (layer, type, aggregate, inbound/outbound adapter, FSD slice/segment) and which words to avoid; use these terms and add new ones there
+- `docs/glossary.md` — the architecture vocabulary (layer, type, aggregate, entity, value object, inbound/outbound adapter, port, FSD slice/segment) and which words to avoid; use these terms and add new ones there
 - `design_handoff_estimate_app/` — the original design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
 - `design_handoffs/epic-0010-screen-design-review/` — the Epic-0010 redesign handoff; **supersedes the entry flow** of the original handoff (mode-selection screen + unified Workspace) and is the source of truth for the participant estimating and facilitator reveal flows.
 - `design_handoffs/design_handoff_uncertainty_range/` — the Phase Picker + guidance-aware Range Bar handoff for PRD §6.1's cone-of-uncertainty guard; high-fidelity design reference, not literal production code (see its README for known implementation deviations).
@@ -161,7 +161,8 @@ Diagram conventions (all Mermaid):
   are too messy here).
 - Put each component's **responsibilities in a table below the diagram**, never inside the
   boxes.
-- Group nodes into subgraph **"lanes"** (the drawing term only; architecture itself is described in "layers", see `docs/glossary.md`) (usually by source directory). Each lane gets an
+- Group nodes into subgraph **"lanes"** (usually by source directory; "lane" is the drawing term only,
+  architecture is described in "layers", see `docs/glossary.md`). Each lane gets an
   UPPERCASE title, a light background tint, and member nodes coloured to match via
   `classDef` / `class` — no emoji in lane titles or anywhere else in a diagram. Use
   `direction LR` inside multi-node lanes. External systems stay outside all lanes with a
