@@ -3,7 +3,7 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import type { ReactNode } from 'react'
 import App from './App'
-import { useSessionStore, useConnectionStore } from '../entities/session'
+import { useSessionStore, useConnectionStore } from '../application'
 
 vi.mock('../application/lib/sessionCode', () => ({
   generateSessionCode: () => 'LIVECODE',

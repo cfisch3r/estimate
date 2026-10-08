@@ -3,7 +3,7 @@ import { ChatTeardropTextIcon } from '@phosphor-icons/react/dist/csr/ChatTeardro
 import './header.css'
 import { BrandMark, Tag } from '../shared/ui'
 import { useConfirmArm } from '../shared/lib/useConfirmArm'
-import { useConnectionStore } from '../entities/session'
+import { useConnectionStore } from '../application'
 import { useLeaveWorkspace } from '../features/session-lifecycle'
 import { ROUTES } from '../shared/lib/routes'
 

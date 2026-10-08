@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router'
 import { Card, CardTitle, CardBody, CardMeta, Input } from '../../../shared/ui'
 import { ROUTES } from '../../../shared/lib/routes'
-import { useSessionStore, isFinalized } from '../../../entities/session'
+import { useSessionStore } from '../../../application'
+import { isFinalized } from '../../../domain/item'
 
 export function SessionHistory() {
   const sessionName = useSessionStore((s) => s.sessionName)

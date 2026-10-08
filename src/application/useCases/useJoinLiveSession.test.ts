@@ -1,11 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createElement, type ReactNode } from 'react'
 import { renderHook } from '@testing-library/react'
-import {
-  ParticipantIdentityContext,
-  useConnectionStore,
-  useRoundStore,
-} from '../../entities/session'
+import { ParticipantIdentityContext, useConnectionStore, useRoundStore } from '..'
 import { useJoinLiveSession } from './useJoinLiveSession'
 
 const { connectMock } = vi.hoisted(() => ({ connectMock: vi.fn() }))

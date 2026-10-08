@@ -3,9 +3,9 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { Workspace } from './Workspace'
-import { createEstimate, type Estimate } from '../../../entities/session'
-import { useSessionStore, useConnectionStore } from '../../../entities/session'
-import type { Item } from '../../../entities/session'
+import { createEstimate, type Estimate } from '../../../domain/estimate'
+import { useSessionStore, useConnectionStore } from '../../../application'
+import type { Item } from '../../../domain/types'
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
 

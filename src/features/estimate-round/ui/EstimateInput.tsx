@@ -1,8 +1,8 @@
 import { useId, type KeyboardEvent } from 'react'
 import { Field, FieldLabel, Input } from '../../../shared/ui/Field'
 import { GuardNote } from '../../../shared/ui/GuardNote'
-import { checkFalsePrecision, UNIT_GRANULARITY } from '../../../entities/session'
-import type { EstimateField, EstimationUnit } from '../../../entities/session'
+import { checkFalsePrecision, UNIT_GRANULARITY } from '../../../domain/estimate'
+import type { EstimateField, EstimationUnit } from '../../../domain/estimate'
 
 const inputStyle = {
   height: 48,

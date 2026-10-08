@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { GroupBox } from '../../../shared/ui/GroupBox'
 import { THREE_POINT_ESTIMATE_INFO } from '../../../shared/copy'
-import type { EstimateField, EstimationUnit } from '../../../entities/session'
+import type { EstimateField, EstimationUnit } from '../../../domain/estimate'
 import type { EstimateIssue } from '../lib/describeEstimateIssue'
 import { ESTIMATE_FIELD_LABEL } from '../lib/estimateFieldLabel'
 import { EstimateInput } from './EstimateInput'

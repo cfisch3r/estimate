@@ -4,7 +4,7 @@ import {
   type EstimateField,
   type EstimateValuesError,
   type EstimationUnit,
-} from '../../../entities/session'
+} from '../../../domain/estimate'
 import { ESTIMATE_FIELD_LABEL } from './estimateFieldLabel'
 
 /** What to tell the person about a rejected best / likely / worst entry: a short

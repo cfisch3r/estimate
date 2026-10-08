@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import type { LiveConnectionStatus } from '../../../entities/session'
+import type { LiveConnectionStatus } from '../../../domain/types'
 import type { RoundView } from './useParticipantRound'
 
 /** What a screen-reader user can't see happen when the screen changes state: the

@@ -3,7 +3,10 @@ import type { ReactNode } from 'react'
 import { joinSession } from '../adapters/network/session'
 import type { NetworkSession } from '../adapters/network/session'
 import type { ConnectionState } from '../adapters/network/connection'
-import { NetworkSessionContext, type NetworkSessionApi } from './ports/networkSessionContext'
+import {
+  NetworkSessionContext,
+  type NetworkSessionApi,
+} from './ports/networkSessionContext'
 import { withKindDrivenRetry } from './lib/retryPolicy'
 import { useSessionStore } from './stores/session'
 import { useConnectionStore } from './stores/connection'

@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
-import { DEFAULT_UNCERTAINTY_INDEX } from '../../../entities/session'
+import { DEFAULT_UNCERTAINTY_INDEX } from '../../../domain/estimate'
 import { ISSUE_SETTLE_MS } from './useSettledIssue'
 import { useThreePointDraft } from './useThreePointDraft'
 

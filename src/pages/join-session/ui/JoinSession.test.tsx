@@ -8,7 +8,7 @@ import {
   ParticipantIdentityContext,
   useSessionStore,
   useConnectionStore,
-} from '../../../entities/session'
+} from '../../../application'
 
 const { connectMock, disconnectMock, navigateMock } = vi.hoisted(() => ({
   connectMock: vi.fn(),

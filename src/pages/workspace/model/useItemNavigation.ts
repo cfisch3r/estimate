@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router'
 import { ROUTES } from '../../../shared/lib/routes'
-import { useSessionStore, isFinalized } from '../../../entities/session'
+import { useSessionStore } from '../../../application'
+import { isFinalized } from '../../../domain/item'
 
 /** The workspace's active-item read-model plus the prev / advance moves between
  *  items. Both moves go to whichever item is adjacent in the sidebar's list order

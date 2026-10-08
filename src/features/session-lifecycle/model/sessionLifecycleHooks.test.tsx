@@ -2,11 +2,7 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router'
-import {
-  useConnectionStore,
-  useRoundStore,
-  useSessionStore,
-} from '../../../entities/session'
+import { useConnectionStore, useRoundStore, useSessionStore } from '../../../application'
 import { ROUTES } from '../../../shared/lib/routes'
 import { useLeaveLiveSession } from './useLeaveLiveSession'
 import { useLeaveWorkspace } from './useLeaveWorkspace'

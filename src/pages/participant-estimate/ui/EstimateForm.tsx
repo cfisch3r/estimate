@@ -1,9 +1,9 @@
 import { useState } from 'react'
 import { Button, GuardNote, LiveRegion } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
-import type { EstimateValues, EstimationUnit } from '../../../entities/session'
+import type { EstimateValues, EstimationUnit } from '../../../domain/estimate'
 import { ThreePointEstimateForm } from '../../../features/estimate-round'
-import type { ActionResult } from '../../../entities/session'
+import type { ActionResult } from '../../../domain/estimate'
 
 interface EstimateFormProps {
   unit: EstimationUnit

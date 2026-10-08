@@ -1,6 +1,6 @@
 import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
 import { Button, LiveRegion, Tag } from '../../../shared/ui'
-import type { LiveConnectionStatus } from '../../../entities/session'
+import type { LiveConnectionStatus } from '../../../domain/types'
 
 interface LiveSessionStripProps {
   sessionId: string

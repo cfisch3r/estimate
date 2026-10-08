@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createEstimate } from '../../../entities/session'
-import type { Item } from '../../../entities/session'
+import { createEstimate } from '../../../domain/estimate'
+import type { Item } from '../../../domain/types'
 import { buildFacilitatorRows } from './facilitatorRows'
 
 function item(submissions: { participantId: string; best: number }[]): Item {

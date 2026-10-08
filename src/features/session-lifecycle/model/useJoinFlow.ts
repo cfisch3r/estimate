@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { useConnectionStore } from '../../../entities/session'
+import { useConnectionStore } from '../../../application'
 import { useConnectionPhase } from '../../../shared/lib/useConnectionPhase'
 import { ROUTES } from '../../../shared/lib/routes'
 import { useJoinLiveSession } from '../../../application/useCases/useJoinLiveSession'

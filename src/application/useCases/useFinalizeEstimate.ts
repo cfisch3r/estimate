@@ -1,10 +1,7 @@
-import {
-  createEstimate,
-  FACILITATOR_PARTICIPANT_ID,
-  finalResultFor,
-  useRoundStore,
-  type ActionResult,
-} from '../../entities/session'
+import { createEstimate, type ActionResult } from '../../domain/estimate'
+import { FACILITATOR_PARTICIPANT_ID } from '../../domain/participantId'
+import { finalResultFor } from '../../domain/finalResult'
+import { useRoundStore } from '..'
 
 /** The single-user finalize use case: the facilitator's own three-point estimate
  *  for an item is validated, aggregated, and recorded as the item's final result.

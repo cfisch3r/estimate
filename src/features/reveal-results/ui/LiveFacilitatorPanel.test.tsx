@@ -2,12 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
-import {
-  createEstimate,
-  useConnectionStore,
-  useSessionStore,
-  type Item,
-} from '../../../entities/session'
+import { createEstimate } from '../../../domain/estimate'
+import { useConnectionStore, useSessionStore } from '../../../application'
+import type { Item } from '../../../domain/types'
 import { LiveFacilitatorPanel } from './LiveFacilitatorPanel'
 
 const A11Y = { rules: { 'color-contrast': { enabled: false } } }

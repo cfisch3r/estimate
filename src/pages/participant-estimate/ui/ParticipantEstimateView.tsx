@@ -1,5 +1,5 @@
 import { Button, LiveRegion, VisuallyHidden } from '../../../shared/ui'
-import { useSubmitEstimate } from '../../../features/submit-estimate'
+import { useSubmitEstimate } from '../../../application'
 import { useLeaveLiveSession, useReconnect } from '../../../features/session-lifecycle'
 import { useFocusHeadingOnChange } from '../model/useFocusHeadingOnChange'
 import { useParticipantRound } from '../model/useParticipantRound'

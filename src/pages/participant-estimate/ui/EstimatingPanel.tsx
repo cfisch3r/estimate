@@ -1,7 +1,7 @@
 import { Card } from '../../../shared/ui'
-import type { EstimationUnit } from '../../../entities/session'
-import type { LiveRound } from '../../../entities/session'
-import type { ActionResult } from '../../../entities/session'
+import type { EstimationUnit } from '../../../domain/estimate'
+import type { LiveRound } from '../../../domain/types'
+import type { ActionResult } from '../../../domain/estimate'
 import { EstimateForm } from './EstimateForm'
 import { RoundCardHeader } from './RoundCardHeader'
 

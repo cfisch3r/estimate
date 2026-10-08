@@ -3,7 +3,7 @@ import {
   useNetworkSession,
   useParticipantIdentity,
   useRoundStore,
-} from '../../entities/session'
+} from '..'
 
 /** Join a live session as a participant: normalise the code, fetch this client's id from the identity port, record the join in
  *  `connection.ts`, clear any stale round view left over from a previous session,
