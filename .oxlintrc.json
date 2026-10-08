@@ -176,6 +176,64 @@
           }
         ]
       }
+    },
+    {
+      "files": ["src/adapters/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/features/**",
+                  "**/pages/**",
+                  "**/widgets/**",
+                  "**/app/**",
+                  "**/entities/**",
+                  "**/shared/**",
+                  "react",
+                  "react-dom",
+                  "react/**",
+                  "zustand"
+                ],
+                "message": "Adapters may import the domain, packages other than React/Zustand, and each other only (ADR-009)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/entities/**",
+        "src/features/**",
+        "src/pages/**",
+        "src/widgets/**",
+        "src/shared/**"
+      ],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": ["**/adapters/**"],
+                "message": "Only app/ composes adapters (ADR-009)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": [
+        "src/entities/session/api/NetworkProvider.tsx",
+        "src/entities/session/api/NetworkProvider.test.tsx"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
     }
   ]
 }

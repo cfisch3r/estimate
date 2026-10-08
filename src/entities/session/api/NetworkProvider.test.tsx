@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ConnectionState } from './connection'
+import type { ConnectionState } from '../../../adapters/network/connection'
 import { NetworkProvider } from './NetworkProvider'
 import { useNetworkSession } from './useNetworkSession'
 import type { NetworkSessionApi } from './networkSessionContext'
@@ -10,8 +10,13 @@ import { useSessionStore } from '../model/session'
 import { estimateOf } from '../../../domain/testFixtures'
 import { useConnectionStore } from '../model/connection'
 import { useRoundStore } from '../model/round'
-import type { Item, LiveRound, SessionMode, SessionRole } from '../../../domain/types'
-import type { LiveConnectionStatus } from '../model/connectionStatus'
+import type {
+  Item,
+  LiveConnectionStatus,
+  LiveRound,
+  SessionMode,
+  SessionRole,
+} from '../../../domain/types'
 
 type SessionPatch = Partial<{
   sessionName: string
@@ -122,7 +127,7 @@ const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
   return { joinSessionMock: vi.fn(() => fakeSession), fakeSession, emitState, emit }
 })
 
-vi.mock('./session', () => ({ joinSession: joinSessionMock }))
+vi.mock('../../../adapters/network/session', () => ({ joinSession: joinSessionMock }))
 
 function Consumer() {
   const { connect, disconnect } = useNetworkSession()

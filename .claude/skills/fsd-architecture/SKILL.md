@@ -89,7 +89,7 @@ Work through these in order — the first one that fits wins:
    entities?** (e.g. "estimate a round", "reveal results", "assign story
    points") → `features/<verb-noun>`. If two features would need the exact
    same UI or logic, that shared piece almost always belongs at the entity
-   level instead (see the `RangeBar` and `entities/session/api/actions.ts`
+   level instead (see the `RangeBar` and `adapters/network/actions.ts`
    cases in the ADR) — cross-feature imports are forbidden, so this isn't
    optional.
 3. **Is it a full top-level screen composition?** → `pages/<screen>`. A page

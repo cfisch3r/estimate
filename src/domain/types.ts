@@ -60,7 +60,7 @@ export interface SnapshotItem {
 
 /** The facilitator's authoritative round state, as broadcast to (or pulled by)
  *  participants (ADR-003). Built by `buildSessionSnapshot`, applied by
- *  `applySyncState`; the wire layer (`api/actions.ts`) only carries it. */
+ *  `applySyncState`; the wire adapter (`adapters/network/actions.ts`) only carries it. */
 export interface SessionSnapshot {
   currentItem: SnapshotItem | null
   /** The facilitator's session name, so a participant's kicker can show "Sprint 42
@@ -92,3 +92,9 @@ export interface SessionSnapshot {
 export type SessionMode = 'manual' | 'live'
 
 export type SessionRole = 'facilitator' | 'participant'
+
+/** The transport's view of the link to the session. A link-level type, not an estimate one. */
+export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
+
+/** The network layer's ConnectionStatus, plus 'idle' for "not in a live session". */
+export type LiveConnectionStatus = ConnectionStatus | 'idle'

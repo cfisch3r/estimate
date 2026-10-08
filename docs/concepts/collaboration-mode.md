@@ -50,14 +50,14 @@ flowchart TD
     direction LR
     NP["NetworkProvider<br/>[React Context Provider]"]
     Hook["useNetworkSession<br/>[React Hook]"]
+    Code["generateSessionCode<br/>[Function]"]
   end
 
-  subgraph core["ENTITIES: SESSION (API, FRAMEWORK-FREE) LANE &nbsp;·&nbsp; entities/session/api"]
+  subgraph core["ADAPTERS LANE &nbsp;·&nbsp; src/adapters/network"]
     direction LR
     JSN["joinSession<br/>[Factory Function]"]
     Act["typed actions<br/>[Module]"]
     Conn["connection tracker<br/>[Module]"]
-    Code["generateSessionCode<br/>[Function]"]
   end
 
   subgraph purelane["DOMAIN LANE &nbsp;·&nbsp; src/domain"]
@@ -266,7 +266,7 @@ will disappear once that lands; still shipped as shown above until then.
 
 ## Connection state machine
 
-Mirrored from `entities/session/api`'s connection tracker into `useConnectionStore`'s
+Mirrored from the connection tracker in `adapters/network` into `useConnectionStore`'s
 `connectionStatus`:
 
 ```mermaid
@@ -460,7 +460,7 @@ public-API surface.
 | `role: 'facilitator' \| 'participant'` | defaults to `facilitator`; Join flips it to `participant` |
 | `sessionId: string \| null` | the shared 6-char code = Trystero room id |
 | `myName: string` | participant display name (named, never anonymous) |
-| `participantId: string` | stable per-browser id (`getOrCreateParticipantId()`, persisted in `localStorage`), the submission key — survives a drop/rejoin so a reconnect isn't double-counted (#50) |
+| `participantId: string` | stable per-browser id (`getOrCreateParticipantId()` in `adapters/storage`, persisted in `localStorage`; the join use case reads it through an identity port that `app/App.tsx` provides), the submission key — survives a drop/rejoin so a reconnect isn't double-counted (#50) |
 | `connectionStatus` | `idle \| connecting \| connected \| disconnected` |
 | `peerCount: number` | connected peers, for the facilitator strip |
 | `participantNames: Record<string, string>` | `participantId -> display name` for every announced client (own entry seeded on join / start; peers filled in by `applyParticipantName` from inbound `announce`). Lets the participant reveal list and the facilitator's 1c/1d roster show real names instead of the `participantLabels` fallback "Teammate N". Reset on leave; on the facilitator, `NetworkProvider` also prunes a departed participant's entry via `removeParticipant` when its `peerId` (mapped from `announce`) reports `onPeerLeave` — unless another live connection still backs that `participantId` (two tabs), or the participant already has a submission this round (its name stays with the recorded estimate per ADR-003). |
@@ -473,7 +473,7 @@ public-API surface.
 
 ## Trust boundary
 
-Every inbound peer message crossing `trystero/nostr → entities/session/api/actions` is untrusted:
+Every inbound peer message crossing `trystero/nostr → adapters/network/actions` is untrusted:
 `submitEstimate` must be an `{ itemId, estimate }` envelope with a non-empty string
 `itemId` (a missing/empty one is read as a bare pre-#8 estimate under an empty item id
 instead), and the estimate re-runs `createEstimate`. Since #61, `submitEstimate` is a

@@ -90,7 +90,7 @@ describe('useStartCollaborative', () => {
 })
 
 function seedLiveParticipant() {
-  useConnectionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
+  useConnectionStore.getState().joinLiveSession('K7F9Q2', 'Sam', 'p-1')
   useSessionStore.setState({ unit: 'weeks' })
   useRoundStore.setState({
     liveRound: {

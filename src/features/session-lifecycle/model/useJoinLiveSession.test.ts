@@ -9,6 +9,10 @@ vi.mock('../../../entities/session/api/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: connectMock }),
 }))
 
+vi.mock('../../../entities/session/api/participantIdentityContext', () => ({
+  useParticipantIdentity: () => ({ getOrCreateParticipantId: () => 'p-1' }),
+}))
+
 function resetStore() {
   useConnectionStore.setState({ mode: 'manual', sessionId: null })
   useRoundStore.setState({
@@ -38,6 +42,14 @@ describe('useJoinLiveSession', () => {
     expect(useRoundStore.getState().liveRound).toBeNull()
     expect(connectMock).toHaveBeenCalledTimes(1)
     expect(connectMock).toHaveBeenCalledWith('K7F9Q2')
+  })
+
+  it('records the id the identity port returns', () => {
+    const { result } = renderHook(() => useJoinLiveSession())
+
+    result.current('K7F9Q2', 'Sam')
+
+    expect(useConnectionStore.getState().participantId).toBe('p-1')
   })
 
   it('normalises the code before joining and connecting', () => {

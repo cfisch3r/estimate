@@ -21,14 +21,14 @@ storage), styling/design-system approach, hosting, and module structure.
 
 **As-built status.** The initial scaffold, the estimation engine (`domain/estimate`),
 the Zustand store, the single-user (Manual) screens, the Trystero P2P network layer
-(`entities/session/api`), the Join Session screen, and the participant estimate round
+(`adapters/network`), the Join Session screen, and the participant estimate round
 have all shipped (issues #1–#7), and the entry flow was rebuilt to a mode-selection
 screen plus a unified Workspace in the epic-0010 screen review (#34). The `src/` tree
 was migrated to Feature-Sliced Design (issue #109-era work — see
 [ADR-004](adr/004-feature-sliced-design-architecture.md) for the adopted layer set and
 full slice mapping); this document doesn't repeat that mapping, only the architectural
 decisions and rationale behind what's in each slice. For the concrete as-built detail of
-the Live-mode layer — the `entities/session/api` component breakdown, the join sequence,
+the Live-mode layer — the network adapter's component breakdown, the join sequence,
 the estimate round, the connection state machine, and the store fields it added — see
 [concepts/collaboration-mode.md](concepts/collaboration-mode.md); this document keeps the
 decisions and rationale, that one tracks the implementation. Still open: connection-fallback
@@ -63,7 +63,7 @@ Static SPA — no server-side rendering needed, no routes that require backend d
 - **Signaling strategy:** Trystero's **Nostr strategy** (`trystero/nostr`) as the default — this is the library's own default and top recommendation, backed by hundreds of independent public relays (most redundancy of the decentralized options), no account/config required, matches ADR-001's "no server we operate." Library's own robustness ranking for the decentralized strategies: Nostr → MQTT → BitTorrent → IPFS. Supabase/Firebase strategies exist but require configuring your own project (not zero-setup); a self-hosted WebSocket relay strategy also exists as an explicit escape hatch if the public networks prove unreliable, mirroring ADR-001's bring-your-own-TURN framing. Verified against current Trystero docs (trystero.dev, github.com/dmotz/trystero).
 - **Room privacy:** `roomId` = the shared session code — this is the invite mechanism. `joinSession()` accepts an optional `password` (Trystero AES-GCM encrypts the signaling handshake); without it the roomId is visible as metadata on the public signaling medium. The 6-char code is already hard to guess, but a password closes the gap cheaply if a session warrants it.
 - **Data sync model: facilitator-owned, not CRDT.** **(Superseded 2026-09-15 by [ADR-003](adr/003-session-reliability-model.md), "Single owner" landed in #60.)** The facilitator's `items[]` is the sole source of truth for submissions, reveal state, and finalization; a participant's `liveRound` is a projection of the facilitator's `syncState` snapshot plus its own pending submission. A participant's `submitEstimate` is a targeted send to the facilitator's peerId only — it never reaches other participants, closing the pre-reveal estimate-value leak. This works because the PRD's aggregation (min of Best, max of Worst, median of Likely) is order-independent and idempotent on the facilitator's own accumulated list — no conflict resolution needed, and Mode A/B can share one calculation engine.
-- **Closed:** Trystero doesn't replay history to late joiners. The wire action for state recovery (`syncState`, carrying a `SessionSnapshot`) exists in `entities/session/api/actions.ts`; the facilitator broadcasts it from `NetworkProvider` on every real change, and — since #60 — a peer that just connected or reconnected pulls it directly via the `requestSnapshot` request/response action, rather than relying on the facilitator to notice the arrival and push one. Since #61, that pull applies the shared kind-driven retry policy (`withKindDrivenRetry`) too, rather than being a single best-effort attempt.
+- **Closed:** Trystero doesn't replay history to late joiners. The wire action for state recovery (`syncState`, carrying a `SessionSnapshot`) exists in `adapters/network/actions.ts`; the facilitator broadcasts it from `NetworkProvider` on every real change, and — since #60 — a peer that just connected or reconnected pulls it directly via the `requestSnapshot` request/response action, rather than relying on the facilitator to notice the arrival and push one. Since #61, that pull applies the shared kind-driven retry policy (`withKindDrivenRetry`) too, rather than being a single best-effort attempt.
 
 ## Module structure
 
@@ -78,7 +78,7 @@ rationale. In brief, by architectural role rather than layer:
   bias guards (symmetric-range, false-precision, outlier — PRD §6), and the
   cone-of-uncertainty guidance rule (`uncertaintyGuidance`, PRD §6.1). Framework-free,
   unit-testable, identical between Mode A and Mode B.
-- **The P2P wire layer** (`entities/session/api`, formerly `/network`) — Trystero
+- **The P2P wire layer** (`adapters/network`, with `NetworkProvider` still in `entities/session/api` until ADR-009 stage 3; formerly `/network`) — Trystero
   wrapper: room join/create, typed actions (`submitEstimate`, `syncState`, `announce`,
   `requestSnapshot` request/response), connection-state hooks, facilitator-authoritative
   round state (ADR-003, #60).
@@ -88,7 +88,7 @@ rationale. In brief, by architectural role rather than layer:
   layer is an adapter dispatching into them. The slice's public API exports narrowed views
   of the connection and round stores (`publicStores.ts`) that hide the network-bridge
   mutators; `NetworkProvider` writes through the internal stores. The stable per-browser
-  `participantId` helper lives in `entities/session/lib`, and `finalResultFor` is the
+  `participantId` helper lives in `adapters/storage` (the join use case reaches it through an identity port), and `finalResultFor` is the
   single finalize rule (aggregate the submissions, or fail with a message when there are
   none). The session policies they and
   `NetworkProvider` apply are pure modules in `src/domain/` (ADR-009 stage 1): `roster.ts` (round membership

@@ -1,6 +1,6 @@
 # ADR-009: Architecture Style — FSD Everywhere vs. a Hexagonal Core with an FSD UI
 
-**Status:** Accepted (2026-10-08); stage 1 done (domain extracted to `src/domain/`)
+**Status:** Accepted (2026-10-08); stages 1 and 2 done (domain in `src/domain/`, adapters in `src/adapters/`)
 **Date:** 2026-10-06
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [005-session-store-decomposition.md](005-session-store-decomposition.md), [003-session-reliability-model.md](003-session-reliability-model.md), [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [006-router-adoption.md](006-router-adoption.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md)
 
@@ -223,12 +223,21 @@ already pure functions of state and event.
    `resend`, `finalResult`) into a `src/domain/` folder with an enforced "imports nothing
    outside `domain/`" rule. This alone removes the weakest point left after the
    2026-10-05/06 refactor (a convention-only boundary).
-2. **Extract the adapters.** Move `entities/session/api/` (transport, wire parsing,
+2. **Extract the adapters (done).** Move `entities/session/api/` (transport, wire parsing,
    signaling) and the participant-identity helper into `adapters/`.
    `NetworkProvider` becomes the composition point that wires an adapter to the use
    cases. One catch: `model/connection.ts` currently imports the identity helper,
    so the use case would depend on an adapter, which contradicts the diagram. The
    identity would have to be passed in (a port) or created at the composition point.
+   As built: the wire files went to `src/adapters/network/` and the identity helper to
+   `src/adapters/storage/`. The join use case (`useJoinLiveSession`) reads the id through an
+   application-owned identity port (`ParticipantIdentityApi`, provided in `app/App.tsx`) and
+   passes it to `joinLiveSession` as an argument, so the store imports no adapter.
+   `ConnectionStatus` moved into `src/domain/types.ts` because both the adapter and the
+   store need it. `NetworkProvider`, the `NetworkSessionApi` port, `retryPolicy` and
+   `sessionCode` stay in `entities/session/api` until stage 3. That is a temporary state: the
+   provider sits in an FSD layer (the UI side) yet imports adapters, so the oxlint rule carries
+   one named exception for it, to be removed in stage 3.
 3. **Extract the application layer.** Move the stores and use-case hooks into
    `application/`. The FSD `features` layer keeps only UI.
 

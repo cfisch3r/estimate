@@ -12,7 +12,7 @@ doc, add it here instead of guessing.
 | **Layer** | A horizontal level of the code in which dependencies point only one way. In the proposed target architecture ([ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)): UI, application, domain, adapters. Say **FSD layer** when you mean one of Feature-Sliced Design's (`app`, `pages`, `widgets`, `features`, `entities`, `shared`; [ADR-004](adr/004-feature-sliced-design-architecture.md)). | "lane" (except for a Mermaid subgraph, see below) |
 | **Domain** | The innermost layer: pure rules and types, with no React, no I/O and no packages. Lives in `src/domain/` (ADR-009 stage 1); the rule that it imports nothing outside itself is enforced by oxlint. | |
 | **Application layer** | The use cases and the state stores. It owns the ports. Not stateless, unlike textbook hexagonal architecture (ADR-009, "Where state lives"). | |
-| **Adapter** | Code that connects the application to something outside it. | |
+| **Adapter** | Code that connects the application to something outside it. Lives in `src/adapters/` (`network/`, `storage/`; ADR-009 stage 2); oxlint keeps it free of React, Zustand and the UI layers. | |
 | **Inbound adapter** | An adapter that calls into the application, such as an incoming peer message. It needs no port. | "driving adapter" |
 | **Outbound adapter** | An adapter the application calls out to, such as the peer transport or storage. It implements a port. | "driven adapter" |
 | **Port** | An interface owned by the application layer that an outbound adapter implements, for example `NetworkSessionApi`. Ports exist only at external boundaries. | |

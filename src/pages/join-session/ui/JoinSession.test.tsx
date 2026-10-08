@@ -16,6 +16,10 @@ vi.mock('../../../entities/session/api/useNetworkSession', () => ({
   useNetworkSession: () => ({ connect: connectMock, disconnect: disconnectMock }),
 }))
 
+vi.mock('../../../entities/session/api/participantIdentityContext', () => ({
+  useParticipantIdentity: () => ({ getOrCreateParticipantId: () => 'p-1' }),
+}))
+
 vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router')>()
   return { ...actual, useNavigate: () => navigateMock }
