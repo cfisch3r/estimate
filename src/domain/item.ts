@@ -54,7 +54,8 @@ export function removeItemFrom(state: ItemList, id: string): ItemList {
 }
 
 /** Move the item at `fromIndex` to `toIndex`. An out-of-range `fromIndex` is a
- *  no-op (`null`); `toIndex` is clamped by the splice. */
+ *  no-op (`null`). A `toIndex` past the end appends; a negative one counts back
+ *  from the end, as `splice` does. */
 export function moveItem(
   items: Item[],
   fromIndex: number,

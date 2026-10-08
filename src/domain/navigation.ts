@@ -1,6 +1,12 @@
 import { isFinalized } from './item'
 import type { Item } from './types'
 
+/** What advancing from an item does. */
+export type Advance =
+  | { kind: 'none' }
+  | { kind: 'select'; itemId: string }
+  | { kind: 'summary'; clearSelection: boolean }
+
 /** Where "next" goes from the item at `activeIndex`, which the caller has just
  *  (re-)finalized. Both moves go to whichever item is adjacent in the sidebar's
  *  list order — not the next *pending* item.
@@ -8,11 +14,6 @@ import type { Item } from './types'
  *  `items` is the list as of the caller's last render, so the item at
  *  `activeIndex` still shows its pre-click state; it is therefore skipped in the
  *  "everything is finalized" check instead of re-read after the write. */
-export type Advance =
-  | { kind: 'none' }
-  | { kind: 'select'; itemId: string }
-  | { kind: 'summary'; clearSelection: boolean }
-
 export function advanceFrom(items: Item[], activeIndex: number): Advance {
   const current = items[activeIndex]
   if (current === undefined) return { kind: 'none' }

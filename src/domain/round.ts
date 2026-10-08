@@ -1,7 +1,6 @@
 import type { Estimate } from './estimate'
 import { isFinalized } from './item'
-import type { EstimationUnit } from './estimate'
-import type { Item, LiveRound, SessionRole, SessionSnapshot } from './types'
+import type { Item, LiveRound, SessionSnapshot } from './types'
 
 /** Upsert `next` into `list` keyed by participantId — last write wins, insertion
  *  order (and thus submission order) preserved for existing entries. */
@@ -103,18 +102,4 @@ export function adoptSnapshot(
     roster: snapshot.roster,
     mySubmission: carryOver ? previous.mySubmission : null,
   }
-}
-
-/** The session-level fields a participant takes from a snapshot. Only a
- *  participant ever receives another client's broadcast (the facilitator is the
- *  sole sender), so the name is adopted for that role only: a stray or
- *  self-received snapshot must never overwrite the facilitator's own name with an
- *  echo. Participants estimate in the facilitator's unit, not their local default. */
-export function sessionFieldsFromSnapshot(
-  role: SessionRole,
-  snapshot: SessionSnapshot,
-): { sessionName?: string; unit: EstimationUnit } {
-  return role === 'participant'
-    ? { sessionName: snapshot.sessionName, unit: snapshot.unit }
-    : { unit: snapshot.unit }
 }

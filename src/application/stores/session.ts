@@ -18,7 +18,7 @@ interface SessionStore {
   setSessionName: (name: string) => void
   setUnit: (unit: EstimationUnit) => void
   /** Back to the default unit. A participant only ever inherits its unit from
-   *  the facilitator's snapshot (see round.ts's applySyncState), so leaving a
+   *  the facilitator's snapshot (see `useCases/applyFacilitatorSnapshot.ts`), so leaving a
    *  live session resets it, lest it leak into the next workspace. */
   resetUnit: () => void
   addItem: (title: string, description?: string) => void

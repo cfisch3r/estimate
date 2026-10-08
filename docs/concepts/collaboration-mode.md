@@ -196,7 +196,7 @@ sequenceDiagram
 
   F->>F: select an item in the Workspace
   F->>R: sendSyncState({ currentItem, unit, revealed, round, roster, submissions: [] })
-  R-->>P: onSyncState → roundStore.applySyncState → liveRound + unit + revealed + round + roster set
+  R-->>P: onSyncState → applyFacilitatorSnapshot → unit (session store) + liveRound + revealed + round + roster set
   P-->>P: ParticipantEstimateView shows the Best/Likely/Worst form (5c), labelled in the facilitator's unit (#39), status line reads liveRound.roster
   P->>P: fill values → useSubmitEstimate validates via createEstimate, then roundStore.submitEstimate(estimate)
   P->>R: sendEstimate.request({ itemId, estimate, round }, { target: facilitatorPeerId, timeoutMs: 800 })
@@ -209,12 +209,12 @@ sequenceDiagram
   Note over P: if the roster still shows this participant unsubmitted on a later snapshot (e.g. the ack above was lost), P re-sends the same request — this, not the ack, is the actual convergence mechanism (#61)
   F->>F: Reveal estimates (enabled once ≥1 submission) → roundStore.revealRound(itemId)
   Note over F,R: revealRound is a local store mutation (via session.ts patchItem); the store subscription broadcasts revealed:true + the frozen submissions
-  R-->>P: onSyncState → roundStore.applySyncState → revealed = true, submissions from the snapshot
+  R-->>P: onSyncState → applyFacilitatorSnapshot → revealed = true, submissions from the snapshot
   F-->>F: Workspace 1d — aggregated range bar + per-participant values
   P-->>P: revealed state: aggregated range bar + participant list (5e)
   Note over F: then either Finalize item (useRevealActions, surfaced by useRevealRound, aggregates submissions, roundStore.finalizeItem stores the result)…
   F->>F: …or Retry — start new round → roundStore.retryRound(itemId) (bumps round, clears submissions)
-  R-->>P: onSyncState → roundStore.applySyncState sees the round bump → back to the 5c form
+  R-->>P: onSyncState → applyFacilitatorSnapshot sees the round bump → back to the 5c form
 ```
 
 ### Snapshot pull on connect/reconnect
@@ -230,7 +230,7 @@ sequenceDiagram
   R-->>P: onAnnounce → learns the facilitator's peerId (first time, or changed since the last pull)
   P->>R: requestSnapshot(facilitatorPeerId)
   R-->>F: onRequestSnapshot → answers with the current syncState payload
-  R-->>P: resolves with the snapshot → roundStore.applySyncState
+  R-->>P: resolves with the snapshot → applyFacilitatorSnapshot
   P-->>P: lands on the correct view (lobby / estimating / waiting / revealed) regardless of what it missed
 ```
 
@@ -448,7 +448,7 @@ public-API surface.
 | `Item.submissions: Estimate[]` | facilitator-only: submissions received for the current round on that item, upserted by `useRoundStore`'s `applyRemoteEstimate` via `patchItem` (dropped if the submission's `round` doesn't match `Item.round`, #51), cleared by `retryRound` (#8). Always empty in single-user mode. |
 | `Item.revealed: boolean` | facilitator-only: whether the round on that item is revealed (Workspace 1c → 1d). Set by `useRoundStore`'s `revealRound` via `patchItem`, cleared by `retryRound` (#8). |
 | `Item.round: number` | facilitator-only: bumped by `useRoundStore`'s `retryRound` via `patchItem`, carried in `SessionSnapshot`. Lets `applySyncState` tell a Retry apart from the prior round even when the peer never observed the intervening Reveal (#51). |
-| `unit` (participant) | on every `useRoundStore.applySyncState` the participant's unit is overwritten with the facilitator's `snapshot.unit`, so its estimate form and bars label values in the session's unit (#39) |
+| `unit` (participant) | on every `applyFacilitatorSnapshot` the participant's unit is overwritten with the facilitator's `snapshot.unit`, so its estimate form and bars label values in the session's unit (#39) |
 
 ### `useConnectionStore` (`application/stores/connection.ts`)
 

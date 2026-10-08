@@ -24,14 +24,13 @@ export function deriveConnectionStatus(
   return trackerStatus
 }
 
-/** The state a live-session start or join sets. Everything else about the
+/** The connection state a live-session start or join sets. Everything else about the
  *  connection (peer count, status transitions) is written as the link evolves. */
-export interface SessionEntry {
+export interface ConnectionEntry {
   mode: SessionMode
   role: SessionRole
   sessionId: string
   myName: string
-  participantId?: string
   participantNames: Record<string, string>
   connectionStatus: LiveConnectionStatus
   hasEverConnected: boolean
@@ -44,7 +43,7 @@ export function normalizeSessionCode(raw: string): string {
 }
 
 /** The connection state of a facilitator who has just started a live session. */
-export function facilitatorStart(sessionCode: string): SessionEntry {
+export function facilitatorStart(sessionCode: string): ConnectionEntry {
   return {
     mode: 'live',
     role: 'facilitator',
@@ -63,7 +62,7 @@ export function participantJoin(
   sessionCode: string,
   name: string,
   participantId: string,
-): (SessionEntry & { participantId: string }) | null {
+): (ConnectionEntry & { participantId: string }) | null {
   const code = normalizeSessionCode(sessionCode)
   const trimmedName = name.trim()
   if (code.length === 0 || trimmedName.length === 0) return null

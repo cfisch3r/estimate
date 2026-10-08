@@ -269,8 +269,8 @@ already pure functions of state and event.
    `item.ts` gained `firstPendingItemId`, `appendItem`, `removeItemFrom`, `moveItem` and
    `updateItem`. `round.ts` has `upsertByParticipant`, `retryRoundPatch`,
    `acceptRemoteEstimate` (the ADR-003 drop rules), `recordOwnSubmission`, `adoptSnapshot`
-   (versioned rounds, reveal-gated submissions, `mySubmission` carry-over) and
-   `sessionFieldsFromSnapshot`. `delivery.ts` holds the `DeliveryState` type and
+   (versioned rounds, reveal-gated submissions, `mySubmission` carry-over); `snapshot.ts`
+   gained `sessionFieldsFromSnapshot`. `delivery.ts` holds the `DeliveryState` type and
    `deliveryStateFor` (called by `useSubmitEstimate`; the UI imports the `DeliveryState` type from `src/domain/delivery`), `navigation.ts`
    holds `advanceFrom` and `previousItemId`, and `participantId.ts` gained
    `LOCAL_PARTICIPANT_ID`. Two application additions: `useCases/applyFacilitatorSnapshot.ts`

@@ -60,7 +60,7 @@ export interface SnapshotItem {
 
 /** The facilitator's authoritative round state, as broadcast to (or pulled by)
  *  participants (ADR-003). Built by `buildSessionSnapshot`, applied by
- *  `applySyncState`; the wire adapter (`adapters/network/actions.ts`) only carries it. */
+ *  `applyFacilitatorSnapshot`; the wire adapter (`adapters/network/actions.ts`) only carries it. */
 export interface SessionSnapshot {
   currentItem: SnapshotItem | null
   /** The facilitator's session name, so a participant's kicker can show "Sprint 42

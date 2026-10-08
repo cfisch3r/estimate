@@ -1,4 +1,4 @@
-import { sessionFieldsFromSnapshot } from '../../domain/round'
+import { sessionFieldsFromSnapshot } from '../../domain/snapshot'
 import type { SessionSnapshot } from '../../domain/types'
 import { useConnectionStore } from '../stores/connection'
 import { useRoundStore } from '../stores/round'

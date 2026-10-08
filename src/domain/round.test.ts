@@ -4,7 +4,6 @@ import {
   adoptSnapshot,
   recordOwnSubmission,
   retryRoundPatch,
-  sessionFieldsFromSnapshot,
   upsertByParticipant,
 } from './round'
 import { estimateOf, finalizedItemOf, itemOf } from './testFixtures'
@@ -233,20 +232,5 @@ describe('adoptSnapshot', () => {
       snapshotOf({ revealed: true, submissions: [estimateOf('a')] }),
     )
     expect(next?.revealed).toBe(true)
-  })
-})
-
-describe('sessionFieldsFromSnapshot', () => {
-  it('lets a participant adopt the facilitator name and unit', () => {
-    expect(sessionFieldsFromSnapshot('participant', snapshotOf())).toEqual({
-      sessionName: 'Sprint 42',
-      unit: 'weeks',
-    })
-  })
-
-  it('never lets an echoed snapshot overwrite the facilitator own name', () => {
-    expect(sessionFieldsFromSnapshot('facilitator', snapshotOf())).toEqual({
-      unit: 'weeks',
-    })
   })
 })
