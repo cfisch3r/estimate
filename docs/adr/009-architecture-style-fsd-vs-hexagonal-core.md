@@ -1,6 +1,6 @@
 # ADR-009: Architecture Style — FSD Everywhere vs. a Hexagonal Core with an FSD UI
 
-**Status:** Accepted (2026-10-08); stages 1 and 2 done, stage 3 in progress (3a done)
+**Status:** Accepted (2026-10-08); stages 1 and 2 done, stage 3 in progress (3a and 3b-1 done)
 **Date:** 2026-10-06
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [005-session-store-decomposition.md](005-session-store-decomposition.md), [003-session-reliability-model.md](003-session-reliability-model.md), [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [006-router-adoption.md](006-router-adoption.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md)
 
@@ -239,7 +239,7 @@ already pure functions of state and event.
    one named exception for it, to be removed in stage 3c.
 3. **Extract the application layer (in progress).** Move the stores and use-case hooks into
    `application/`. The FSD `features` layer keeps only UI. Sub-steps: 3a moves the code
-   (done); 3b, 3c and 3d are pending (3c splits `NetworkProvider`).
+   (done); 3b-1 moves the store rules into the domain (done); 3b-2, 3c and 3d are pending (3c splits `NetworkProvider`).
    As built in 3a: `src/application/` holds `stores/` (`session`, `round`, `connection`,
    `publicStores`, and `index.ts`, which the use cases import), `ports/`
    (`NetworkSessionApi` and `ParticipantIdentityApi` with their React contexts and hooks),
@@ -260,6 +260,29 @@ already pure functions of state and event.
    `adapters/network/connection`. The adapters rule and the "only `app/` composes adapters" rule
    are unchanged. A guard test, `src/viMockPaths.test.ts`, fails when a relative `vi.mock`
    target does not resolve, so a moved module cannot leave a mock pointing at a file that no longer exists (it does not detect a mock of a module the code under test stopped importing).
+
+   As built in 3b-1: the rules that sat inside the stores' `set(...)` calls and in
+   `NetworkProvider` are pure functions in `src/domain/`, and the stores only hold state
+   and call them. `connection.ts` has `deriveConnectionStatus` (moved out of
+   `NetworkProvider`), `normalizeSessionCode`, `facilitatorStart`, `participantJoin`,
+   `withConnectionStatus` (with the `hasEverConnected` latch) and `leavingNeedsConfirm`.
+   `item.ts` gained `firstPendingItemId`, `appendItem`, `removeItemFrom`, `moveItem` and
+   `updateItem`. `round.ts` has `upsertByParticipant`, `retryRoundPatch`,
+   `acceptRemoteEstimate` (the ADR-003 drop rules), `recordOwnSubmission`, `adoptSnapshot`
+   (versioned rounds, reveal-gated submissions, `mySubmission` carry-over) and
+   `sessionFieldsFromSnapshot`. `delivery.ts` holds the `DeliveryState` type and
+   `deliveryStateFor` (no longer exported by the application barrel), `navigation.ts`
+   holds `advanceFrom` and `previousItemId`, and `participantId.ts` gained
+   `LOCAL_PARTICIPANT_ID`. Two application additions: `useCases/applyFacilitatorSnapshot.ts`
+   (not a hook; writes the session name and unit, then the round view) and
+   `useCases/finalizeWith.ts` (the finalize step shared by `useFinalizeEstimate` and
+   `useRevealActions`). The round store no longer reads the connection store, so the
+   store import cycle risk noted in ADR-005 is gone.
+
+   Planned for 3b-2: narrowing the UI-visible store types and adding `useItemActions`.
+   The UI-access rule that goes with it (decided 2026-10-09, implemented in 3b-2): the UI
+   may read state with selectors; writes that carry a rule go through use cases; trivial
+   setters stay directly callable.
 
 Each stage ends with all CI checks green and can be the last one.
 
