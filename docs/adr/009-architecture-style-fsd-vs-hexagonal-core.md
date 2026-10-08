@@ -259,7 +259,7 @@ already pure functions of state and event.
    temporary exception allowed to import `adapters/network/session` and
    `adapters/network/connection`. The adapters rule and the "only `app/` composes adapters" rule
    are unchanged. A guard test, `src/viMockPaths.test.ts`, fails when a relative `vi.mock`
-   target does not resolve, so a moved module cannot leave a mock silently pointing nowhere.
+   target does not resolve, so a moved module cannot leave a mock pointing at a file that no longer exists (it does not detect a mock of a module the code under test stopped importing).
 
 Each stage ends with all CI checks green and can be the last one.
 

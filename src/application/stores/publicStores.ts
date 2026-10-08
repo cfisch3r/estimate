@@ -2,10 +2,10 @@ import type { StoreApi, UseBoundStore } from 'zustand'
 import { useConnectionStore as connectionStore, type ConnectionStore } from './connection'
 import { useRoundStore as roundStore, type RoundStore } from './round'
 
-/** What the slice's public API exposes of the stores.
+/** What the application barrel exposes of the stores.
  *
- *  The network bridge (`api/NetworkProvider.tsx`) is the only writer of the
- *  transport-driven fields, so its mutators stay slice-internal: it imports the
+ *  The network bridge (`NetworkProvider.tsx`) is the only writer of the
+ *  transport-driven fields, so its mutators stay internal to the application layer: it imports the
  *  full stores from `./connection` / `./round` directly. Features and pages get
  *  these narrowed views, which carry the read state and the use-case actions
  *  they compose, and no way to (type-correctly) feed in a peer's snapshot,

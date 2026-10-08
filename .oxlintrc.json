@@ -230,6 +230,38 @@
               {
                 "group": ["**/adapters/**"],
                 "message": "Only app/ composes adapters (ADR-009)."
+              },
+              {
+                "group": [
+                  "**/application/stores/**",
+                  "**/application/ports/**",
+                  "**/application/useCases/**",
+                  "**/application/lib/**",
+                  "**/application/NetworkProvider"
+                ],
+                "message": "Import from the application barrel (src/application), not past it (ADR-009)."
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "files": ["src/app/**"],
+      "rules": {
+        "no-restricted-imports": [
+          "error",
+          {
+            "patterns": [
+              {
+                "group": [
+                  "**/application/stores/**",
+                  "**/application/ports/**",
+                  "**/application/useCases/**",
+                  "**/application/lib/**",
+                  "**/application/NetworkProvider"
+                ],
+                "message": "Import from the application barrel (src/application), not past it (ADR-009)."
               }
             ]
           }
@@ -256,12 +288,19 @@
                   "**/entities",
                   "**/entities/**",
                   "**/shared",
-                  "**/shared/**"
+                  "**/shared/**",
+                  "react-router",
+                  "react-router/**",
+                  "react-router-dom",
+                  "react-router-dom/**",
+                  "trystero",
+                  "trystero/**",
+                  "@trystero-p2p/**"
                 ],
                 "message": "The application layer imports only the domain and itself; UI layers are above it (ADR-009)."
               },
               {
-                "group": ["**/adapters/**"],
+                "group": ["**/adapters/**", "**/adapters"],
                 "message": "The application layer owns ports; only app/ wires adapters (ADR-009)."
               }
             ]
@@ -292,7 +331,14 @@
                   "**/entities",
                   "**/entities/**",
                   "**/shared",
-                  "**/shared/**"
+                  "**/shared/**",
+                  "react-router",
+                  "react-router/**",
+                  "react-router-dom",
+                  "react-router-dom/**",
+                  "trystero",
+                  "trystero/**",
+                  "@trystero-p2p/**"
                 ],
                 "message": "The application layer imports only the domain and itself; UI layers are above it (ADR-009)."
               },

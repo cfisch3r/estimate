@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { useSubmitEstimate } from './useSubmitEstimate'
-import { useConnectionStore, useRoundStore } from '..'
+import { useConnectionStore, useRoundStore } from '../stores'
 
 const { sendEstimateMock } = vi.hoisted(() => ({
   sendEstimateMock: vi.fn(() => Promise.resolve()),

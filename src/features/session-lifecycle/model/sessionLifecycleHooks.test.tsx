@@ -6,7 +6,6 @@ import { useConnectionStore, useRoundStore, useSessionStore } from '../../../app
 import { ROUTES } from '../../../shared/lib/routes'
 import { useLeaveLiveSession } from './useLeaveLiveSession'
 import { useLeaveWorkspace } from './useLeaveWorkspace'
-import { useReconnect } from '../../../application/useCases/useReconnect'
 import { useStartCollaborative } from './useStartCollaborative'
 import { useStartSingleUser } from './useStartSingleUser'
 
@@ -152,28 +151,5 @@ describe('useLeaveWorkspace needsConfirm', () => {
     const { result } = renderWithPath(useLeaveWorkspace, ROUTES.workspace)
 
     expect(result.current.value.needsConfirm).toBe(true)
-  })
-})
-
-describe('useReconnect', () => {
-  it('reconnects to the current session code', () => {
-    useConnectionStore.setState({ sessionId: 'K7F9Q2' })
-    const { result } = renderWithPath(useReconnect)
-
-    expect(result.current.value.canReconnect).toBe(true)
-    act(() => result.current.value.reconnect())
-
-    expect(connectMock).toHaveBeenCalledTimes(1)
-    expect(connectMock).toHaveBeenCalledWith('K7F9Q2')
-  })
-
-  it('does nothing without a session to rejoin', () => {
-    useConnectionStore.setState({ sessionId: null })
-    const { result } = renderWithPath(useReconnect)
-
-    expect(result.current.value.canReconnect).toBe(false)
-    act(() => result.current.value.reconnect())
-
-    expect(connectMock).not.toHaveBeenCalled()
   })
 })

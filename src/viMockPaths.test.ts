@@ -29,7 +29,7 @@ describe('vi.mock paths', () => {
   it('every relative vi.mock target resolves to a real module', () => {
     const stale: string[] = []
     for (const [file, source] of Object.entries(tests)) {
-      for (const match of source.matchAll(/vi\.mock\(\s*'(\.[^']*)'/g)) {
+      for (const match of source.matchAll(/vi\.(?:do)?[mM]ock\(\s*['"](\.[^'"]*)['"]/g)) {
         const spec = match[1]
         if (spec && !exists(file, spec)) stale.push(`${file}: ${spec}`)
       }

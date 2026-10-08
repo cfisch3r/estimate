@@ -10,7 +10,7 @@ import type {
   EstimationUnit,
 } from '../../../domain/estimate'
 import type { LiveRound } from '../../../domain/types'
-import { DeliveryStatus } from '../../../features/submit-estimate'
+import { DeliveryStatus } from './DeliveryStatus'
 import type { DeliveryState } from '../../../application'
 import { EstimateForm } from './EstimateForm'
 import { RoundCardHeader } from './RoundCardHeader'

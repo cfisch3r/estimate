@@ -40,7 +40,7 @@ function deriveConnectionStatus(
  *  state from `useConnectionStore` and round state from the round/session
  *  stores. Wiring only: what a snapshot contains, when a submission needs
  *  re-sending and when a departed participant is forgotten are pure policies in
- *  `../model`. */
+ *  `src/domain`. */
 export function NetworkProvider({ children }: { children: ReactNode }) {
   const sessionRef = useRef<NetworkSession | null>(null)
   const unsubscribeRef = useRef<(() => void) | null>(null)

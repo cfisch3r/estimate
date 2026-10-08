@@ -14,7 +14,7 @@ You are an architecture reviewer for the EstiMate repository, a Feature-Sliced D
   layer set (`app/pages/widgets/features/entities/shared`), and the slice mapping.
 - `.claude/skills/fsd-architecture/SKILL.md` — the slice-placement decision helper.
 - `docs/adr/009-architecture-style-fsd-vs-hexagonal-core.md` — the hexagonal core: `src/domain`, `src/application` (stores, ports, lib, use cases, `NetworkProvider`) and `src/adapters` sit outside FSD and are guarded by oxlint, not Steiger. Use cases hold no navigation; `features/` keeps UI and thin navigation wrappers.
-- `steiger.config.ts` — the documented exception (`features/submit-estimate`'s single-consumer slice) and why it is accepted.
+- `steiger.config.ts` — the enforcement source of truth for the FSD layers; it currently carries no exceptions.
 - `AGENTS.md`'s "Code conventions" section — self-validating value types, `/calc`
   purity (now `domain/estimate`), guard-function return shapes.
 

@@ -110,7 +110,7 @@ rationale. In brief, by architectural role rather than layer:
   `store.liveRound`). Pages are kept thin: per-state panels, a `model/` read-model hook
   where the store reads are non-trivial, and the shared three-point entry form
   (`ThreePointEstimateForm`, `features/estimate-round`) used by both Workspace and the
-  participant view; the single-user `useFinalizeEstimate` and participant `useSubmitEstimate` use cases live in `application/useCases`, `features/submit-estimate` holds only the delivery-status UI, and `model/useFocusHeadingOnChange` moves focus to the new
+  participant view; the single-user `useFinalizeEstimate` and participant `useSubmitEstimate` use cases live in `application/useCases`, the delivery-status UI is `pages/participant-estimate/ui/DeliveryStatus`, and `model/useFocusHeadingOnChange` moves focus to the new
   panel's heading when the round view changes.
 - **Design-system primitives** (`shared/ui`, formerly `/components`) — Button, Card,
   Field, GuardNote, ConfirmNote, GroupBox, InfoPopover, NavRow, Tag, RadioTile, BrandMark, Markdown / MarkdownEditor, LiveRegion (a persistent
