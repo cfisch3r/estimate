@@ -24,7 +24,7 @@ export interface RoundStore {
   retryRound: (id: string) => void
   /** Participant: adopt the round part of the facilitator's broadcast state. Use
    *  `applyFacilitatorSnapshot` to apply a whole snapshot (name and unit too). */
-  applySyncState: (snapshot: SessionSnapshot) => void
+  applyRoundSnapshot: (snapshot: SessionSnapshot) => void
   /** Facilitator only: record an incoming targeted submission for `itemId`
    *  into that item's `submissions`. A submission whose `itemId` isn't the
    *  active item is dropped, and so is one whose `round` doesn't match the
@@ -56,7 +56,7 @@ export const useRoundStore = create<RoundStore>((set) => ({
     patchItem(id, retryRoundPatch(item))
   },
 
-  applySyncState: (snapshot) =>
+  applyRoundSnapshot: (snapshot) =>
     set((state) => ({ liveRound: adoptSnapshot(state.liveRound, snapshot) })),
 
   applyRemoteEstimate: (itemId, estimate, round) => {

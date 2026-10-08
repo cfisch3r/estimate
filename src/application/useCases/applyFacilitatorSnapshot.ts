@@ -15,5 +15,5 @@ export function applyFacilitatorSnapshot(snapshot: SessionSnapshot): void {
   const session = useSessionStore.getState()
   if (fields.sessionName !== undefined) session.setSessionName(fields.sessionName)
   session.setUnit(fields.unit)
-  useRoundStore.getState().applySyncState(snapshot)
+  useRoundStore.getState().applyRoundSnapshot(snapshot)
 }

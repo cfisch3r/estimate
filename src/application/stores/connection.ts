@@ -25,7 +25,6 @@ export interface ConnectionStore {
    *  join; filled from peers' `announce` messages. */
   participantNames: Record<string, string>
 
-  setMode: (mode: SessionMode) => void
   setConnectionStatus: (status: LiveConnectionStatus) => void
   setPeerCount: (count: number) => void
   /** Record a peer's (or own) `participantId -> display name` mapping. */
@@ -40,17 +39,8 @@ export interface ConnectionStore {
   leaveLiveSession: () => void
 }
 
-const CONNECTION_DEFAULTS = {
-  mode: 'manual',
-  role: 'facilitator',
-  sessionId: null,
-  myName: '',
-  participantId: '',
-  connectionStatus: 'idle',
-  hasEverConnected: false,
-  peerCount: 0,
-  participantNames: {},
-} as const satisfies Pick<
+/** The connection fields that are state rather than actions. */
+export type ConnectionState = Pick<
   ConnectionStore,
   | 'mode'
   | 'role'
@@ -63,10 +53,20 @@ const CONNECTION_DEFAULTS = {
   | 'participantNames'
 >
 
+const CONNECTION_DEFAULTS = {
+  mode: 'manual',
+  role: 'facilitator',
+  sessionId: null,
+  myName: '',
+  participantId: '',
+  connectionStatus: 'idle',
+  hasEverConnected: false,
+  peerCount: 0,
+  participantNames: {},
+} as const satisfies ConnectionState
+
 export const useConnectionStore = create<ConnectionStore>((set) => ({
   ...CONNECTION_DEFAULTS,
-
-  setMode: (mode) => set({ mode }),
 
   setConnectionStatus: (status) => set((state) => withConnectionStatus(state, status)),
 

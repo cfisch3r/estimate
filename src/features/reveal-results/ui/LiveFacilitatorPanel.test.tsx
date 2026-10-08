@@ -3,7 +3,7 @@ import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
 import { createEstimate } from '../../../domain/estimate'
-import { useConnectionStore, useSessionStore } from '../../../application'
+import { useConnectionStore, useSessionStore } from '../../../application/testing'
 import type { Item } from '../../../domain/types'
 import { LiveFacilitatorPanel } from './LiveFacilitatorPanel'
 

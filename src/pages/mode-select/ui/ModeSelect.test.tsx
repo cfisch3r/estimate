@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
 import { ModeSelect } from './ModeSelect'
-import { useSessionStore, useConnectionStore } from '../../../application'
+import { useSessionStore, useConnectionStore } from '../../../application/testing'
 
 const { connectMock, navigateMock } = vi.hoisted(() => ({
   connectMock: vi.fn(),

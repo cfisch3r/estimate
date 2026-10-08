@@ -153,3 +153,24 @@ describe('clearSession', () => {
     })
   })
 })
+
+describe('setItemTitle', () => {
+  it('renames an item to the trimmed title', () => {
+    useSessionStore.getState().addItem('Old')
+    const id = useSessionStore.getState().items[0]!.id
+
+    useSessionStore.getState().setItemTitle(id, '  New  ')
+
+    expect(useSessionStore.getState().items[0]?.title).toBe('New')
+  })
+
+  it('ignores a blank title so an item never loses its name', () => {
+    useSessionStore.getState().addItem('Keep')
+    const id = useSessionStore.getState().items[0]!.id
+    const before = useSessionStore.getState().items
+
+    useSessionStore.getState().setItemTitle(id, '   ')
+
+    expect(useSessionStore.getState().items).toBe(before)
+  })
+})

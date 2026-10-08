@@ -5,11 +5,12 @@ import {
   firstPendingItemId,
   moveItem,
   removeItemFrom,
+  renameItem,
   updateItem,
 } from '../../domain/item'
 import type { Item } from '../../domain/types'
 
-interface SessionStore {
+export interface SessionStore {
   sessionName: string
   unit: EstimationUnit
   items: Item[]
@@ -58,7 +59,10 @@ export const useSessionStore = create<SessionStore>((set) => ({
     ),
 
   setItemTitle: (id, title) =>
-    set((state) => ({ items: updateItem(state.items, id, { title: title.trim() }) })),
+    set((state) => {
+      const items = renameItem(state.items, id, title)
+      return items ? { items } : {}
+    }),
 
   removeItem: (id) => set((state) => removeItemFrom(state, id)),
 

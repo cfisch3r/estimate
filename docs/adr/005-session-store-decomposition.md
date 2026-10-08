@@ -4,6 +4,10 @@
 **Date:** 2026-09-29
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [006-router-adoption.md](006-router-adoption.md), issue #111
 
+> **Update 2026-10-08:** ADR-009 stage 3 moved the stores to `src/application/stores` and the UI now sees
+> read-only, state-only views of them; the round store's `applySyncState` is now `applyRoundSnapshot`,
+> and the dead `setMode` action was removed. The text below is left as the original record.
+>
 > **Update 2026-10-05:** the round store no longer validates or aggregates. `finalizeLiveItem` was removed and `finalizeItem(id, result)` now takes an already-computed `AggregateResult`; `submitEstimate(estimate)` and `applyRemoteEstimate` take an already-valid `Estimate`, and `applySyncState` takes `Estimate[]` submissions (the wire layer validates them). `createEstimate` / `aggregateEstimates` are composed by `features/submit-estimate`, `features/reveal-results` and `features/estimate-round`. `finalResultFor` (`entities/session/model/finalResult.ts`) is the single finalize rule, and both finalize paths return the shared `ActionResult`. The slice's public API exports `useConnectionStore` / `useRoundStore` as narrowed views (`model/publicStores.ts`) without the bridge-only mutators (`setMode`, `setConnectionStatus`, `setPeerCount`, `applyParticipantName`, `removeParticipant`, `applySyncState`, `applyRemoteEstimate`); `NetworkProvider` writes through the internal stores. The action lists below record the original decomposition, and the diagrams are updated to the current actions and hooks.
 
 ## Context

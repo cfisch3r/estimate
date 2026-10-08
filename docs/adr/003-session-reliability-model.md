@@ -7,7 +7,7 @@ Stable client identity has landed (#50): `participantId` is a per-browser id per
 `getOrCreateParticipantId()` (`entities/session/lib/participantIdentity.ts`), and a `peerId ↔ participantId` map lets the facilitator prune
 `participantNames` on `onPeerLeave`. Versioned rounds have also landed (#51): `Item` /
 `SessionSnapshot` / `LiveRound` carry a `round: number`, bumped by `retryRound`, and
-`applySyncState` resets round-local state on any round change rather than only on a
+`applyRoundSnapshot` (via the domain's `adoptSnapshot`) resets round-local state on any round change rather than only on a
 `revealed` true→false transition. Single owner has also landed (#60): the facilitator's
 `items[]` is the sole source of truth, `SessionSnapshot` carries a values-free `roster`,
 `reveal`/`roundReset` are gone from the wire protocol, and a peer pulls the snapshot itself

@@ -1,6 +1,6 @@
 # ADR-009: Architecture Style — FSD Everywhere vs. a Hexagonal Core with an FSD UI
 
-**Status:** Accepted (2026-10-08); stages 1 and 2 done, stage 3 in progress (3a and 3b-1 done)
+**Status:** Accepted (2026-10-08); stages 1 and 2 done, stage 3 in progress (3a, 3b-1 and 3b-2 done)
 **Date:** 2026-10-06
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [005-session-store-decomposition.md](005-session-store-decomposition.md), [003-session-reliability-model.md](003-session-reliability-model.md), [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [006-router-adoption.md](006-router-adoption.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md)
 
@@ -239,7 +239,8 @@ already pure functions of state and event.
    one named exception for it, to be removed in stage 3c.
 3. **Extract the application layer (in progress).** Move the stores and use-case hooks into
    `application/`. The FSD `features` layer keeps only UI. Sub-steps: 3a moves the code
-   (done); 3b-1 moves the store rules into the domain (done); 3b-2, 3c and 3d are pending (3c splits `NetworkProvider`).
+   (done); 3b-1 moves the store rules into the domain (done); 3b-2 narrows the UI-visible store types and adds `useItemActions` (done); 3c and 3d are
+   pending (3c splits `NetworkProvider`).
    As built in 3a: `src/application/` holds `stores/` (`session`, `round`, `connection`,
    `publicStores`, and `index.ts`, which the use cases import), `ports/`
    (`NetworkSessionApi` and `ParticipantIdentityApi` with their React contexts and hooks),
@@ -279,10 +280,22 @@ already pure functions of state and event.
    `useRevealActions`). The round store no longer reads the connection store, so the
    store import cycle risk noted in ADR-005 is gone.
 
-   Planned for 3b-2: narrowing the UI-visible store types and adding `useItemActions`.
-   The UI-access rule that goes with it (decided 2026-10-08, implemented in 3b-2): the UI
-   may read state with selectors; writes that carry a rule go through use cases; trivial
-   setters stay directly callable.
+   As built in 3b-2: the UI-access rule (decided 2026-10-08). The UI may read store state
+   with selectors and may call the trivial field setters directly (`setSessionName`,
+   `setUnit`, `selectItem`, `setItemTitle`, `setItemNotes`, `setItemDescription`). Every
+   write that carries a rule goes through a use case: `useItemActions` (add, remove,
+   reorder) joins `useRevealActions`, `useJoinLiveSession`, `useCloseWorkspace` and the
+   rest. `stores/publicStores.ts` now gives the UI explicit, read-only, state-only views plus
+   those setters for all three stores (selectors, `getState` and `subscribe`, no `setState`),
+   so calling any other action, or writing state around the use cases, is a compile error
+   (pinned by exact-key type tests). Tests that seed state import the full stores from
+   `application/testing`, which the lint rule allows in test files only, and the barrel-only lint rule keeps the UI from importing
+   the full stores that use cases and `NetworkProvider` use (`stores/index.ts`). The
+   stores are not moved into the UI: the network code and the use cases write them too,
+   so a UI-owned store would have forced a storage port. The round store's
+   `applySyncState` became `applyRoundSnapshot`, since it adopts only the round part of a
+   snapshot (`applyFacilitatorSnapshot` applies the whole thing); the title rule behind `setItemTitle` is now the domain's `renameItem` (a blank title is ignored, as for a new item, so an item cannot lose its name — the one small behaviour change in this stage); the dead `setMode` was
+   removed.
 
 Each stage ends with all CI checks green and can be the last one.
 

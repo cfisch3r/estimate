@@ -1,4 +1,4 @@
-export { useSessionStore, useConnectionStore, useRoundStore } from './stores'
+export { useSessionStore, useConnectionStore, useRoundStore } from './stores/publicStores'
 export { NetworkProvider } from './NetworkProvider'
 export { useNetworkSession } from './ports/useNetworkSession'
 export {
@@ -12,6 +12,7 @@ export { useReconnect } from './useCases/useReconnect'
 export { useStartCollaborativeSession } from './useCases/useStartCollaborativeSession'
 export { useStartSingleUserSession } from './useCases/useStartSingleUserSession'
 export { useCloseWorkspace } from './useCases/useCloseWorkspace'
+export { useItemActions } from './useCases/useItemActions'
 export { useRevealActions } from './useCases/useRevealActions'
 export { useSubmitEstimate } from './useCases/useSubmitEstimate'
 export { useFinalizeEstimate } from './useCases/useFinalizeEstimate'

@@ -18,7 +18,8 @@ doc, add it here instead of guessing.
 | **Port** | An interface owned by the application layer that an outbound adapter implements, for example `NetworkSessionApi` (in `src/application/ports`). Ports exist only at external boundaries. | |
 | **Composition time** | The moment the app is wired together (ADR-009): the place that picks which adapter implements which port. Not runtime logic. | |
 | **Use case** | One user or peer intent run end to end (submit, reveal, retry, finalize, join, leave). Straight-line code: read state, call a domain decision, write state, trigger an effect. Rules belong in pure domain functions. | |
-| **State store** | A Zustand store that holds the current in-process state (session, round, connection). | |
+| **State store** | A Zustand store that holds the current in-process state (session, round, connection). Its actions only change that store's own state, usually by calling a pure domain rule (`set(state => rule(state, input))`). | |
+| **Store action vs use case** | The test: does the code reach outside one store? If it reads or writes another store, calls a port, or triggers an effect (network, id generation), it is a use case; the stores must not call each other. If it only transforms its own store's state, it is a store action that calls a domain rule. The UI may call a few trivial field setters on the store directly; everything else goes through a use case. | |
 | **Layer view** / **component view** | The two kinds of diagram in ADR-009: layers and their dependencies, and the boxes inside each layer. | |
 | **Lane** | Only the name of a Mermaid subgraph in our diagram convention (AGENTS.md). Never used for architecture itself. | |
 
@@ -47,7 +48,7 @@ and use "lane" and "slice" in their own sense. They are not rewritten.
 | **Round** | One pass of everyone estimating one item; the facilitator can retry it. |
 | **Submission** | One participant's estimate for the current round. |
 | **Roster** | The values-free list of who has submitted, sent in the snapshot ([ADR-003](adr/003-session-reliability-model.md)). |
-| **Snapshot** | A derived, read-only copy of the facilitator's round state that participants hold (applied via `applySyncState` to a `LiveRound`). The facilitator stays the authority. |
+| **Snapshot** | A derived, read-only copy of the facilitator's round state that participants hold (applied via `applyRoundSnapshot` to a `LiveRound`). The facilitator stays the authority. |
 | **Connection state** | The status of the peer link. It describes the link, not the estimate, so it is outside the aggregate. |
 | **Participant identity** | A participant's stable client id. Also outside the aggregate. |
 

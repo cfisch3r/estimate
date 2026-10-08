@@ -2,7 +2,13 @@ import type { ReactNode } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { MemoryRouter, useLocation } from 'react-router'
-import { useConnectionStore, useRoundStore, useSessionStore } from '../../../application'
+import {
+  resetConnectionStore,
+  useConnectionStore,
+  useRoundStore,
+  useSessionStore,
+} from '../../../application/testing'
+import { itemOf } from '../../../domain/testFixtures'
 import { ROUTES } from '../../../shared/lib/routes'
 import { useLeaveLiveSession } from './useLeaveLiveSession'
 import { useLeaveWorkspace } from './useLeaveWorkspace'
@@ -26,6 +32,13 @@ function renderWithPath<T>(hook: () => T, initialPath: string = ROUTES.modeSelec
   })
 }
 
+function seedItems(...titles: string[]) {
+  useSessionStore.setState({
+    items: titles.map((title, i) => itemOf({ id: `item-${i}`, title })),
+    activeItemId: null,
+  })
+}
+
 beforeEach(() => {
   connectMock.mockClear()
   disconnectMock.mockClear()
@@ -35,15 +48,13 @@ beforeEach(() => {
     items: [],
     activeItemId: null,
   })
-  useConnectionStore.getState().leaveLiveSession()
+  resetConnectionStore()
   useRoundStore.setState({ liveRound: null })
 })
 
 describe('useStartSingleUser', () => {
   it('selects the first pending item and opens the workspace', () => {
-    useSessionStore.getState().addItem('First')
-    useSessionStore.getState().addItem('Second')
-    useSessionStore.getState().selectItem(null)
+    seedItems('First', 'Second')
     const { result } = renderWithPath(useStartSingleUser)
 
     act(() => result.current.value())
@@ -64,8 +75,7 @@ describe('useStartSingleUser', () => {
 
 describe('useStartCollaborative', () => {
   it('selects the first pending item, enters a live facilitator session and connects', () => {
-    useSessionStore.getState().addItem('First')
-    useSessionStore.getState().selectItem(null)
+    seedItems('First')
     const { result } = renderWithPath(useStartCollaborative)
 
     act(() => result.current.value())
@@ -85,7 +95,14 @@ describe('useStartCollaborative', () => {
 })
 
 function seedLiveParticipant() {
-  useConnectionStore.getState().joinLiveSession('K7F9Q2', 'Sam', 'p-1')
+  useConnectionStore.setState({
+    mode: 'live',
+    role: 'participant',
+    sessionId: 'K7F9Q2',
+    myName: 'Sam',
+    participantId: 'p-1',
+    connectionStatus: 'connecting',
+  })
   useSessionStore.setState({ unit: 'weeks' })
   useRoundStore.setState({
     liveRound: {
@@ -102,7 +119,7 @@ function seedLiveParticipant() {
 describe('useLeaveLiveSession', () => {
   it('disconnects, resets connection, round and inherited unit, and returns to mode-select', () => {
     seedLiveParticipant()
-    useSessionStore.getState().addItem('Keep me')
+    seedItems('Keep me')
     const { result } = renderWithPath(useLeaveLiveSession, ROUTES.estimate)
 
     act(() => result.current.value())
@@ -119,7 +136,7 @@ describe('useLeaveLiveSession', () => {
 describe('useLeaveWorkspace', () => {
   it('also clears the item list', () => {
     seedLiveParticipant()
-    useSessionStore.getState().addItem('Gone')
+    seedItems('Gone')
     const { result } = renderWithPath(useLeaveWorkspace, ROUTES.workspace)
 
     act(() => result.current.value.leaveWorkspace())
