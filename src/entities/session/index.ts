@@ -27,8 +27,14 @@ export {
 
 export { useSessionStore } from './model/session'
 export { useConnectionStore, useRoundStore } from './model/publicStores'
-export type { Item, LiveRound, SessionMode, SessionRole } from '../../domain/types'
-export type { LiveConnectionStatus } from './model/connectionStatus'
+export type {
+  Item,
+  LiveRound,
+  LiveConnectionStatus,
+  SessionMode,
+  SessionRole,
+} from '../../domain/types'
+
 export { isFinalized } from '../../domain/item'
 export { roundMemberIds } from '../../domain/roster'
 export { finalResultFor } from '../../domain/finalResult'
@@ -38,6 +44,11 @@ export { participantLabels } from '../../domain/participantLabel'
 export { generateSessionCode } from './api/sessionCode'
 export { NetworkProvider } from './api/NetworkProvider'
 export { useNetworkSession } from './api/useNetworkSession'
+export {
+  ParticipantIdentityContext,
+  useParticipantIdentity,
+} from './api/participantIdentityContext'
+export type { ParticipantIdentityApi } from './api/participantIdentityContext'
 
 export { ItemDetailShell } from './ui/ItemDetailShell'
 export { EstimateTriple } from './ui/estimate/EstimateTriple'

@@ -1,6 +1,6 @@
 # ADR-009: Architecture Style — FSD Everywhere vs. a Hexagonal Core with an FSD UI
 
-**Status:** Accepted (2026-10-08); stage 1 done (domain extracted to `src/domain/`)
+**Status:** Accepted (2026-10-08); stages 1 and 2 done (domain in `src/domain/`, adapters in `src/adapters/`)
 **Date:** 2026-10-06
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [005-session-store-decomposition.md](005-session-store-decomposition.md), [003-session-reliability-model.md](003-session-reliability-model.md), [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [006-router-adoption.md](006-router-adoption.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md)
 
@@ -204,8 +204,7 @@ check it.
 Zustand stays out of the domain so that the domain's "no framework, no I/O" rule stays
 literal. The four stores (`session`, `round`, `connection`, `publicStores`) are the
 only files in `entities/session/model` that import a package; the pure modules that
-used to sit beside them now live in `src/domain/` (stage 1) and import only each other (the connection store also imports the identity helper from
-`lib/`; see stage 2), which supports the split. The connection store holds state about
+used to sit beside them now live in `src/domain/` (stage 1) and import only each other (stage 2 removed the connection store's one adapter import, the identity helper: the store now receives the id as an argument), which supports the split. The connection store holds state about
 the link, not about the estimate; it is written mostly by the network adapter, with its
 pure rules (for example which departed participants to prune) in the domain. The
 facilitator remains the authority (ADR-003): their store holds the full round state and
@@ -223,12 +222,21 @@ already pure functions of state and event.
    `resend`, `finalResult`) into a `src/domain/` folder with an enforced "imports nothing
    outside `domain/`" rule. This alone removes the weakest point left after the
    2026-10-05/06 refactor (a convention-only boundary).
-2. **Extract the adapters.** Move `entities/session/api/` (transport, wire parsing,
+2. **Extract the adapters (done).** Move `entities/session/api/` (transport, wire parsing,
    signaling) and the participant-identity helper into `adapters/`.
    `NetworkProvider` becomes the composition point that wires an adapter to the use
    cases. One catch: `model/connection.ts` currently imports the identity helper,
    so the use case would depend on an adapter, which contradicts the diagram. The
    identity would have to be passed in (a port) or created at the composition point.
+   As built: the wire files went to `src/adapters/network/` and the identity helper to
+   `src/adapters/storage/`. The join use case (`useJoinLiveSession`) reads the id through an
+   application-owned identity port (`ParticipantIdentityApi`, provided in `app/App.tsx`) and
+   passes it to `joinLiveSession` as an argument, so the store imports no adapter.
+   `ConnectionStatus` moved into `src/domain/types.ts` because both the adapter and the
+   store need it. `NetworkProvider`, the `NetworkSessionApi` port, `retryPolicy` and
+   `sessionCode` stay in `entities/session/api` until stage 3. That is a temporary state: the
+   provider sits in an FSD layer (the UI side) yet imports adapters, so the oxlint rule carries
+   one named exception for it, to be removed in stage 3.
 3. **Extract the application layer.** Move the stores and use-case hooks into
    `application/`. The FSD `features` layer keeps only UI.
 
@@ -301,5 +309,5 @@ needed for these rules.
 | Can Steiger be scoped to the UI folder, and is an `entities` layer required there? | Settled by a check: yes, and no (see "Enforcement") |
 | Can the domain and adapter boundaries be enforced with current tooling? | Settled by a check: yes, with oxlint (see "Enforcement") |
 | Should the round be an explicit state machine, and with what? | Deferred to a separate decision; the pure transitions from stage 3 are its prerequisite |
-| How does the connection store get the participant identity without depending on an adapter? | Deferred to stage 2 (inject it, or create it at the composition point) |
-| Folder names and the domain's internal structure per concept | Settled in stage 1: a flat `src/domain/` with an `estimate/` subfolder; folder names for adapters and application are decided in their stages |
+| How does the connection store get the participant identity without depending on an adapter? | Settled in stage 2: the join use case reads it through an application-owned port, provided in `app/App.tsx`, and passes it to the store as an argument |
+| Folder names and the domain's internal structure per concept | Settled in stage 1: a flat `src/domain/` with an `estimate/` subfolder; adapters settled in stage 2 as `adapters/network` and `adapters/storage`; the application layer's folder is decided in stage 3 |

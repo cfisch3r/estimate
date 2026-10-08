@@ -56,14 +56,16 @@ describe('startCollaborative', () => {
 
 describe('joinLiveSession', () => {
   it('ignores a blank code or blank name, reporting it did not proceed', () => {
-    expect(useConnectionStore.getState().joinLiveSession('   ', 'Sam')).toBe(false)
-    expect(useConnectionStore.getState().joinLiveSession('K7F9Q2', '   ')).toBe(false)
+    expect(useConnectionStore.getState().joinLiveSession('   ', 'Sam', 'p-1')).toBe(false)
+    expect(useConnectionStore.getState().joinLiveSession('K7F9Q2', '   ', 'p-1')).toBe(
+      false,
+    )
     expect(useConnectionStore.getState().mode).toBe('manual')
   })
 
   it('enters a connecting participant session, normalising the code, and reports it proceeded', () => {
     expect(
-      useConnectionStore.getState().joinLiveSession('  k7f9q2 ', '  Sam Rivera  '),
+      useConnectionStore.getState().joinLiveSession('  k7f9q2 ', '  Sam Rivera  ', 'p-1'),
     ).toBe(true)
 
     expect(useConnectionStore.getState()).toMatchObject({
@@ -75,23 +77,13 @@ describe('joinLiveSession', () => {
     })
   })
 
-  it('reuses the same participantId across a drop and rejoin in the same browser', () => {
-    useConnectionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
-    const firstId = useConnectionStore.getState().participantId
-
-    useConnectionStore.getState().leaveLiveSession()
-    useConnectionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
-
-    expect(useConnectionStore.getState().participantId).toBe(firstId)
-  })
-
-  it('assigns a stable participant id on join', () => {
-    useConnectionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
-    expect(useConnectionStore.getState().participantId).toMatch(/[0-9a-f-]{36}/)
+  it('stores the participant id it is given', () => {
+    useConnectionStore.getState().joinLiveSession('K7F9Q2', 'Sam', 'p-1')
+    expect(useConnectionStore.getState().participantId).toBe('p-1')
   })
 
   it("seeds the participant's own trimmed display name against their id", () => {
-    useConnectionStore.getState().joinLiveSession('K7F9Q2', '  Sam Rivera  ')
+    useConnectionStore.getState().joinLiveSession('K7F9Q2', '  Sam Rivera  ', 'p-1')
     const { participantId, participantNames } = useConnectionStore.getState()
     expect(participantNames).toEqual({ [participantId]: 'Sam Rivera' })
   })
@@ -99,7 +91,7 @@ describe('joinLiveSession', () => {
 
 describe('leaveLiveSession', () => {
   it('resets every live field', () => {
-    useConnectionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
+    useConnectionStore.getState().joinLiveSession('K7F9Q2', 'Sam', 'p-1')
     useConnectionStore.getState().setConnectionStatus('connected')
     useConnectionStore.getState().setPeerCount(3)
 
@@ -117,7 +109,7 @@ describe('leaveLiveSession', () => {
   })
 
   it('clears participantNames on leave', () => {
-    useConnectionStore.getState().joinLiveSession('K7F9Q2', 'Sam')
+    useConnectionStore.getState().joinLiveSession('K7F9Q2', 'Sam', 'p-1')
     useConnectionStore.getState().applyParticipantName('peer-1', 'Jordan')
     useConnectionStore.getState().leaveLiveSession()
     expect(useConnectionStore.getState().participantNames).toEqual({})

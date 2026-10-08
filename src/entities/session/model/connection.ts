@@ -1,8 +1,10 @@
 import { create } from 'zustand'
-import { getOrCreateParticipantId } from '../lib/participantIdentity'
 import { FACILITATOR_PARTICIPANT_ID } from '../../../domain/participantId'
-import type { SessionMode, SessionRole } from '../../../domain/types'
-import type { LiveConnectionStatus } from './connectionStatus'
+import type {
+  LiveConnectionStatus,
+  SessionMode,
+  SessionRole,
+} from '../../../domain/types'
 
 export interface ConnectionStore {
   mode: SessionMode
@@ -34,7 +36,7 @@ export interface ConnectionStore {
   /** Returns whether the join actually proceeded, so a caller composing this
    *  with another store's reset (e.g. `useJoinLiveSession` clearing the round
    *  view) doesn't do so on a no-op call. */
-  joinLiveSession: (sessionCode: string, name: string) => boolean
+  joinLiveSession: (sessionCode: string, name: string, participantId: string) => boolean
   leaveLiveSession: () => void
 }
 
@@ -98,11 +100,10 @@ export const useConnectionStore = create<ConnectionStore>((set) => ({
     })
   },
 
-  joinLiveSession: (sessionCode, name) => {
+  joinLiveSession: (sessionCode, name, participantId) => {
     const code = sessionCode.trim().toUpperCase()
     const trimmedName = name.trim()
     if (code.length === 0 || trimmedName.length === 0) return false
-    const participantId = getOrCreateParticipantId()
     set({
       mode: 'live',
       role: 'participant',

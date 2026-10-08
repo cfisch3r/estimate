@@ -20,9 +20,9 @@ snapshot itself via `requestSnapshot` rather than waiting for the facilitator to
 ## Component view
 
 Level-3 (component) view. Each box carries its `[type]`; responsibilities are in the table
-below. Lanes are grouped by FSD slice/segment (see
+below. Lanes follow FSD slice/segment (see
 [ADR-004](../adr/004-feature-sliced-design-architecture.md) — a single source directory no
-longer maps to one lane the way `src/network` once did). Lines: **solid** = synchronous call,
+longer maps to one lane the way `src/network` once did) or, for `src/domain` and `src/adapters`, ADR-009 layers. Lines: **solid** = synchronous call,
 **dotted** = asynchronous callback / event / read, `<-->` = bidirectional.
 
 ```mermaid
@@ -50,14 +50,14 @@ flowchart TD
     direction LR
     NP["NetworkProvider<br/>[React Context Provider]"]
     Hook["useNetworkSession<br/>[React Hook]"]
+    Code["generateSessionCode<br/>[Function]"]
   end
 
-  subgraph core["ENTITIES: SESSION (API, FRAMEWORK-FREE) LANE &nbsp;·&nbsp; entities/session/api"]
+  subgraph core["ADAPTERS LANE &nbsp;·&nbsp; src/adapters/network"]
     direction LR
     JSN["joinSession<br/>[Factory Function]"]
     Act["typed actions<br/>[Module]"]
     Conn["connection tracker<br/>[Module]"]
-    Code["generateSessionCode<br/>[Function]"]
   end
 
   subgraph purelane["DOMAIN LANE &nbsp;·&nbsp; src/domain"]
@@ -111,8 +111,8 @@ flowchart TD
   class MS,JS,PEV,WS ui
   class UCP shared
   class SessStore,ConnStore,RoundStore state
-  class NP,Hook br
-  class JSN,Act,Conn,Code pcore
+  class NP,Hook,Code br
+  class JSN,Act,Conn pcore
   class Calc,Policies pure
   class Trystero ext
 
@@ -143,7 +143,7 @@ flowchart TD
 | **typed actions** | Module | Defines the wire actions — two message actions (`syncState`, `announce`) and two request/response actions (`submitEstimate`, `requestSnapshot`) — serialises outbound messages, and validates every inbound message (through `parseWireEstimate` — `createEstimate` — for estimates, which is why only untrusted wire input goes through it; shape checks for the rest) before surfacing it. `submitEstimate` sends an `{ itemId, round, estimate }` envelope as a request, targeted with `{ target: facilitatorPeerId, timeoutMs: 800 }` so it reaches the facilitator only (a straggler submission for a finished item can be dropped rather than mis-recorded); the facilitator's `onRequest` handler acks with `EstimateAck` (`{ ok: true }`) or throws on a malformed payload, surfacing as a typed rejection (`error.kind`: `timeout` \| `disconnected` \| `aborted` \| a generic rejection) that the caller's shared retry policy keys on (ADR-003, "Acknowledged submissions", #61). `syncState` carries `sessionName`, `unit`, `revealed`, `round`, a values-free `roster: Array<{ participantId, submitted, connected }>`, and — once `revealed` — the frozen `submissions` set. `sessionName` follows the same missing-field tolerance as `unit`/`revealed`/`round` (defaults to `''` if an older peer omits it), and drives the participant kicker's "name (code)" display, falling back to the code alone when empty. `requestSnapshot` lets a peer that just connected or reconnected pull the current `syncState` payload directly from the facilitator instead of waiting for a push, on the same request/retry pattern as `submitEstimate`. `announce` carries a `participantId -> display name` pair, kept off the pure `Estimate` type. |
 | **connection tracker** | Module | State machine over peer join/leave and join errors → `connecting` / `connected` / `disconnected` plus the peer list; notifies subscribers on change. (`idle` is store-only — the "not in a live session" default in `LiveConnectionStatus`; the tracker starts at `connecting`.) |
 | **generateSessionCode** | Function | Returns a 6-char Crockford-base32 code (crypto RNG, ambiguous characters removed), used as both the shareable code and the Trystero room id. |
-| **estimation engine** | Pure Module | Existing framework-free math (`createEstimate`, `aggregateEstimates`, `computeCI90`, guards) in `domain/estimate`. `createEstimate` / `isEstimationUnit` are reached from `entities/session/api/wireParse.ts` (`parseWireEstimate`, `parseWireUnit`), the single anti-corruption boundary for peer input; `createEstimate` and `aggregateEstimates` are otherwise called by the feature use-case hooks, not by the stores. |
+| **estimation engine** | Pure Module | Existing framework-free math (`createEstimate`, `aggregateEstimates`, `computeCI90`, guards) in `domain/estimate`. `createEstimate` / `isEstimationUnit` are reached from `adapters/network/wireParse.ts` (`parseWireEstimate`, `parseWireUnit`), the single anti-corruption boundary for peer input; `createEstimate` and `aggregateEstimates` are otherwise called by the feature use-case hooks, not by the stores. |
 | **trystero/nostr** | Library (external) | Third-party. Establishes the WebRTC peer mesh and uses Nostr relays for signalling only — no session data is stored on any relay. |
 
 ## Join sequence (#6)
@@ -266,7 +266,7 @@ will disappear once that lands; still shipped as shown above until then.
 
 ## Connection state machine
 
-Mirrored from `entities/session/api`'s connection tracker into `useConnectionStore`'s
+Mirrored from the connection tracker in `adapters/network` into `useConnectionStore`'s
 `connectionStatus`:
 
 ```mermaid
@@ -460,7 +460,7 @@ public-API surface.
 | `role: 'facilitator' \| 'participant'` | defaults to `facilitator`; Join flips it to `participant` |
 | `sessionId: string \| null` | the shared 6-char code = Trystero room id |
 | `myName: string` | participant display name (named, never anonymous) |
-| `participantId: string` | stable per-browser id (`getOrCreateParticipantId()`, persisted in `localStorage`), the submission key — survives a drop/rejoin so a reconnect isn't double-counted (#50) |
+| `participantId: string` | stable per-browser id (`getOrCreateParticipantId()` in `adapters/storage`, persisted in `localStorage`; the join use case reads it through an identity port that `app/App.tsx` provides), the submission key — survives a drop/rejoin so a reconnect isn't double-counted (#50) |
 | `connectionStatus` | `idle \| connecting \| connected \| disconnected` |
 | `peerCount: number` | connected peers, for the facilitator strip |
 | `participantNames: Record<string, string>` | `participantId -> display name` for every announced client (own entry seeded on join / start; peers filled in by `applyParticipantName` from inbound `announce`). Lets the participant reveal list and the facilitator's 1c/1d roster show real names instead of the `participantLabels` fallback "Teammate N". Reset on leave; on the facilitator, `NetworkProvider` also prunes a departed participant's entry via `removeParticipant` when its `peerId` (mapped from `announce`) reports `onPeerLeave` — unless another live connection still backs that `participantId` (two tabs), or the participant already has a submission this round (its name stays with the recorded estimate per ADR-003). |
@@ -473,7 +473,7 @@ public-API surface.
 
 ## Trust boundary
 
-Every inbound peer message crossing `trystero/nostr → entities/session/api/actions` is untrusted:
+Every inbound peer message crossing `trystero/nostr → adapters/network/actions` is untrusted:
 `submitEstimate` must be an `{ itemId, estimate }` envelope with a non-empty string
 `itemId` (a missing/empty one is read as a bare pre-#8 estimate under an empty item id
 instead), and the estimate re-runs `createEstimate`. Since #61, `submitEstimate` is a

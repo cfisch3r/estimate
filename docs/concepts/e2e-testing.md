@@ -36,7 +36,7 @@ flowchart TD
     ViteConfig["vite.config.ts<br/>[Build Config]"]
   end
 
-  subgraph signalinglane["ENTITIES: SESSION (SIGNALING) LANE · entities/session/api"]
+  subgraph signalinglane["ADAPTERS (SIGNALING) LANE · src/adapters/network"]
     direction LR
     SessionFactory["session.ts (joinSession)<br/>[Factory Function]"]
     SigProd["signaling.ts<br/>[Signaling Strategy: Production]"]

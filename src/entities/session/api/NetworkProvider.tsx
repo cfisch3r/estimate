@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
-import { joinSession } from './session'
-import type { NetworkSession } from './session'
-import type { ConnectionState } from './connection'
+import { joinSession } from '../../../adapters/network/session'
+import type { NetworkSession } from '../../../adapters/network/session'
+import type { ConnectionState } from '../../../adapters/network/connection'
 import { NetworkSessionContext, type NetworkSessionApi } from './networkSessionContext'
 import { withKindDrivenRetry } from './retryPolicy'
 import { useSessionStore } from '../model/session'
@@ -12,8 +12,7 @@ import { FACILITATOR_PARTICIPANT_ID } from '../../../domain/participantId'
 import { needsResend } from '../../../domain/resend'
 import { shouldPruneDeparted } from '../../../domain/roster'
 import { buildSessionSnapshot, snapshotChangeKey } from '../../../domain/snapshot'
-import type { SessionRole } from '../../../domain/types'
-import type { ConnectionStatus } from '../model/connectionStatus'
+import type { ConnectionStatus, SessionRole } from '../../../domain/types'
 
 /** For a participant, the transport can report `'connected'` the instant it
  *  reaches ANY peer — including another participant, never the facilitator.
