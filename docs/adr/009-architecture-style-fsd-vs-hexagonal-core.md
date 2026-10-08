@@ -92,7 +92,7 @@ flowchart TB
   subgraph AD["ADAPTERS"]
     direction TB
     Net["Network and wire parsing<br/>[Trystero adapter]"]
-    Store["Storage, export, import<br/>[Browser and file adapters]"]
+    Store["Storage and export<br/>[Browser and file adapters]"]
   end
   Ext["Peers, relays, browser storage<br/>[External systems]"]
   Pages -->|composes| Features
@@ -102,7 +102,6 @@ flowchart TB
   UseCases -->|reads and writes| Stores
   Net -->|dispatches peer messages into| UseCases
   Net -->|subscribes for snapshot broadcast| Stores
-  Store -->|imports sessions through| UseCases
   Net -->|validates with| Core
   Store -->|serialises with| Core
   Ext <-->|WebRTC and relays| Net
@@ -130,7 +129,7 @@ flowchart TB
 | **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, written as straight-line code: read state, call a domain decision, write state, trigger an effect. Owns the interfaces (ports) that adapters implement, such as the peer transport (today `NetworkSessionApi`). Replaces today's use-case hooks in `features/`. |
 | **State stores** | Application | The Zustand stores holding the current session, round and connection state (see "Where state lives"). Replaces the stores in `entities/session/model`. |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. Calls the use cases when a peer message arrives, broadcasts the facilitator's snapshot when the stores change, and implements the peer-transport port the use cases send through. |
-| **Storage, export, import** | Adapters | Participant-identity storage today; future save/load, CSV and link export, and backlog import. Implements the storage port; imports go in through the use cases. |
+| **Storage and export** | Adapters | Participant-identity storage today; future save/load and CSV and link export. Driven by the application through the storage port it implements. An import adapter (backlog import, a later phase) would be a separate driving adapter that calls the use cases, added when that phase is designed. |
 | **Features** | UI | UI-only features and their components. They call use cases; they no longer own them. |
 | **Pages and widgets** | UI | Screens and widgets composed from features and shared UI, plus routing (ADR-006) and the design system. |
 | **Peers, relays, browser storage** | External | Not part of the codebase. |
