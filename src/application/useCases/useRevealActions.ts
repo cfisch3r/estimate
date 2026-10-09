@@ -12,7 +12,7 @@ interface RevealActions {
  *  actions bound to it.
  *
  *  Reveal and Retry are local store mutations only — the store subscription in
- *  `NetworkProvider` broadcasts the resulting snapshot (revealed / round changed)
+ *  the live-session controller broadcasts the resulting snapshot (revealed / round changed)
  *  to participants, so there is no separate wire event to send from here.
  *
  *  Finalize aggregates the round's collected submissions here, then hands the
