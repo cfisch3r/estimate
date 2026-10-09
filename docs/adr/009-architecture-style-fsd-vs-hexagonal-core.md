@@ -314,7 +314,10 @@ already pure functions of state and event.
    `adapters/network`'s `joinSession` into the controller and provides
    `NetworkSessionContext`; the application barrel no longer exports `NetworkProvider` or the controller: those, with
    `NetworkSessionContext` and the port types the shell needs, come from a separate
-   `application/composition.ts` entry that the lint rule allows in `src/app` only. The
+   `application/composition.ts` entry that the lint rule allows in `src/app` and in test
+   files only. The identity port's context and the `useNetworkSession` / `useParticipantIdentity`
+   hooks moved there too: no UI code outside `application` used them, only the composition
+   root and tests that provide them. The
    temporary oxlint exception is gone: `application` imports no adapter at all. Three small
    predicates moved into the domain: `shouldBroadcastSnapshot` and `announcementFor`
    (`domain/connection.ts`) and `roundKey` (`domain/resend.ts`).

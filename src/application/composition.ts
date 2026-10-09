@@ -9,4 +9,9 @@ export {
   NetworkSessionContext,
   type NetworkSessionApi,
 } from './ports/networkSessionContext'
+export { useNetworkSession } from './ports/useNetworkSession'
+export {
+  ParticipantIdentityContext,
+  type ParticipantIdentityApi,
+} from './ports/participantIdentityContext'
 export type { ConnectionState, JoinSession } from './ports/outbound/networkTransport'
