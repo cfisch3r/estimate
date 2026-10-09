@@ -1,15 +1,19 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ConnectionState } from './ports/networkTransport'
+import {
+  useNetworkSession,
+  type ConnectionState,
+  type NetworkSessionApi,
+} from '../application'
 import { NetworkProvider } from './NetworkProvider'
-import { useNetworkSession } from './ports/useNetworkSession'
-import type { NetworkSessionApi } from './ports/networkSessionContext'
 import { createEstimate, type EstimationUnit } from '../domain/estimate'
-import { useSessionStore } from './stores/session'
 import { estimateOf } from '../domain/testFixtures'
-import { useConnectionStore } from './stores/connection'
-import { useRoundStore } from './stores/round'
+import {
+  useConnectionStore,
+  useRoundStore,
+  useSessionStore,
+} from '../application/testing'
 import type {
   Item,
   LiveConnectionStatus,

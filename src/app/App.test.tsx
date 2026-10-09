@@ -8,7 +8,7 @@ import { useSessionStore, useConnectionStore } from '../application/testing'
 vi.mock('../application/useCases/sessionCode', () => ({
   generateSessionCode: () => 'LIVECODE',
 }))
-vi.mock('../application/NetworkProvider', () => ({
+vi.mock('./NetworkProvider', () => ({
   NetworkProvider: ({ children }: { children: ReactNode }) => children,
 }))
 vi.mock('../application/ports/useNetworkSession', () => ({

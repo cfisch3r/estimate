@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router'
-import { NetworkProvider, ParticipantIdentityContext } from '../application'
+import { ParticipantIdentityContext } from '../application'
+import { NetworkProvider } from './NetworkProvider'
 import { getOrCreateParticipantId } from '../adapters/storage/participantIdentity'
 import { ROUTES } from '../shared/lib/routes'
 import { Header } from './Header'

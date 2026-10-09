@@ -1,5 +1,11 @@
 export { useSessionStore, useConnectionStore, useRoundStore } from './stores/publicStores'
-export { NetworkProvider } from './NetworkProvider'
+export {
+  createLiveSessionController,
+  type LiveSessionController,
+} from './useCases/liveSessionController'
+export { NetworkSessionContext } from './ports/networkSessionContext'
+export type { NetworkSessionApi } from './ports/networkSessionContext'
+export type { ConnectionState } from './ports/networkTransport'
 export { useNetworkSession } from './ports/useNetworkSession'
 export {
   ParticipantIdentityContext,
