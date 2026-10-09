@@ -1,4 +1,5 @@
 import type { Estimate } from '../../domain/estimate'
+import type { ParticipantAnnounce } from '../../domain/types'
 import { parseWireEstimate, parseWireUnit } from './wireParse'
 import type { RosterEntry, SessionSnapshot, SnapshotItem } from '../../domain/types'
 
@@ -20,14 +21,6 @@ interface EstimateMessage {
  *  delivery actually converges on (ADR-003, "Acknowledged submissions"). */
 interface EstimateAck {
   ok: true
-}
-
-/** A client announcing which display name belongs to its `participantId`, so
- *  peers can label reveal rows with real names instead of "Teammate N". Kept off
- *  the pure `Estimate` wire type — names never enter `calc`. */
-export interface ParticipantAnnounce {
-  participantId: string
-  name: string
 }
 
 type Unsubscribe = () => void

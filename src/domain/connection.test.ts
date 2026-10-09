@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import {
   deriveConnectionStatus,
   facilitatorStart,
+  announcementFor,
   leavingNeedsConfirm,
+  shouldBroadcastSnapshot,
   normalizeSessionCode,
   participantJoin,
   withConnectionStatus,
@@ -110,5 +112,45 @@ describe('leavingNeedsConfirm', () => {
     ['manual', 3, false],
   ] as const)('mode %s with %i peers -> %s', (mode, peers, expected) => {
     expect(leavingNeedsConfirm(mode, peers)).toBe(expected)
+  })
+})
+
+describe('shouldBroadcastSnapshot', () => {
+  it('is true only for a facilitator hosting a live session with a code', () => {
+    expect(shouldBroadcastSnapshot('live', 'facilitator', 'K7F9Q2')).toBe(true)
+  })
+
+  it.each([
+    ['manual', 'facilitator', 'K7F9Q2'],
+    ['live', 'participant', 'K7F9Q2'],
+    ['live', 'facilitator', null],
+    ['live', 'facilitator', ''],
+  ] as const)('is false for mode %s, role %s, code %j', (mode, role, sessionId) => {
+    expect(shouldBroadcastSnapshot(mode, role, sessionId)).toBe(false)
+  })
+})
+
+describe('announcementFor', () => {
+  const participant = {
+    mode: 'live',
+    role: 'participant',
+    myName: 'Sam',
+    participantId: 'p-1',
+  } as const
+
+  it('announces a participant under its own id and name', () => {
+    expect(announcementFor(participant)).toEqual({ participantId: 'p-1', name: 'Sam' })
+  })
+
+  it('announces the facilitator under the reserved facilitator id', () => {
+    expect(
+      announcementFor({ ...participant, role: 'facilitator', participantId: '' }),
+    ).toEqual({ participantId: 'facilitator', name: 'Sam' })
+  })
+
+  it('announces nothing outside a live session, without a name, or without an id', () => {
+    expect(announcementFor({ ...participant, mode: 'manual' })).toBeNull()
+    expect(announcementFor({ ...participant, myName: '   ' })).toBeNull()
+    expect(announcementFor({ ...participant, participantId: '' })).toBeNull()
   })
 })

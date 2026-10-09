@@ -1,11 +1,4 @@
 export { useSessionStore, useConnectionStore, useRoundStore } from './stores/publicStores'
-export { NetworkProvider } from './NetworkProvider'
-export { useNetworkSession } from './ports/useNetworkSession'
-export {
-  ParticipantIdentityContext,
-  useParticipantIdentity,
-} from './ports/participantIdentityContext'
-export type { ParticipantIdentityApi } from './ports/participantIdentityContext'
 export { useJoinLiveSession } from './useCases/useJoinLiveSession'
 export { useTeardownLiveSession } from './useCases/useTeardownLiveSession'
 export { useReconnect } from './useCases/useReconnect'
