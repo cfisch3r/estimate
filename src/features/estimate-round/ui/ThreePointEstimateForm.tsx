@@ -9,7 +9,7 @@ import {
   type EstimateValues,
   type EstimationUnit,
 } from '../../../domain/estimate'
-import { RangeBar } from '../../../entities/session'
+import { RangeBar } from '../../../entities/estimate'
 import { useThreePointDraft } from '../model/useThreePointDraft'
 import { PhasePicker } from './PhasePicker'
 import { ThreePointEstimateFields } from './ThreePointEstimateFields'

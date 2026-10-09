@@ -3,7 +3,7 @@ import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import { PencilSimpleIcon } from '@phosphor-icons/react/dist/csr/PencilSimple'
 import { Button, Card, LiveRegion, VisuallyHidden } from '../../../shared/ui'
 import type { ConnectionPhase } from '../../../shared/lib/useConnectionPhase'
-import { EstimateTriple } from '../../../entities/session'
+import { EstimateTriple } from '../../../entities/estimate'
 import type {
   ActionResult,
   EstimateValues,
