@@ -125,12 +125,12 @@ flowchart TD
   class Calc,Policies,StoreRules pure
   class Trystero ext
 
-  style pageslane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
-  style sharedlane fill:#FDF2F8,stroke:#DB2777,stroke-width:2px
-  style shelllane fill:#FEFCE8,stroke:#CA8A04,stroke-width:2px
-  style applane   fill:#F0FDFA,stroke:#0D9488,stroke-width:2px
-  style core      fill:#EFF6FF,stroke:#2563EB,stroke-width:2px
-  style purelane  fill:#F8FAFC,stroke:#64748B,stroke-width:2px
+  style pageslane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
+  style sharedlane fill:#FDF2F8,stroke:#DB2777,stroke-width:2px,color:#14171f
+  style shelllane fill:#FEFCE8,stroke:#CA8A04,stroke-width:2px,color:#14171f
+  style applane   fill:#F0FDFA,stroke:#0D9488,stroke-width:2px,color:#14171f
+  style core      fill:#EFF6FF,stroke:#2563EB,stroke-width:2px,color:#14171f
+  style purelane  fill:#F8FAFC,stroke:#64748B,stroke-width:2px,color:#14171f
 ```
 
 ### Component responsibilities
@@ -222,7 +222,7 @@ sequenceDiagram
   P-->>P: waiting state with revise affordance + delivery sub-state (5d)
   Note over P: if the roster still shows this participant unsubmitted on a later snapshot (e.g. the ack above was lost), P re-sends the same request — this, not the ack, is the actual convergence mechanism (#61)
   F->>F: Reveal estimates (enabled once ≥1 submission) → roundStore.revealRound(itemId)
-  Note over F,R: revealRound is a local store mutation (via session.ts patchItem); the store subscription broadcasts revealed:true + the frozen submissions
+  Note over F,R: revealRound is a local store mutation (via session.ts patchItem), and the store subscription broadcasts revealed:true + the frozen submissions
   R-->>P: onSyncState → applyFacilitatorSnapshot → revealed = true, submissions from the snapshot
   F-->>F: Workspace 1d — aggregated range bar + per-participant values
   P-->>P: revealed state: aggregated range bar + participant list (5e)
@@ -386,8 +386,8 @@ flowchart TD
   class Sig,Stun ext
   class Turn gap
 
-  style facnet fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
-  style parnet fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
+  style facnet fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
+  style parnet fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
 ```
 
 | Box | Role |

@@ -70,9 +70,9 @@ flowchart TB
   class AppShell,Header app
   class Workspace,Participant,OtherPages pages
   class Store session
-  style APP fill:#eef2ff,stroke:#6366f1,stroke-width:2px
-  style PAGES fill:#ecfdf5,stroke:#10b981,stroke-width:2px
-  style SESSION fill:#fff7ed,stroke:#f97316,stroke-width:2px
+  style APP fill:#eef2ff,stroke:#6366f1,stroke-width:2px,color:#14171f
+  style PAGES fill:#ecfdf5,stroke:#10b981,stroke-width:2px,color:#14171f
+  style SESSION fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#14171f
 ```
 
 Two problems this causes concretely:
@@ -193,9 +193,9 @@ flowchart TB
   class EstimateRound,RevealResults,LeaveWorkspace features
   class SessionStore,ConnStore,RoundStore session
   class NetworkProvider net
-  style FEATURES fill:#fdf4ff,stroke:#a855f7,stroke-width:2px
-  style SESSION fill:#fff7ed,stroke:#f97316,stroke-width:2px
-  style NET fill:#f0fdf4,stroke:#22c55e,stroke-width:2px
+  style FEATURES fill:#fdf4ff,stroke:#a855f7,stroke-width:2px,color:#14171f
+  style SESSION fill:#fff7ed,stroke:#f97316,stroke-width:2px,color:#14171f
+  style NET fill:#f0fdf4,stroke:#22c55e,stroke-width:2px,color:#14171f
 ```
 
 **Responsibilities:**

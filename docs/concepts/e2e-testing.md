@@ -73,9 +73,9 @@ flowchart TD
   class SessionFactory,SigProd,SigTest,SigShared sig
   class WsRelayLib,NostrLib,Chromium ext
 
-  style e2elane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
-  style configlane fill:#FFFBEB,stroke:#D97706,stroke-width:2px
-  style signalinglane fill:#F0FDFA,stroke:#0D9488,stroke-width:2px
+  style e2elane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
+  style configlane fill:#FFFBEB,stroke:#D97706,stroke-width:2px,color:#14171f
+  style signalinglane fill:#F0FDFA,stroke:#0D9488,stroke-width:2px,color:#14171f
 ```
 
 `session.ts` resolves the top-level `await import(...)` once, at module init — not per
