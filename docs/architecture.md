@@ -126,7 +126,7 @@ rationale. In brief, by architectural role rather than layer:
 - **CSS** — `src/design/` holds only the design-system layer: `nocturne.css` (verbatim
   Nocturne port) and the generic composed patterns built from its primitives
   (`radio-tile.css`, `markdown.css`). Component-owned styling lives beside its owner and
-  is imported by it: `range-bar.css` in `entities/session/ui/estimate`, `group-box.css`, `info-popover.css`, `nav-row.css` and `confirm-note.css` in `shared/ui` (beside the components that own them), `phase-picker.css` in
+  is imported by it: `range-bar.css` in `entities/estimate/ui`, `group-box.css`, `info-popover.css`, `nav-row.css` and `confirm-note.css` in `shared/ui` (beside the components that own them), `phase-picker.css` in
   `features/estimate-round/ui`, `session-sidebar.css` in `widgets/session-sidebar/ui`,
   `workspace.css` (`.workspace-*` rules only) in `pages/workspace/ui`, `header.css` in `app`.
 - **Persistence** — session save/load (JSON file export/import), CSV export and

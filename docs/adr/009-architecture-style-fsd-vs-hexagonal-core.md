@@ -1,6 +1,6 @@
 # ADR-009: Architecture Style — FSD Everywhere vs. a Hexagonal Core with an FSD UI
 
-**Status:** Accepted (2026-10-08); stages 1, 2, 3a, 3b and 3c done, 3d pending
+**Status:** Accepted (2026-10-08); all stages done (1, 2, 3a to 3d)
 **Date:** 2026-10-06
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [005-session-store-decomposition.md](005-session-store-decomposition.md), [003-session-reliability-model.md](003-session-reliability-model.md), [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [006-router-adoption.md](006-router-adoption.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md)
 
@@ -240,11 +240,9 @@ already pure functions of state and event.
    `sessionCode` stayed in `entities/session/api` until stage 3a moved them to `src/application`.
    In stage 3a `NetworkProvider` still imported the network adapter, so the oxlint rule carried
    one named exception for it; stage 3c removed it.
-3. **Extract the application layer (in progress).** Move the stores and use-case hooks into
+3. **Extract the application layer (done).** Move the stores and use-case hooks into
    `application/`. The FSD `features` layer keeps only UI. Sub-steps: 3a moves the code
-   (done); 3b-1 moves the store rules into the domain (done); 3b-2 narrows the UI-visible store types and adds `useItemActions` (done); 3c splits `NetworkProvider` (done); 3d (cleanup: the fate of the
-   UI-only `entities/session` slice, the `ConnectionStatus` types next to the transport
-   port) is pending.
+   (done); 3b-1 moves the store rules into the domain (done); 3b-2 narrows the UI-visible store types and adds `useItemActions` (done); 3c splits `NetworkProvider` (done); 3d retires the UI-only `entities/session` slice (done).
    As built in 3a: `src/application/` holds `stores/` (`session`, `round`, `connection`,
    `publicStores`, and `index.ts`, which the use cases import), `ports/`
    (`NetworkSessionApi` and `ParticipantIdentityApi` with their React contexts and hooks),
@@ -321,6 +319,16 @@ already pure functions of state and event.
    temporary oxlint exception is gone: `application` imports no adapter at all. Three small
    predicates moved into the domain: `shouldBroadcastSnapshot` and `announcementFor`
    (`domain/connection.ts`) and `roundKey` (`domain/resend.ts`).
+
+   As built in 3d: `entities/session` held only UI by then, two concepts that never import
+   each other, so it became `entities/item` (`ItemDetailShell`, `DescriptionField`) and
+   `entities/estimate` (`EstimateTriple`, `RangeBar`), mirroring `domain/item.ts` and
+   `domain/estimate`. Each is used by several features or pages, so the cross-slice
+   problem described in the Context does not return. The `ConnectionStatus` types did not
+   move next to the transport port, as first planned: the domain function
+   `deriveConnectionStatus` takes the transport's status, and the domain may import
+   nothing outside itself, so the types stay in `domain/types.ts` and the port and the
+   adapter import them from there.
 
 Each stage ends with all CI checks green and can be the last one.
 
