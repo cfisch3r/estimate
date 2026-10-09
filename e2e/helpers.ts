@@ -20,7 +20,7 @@ export async function expectNoA11yViolations(page: Page): Promise<void> {
   expect(violations, JSON.stringify(violations, null, 2)).toEqual([])
 }
 
-/** `generateSessionCode()`'s alphabet (`entities/session/api/sessionCode.ts`):
+/** `generateSessionCode()`'s alphabet (`application/useCases/sessionCode.ts`):
  *  Crockford base32 minus the ambiguous 0/O/1/I/L/U. */
 const SESSION_CODE = /^[2-9A-HJKMNP-TV-Z]{6}$/
 
@@ -52,7 +52,7 @@ export async function joinSessionAsParticipant(
 
 /** Facilitator: adds an item via the sidebar's "Add an item" input. The
  *  first item added to an empty workspace is auto-selected
- *  (`entities/session/model/session.ts`'s `addItem`); a second+ item is not. */
+ *  (`useItemActions`' `addItem`); a second+ item is not. */
 export async function addItem(page: Page, title: string): Promise<void> {
   await page.getByPlaceholder('Add an item').fill(title)
   await page.getByRole('button', { name: 'Add item' }).click()

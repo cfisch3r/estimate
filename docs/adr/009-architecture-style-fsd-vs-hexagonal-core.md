@@ -254,8 +254,8 @@ already pure functions of state and event.
    keeps thin wrappers that add it (`useStartCollaborative`, `useStartSingleUser`,
    `useLeaveWorkspace`, `useLeaveLiveSession`) plus the UI flow `useJoinFlow`, and
    `features/reveal-results`' `useRevealRound` is the labelled roster view plus `useRevealActions`.
-   `entities/session` now holds only UI (`ItemDetailShell`, `EstimateTriple`, `RangeBar`,
-   `DescriptionField`) and its barrel exports only the first three; UI code imports
+   At the end of 3a, `entities/session` held only UI (`ItemDetailShell`, `EstimateTriple`, `RangeBar`,
+   `DescriptionField`; split in 3d, below) and its barrel exported only the first three; UI code imports
    domain symbols from `src/domain` directly. Enforcement as built: an oxlint override on
    `src/application/**` lets it import the domain and itself only (no FSD layers, no
    adapters), with a second override naming `NetworkProvider.tsx` and its test as the one
