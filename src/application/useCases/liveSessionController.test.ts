@@ -126,10 +126,13 @@ const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
   return { joinSessionMock: vi.fn(() => fakeSession), fakeSession, emitState, emit }
 })
 
-/** Drains the promise chains the controller kicks off (snapshot pull, resend). React's
- *  `act` used to do this for us; with no React in the way, do it explicitly. */
+/** Drains the promise chains the controller kicks off (snapshot pull, resend) by
+ *  yielding one macrotask, which runs every queued microtask first. A fixed number of
+ *  `await Promise.resolve()` ticks would let a negative assertion pass vacuously if a
+ *  chain ever grew longer than the count. */
 async function flushMicrotasks() {
-  for (let i = 0; i < 10; i++) await Promise.resolve()
+  if (vi.isFakeTimers()) await vi.advanceTimersByTimeAsync(0)
+  else await new Promise<void>((resolve) => setTimeout(resolve, 0))
 }
 
 let controller: LiveSessionController

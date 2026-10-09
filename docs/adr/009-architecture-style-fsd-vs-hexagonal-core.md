@@ -280,7 +280,7 @@ already pure functions of state and event.
    holds `advanceFrom` and `previousItemId`, and `participantId.ts` gained
    `LOCAL_PARTICIPANT_ID`. Two application additions: `useCases/applyFacilitatorSnapshot.ts`
    (not a hook; writes the session name and unit, then the round view) and
-   `useCases/finalizeWith.ts` (the finalize step shared by `useFinalizeEstimate` and
+   `useCases/finalizeWith.ts` (the finalize step shared by `finalizeEstimate` and
    `useRevealActions`). The round store no longer reads the connection store, so the
    store import cycle risk noted in ADR-005 is gone.
 
@@ -301,7 +301,7 @@ already pure functions of state and event.
    snapshot (`applyFacilitatorSnapshot` applies the whole thing); the title rule behind `setItemTitle` is now the domain's `renameItem` (a blank title is ignored, as for a new item, so an item cannot lose its name — the one small behaviour change in this stage); the dead `setMode` was
    removed.
 
-   As built in 3c: `application/ports/outbound/networkTransport.ts` defines `NetworkSession`,
+   As built in 3c: `application/ports/outbound/networkTransport.ts` defines `TransportSession`,
    `ConnectionState` and `JoinSession` (no React; `ParticipantAnnounce` is a domain type in
    `domain/types.ts`, since `announcementFor` builds it); `adapters/network` implements it
    and imports these types, and the lint rule lets adapters import only the

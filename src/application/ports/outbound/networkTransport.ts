@@ -17,7 +17,7 @@ export interface ConnectionState {
   peerIds: string[]
 }
 
-export interface NetworkSession {
+export interface TransportSession {
   sendEstimate(
     itemId: string,
     estimate: Estimate,
@@ -49,4 +49,4 @@ export interface NetworkSession {
 }
 
 /** Opens the peer connection for a session code. */
-export type JoinSession = (sessionId: string) => NetworkSession
+export type JoinSession = (sessionId: string) => TransportSession

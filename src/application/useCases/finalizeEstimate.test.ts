@@ -1,7 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { act, renderHook } from '@testing-library/react'
 import { useSessionStore } from '../stores'
-import { useFinalizeEstimate } from './useFinalizeEstimate'
+import { finalizeEstimate } from './finalizeEstimate'
 
 beforeEach(() => {
   useSessionStore.setState({
@@ -13,15 +12,10 @@ beforeEach(() => {
   useSessionStore.getState().addItem('Story')
 })
 
-describe('useFinalizeEstimate', () => {
+describe('finalizeEstimate', () => {
   it('aggregates a valid estimate and records it on the item', () => {
     const id = useSessionStore.getState().items[0]!.id
-    const { result } = renderHook(() => useFinalizeEstimate())
-
-    let outcome: ReturnType<typeof result.current> | undefined
-    act(() => {
-      outcome = result.current(id, 2, 5, 8)
-    })
+    const outcome = finalizeEstimate(id, 2, 5, 8)
 
     expect(outcome).toEqual({ ok: true })
     expect(useSessionStore.getState().items[0]!.finalResult).toMatchObject({
@@ -33,14 +27,9 @@ describe('useFinalizeEstimate', () => {
 
   it('rejects a descending estimate and leaves the item unfinalized', () => {
     const id = useSessionStore.getState().items[0]!.id
-    const { result } = renderHook(() => useFinalizeEstimate())
+    const outcome = finalizeEstimate(id, 10, 5, 3)
 
-    let outcome: ReturnType<typeof result.current> | undefined
-    act(() => {
-      outcome = result.current(id, 10, 5, 3)
-    })
-
-    expect(outcome?.ok).toBe(false)
+    expect(outcome.ok).toBe(false)
     expect(useSessionStore.getState().items[0]!.finalResult).toBeNull()
   })
 })
