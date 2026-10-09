@@ -125,12 +125,12 @@ flowchart TD
   class Calc,Policies,StoreRules pure
   class Trystero ext
 
-  style pageslane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
-  style sharedlane fill:#FDF2F8,stroke:#DB2777,stroke-width:2px
-  style shelllane fill:#FEFCE8,stroke:#CA8A04,stroke-width:2px
-  style applane   fill:#F0FDFA,stroke:#0D9488,stroke-width:2px
-  style core      fill:#EFF6FF,stroke:#2563EB,stroke-width:2px
-  style purelane  fill:#F8FAFC,stroke:#64748B,stroke-width:2px
+  style pageslane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
+  style sharedlane fill:#FDF2F8,stroke:#DB2777,stroke-width:2px,color:#14171f
+  style shelllane fill:#FEFCE8,stroke:#CA8A04,stroke-width:2px,color:#14171f
+  style applane   fill:#F0FDFA,stroke:#0D9488,stroke-width:2px,color:#14171f
+  style core      fill:#EFF6FF,stroke:#2563EB,stroke-width:2px,color:#14171f
+  style purelane  fill:#F8FAFC,stroke:#64748B,stroke-width:2px,color:#14171f
 ```
 
 ### Component responsibilities
@@ -386,8 +386,8 @@ flowchart TD
   class Sig,Stun ext
   class Turn gap
 
-  style facnet fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
-  style parnet fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px
+  style facnet fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
+  style parnet fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
 ```
 
 | Box | Role |
