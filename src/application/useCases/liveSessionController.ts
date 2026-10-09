@@ -11,7 +11,7 @@ import type { NetworkSessionApi } from '../ports/networkSessionContext'
 import type {
   ConnectionState,
   JoinSession,
-  NetworkSession,
+  TransportSession,
 } from '../ports/outbound/networkTransport'
 import { useConnectionStore } from '../stores/connection'
 import { useRoundStore } from '../stores/round'
@@ -36,7 +36,7 @@ export interface LiveSessionController {
 export function createLiveSessionController(deps: {
   joinSession: JoinSession
 }): LiveSessionController {
-  let live: NetworkSession | null = null
+  let live: TransportSession | null = null
   let unsubscribe: (() => void) | null = null
 
   function teardown() {
