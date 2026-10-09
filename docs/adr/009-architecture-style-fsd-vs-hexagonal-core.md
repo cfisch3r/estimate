@@ -65,7 +65,9 @@ valuable and can be stopped after.** Treat D as a separate follow-up decision ab
 how the round is written, not part of this one.
 
 Target structure, in two views. Features and adapters may also use domain types directly;
-those edges are left out to keep the diagrams readable.
+those edges are left out to keep the diagrams readable. In the layer view the arrow from the
+UI to the application layer stands for both of its uses: calling use cases and reading the
+stores; the component view shows the two separately.
 
 **Layer view: what depends on what.**
 
@@ -131,6 +133,7 @@ flowchart LR
   Ext["Peers, relays, browser storage<br/>[External systems]"]
   Pages -->|composes| Features
   Features -->|calls| UseCases
+  Pages & Features -->|reads state,<br/>trivial setters| Stores
   UseCases -->|uses rules| Core
   UseCases -->|reads and writes| Stores
   UseCases <-->|peer messages in,<br/>calls out via port| Net
@@ -158,7 +161,7 @@ flowchart LR
 |---|---|---|
 | **Estimate and session rules** | Domain | Everything pure: `Estimate` and its factory, aggregation, guards, uncertainty guidance, item and round types, roster, snapshot and resend policies, label rules, the finalize rule. No React, no I/O. Keeps the 100% coverage threshold. |
 | **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, written as straight-line code: read state, call a domain decision, write state, trigger an effect. Owns the interfaces (ports) that adapters implement, such as the peer transport (`ports/outbound/networkTransport.ts`, since stage 3c). Replaces the use-case hooks that were in `features/` (stage 3a: now `src/application/useCases`; `features/` keeps thin navigation wrappers). |
-| **State stores** | Application | The Zustand stores holding the current session, round and connection state (see "Where state lives"). Lives in `src/application/stores` (stage 3a). |
+| **State stores** | Application | The Zustand stores holding the current session, round and connection state (see "Where state lives"). Lives in `src/application/stores` (stage 3a). The UI reads them directly with selectors and may call a few trivial field setters (session name, unit, item selection and text fields); every other write goes through a use case (stage 3b-2). |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. Calls the use cases when a peer message arrives, broadcasts the facilitator's snapshot when the stores change, and implements the peer-transport port the use cases send through. |
 | **Storage and export** | Adapters | Participant-identity storage today; future save/load and CSV and link export. Called by the application through the storage port it implements (an outbound adapter). An import adapter (backlog import, a later phase) would be a separate inbound adapter that calls the use cases, added when that phase is designed. |
 | **Features** | UI | UI-only features and their components. They call use cases; they no longer own them. |
