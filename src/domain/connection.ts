@@ -97,3 +97,31 @@ export function withConnectionStatus(
 export function leavingNeedsConfirm(mode: SessionMode, peerCount: number): boolean {
   return mode === 'live' && peerCount > 0
 }
+
+/** The facilitator broadcasts the session snapshot only while it is hosting a
+ *  live session that has a code. */
+export function shouldBroadcastSnapshot(
+  mode: SessionMode,
+  role: SessionRole,
+  sessionId: string | null,
+): boolean {
+  return mode === 'live' && role === 'facilitator' && Boolean(sessionId)
+}
+
+/** Which `participantId -> display name` a client announces to its peers, or
+ *  `null` when it has nothing to announce (not live, no name yet, or no id yet).
+ *  The facilitator announces under the reserved facilitator id. */
+export function announcementFor(connection: {
+  mode: SessionMode
+  role: SessionRole
+  myName: string
+  participantId: string
+}): { participantId: string; name: string } | null {
+  if (connection.mode !== 'live' || connection.myName.trim().length === 0) return null
+  const participantId =
+    connection.role === 'facilitator'
+      ? FACILITATOR_PARTICIPANT_ID
+      : connection.participantId
+  if (participantId.length === 0) return null
+  return { participantId, name: connection.myName }
+}

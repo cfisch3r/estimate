@@ -14,3 +14,9 @@ export function needsResend(
   const myEntry = liveRound.roster.find((entry) => entry.participantId === participantId)
   return !myEntry?.submitted
 }
+
+/** Identifies one item's round, so a resend already in flight for it is not
+ *  stacked with a second one. */
+export function roundKey(liveRound: LiveRound): string {
+  return `${liveRound.item.id}:${liveRound.round}`
+}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createEstimate, type Estimate } from './estimate'
-import { needsResend } from './resend'
+import { needsResend, roundKey } from './resend'
 import type { LiveRound } from './types'
 
 function mine(best: number, likely: number, worst: number): Estimate {
@@ -41,5 +41,23 @@ describe('needsResend', () => {
     expect(needsResend(null, 'me')).toBe(false)
     expect(needsResend(round({ revealed: true }), 'me')).toBe(false)
     expect(needsResend(round({ mySubmission: null }), 'me')).toBe(false)
+  })
+})
+
+describe('roundKey', () => {
+  it('identifies one item in one round', () => {
+    const round: LiveRound = {
+      item: { id: 'i1', title: 'T', description: '' },
+      submissions: [],
+      revealed: false,
+      round: 2,
+      roster: [],
+      mySubmission: null,
+    }
+    expect(roundKey(round)).toBe('i1:2')
+    expect(roundKey({ ...round, round: 3 })).not.toBe(roundKey(round))
+    expect(roundKey({ ...round, item: { ...round.item, id: 'i2' } })).not.toBe(
+      roundKey(round),
+    )
   })
 })

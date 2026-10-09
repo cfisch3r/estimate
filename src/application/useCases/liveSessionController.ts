@@ -1,6 +1,10 @@
-import { deriveConnectionStatus } from '../../domain/connection'
+import {
+  announcementFor,
+  deriveConnectionStatus,
+  shouldBroadcastSnapshot,
+} from '../../domain/connection'
 import { FACILITATOR_PARTICIPANT_ID } from '../../domain/participantId'
-import { needsResend } from '../../domain/resend'
+import { needsResend, roundKey } from '../../domain/resend'
 import { shouldPruneDeparted } from '../../domain/roster'
 import { buildSessionSnapshot, snapshotChangeKey } from '../../domain/snapshot'
 import type { NetworkSessionApi } from '../ports/networkSessionContext'
@@ -92,11 +96,7 @@ export function createLiveSessionController(deps: {
   let lastSnapshotKey = ''
   const broadcastFacilitatorState = () => {
     const connection = useConnectionStore.getState()
-    if (
-      connection.mode !== 'live' ||
-      connection.role !== 'facilitator' ||
-      !connection.sessionId
-    )
+    if (!shouldBroadcastSnapshot(connection.mode, connection.role, connection.sessionId))
       return
     const snapshot = computeSnapshot()
     const key = snapshotChangeKey(snapshot)
@@ -109,12 +109,8 @@ export function createLiveSessionController(deps: {
   // its own `participantId -> display name` on connect and again whenever a peer
   // joins, letting reveal rows show real names instead of "Teammate N".
   const announceSelf = () => {
-    const state = useConnectionStore.getState()
-    if (state.mode !== 'live' || state.myName.trim().length === 0) return
-    const participantId =
-      state.role === 'facilitator' ? FACILITATOR_PARTICIPANT_ID : state.participantId
-    if (participantId.length === 0) return
-    live?.sendAnnounce({ participantId, name: state.myName })
+    const announcement = announcementFor(useConnectionStore.getState())
+    if (announcement) live?.sendAnnounce(announcement)
   }
 
   const api: NetworkSessionApi = {
@@ -153,7 +149,7 @@ export function createLiveSessionController(deps: {
           // succession) can arrive before this participant's own roster entry
           // catches up — don't stack a second resend on top of one already
           // in flight for the same item/round.
-          const resendKey = `${liveRound.item.id}:${liveRound.round}`
+          const resendKey = roundKey(liveRound)
           if (resendInFlightKey === resendKey) return
           resendInFlightKey = resendKey
           api
