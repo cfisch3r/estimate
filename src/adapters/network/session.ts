@@ -1,9 +1,6 @@
-import { createConnectionTracker, type ConnectionState } from './connection'
-import { createTypedActions, type ParticipantAnnounce } from './actions'
-import type { SessionSnapshot } from '../../domain/types'
-import type { Estimate } from '../../domain/estimate'
-
-type Unsubscribe = () => void
+import { createConnectionTracker } from './connection'
+import { createTypedActions } from './actions'
+import type { NetworkSession } from '../../application/ports/networkTransport'
 
 /** Resolved once, at module init, via top-level await — not inside `joinSession()`.
  *  A dynamic `import()` behind a build-time-constant condition is the pattern the
@@ -21,37 +18,6 @@ const { joinSignalingRoom } =
 
 export interface JoinSessionOptions {
   password?: string
-}
-
-export interface NetworkSession {
-  sendEstimate(
-    itemId: string,
-    estimate: Estimate,
-    round: number,
-    target: string,
-  ): Promise<void>
-  sendSyncState(snapshot: SessionSnapshot): void
-  sendAnnounce(announce: ParticipantAnnounce): void
-  /** A peer that just (re)connected pulls the facilitator's current snapshot
-   *  itself (ADR-003, "Snapshot delivery: pull on arrival"). */
-  requestSnapshot(targetPeerId: string): Promise<SessionSnapshot>
-  onEstimate(
-    cb: (
-      itemId: string,
-      estimate: Estimate,
-      peerId: string,
-      round: number | undefined,
-    ) => void,
-  ): Unsubscribe
-  onSyncState(cb: (snapshot: SessionSnapshot, peerId: string) => void): Unsubscribe
-  onAnnounce(cb: (announce: ParticipantAnnounce, peerId: string) => void): Unsubscribe
-  /** Facilitator-only: answers a peer's `requestSnapshot` pull. */
-  onRequestSnapshot(cb: () => SessionSnapshot): Unsubscribe
-  onPeerJoin(cb: (peerId: string) => void): Unsubscribe
-  onPeerLeave(cb: (peerId: string) => void): Unsubscribe
-  onConnectionStateChange(cb: (state: ConnectionState) => void): Unsubscribe
-  getConnectionState(): ConnectionState
-  leave(): void
 }
 
 /** Joins the Trystero room for a session. roomId = sessionId, the 6-char code from

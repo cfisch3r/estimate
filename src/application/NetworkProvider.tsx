@@ -1,8 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { ReactNode } from 'react'
 import { joinSession } from '../adapters/network/session'
-import type { NetworkSession } from '../adapters/network/session'
-import type { ConnectionState } from '../adapters/network/connection'
+import type { ConnectionState, NetworkSession } from './ports/networkTransport'
 import {
   NetworkSessionContext,
   type NetworkSessionApi,

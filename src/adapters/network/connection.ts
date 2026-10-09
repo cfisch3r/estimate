@@ -1,9 +1,7 @@
 import type { ConnectionStatus } from '../../domain/types'
+import type { ConnectionState } from '../../application/ports/networkTransport'
 
-export interface ConnectionState {
-  status: ConnectionStatus
-  peerIds: string[]
-}
+export type { ConnectionState }
 
 type Unsubscribe = () => void
 
