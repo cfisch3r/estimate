@@ -222,7 +222,7 @@ sequenceDiagram
   P-->>P: waiting state with revise affordance + delivery sub-state (5d)
   Note over P: if the roster still shows this participant unsubmitted on a later snapshot (e.g. the ack above was lost), P re-sends the same request — this, not the ack, is the actual convergence mechanism (#61)
   F->>F: Reveal estimates (enabled once ≥1 submission) → roundStore.revealRound(itemId)
-  Note over F,R: revealRound is a local store mutation (via session.ts patchItem); the store subscription broadcasts revealed:true + the frozen submissions
+  Note over F,R: revealRound is a local store mutation (via session.ts patchItem), and the store subscription broadcasts revealed:true + the frozen submissions
   R-->>P: onSyncState → applyFacilitatorSnapshot → revealed = true, submissions from the snapshot
   F-->>F: Workspace 1d — aggregated range bar + per-participant values
   P-->>P: revealed state: aggregated range bar + participant list (5e)
