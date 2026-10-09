@@ -5,7 +5,7 @@ import {
   createLiveSessionController,
   NetworkSessionContext,
   type LiveSessionController,
-} from '../application'
+} from '../application/composition'
 
 /** Composition point for the live session: wires the Trystero adapter into the
  *  application's live-session controller, provides its `NetworkSessionApi` to the

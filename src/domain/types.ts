@@ -98,3 +98,11 @@ export type ConnectionStatus = 'connecting' | 'connected' | 'disconnected'
 
 /** The network layer's ConnectionStatus, plus 'idle' for "not in a live session". */
 export type LiveConnectionStatus = ConnectionStatus | 'idle'
+
+/** A client announcing which display name belongs to its `participantId`, so
+ *  peers can label reveal rows with real names instead of "Teammate N". Kept off
+ *  the pure `Estimate` wire type — names never enter the estimate core. */
+export interface ParticipantAnnounce {
+  participantId: string
+  name: string
+}

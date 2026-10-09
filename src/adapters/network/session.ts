@@ -1,6 +1,6 @@
 import { createConnectionTracker } from './connection'
 import { createTypedActions } from './actions'
-import type { NetworkSession } from '../../application/ports/networkTransport'
+import type { NetworkSession } from '../../application/ports/outbound/networkTransport'
 
 /** Resolved once, at module init, via top-level await — not inside `joinSession()`.
  *  A dynamic `import()` behind a build-time-constant condition is the pattern the

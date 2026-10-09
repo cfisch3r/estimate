@@ -8,7 +8,7 @@ import type {
   SessionMode,
   SessionRole,
 } from '../../domain/types'
-import type { ConnectionState, JoinSession } from '../ports/networkTransport'
+import type { ConnectionState, JoinSession } from '../ports/outbound/networkTransport'
 import { useConnectionStore } from '../stores/connection'
 import { useRoundStore } from '../stores/round'
 import { useSessionStore } from '../stores/session'
@@ -249,6 +249,17 @@ describe('createLiveSessionController', () => {
     emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac-2')
     await flushMicrotasks()
     expect(fakeSession.requestSnapshot).toHaveBeenCalledWith('peer-fac-2')
+  })
+
+  it('leaves the room on dispose without touching the stores', () => {
+    controller.api.connect('K7F9Q2')
+    useConnectionStore.setState({ connectionStatus: 'connected', peerCount: 2 })
+
+    controller.dispose()
+
+    expect(fakeSession.leave).toHaveBeenCalled()
+    expect(useConnectionStore.getState().connectionStatus).toBe('connected')
+    expect(useConnectionStore.getState().peerCount).toBe(2)
   })
 
   it('tears down the room and resets the store on disconnect', async () => {

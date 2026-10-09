@@ -78,7 +78,7 @@ rationale. In brief, by architectural role rather than layer:
   bias guards (symmetric-range, false-precision, outlier — PRD §6), and the
   cone-of-uncertainty guidance rule (`uncertaintyGuidance`, PRD §6.1). Framework-free,
   unit-testable, identical between Mode A and Mode B.
-- **The P2P wire layer** (`adapters/network`, implementing the application-owned `ports/networkTransport.ts`; the live-session controller in `application/useCases` holds the session logic and `app/NetworkProvider.tsx` is the thin React shell that wires them; formerly `/network`) — Trystero
+- **The P2P wire layer** (`adapters/network`, implementing the application-owned `ports/outbound/networkTransport.ts`; the live-session controller in `application/useCases` holds the session logic and `app/NetworkProvider.tsx` is the thin React shell that wires them; formerly `/network`) — Trystero
   wrapper: room join/create, typed actions (`submitEstimate`, `syncState`, `announce`,
   `requestSnapshot` request/response), connection-state hooks, facilitator-authoritative
   round state (ADR-003, #60).

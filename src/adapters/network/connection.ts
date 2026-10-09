@@ -1,7 +1,5 @@
 import type { ConnectionStatus } from '../../domain/types'
-import type { ConnectionState } from '../../application/ports/networkTransport'
-
-export type { ConnectionState }
+import type { ConnectionState } from '../../application/ports/outbound/networkTransport'
 
 type Unsubscribe = () => void
 

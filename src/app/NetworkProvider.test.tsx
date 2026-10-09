@@ -1,7 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useNetworkSession, type ConnectionState } from '../application'
+import { useNetworkSession } from '../application'
+import type { ConnectionState } from '../application/composition'
 import { NetworkProvider } from './NetworkProvider'
 import { useConnectionStore } from '../application/testing'
 

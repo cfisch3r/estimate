@@ -12,7 +12,7 @@ import type {
   ConnectionState,
   JoinSession,
   NetworkSession,
-} from '../ports/networkTransport'
+} from '../ports/outbound/networkTransport'
 import { useConnectionStore } from '../stores/connection'
 import { useRoundStore } from '../stores/round'
 import { useSessionStore } from '../stores/session'

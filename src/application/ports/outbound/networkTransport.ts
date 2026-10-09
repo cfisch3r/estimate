@@ -1,5 +1,9 @@
-import type { Estimate } from '../../domain/estimate'
-import type { ConnectionStatus, SessionSnapshot } from '../../domain/types'
+import type { Estimate } from '../../../domain/estimate'
+import type {
+  ConnectionStatus,
+  ParticipantAnnounce,
+  SessionSnapshot,
+} from '../../../domain/types'
 
 // The peer transport the live-session controller talks to. The application layer
 // owns this interface; `adapters/network` implements it (ADR-009). No React here,
@@ -11,14 +15,6 @@ type Unsubscribe = () => void
 export interface ConnectionState {
   status: ConnectionStatus
   peerIds: string[]
-}
-
-/** A client announcing which display name belongs to its `participantId`, so
- *  peers can label reveal rows with real names instead of "Teammate N". Kept off
- *  the pure `Estimate` wire type — names never enter the estimate core. */
-export interface ParticipantAnnounce {
-  participantId: string
-  name: string
 }
 
 export interface NetworkSession {

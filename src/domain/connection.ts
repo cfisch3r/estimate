@@ -2,6 +2,7 @@ import { FACILITATOR_PARTICIPANT_ID } from './participantId'
 import type {
   ConnectionStatus,
   LiveConnectionStatus,
+  ParticipantAnnounce,
   SessionMode,
   SessionRole,
 } from './types'
@@ -116,7 +117,7 @@ export function announcementFor(connection: {
   role: SessionRole
   myName: string
   participantId: string
-}): { participantId: string; name: string } | null {
+}): ParticipantAnnounce | null {
   if (connection.mode !== 'live' || connection.myName.trim().length === 0) return null
   const participantId =
     connection.role === 'facilitator'

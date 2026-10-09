@@ -1,5 +1,5 @@
 import type { Estimate } from '../../domain/estimate'
-import type { ParticipantAnnounce } from '../../application/ports/networkTransport'
+import type { ParticipantAnnounce } from '../../domain/types'
 import { parseWireEstimate, parseWireUnit } from './wireParse'
 import type { RosterEntry, SessionSnapshot, SnapshotItem } from '../../domain/types'
 

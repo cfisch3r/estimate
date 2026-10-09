@@ -157,7 +157,7 @@ flowchart LR
 | Box | Layer | Responsibility |
 |---|---|---|
 | **Estimate and session rules** | Domain | Everything pure: `Estimate` and its factory, aggregation, guards, uncertainty guidance, item and round types, roster, snapshot and resend policies, label rules, the finalize rule. No React, no I/O. Keeps the 100% coverage threshold. |
-| **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, written as straight-line code: read state, call a domain decision, write state, trigger an effect. Owns the interfaces (ports) that adapters implement, such as the peer transport (`ports/networkTransport.ts`, since stage 3c). Replaces the use-case hooks that were in `features/` (stage 3a: now `src/application/useCases`; `features/` keeps thin navigation wrappers). |
+| **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, written as straight-line code: read state, call a domain decision, write state, trigger an effect. Owns the interfaces (ports) that adapters implement, such as the peer transport (`ports/outbound/networkTransport.ts`, since stage 3c). Replaces the use-case hooks that were in `features/` (stage 3a: now `src/application/useCases`; `features/` keeps thin navigation wrappers). |
 | **State stores** | Application | The Zustand stores holding the current session, round and connection state (see "Where state lives"). Lives in `src/application/stores` (stage 3a). |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. Calls the use cases when a peer message arrives, broadcasts the facilitator's snapshot when the stores change, and implements the peer-transport port the use cases send through. |
 | **Storage and export** | Adapters | Participant-identity storage today; future save/load and CSV and link export. Called by the application through the storage port it implements (an outbound adapter). An import adapter (backlog import, a later phase) would be a separate inbound adapter that calls the use cases, added when that phase is designed. |
@@ -298,16 +298,20 @@ already pure functions of state and event.
    snapshot (`applyFacilitatorSnapshot` applies the whole thing); the title rule behind `setItemTitle` is now the domain's `renameItem` (a blank title is ignored, as for a new item, so an item cannot lose its name — the one small behaviour change in this stage); the dead `setMode` was
    removed.
 
-   As built in 3c: `application/ports/networkTransport.ts` defines `NetworkSession`,
-   `ConnectionState`, `ParticipantAnnounce` and `JoinSession` (no React); `adapters/network`
-   implements it and imports these types, and the lint rule lets adapters import only that
-   one application file. `application/useCases/liveSessionController.ts` exports
+   As built in 3c: `application/ports/outbound/networkTransport.ts` defines `NetworkSession`,
+   `ConnectionState` and `JoinSession` (no React; `ParticipantAnnounce` is a domain type in
+   `domain/types.ts`, since `announcementFor` builds it); `adapters/network` implements it
+   and imports these types, and the lint rule lets adapters import only the
+   `application/ports/outbound/` folder, where React-free ports for external systems live
+   (the React contexts stay in `ports/`). `application/useCases/liveSessionController.ts` exports
    `createLiveSessionController({ joinSession })`, returning `{ api, dispose }`; it holds
    what `NetworkProvider` used to (connect, disconnect, `sendEstimate` with retry, resend,
    snapshot pull, roster prune, announce, facilitator broadcast) and is tested without React
    against a fake transport. `src/app/NetworkProvider.tsx` is a ~25-line shell that wires
    `adapters/network`'s `joinSession` into the controller and provides
-   `NetworkSessionContext`; the application barrel no longer exports `NetworkProvider`. The
+   `NetworkSessionContext`; the application barrel no longer exports `NetworkProvider` or the controller: those, with
+   `NetworkSessionContext` and the port types the shell needs, come from a separate
+   `application/composition.ts` entry that the lint rule allows in `src/app` only. The
    temporary oxlint exception is gone: `application` imports no adapter at all. Three small
    predicates moved into the domain: `shouldBroadcastSnapshot` and `announcementFor`
    (`domain/connection.ts`) and `roundKey` (`domain/resend.ts`).
