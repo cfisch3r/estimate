@@ -239,8 +239,9 @@ already pure functions of state and event.
    one named exception for it; stage 3c removed it.
 3. **Extract the application layer (in progress).** Move the stores and use-case hooks into
    `application/`. The FSD `features` layer keeps only UI. Sub-steps: 3a moves the code
-   (done); 3b-1 moves the store rules into the domain (done); 3b-2 narrows the UI-visible store types and adds `useItemActions` (done); 3c splits `NetworkProvider` (done); 3d is
-   pending.
+   (done); 3b-1 moves the store rules into the domain (done); 3b-2 narrows the UI-visible store types and adds `useItemActions` (done); 3c splits `NetworkProvider` (done); 3d (cleanup: the fate of the
+   UI-only `entities/session` slice, the `ConnectionStatus` types next to the transport
+   port) is pending.
    As built in 3a: `src/application/` holds `stores/` (`session`, `round`, `connection`,
    `publicStores`, and `index.ts`, which the use cases import), `ports/`
    (`NetworkSessionApi` and `ParticipantIdentityApi` with their React contexts and hooks),

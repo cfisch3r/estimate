@@ -79,16 +79,16 @@ flowchart TD
   NP -->|"createLiveSessionController"| Ctrl
   NP -->|"provides api via context"| Hook
   NP -->|"imports joinSession"| JSN
-  Hook -->|"connect / sendEstimate"| Ctrl
+  Hook -->|"api via context"| Ctrl
   Ctrl -->|"joinSession(code)"| Port
   JSN -.->|"implements"| Port
-  PEV -->|"sendEstimate(itemId, estimate, round) (own submission, targeted at the facilitator)"| Hook
+  PEV -->|"sendEstimate"| Hook
   WS -->|"revealRound / retryRound / finalizeItem"| RoundStore
   JSN -->|"creates"| Act
   JSN -->|"creates"| Conn
   Act <-->|"P2P messages (encrypted)"| Trystero
   Act -.->|"validate inbound"| Calc
-  Ctrl -->|"requestSnapshot (participant pull)"| Act
+  Ctrl -->|"requestSnapshot"| Port
   Ctrl -->|"build snapshot, prune / resend decisions"| Policies
   Ctrl -->|"deriveConnectionStatus"| StoreRules
   SessStore & ConnStore & RoundStore -->|"state transitions"| StoreRules
@@ -101,8 +101,8 @@ flowchart TD
   Ctrl -.->|"setConnectionStatus / setPeerCount"| ConnStore
   Ctrl -.->|"applyRemoteEstimate"| RoundStore
   Ctrl -.->|"applyParticipantName"| ConnStore
-  Ctrl -.->|"reads items/activeItem (facilitator syncState + requestSnapshot answers)"| SessStore
-  Ctrl -.->|"reads roster/own name/id (announce)"| ConnStore
+  Ctrl -.->|"reads items"| SessStore
+  Ctrl -.->|"reads own name"| ConnStore
   SessStore -.->|"state (read)"| pageslane
   ConnStore -.->|"state (read)"| pageslane
   RoundStore -.->|"state (read)"| pageslane

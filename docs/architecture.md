@@ -227,7 +227,7 @@ Design — see [ADR-004](adr/004-feature-sliced-design-architecture.md) — the 
 names above map to their FSD slices per the "Module structure" section. Since #60
 (ADR-003, "Single owner"), a Reveal or Retry is just another
 `syncState` snapshot — there is no separate `reveal` / `roundReset` wire action, and a
-participant's `submitEstimate` targets the facilitator's peerId only. the live-session controller
+participant's `submitEstimate` targets the facilitator's peerId only. The live-session controller
 dispatches inbound `onEstimate` / `onSyncState` / `onAnnounce`, answers a peer's
 `requestSnapshot` pull (facilitator only), and broadcasts the facilitator's `syncState`
 (now carrying a values-free `roster`) on every real change. The epic-0010 screen review
