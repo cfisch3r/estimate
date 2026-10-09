@@ -1,6 +1,6 @@
 # ADR-009: Architecture Style — FSD Everywhere vs. a Hexagonal Core with an FSD UI
 
-**Status:** Accepted (2026-10-08); stages 1 and 2 done, stage 3 in progress (3a, 3b-1 and 3b-2 done)
+**Status:** Accepted (2026-10-08); stages 1, 2, 3a, 3b and 3c done, 3d pending
 **Date:** 2026-10-06
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [005-session-store-decomposition.md](005-session-store-decomposition.md), [003-session-reliability-model.md](003-session-reliability-model.md), [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [006-router-adoption.md](006-router-adoption.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md)
 
@@ -157,7 +157,7 @@ flowchart LR
 | Box | Layer | Responsibility |
 |---|---|---|
 | **Estimate and session rules** | Domain | Everything pure: `Estimate` and its factory, aggregation, guards, uncertainty guidance, item and round types, roster, snapshot and resend policies, label rules, the finalize rule. No React, no I/O. Keeps the 100% coverage threshold. |
-| **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, written as straight-line code: read state, call a domain decision, write state, trigger an effect. Owns the interfaces (ports) that adapters implement, such as the peer transport (today `NetworkSessionApi`). Replaces the use-case hooks that were in `features/` (stage 3a: now `src/application/useCases`; `features/` keeps thin navigation wrappers). |
+| **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, written as straight-line code: read state, call a domain decision, write state, trigger an effect. Owns the interfaces (ports) that adapters implement, such as the peer transport (`ports/networkTransport.ts`, since stage 3c). Replaces the use-case hooks that were in `features/` (stage 3a: now `src/application/useCases`; `features/` keeps thin navigation wrappers). |
 | **State stores** | Application | The Zustand stores holding the current session, round and connection state (see "Where state lives"). Lives in `src/application/stores` (stage 3a). |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. Calls the use cases when a peer message arrives, broadcasts the facilitator's snapshot when the stores change, and implements the peer-transport port the use cases send through. |
 | **Storage and export** | Adapters | Participant-identity storage today; future save/load and CSV and link export. Called by the application through the storage port it implements (an outbound adapter). An import adapter (backlog import, a later phase) would be a separate inbound adapter that calls the use cases, added when that phase is designed. |
@@ -235,19 +235,19 @@ already pure functions of state and event.
    `ConnectionStatus` moved into `src/domain/types.ts` because both the adapter and the
    store need it. `NetworkProvider`, the `NetworkSessionApi` port, `retryPolicy` and
    `sessionCode` stayed in `entities/session/api` until stage 3a moved them to `src/application`.
-   `NetworkProvider` still imports the network adapter, so the oxlint rule carries
-   one named exception for it, to be removed in stage 3c.
+   In stage 3a `NetworkProvider` still imported the network adapter, so the oxlint rule carried
+   one named exception for it; stage 3c removed it.
 3. **Extract the application layer (in progress).** Move the stores and use-case hooks into
    `application/`. The FSD `features` layer keeps only UI. Sub-steps: 3a moves the code
-   (done); 3b-1 moves the store rules into the domain (done); 3b-2 narrows the UI-visible store types and adds `useItemActions` (done); 3c and 3d are
-   pending (3c splits `NetworkProvider`).
+   (done); 3b-1 moves the store rules into the domain (done); 3b-2 narrows the UI-visible store types and adds `useItemActions` (done); 3c splits `NetworkProvider` (done); 3d is
+   pending.
    As built in 3a: `src/application/` holds `stores/` (`session`, `round`, `connection`,
    `publicStores`, and `index.ts`, which the use cases import), `ports/`
    (`NetworkSessionApi` and `ParticipantIdentityApi` with their React contexts and hooks),
    `useCases/` (join, teardown, reconnect, start collaborative, start single-user, close
    workspace, reveal actions, submit estimate, finalize estimate, plus `retryPolicy` and
-   `sessionCode`, each beside its only consumer) and `NetworkProvider.tsx`, which still holds the connect, resend, pull,
-   prune and broadcast logic. `src/application/index.ts` is the layer's barrel and the only
+   `sessionCode`, each beside its only consumer) and `NetworkProvider.tsx`, which still held the connect, resend, pull,
+   prune and broadcast logic (split in 3c). `src/application/index.ts` is the layer's barrel and the only
    thing the UI imports from it. The use cases contain no navigation: `features/session-lifecycle`
    keeps thin wrappers that add it (`useStartCollaborative`, `useStartSingleUser`,
    `useLeaveWorkspace`, `useLeaveLiveSession`) plus the UI flow `useJoinFlow`, and
@@ -258,7 +258,7 @@ already pure functions of state and event.
    `src/application/**` lets it import the domain and itself only (no FSD layers, no
    adapters), with a second override naming `NetworkProvider.tsx` and its test as the one
    temporary exception allowed to import `adapters/network/session` and
-   `adapters/network/connection`. The adapters rule and the "only `app/` composes adapters" rule
+   `adapters/network/connection` (removed in 3c). The adapters rule and the "only `app/` composes adapters" rule
    are unchanged. A guard test, `src/viMockPaths.test.ts`, fails when a relative `vi.mock`
    target does not resolve, so a moved module cannot leave a mock pointing at a file that no longer exists (it does not detect a mock of a module the code under test stopped importing).
 
@@ -296,6 +296,20 @@ already pure functions of state and event.
    `applySyncState` became `applyRoundSnapshot`, since it adopts only the round part of a
    snapshot (`applyFacilitatorSnapshot` applies the whole thing); the title rule behind `setItemTitle` is now the domain's `renameItem` (a blank title is ignored, as for a new item, so an item cannot lose its name — the one small behaviour change in this stage); the dead `setMode` was
    removed.
+
+   As built in 3c: `application/ports/networkTransport.ts` defines `NetworkSession`,
+   `ConnectionState`, `ParticipantAnnounce` and `JoinSession` (no React); `adapters/network`
+   implements it and imports these types, and the lint rule lets adapters import only that
+   one application file. `application/useCases/liveSessionController.ts` exports
+   `createLiveSessionController({ joinSession })`, returning `{ api, dispose }`; it holds
+   what `NetworkProvider` used to (connect, disconnect, `sendEstimate` with retry, resend,
+   snapshot pull, roster prune, announce, facilitator broadcast) and is tested without React
+   against a fake transport. `src/app/NetworkProvider.tsx` is a ~25-line shell that wires
+   `adapters/network`'s `joinSession` into the controller and provides
+   `NetworkSessionContext`; the application barrel no longer exports `NetworkProvider`. The
+   temporary oxlint exception is gone: `application` imports no adapter at all. Three small
+   predicates moved into the domain: `shouldBroadcastSnapshot` and `announcementFor`
+   (`domain/connection.ts`) and `roundKey` (`domain/resend.ts`).
 
 Each stage ends with all CI checks green and can be the last one.
 

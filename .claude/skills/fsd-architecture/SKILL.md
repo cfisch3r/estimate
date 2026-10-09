@@ -46,7 +46,7 @@ not in `lib/`), `api/` (external calls — network, storage), `lib/`
 segment — add one when there's something to put in it. Pure decision rules that
 more than one hook needs belong in `src/domain/` (e.g. `domain/roster.ts`, ADR-009
 stage 1; store transitions such as `domain/round.ts` and `domain/connection.ts`, stage 3b-1: stores hold state and call these), unit-tested directly; `src/domain/` (including `domain/estimate/`, which keeps its own
-`index.ts`) is outside FSD. The domain imports nothing outside itself (enforced by oxlint). `src/application/` (ADR-009 stage 3a: `stores`, `ports`, `useCases`, `NetworkProvider`) is outside FSD too and imports only the domain and itself (enforced by oxlint). UI code imports domain symbols from `src/domain` directly and stores and use-case hooks from the `src/application` barrel; navigation stays in `features/`.
+`index.ts`) is outside FSD. The domain imports nothing outside itself (enforced by oxlint). `src/application/` (ADR-009 stage 3a: `stores`, `ports`, `useCases`, including the framework-free live-session controller) is outside FSD too and imports only the domain and itself; `app/NetworkProvider.tsx` is the thin React shell that wires an adapter into it (enforced by oxlint). UI code imports domain symbols from `src/domain` directly and stores and use-case hooks from the `src/application` barrel; navigation stays in `features/`.
 
 Component CSS lives beside its component and is imported by it (shared
 components' sheets sit in `shared/ui/*.css`; `pages/workspace/ui/workspace.css`
@@ -62,7 +62,7 @@ not a style choice. A barrel may export a narrowed view instead of the raw
 object: `src/application` exports `useSessionStore` / `useConnectionStore` /
 `useRoundStore` as state-only types plus a few trivial field setters
 (`stores/publicStores.ts`, read-only: no `setState`; tests seed state through `application/testing`); every rule-bearing write is a use-case hook, and use cases
-and `NetworkProvider` write through the full stores.
+and the live-session controller write through the full stores.
 
 ## Cross-entity imports: `@x`
 
