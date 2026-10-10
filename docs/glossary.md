@@ -30,7 +30,7 @@ These words belong to FSD only. They do not describe the target layers above.
 
 | Term | Meaning |
 |---|---|
-| **Slice** | A folder inside an FSD layer that groups one business concept (for example `entities/session`). |
+| **Slice** | A folder inside an FSD layer that groups one business concept (for example `entities/estimate`). |
 | **Segment** | A purpose-named folder inside a slice: `model`, `api`, `lib`, `ui`. Note that FSD's `model` segment is not "the domain model" in the DDD sense. |
 | **Public API** | The barrel file (`index.ts`) of a slice; the only thing other slices may import. |
 

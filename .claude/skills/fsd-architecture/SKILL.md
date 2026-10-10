@@ -31,7 +31,7 @@ one layer down instead).
 | `pages` | One slice per top-level screen/view | `pages/workspace`, `pages/join-session` |
 | `widgets` | Composite UI reused across *more than one* page | `widgets/session-sidebar` (used by `workspace` and `session-summary`) |
 | `features` | A user-facing use case/action | `features/estimate-round`, `features/reveal-results`, `features/session-lifecycle` (thin start / leave wrappers that add navigation to the application use cases, plus the join flow) |
-| `entities` | A business noun and its data/logic | `entities/session` (session UI only: `ItemDetailShell`, `EstimateTriple`, `RangeBar`, `DescriptionField`; stores and use cases live in `src/application`) |
+| `entities` | A business noun and its data/logic | `entities/item` (`ItemDetailShell`, `DescriptionField`) and `entities/estimate` (`EstimateTriple`, `RangeBar`) (UI only; stores and use cases live in `src/application`) |
 | `shared` | Business-agnostic UI primitives, generic hooks, copy | `shared/ui/Button`, `shared/lib/useConfirmArm` |
 
 `processes` is not in use — nothing today needs a cross-feature orchestrated
@@ -66,11 +66,10 @@ and the live-session controller write through the full stores.
 
 ## Cross-entity imports: `@x`
 
-There is currently only one entity (`entities/session`), so no cross-entity
-imports exist and no `@x` surfaces are in use. `entities/estimate` used to be a
-separate slice reached through `@x`; it was merged into `entities/session`
-because estimates are value objects owned by the session's rounds, not an
-independent entity (see ADR-004's 2026-10-06 update). If a genuinely independent
+The two entities (`entities/item`, `entities/estimate`) do not import each other,
+so no `@x` surfaces are in use. An earlier `entities/estimate` was reached through
+`@x` and merged into a single session slice (ADR-004's 2026-10-06 update); stage 3d
+of ADR-009 split that slice again once it held only independent UI. If a genuinely independent
 second entity ever needs another, expose a narrow
 `entities/<provider>/@x/<consumer>.ts` surface rather than adding a Steiger
 exemption.
@@ -83,7 +82,7 @@ Work through these in order — the first one that fits wins:
    specific user action?** (e.g. a roadmap item; a value object owned by an
    existing entity, like an estimate, stays inside that entity) →
    `entities/<noun>`. Put its type, validation, and any generic display
-   component (like `entities/session/ui/estimate/RangeBar.tsx`) here.
+   component (like `entities/estimate/ui/RangeBar.tsx`) here.
 2. **Is it one user-facing action/workflow built on top of one or more
    entities?** (e.g. "estimate a round", "reveal results", "assign story
    points") → `features/<verb-noun>`. If two features would need the exact

@@ -4,6 +4,9 @@
 **Date:** 2026-09-29
 **Related:** `.oxlintrc.json`, `steiger.config.ts`, `docs/concepts/` (diagram conventions), issues #111, #112
 
+> **Update 2026-10-09:** ADR-009 stage 3d split the remaining UI-only `entities/session` slice into
+> `entities/item` and `entities/estimate`; the `entities/session/...` paths below are the original record.
+>
 > **Update 2026-10-08:** [ADR-009](009-architecture-style-fsd-vs-hexagonal-core.md) was
 > accepted. FSD stays the architecture for the UI only; the domain, use cases and
 > adapters move out in three stages. Until a stage lands, the layout described here still

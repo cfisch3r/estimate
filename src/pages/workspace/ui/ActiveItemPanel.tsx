@@ -1,6 +1,6 @@
 import { Button, NavRow } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
-import { ItemDetailShell } from '../../../entities/session'
+import { ItemDetailShell } from '../../../entities/item'
 import { isFinalized } from '../../../domain/item'
 import type { Item } from '../../../domain/types'
 import type { ActionResult, EstimationUnit } from '../../../domain/estimate'

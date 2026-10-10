@@ -1,6 +1,6 @@
 import './range-bar.css'
-import { formatValue } from '../../../../shared/ui/format'
-import { GuardNote } from '../../../../shared/ui/GuardNote'
+import { formatValue } from '../../../shared/ui/format'
+import { GuardNote } from '../../../shared/ui/GuardNote'
 
 interface RangeBarProps {
   min: number

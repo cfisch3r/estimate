@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
-import { formatValue } from '../../../../shared/ui/format'
-import { UNIT_SUFFIX, type EstimationUnit } from '../../../../domain/estimate'
+import { formatValue } from '../../../shared/ui/format'
+import { UNIT_SUFFIX, type EstimationUnit } from '../../../domain/estimate'
 
 interface EstimateTripleProps {
   best: number

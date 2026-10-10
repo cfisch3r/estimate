@@ -6,7 +6,7 @@ import {
   type Estimate,
   type EstimationUnit,
 } from '../../../domain/estimate'
-import { RangeBar } from '../../../entities/session'
+import { RangeBar } from '../../../entities/estimate'
 
 interface AggregatedRangeProps {
   submissions: Estimate[]

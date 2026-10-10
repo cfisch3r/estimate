@@ -1,6 +1,6 @@
 import { Card, CardBody } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
-import { EstimateTriple } from '../../../entities/session'
+import { EstimateTriple } from '../../../entities/estimate'
 import type { EstimationUnit } from '../../../domain/estimate'
 import type { LiveRound } from '../../../domain/types'
 import { AggregatedRange } from '../../../features/reveal-results'
