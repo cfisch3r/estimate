@@ -3,7 +3,7 @@
 | Doc | What it covers |
 |---|---|
 | [prd.md](prd.md) | Product requirements — problem, goals, session modes, calculations, bias guards, screens, data model, phased roadmap. |
-| [architecture.md](architecture.md) | Technical architecture — stack, module structure, the estimation engine, the P2P network layer, persistence approach, hosting. |
+| [architecture.md](architecture.md) | Technical architecture in arc42 form — goals and constraints, the context view, the layer and component building-block views, the architecture rules (R1 to R11), runtime and deployment pointers, crosscutting concepts, quality goals, risks and debt. |
 | [adr/001-live-collaboration-architecture.md](adr/001-live-collaboration-architecture.md) | Accepted decision: peer-to-peer WebRTC for Live mode, with Manual mode as a first-class fallback. |
 | [adr/002-testing-strategy.md](adr/002-testing-strategy.md) | Accepted decision: layered tests — unit + component, plus a thin Playwright e2e layer since #26 (see ADR-007) — see the doc's 2026-09-07 and 2026-09-30 updates. |
 | [adr/003-session-reliability-model.md](adr/003-session-reliability-model.md) | Accepted decision: facilitator-authoritative round state, versioned rounds, a values-free submission roster pulled on (re)connect, acknowledged submissions, stable client identity, role-asymmetric link state. The design anchor for #9, #60, #61, #62, #63 — stable client identity (#50), versioned rounds (#51), single owner (#60), acknowledged submissions (#61), and role-asymmetric link state (#62, narrowed scope) have all landed. |
@@ -15,6 +15,7 @@
 | [adr/009-architecture-style-fsd-vs-hexagonal-core.md](adr/009-architecture-style-fsd-vs-hexagonal-core.md) | Accepted decision: keep FSD only for the UI and move the pure domain, the use cases and the transport/storage adapters into a hexagonal core with enforced inward-only dependencies, staged in three independently shippable steps; evidence from the 2026-10-05 architecture review. Stages 1, 2 and 3a are done. |
 | [glossary.md](glossary.md) | Architecture vocabulary: layer, type, aggregate, entity, value object, inbound/outbound adapter, port, and the FSD-only terms slice and segment, with the words to avoid. |
 | [concepts/collaboration-mode.md](concepts/collaboration-mode.md) | Live mode (Mode A) technical concept, diagram-driven: the Trystero network layer, join flow, connection state machine, the participant estimate round, the facilitator reveal / retry-round flow, and the screen/store wiring shipped so far. |
+| [concepts/estimation-engine.md](concepts/estimation-engine.md) | Estimation engine technical concept: one aggregation function for both modes, the self-validating `Estimate` value type, bias guards and the tunable constants. |
 | [concepts/e2e-testing.md](concepts/e2e-testing.md) | E2E testing technical concept, diagram-driven: the Playwright/fixture/signaling component wiring, the two dual-mode build-and-run flows, the fixture-role model, and the spec-to-wire-action coverage map. |
 | [runbook.md](runbook.md) | Deployment & release runbook: the IONOS Deploy Now CD pipeline, secrets, troubleshooting, and versioning/release process. |
 

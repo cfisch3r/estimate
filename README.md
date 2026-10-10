@@ -52,7 +52,7 @@ too (needs `pnpm exec playwright install --with-deps chromium` once beforehand).
 ## Docs
 
 - [docs/prd.md](docs/prd.md) — product requirements
-- [docs/architecture.md](docs/architecture.md) — technical architecture, stack, module structure
+- [docs/architecture.md](docs/architecture.md) — technical architecture (arc42): context, building blocks, rules, risks
 - [docs/adr/001-live-collaboration-architecture.md](docs/adr/001-live-collaboration-architecture.md) — peer-to-peer live-collaboration architecture decision
 - [docs/adr/002-testing-strategy.md](docs/adr/002-testing-strategy.md) — layered test strategy: unit/component, plus a thin Playwright e2e layer since #26 (see ADR-007)
 - [docs/adr/003-session-reliability-model.md](docs/adr/003-session-reliability-model.md) — facilitator-authoritative round state, versioned rounds, stable client identity, and related live-session reliability decisions
