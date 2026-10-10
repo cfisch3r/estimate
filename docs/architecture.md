@@ -365,6 +365,5 @@ Work items are tracked on the EstiMate Roadmap board.
 
 ## 12. Glossary
 
-See [glossary.md](glossary.md): layer, type, aggregate, entity, value object, inbound and outbound
-adapter, port, use case, state store, live-session controller, FSD slice and segment, and the words
-to avoid.
+The architecture vocabulary is defined in [glossary.md](glossary.md). Use those terms, and avoid the
+words in its "Avoid" column.
