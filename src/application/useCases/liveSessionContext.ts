@@ -1,8 +1,9 @@
 import { createContext } from 'react'
 import type { Estimate } from '../../domain/estimate'
 
-export interface NetworkSessionApi {
-  /** Join the Trystero room for `sessionId` and mirror its connection state into the store.
+export interface LiveSessionApi {
+  /** Join the live session `sessionId` through the transport port and mirror its
+   *  connection state into the connection store.
    *  Safe to call again mid-session to re-join after a connection loss — it tears down
    *  the old room first, so it doubles as `reconnect`. */
   connect: (sessionId: string) => void
@@ -17,4 +18,4 @@ export interface NetworkSessionApi {
   sendEstimate: (itemId: string, estimate: Estimate, round: number) => Promise<void>
 }
 
-export const NetworkSessionContext = createContext<NetworkSessionApi | null>(null)
+export const LiveSessionContext = createContext<LiveSessionApi | null>(null)

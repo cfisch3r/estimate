@@ -24,8 +24,8 @@ const { disconnectMock, sendEstimateMock, navigateMock } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
 }))
 
-vi.mock('../../../application/ports/useNetworkSession', () => ({
-  useNetworkSession: () => ({
+vi.mock('../../../application/useCases/useLiveSession', () => ({
+  useLiveSession: () => ({
     connect: vi.fn(),
     disconnect: disconnectMock,
     sendEstimate: sendEstimateMock,

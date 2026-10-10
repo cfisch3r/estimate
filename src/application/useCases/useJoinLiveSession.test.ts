@@ -7,8 +7,8 @@ import { useJoinLiveSession } from './useJoinLiveSession'
 
 const { connectMock } = vi.hoisted(() => ({ connectMock: vi.fn() }))
 
-vi.mock('../ports/useNetworkSession', () => ({
-  useNetworkSession: () => ({ connect: connectMock }),
+vi.mock('./useLiveSession', () => ({
+  useLiveSession: () => ({ connect: connectMock }),
 }))
 
 const getIdMock = vi.fn(() => 'p-1')

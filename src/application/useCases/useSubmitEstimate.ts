@@ -3,7 +3,7 @@ import { deliveryStateFor } from '../../domain/delivery'
 import { createEstimate, type ActionResult } from '../../domain/estimate'
 import { LOCAL_PARTICIPANT_ID } from '../../domain/participantId'
 import { useConnectionStore, useRoundStore } from '../stores'
-import { useNetworkSession } from '../ports/useNetworkSession'
+import { useLiveSession } from './useLiveSession'
 
 /** The participant-side submit use case: record the estimate locally, then send
  *  it to the facilitator and track whether that send failed. */
@@ -11,9 +11,9 @@ export function useSubmitEstimate() {
   const liveRound = useRoundStore((s) => s.liveRound)
   const submitEstimate = useRoundStore((s) => s.submitEstimate)
   const participantId = useConnectionStore((s) => s.participantId)
-  const { sendEstimate } = useNetworkSession()
+  const { sendEstimate } = useLiveSession()
   // Tracks only the most recent local send attempt; the roster convergence
-  // check in NetworkProvider can also resend in the background, and that path
+  // check in LiveSessionProvider can also resend in the background, and that path
   // is reflected below purely through the roster, without touching this flag.
   const [deliveryFailed, setDeliveryFailed] = useState(false)
 

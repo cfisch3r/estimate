@@ -8,11 +8,11 @@ import { useSessionStore, useConnectionStore } from '../application/testing'
 vi.mock('../application/useCases/sessionCode', () => ({
   generateSessionCode: () => 'LIVECODE',
 }))
-vi.mock('./NetworkProvider', () => ({
-  NetworkProvider: ({ children }: { children: ReactNode }) => children,
+vi.mock('./LiveSessionProvider', () => ({
+  LiveSessionProvider: ({ children }: { children: ReactNode }) => children,
 }))
-vi.mock('../application/ports/useNetworkSession', () => ({
-  useNetworkSession: () => ({ connect: vi.fn(), disconnect: vi.fn() }),
+vi.mock('../application/useCases/useLiveSession', () => ({
+  useLiveSession: () => ({ connect: vi.fn(), disconnect: vi.fn() }),
 }))
 
 function resetStore() {

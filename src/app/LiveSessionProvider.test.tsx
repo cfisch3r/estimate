@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { useNetworkSession, type ConnectionState } from '../application/composition'
-import { NetworkProvider } from './NetworkProvider'
+import { useLiveSession, type ConnectionState } from '../application/composition'
+import { LiveSessionProvider } from './LiveSessionProvider'
 import { useConnectionStore } from '../application/testing'
 
 const { joinSessionMock, fakeSession } = vi.hoisted(() => {
@@ -29,7 +29,7 @@ const { joinSessionMock, fakeSession } = vi.hoisted(() => {
 vi.mock('../adapters/network/session', () => ({ joinSession: joinSessionMock }))
 
 function Consumer() {
-  const { connect } = useNetworkSession()
+  const { connect } = useLiveSession()
   return <button onClick={() => connect('K7F9Q2')}>connect</button>
 }
 
@@ -39,17 +39,17 @@ beforeEach(() => {
   useConnectionStore.setState({ connectionStatus: 'idle', peerCount: 0 })
 })
 
-describe('NetworkProvider', () => {
-  it('throws when used outside a NetworkProvider', () => {
-    expect(() => render(<Consumer />)).toThrow(/NetworkProvider/)
+describe('LiveSessionProvider', () => {
+  it('throws when used outside a LiveSessionProvider', () => {
+    expect(() => render(<Consumer />)).toThrow(/LiveSessionProvider/)
   })
 
   it('joins the room and primes connection state on connect', async () => {
     const user = userEvent.setup()
     render(
-      <NetworkProvider>
+      <LiveSessionProvider>
         <Consumer />
-      </NetworkProvider>,
+      </LiveSessionProvider>,
     )
 
     await user.click(screen.getByText('connect'))
@@ -61,9 +61,9 @@ describe('NetworkProvider', () => {
   it('leaves the room when the provider unmounts', async () => {
     const user = userEvent.setup()
     const { unmount } = render(
-      <NetworkProvider>
+      <LiveSessionProvider>
         <Consumer />
-      </NetworkProvider>,
+      </LiveSessionProvider>,
     )
     await user.click(screen.getByText('connect'))
     fakeSession.leave.mockClear()

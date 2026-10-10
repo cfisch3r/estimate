@@ -15,7 +15,7 @@ import { useSessionStore as sessionStore, type SessionStore } from './session'
  *  facilitator-authoritative model (ADR-003) the only path by which remote state
  *  changes the local one.
  *
- *  Use cases and `NetworkProvider` import the full stores from `./stores`; tests
+ *  Use cases and `LiveSessionProvider` import the full stores from `./stores`; tests
  *  that seed state use `application/testing`. */
 export type ReadOnlyStore<T> = {
   (): T

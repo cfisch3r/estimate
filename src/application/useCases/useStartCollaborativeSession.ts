@@ -1,5 +1,5 @@
 import { useConnectionStore, useSessionStore } from '../stores'
-import { useNetworkSession } from '../ports/useNetworkSession'
+import { useLiveSession } from './useLiveSession'
 import { generateSessionCode } from './sessionCode'
 
 /** Start a facilitator-hosted live session: generate its join code, select the
@@ -7,7 +7,7 @@ import { generateSessionCode } from './sessionCode'
 export function useStartCollaborativeSession(): () => void {
   const startCollaborative = useConnectionStore((s) => s.startCollaborative)
   const selectFirstPending = useSessionStore((s) => s.selectFirstPending)
-  const { connect } = useNetworkSession()
+  const { connect } = useLiveSession()
 
   return () => {
     const sessionCode = generateSessionCode()

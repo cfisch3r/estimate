@@ -5,11 +5,8 @@ export {
   createLiveSessionController,
   type LiveSessionController,
 } from './useCases/liveSessionController'
-export {
-  NetworkSessionContext,
-  type NetworkSessionApi,
-} from './ports/networkSessionContext'
-export { useNetworkSession } from './ports/useNetworkSession'
+export { LiveSessionContext, type LiveSessionApi } from './useCases/liveSessionContext'
+export { useLiveSession } from './useCases/useLiveSession'
 export {
   ParticipantIdentityContext,
   type ParticipantIdentityApi,

@@ -86,6 +86,7 @@ flowchart LR
 | Facilitator owns the live state | Versioned rounds, a values-free submission roster, acknowledged submissions (ADR-003) |
 | One estimation engine for both modes | `aggregateEstimates` is called with N submissions or one (section 8) |
 | Three small stores | Session, connection and round state are separate Zustand stores (ADR-005) |
+| Wiring at composition time | `src/app` picks which adapter fills which port and hands the use-case hooks their controller and identity through React contexts (section 8) |
 | Boundaries enforced by tools | [Steiger](https://github.com/feature-sliced/steiger) for the UI, oxlint for the layer imports, type tests for the store views (section 5) |
 
 ## 5. Building block view
@@ -214,9 +215,9 @@ flowchart LR
 | Part | Location |
 |---|---|
 | Domain | `src/domain` (rules and types), `src/domain/estimate` (the estimation engine, formerly `/calc`) |
-| Application | `src/application`: `stores/` (session, connection, round, plus the narrowed `publicStores`), `useCases/` (including the live-session controller), `ports/` and `ports/outbound/` (the peer transport), `composition.ts` and `testing.ts` (entries for `src/app` and tests only), `index.ts` (the barrel the UI imports) |
+| Application | `src/application`: `stores/` (session, connection, round, plus the narrowed `publicStores`), `useCases/` (the use cases, the live-session controller and its `LiveSessionApi` context and hook), `ports/` and `ports/outbound/` (the peer transport and the identity port), `composition.ts` and `testing.ts` (entries for `src/app` and tests only), `index.ts` (the barrel the UI imports) |
 | Adapters | `src/adapters/network` (Trystero transport, wire actions and parsing, signaling), `src/adapters/storage` (participant id) |
-| Composition | `src/app`: `App.tsx` provides the identity port, `NetworkProvider.tsx` is the thin React shell that wires the network adapter into the live-session controller |
+| Composition | `src/app`: `App.tsx` provides the identity port, `LiveSessionProvider.tsx` is the thin React shell that wires the network adapter into the live-session controller and provides its `LiveSessionApi` |
 | UI | `src/pages`, `src/widgets`, `src/features`, `src/entities` (`item`, `estimate`), `src/shared`. The slice mapping is in ADR-004 and the placement helper is `.claude/skills/fsd-architecture` |
 | Styling | `src/design` holds the verbatim Nocturne port and generic composed patterns, component CSS sits beside its component |
 
@@ -232,7 +233,7 @@ skill can cite it.
 | R3 | Adapters import the domain, other adapters and packages other than React, Zustand and the router. From the application they import only `application/ports/outbound/**` | oxlint override on `src/adapters/**` |
 | R4 | Inside the UI, imports point downward (`app`, `pages`, `widgets`, `features`, `entities`, `shared`), and a slice is reached only through its `index.ts` | Steiger (`pnpm arch`) |
 | R5 | The UI folders (`pages`, `widgets`, `features`, `entities`, `shared`) never import an adapter. They import the application only through `src/application/index.ts`. The `composition` and `testing` entries are for `src/app` and test files only | oxlint overrides on the UI folders |
-| R6 | Only `src/app` (the composition root) imports an adapter next to the application. It is the one exception to R5 | R5 together with R2 |
+| R6 | Only `src/app` (the composition root) imports an adapter next to the application, creates the live-session controller and fills the contexts through which the hooks reach it. It is the one exception to R5 | R5 together with R2 |
 | R7 | The UI reads store state through selectors on read-only views and may call only the trivial field setters. Every rule-bearing write goes through a use case | Type tests on the exported views (`publicStores.test.ts`), R5 |
 | R8 | Store action or use case: code that reaches another store, calls a port or triggers an effect is a use case. Stores do not reach into each other, except the round store writing items through `patchItem` (ADR-005) | `architecture-review` agent |
 | R9 | Ports exist only at real external boundaries (peer transport, identity and storage) and are owned by the application layer | `architecture-review` agent |
@@ -300,6 +301,7 @@ releases are in the [runbook](runbook.md).
 | Live sync | Room id is the 6-character session code (Crockford base32, no deep link) under the fixed `appId` `estimate-app-v1`. Trystero's [Nostr](https://nostr.com) strategy is the default (the library's own robustness ranking is Nostr, MQTT, BitTorrent, IPFS, and the Supabase and Firebase strategies need your own project). A self-hosted WebSocket relay is the escape hatch. An optional room password AES-GCM-encrypts the signaling handshake, without it the room id is visible as metadata on the relay. The facilitator's items are the single source of truth: participants send estimates only to the facilitator, and everyone else receives `syncState` snapshots. A peer that connects or reconnects pulls the snapshot itself (`requestSnapshot`) | ADR-001, ADR-003, [collaboration-mode](concepts/collaboration-mode.md) |
 | Reliability | Versioned rounds, a values-free roster, acknowledged submissions with a kind-driven retry policy, a stable per-browser participant id, role-asymmetric link state | ADR-003 |
 | Trust boundary | Every inbound peer message is validated into domain values at the adapter edge, so the UI only sees valid `Estimate`s | [collaboration-mode](concepts/collaboration-mode.md): trust boundary |
+| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (the peer transport in `ports/outbound`, participant identity). The use-case hooks reach the live-session controller, and the identity port, through React contexts, because a hook cannot import an object created at runtime. The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (R5, R6) | [glossary](glossary.md): port and handle, ADR-009 |
 | State and UI access | Three stores in the application layer, read-only narrowed views for the UI, use cases for rule-bearing writes (R7, R8) | ADR-005, ADR-009 |
 | Navigation | `react-router`. Use cases contain no navigation, `features/session-lifecycle` wraps them with it | ADR-006 |
 | Persistence | Local-first and file-based. A session (name, unit, items) is saved as a JSON file and restored from one, live-round fields are excluded. Save is a read-only export available to the facilitator in either mode. Load is allowed only before a live session starts, because importing mid-session would silently replace the facilitator's items and desync participants, so a facilitator resumes an adjourned session from the mode-select screen. A participant never has a local item list. A session survives only if the user saves the file, and the UI must say so plainly. No accounts, no cross-device sync in the MVP. Not built yet | PRD §8 |
@@ -363,6 +365,5 @@ Work items are tracked on the EstiMate Roadmap board.
 
 ## 12. Glossary
 
-See [glossary.md](glossary.md): layer, type, aggregate, entity, value object, inbound and outbound
-adapter, port, use case, state store, live-session controller, FSD slice and segment, and the words
-to avoid.
+The architecture vocabulary is defined in [glossary.md](glossary.md). Use those terms, and avoid the
+words in its "Avoid" column.

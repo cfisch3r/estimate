@@ -20,8 +20,8 @@ const { connectMock, disconnectMock } = vi.hoisted(() => ({
   disconnectMock: vi.fn(),
 }))
 
-vi.mock('../../../application/ports/useNetworkSession', () => ({
-  useNetworkSession: () => ({ connect: connectMock, disconnect: disconnectMock }),
+vi.mock('../../../application/useCases/useLiveSession', () => ({
+  useLiveSession: () => ({ connect: connectMock, disconnect: disconnectMock }),
 }))
 
 function renderWithPath<T>(hook: () => T, initialPath: string = ROUTES.modeSelect) {

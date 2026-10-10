@@ -14,8 +14,8 @@ const { connectMock, navigateMock } = vi.hoisted(() => ({
 vi.mock('../../../application/useCases/sessionCode', () => ({
   generateSessionCode: () => 'LIVECODE',
 }))
-vi.mock('../../../application/ports/useNetworkSession', () => ({
-  useNetworkSession: () => ({ connect: connectMock, disconnect: vi.fn() }),
+vi.mock('../../../application/useCases/useLiveSession', () => ({
+  useLiveSession: () => ({ connect: connectMock, disconnect: vi.fn() }),
 }))
 vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router')>()
