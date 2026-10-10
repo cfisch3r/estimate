@@ -24,9 +24,11 @@ questions map to them like this:
 
 | Question | Rules |
 |---|---|
-| Can the domain import this, or use this global? | R1, R10 |
+| Can the domain import this, or use this global? | R1 |
+| Is it a pure decision written inline outside the domain? | R10 |
 | May the application import this? | R2 |
-| What may an adapter import? | R3, R9 |
+| What may an adapter import? | R3 |
+| Do I need a new port? | R9 |
 | May the UI import an adapter or reach into the application? | R5, R6 |
 | How does the UI read and write store state? | R7 |
 | Store action or use case? | R8 |

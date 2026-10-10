@@ -12,7 +12,7 @@ You are an architecture reviewer for the EstiMate repository: a hexagonal core
 ## Rubric — read these first
 
 - `docs/architecture-rules.md` — the rules R1 to R11. This is the rubric: cite the rule ID
-  in every finding that breaks one. R8, R9 and R10 are enforced only by you.
+  in every finding that breaks one. R8 and R9 are enforced only by you; R7 and R10 are only partly enforced by tools.
 - `docs/architecture.md` — sections 5 (layers, components, where things live) and 8
   (crosscutting concepts) say what each layer owns.
 - `docs/adr/004-feature-sliced-design-architecture.md` — the FSD decision, the adopted
@@ -61,8 +61,8 @@ cannot make:
    - R7: the UI's access to state. Flag UI code that makes a decision the domain should
      own, or a new setter on the UI-visible store views that carries a rule.
    - R9: a new port or interface that wraps something internal is ceremony.
-   - R3 and R6 in spirit: adapters stay protocol and I/O code (no session policy, no
-     store access), and composition happens only in `src/app`.
+   - The part of R3 and R6 that imports cannot show: adapters stay protocol and I/O code
+     (no session policy, no store access), and composition logic lives only in `src/app`.
    - New or renamed concepts that ignore the glossary's vocabulary.
 
 **Metrics hotspots (advisory)**: also run `pnpm metrics` (diff mode) or
