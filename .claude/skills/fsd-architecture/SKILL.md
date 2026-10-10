@@ -19,15 +19,26 @@ yes wins:
 | Is it wiring that picks which adapter fills which port? | `src/app` (composition) |
 | Is it something the user sees or does, plus navigation? | the FSD UI, below |
 
-UI rule: read store state with selectors; call only the trivial field setters directly;
-every rule-bearing write goes through a use case. Add a port only at a real external
-boundary. The rest of this skill covers the UI layers.
+The rules behind this table are in `docs/architecture-rules.md`; cite them by ID. Placement
+questions map to them like this:
+
+| Question | Rules |
+|---|---|
+| Can the domain import this, or use this global? | R1, R10 |
+| May the application import this? | R2 |
+| What may an adapter import? | R3, R9 |
+| May the UI import an adapter or reach into the application? | R5, R6 |
+| How does the UI read and write store state? | R7 |
+| Store action or use case? | R8 |
+| Does a moved module leave a stale `vi.mock` path? | R11 |
+
+The rest of this skill covers the UI layers (R4).
 
 # Feature-Sliced Design in the UI
 
 The rules themselves are enforced by scanners, not this skill — see
-`steiger.config.ts` (layer/slice/public-API boundaries) and `.oxlintrc.json`
-(general lint, import restrictions). This skill is the *why* and *where*:
+`docs/architecture-rules.md`, `steiger.config.ts` (layer/slice/public-API boundaries, R4) and
+`.oxlintrc.json` (general lint, import restrictions). This skill is the *why* and *where*:
 what to do before the scanner would even have a chance to complain.
 
 Full decision record: `docs/adr/004-feature-sliced-design-architecture.md`.
@@ -67,7 +78,7 @@ slice). A UI slice has no `api/` segment: calls to the outside world are adapter
 segment — add one when there's something to put in it. Pure decision rules that
 more than one hook needs belong in `src/domain/` (e.g. `domain/roster.ts`, ADR-009
 stage 1; store transitions such as `domain/round.ts` and `domain/connection.ts`, stage 3b-1: stores hold state and call these), unit-tested directly; `src/domain/` (including `domain/estimate/`, which keeps its own
-`index.ts`) is outside FSD. The domain imports nothing outside itself (enforced by oxlint). `src/application/` (ADR-009 stage 3a: `stores`, `ports`, `useCases`, including the framework-free live-session controller) is outside FSD too and imports only the domain and itself; `app/LiveSessionProvider.tsx` is the thin React shell that wires an adapter into it (enforced by oxlint). UI code imports domain symbols from `src/domain` directly and stores and use-case hooks from the `src/application` barrel; navigation stays in `features/`.
+`index.ts`) and `src/application/` (`stores`, `ports`, `useCases`, including the framework-free live-session controller) are outside FSD (R1, R2). `app/LiveSessionProvider.tsx` is the thin React shell that wires an adapter into the controller (R6). UI code imports domain symbols from `src/domain` directly and stores and use-case hooks from the `src/application` barrel (R5); navigation stays in `features/`.
 
 Component CSS lives beside its component and is imported by it (shared
 components' sheets sit in `shared/ui/*.css`; `pages/workspace/ui/workspace.css`

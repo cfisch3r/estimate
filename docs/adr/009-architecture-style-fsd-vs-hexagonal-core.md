@@ -65,7 +65,8 @@ valuable and can be stopped after.** Treat D as a separate follow-up decision ab
 how the round is written, not part of this one.
 
 The two diagrams below are the decision-time snapshot. The living versions, kept in step
-with the code, are in [architecture.md](../architecture.md), section 5.
+with the code, are in [architecture.md](../architecture.md), section 5, and the rules are in
+[architecture-rules.md](../architecture-rules.md).
 
 Target structure, in two views. Features and adapters may also use domain types directly;
 those edges are left out to keep the diagrams readable. In the layer view the arrow from the
