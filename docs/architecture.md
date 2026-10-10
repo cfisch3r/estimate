@@ -28,8 +28,8 @@ Stakeholders: the facilitator, the participants, and the maintainers (Christian 
 
 | Constraint | Source |
 |---|---|
-| No backend operated by the product for live communication. Signaling uses public relays, NAT traversal uses public STUN servers | ADR-001, PRD §9 |
-| Static SPA: React 19, TypeScript (`strict`, `noUncheckedIndexedAccess`), Vite, Zustand, `react-router`, Phosphor icons. oxlint lints (it is the `create-vite` default, equivalent for our needs) and Prettier formats | AGENTS.md, ADR-006 |
+| No backend operated by the product for live communication. Signaling uses public [Nostr](https://nostr.com) relays, NAT traversal uses public [STUN](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols) servers | ADR-001, PRD §9 |
+| Static SPA: React 19, TypeScript (`strict`, `noUncheckedIndexedAccess`), Vite, [Zustand](https://zustand.docs.pmnd.rs), `react-router`, Phosphor icons. oxlint lints (it is the `create-vite` default, equivalent for our needs) and Prettier formats | AGENTS.md, ADR-006 |
 | Nocturne design system ported verbatim (`src/design/nocturne.css` is never edited, no Tailwind) | Section 9, product and design decisions |
 | Last two versions of evergreen Chrome, Firefox, Safari and Edge | AGENTS.md |
 | Solo-maintained: every change goes through a branch and a PR with required CI checks, Conventional Commit titles | AGENTS.md, [runbook](runbook.md) |
@@ -72,21 +72,21 @@ flowchart LR
 
 | External party | Interface |
 |---|---|
-| Other EstiMate instances | Direct WebRTC data channels, typed wire actions (`adapters/network/actions.ts`). Every inbound message is untrusted ([trust boundary](concepts/collaboration-mode.md)) |
-| Signaling relays | Trystero's Nostr strategy exchanges offers and answers. The e2e suite uses a local WebSocket relay instead (ADR-007) |
-| STUN servers | Public servers for NAT traversal. No TURN server is operated (ADR-001) |
+| Other EstiMate instances | Direct [WebRTC](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API) data channels, typed wire actions (`adapters/network/actions.ts`). Every inbound message is untrusted ([trust boundary](concepts/collaboration-mode.md)) |
+| Signaling relays | [Trystero](https://trystero.dev)'s [Nostr](https://nostr.com) strategy exchanges offers and answers. The e2e suite uses a local WebSocket relay instead (ADR-007) |
+| STUN servers | Public servers for NAT traversal ([STUN](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols), [RFC 8489](https://www.rfc-editor.org/rfc/rfc8489)). No [TURN](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols) server ([RFC 8656](https://www.rfc-editor.org/rfc/rfc8656)) is operated (ADR-001) |
 | Files and browser storage | A stable per-browser participant id today, session files for save and load later |
 
 ## 4. Solution strategy
 
 | Strategy | Decision |
 |---|---|
-| Hexagonal core with an FSD UI | Pure domain, application (use cases and stores), adapters for the outside world, and a Feature-Sliced Design UI. Dependencies point inward ([ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md), [ADR-004](adr/004-feature-sliced-design-architecture.md)) |
-| Peer-to-peer live sessions | Trystero over WebRTC, no operated backend (ADR-001) |
+| Hexagonal core with an FSD UI | Pure domain, application (use cases and stores), adapters for the outside world (a [hexagonal](https://alistair.cockburn.us/hexagonal-architecture/) core), and a [Feature-Sliced Design](https://feature-sliced.design) UI. Dependencies point inward ([ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md), [ADR-004](adr/004-feature-sliced-design-architecture.md)) |
+| Peer-to-peer live sessions | [Trystero](https://trystero.dev) over WebRTC, no operated backend (ADR-001) |
 | Facilitator owns the live state | Versioned rounds, a values-free submission roster, acknowledged submissions (ADR-003) |
 | One estimation engine for both modes | `aggregateEstimates` is called with N submissions or one (section 8) |
 | Three small stores | Session, connection and round state are separate Zustand stores (ADR-005) |
-| Boundaries enforced by tools | Steiger for the UI, oxlint for the layer imports, type tests for the store views (section 5) |
+| Boundaries enforced by tools | [Steiger](https://github.com/feature-sliced/steiger) for the UI, oxlint for the layer imports, type tests for the store views (section 5) |
 
 ## 5. Building block view
 
@@ -302,7 +302,7 @@ releases are in the [runbook](runbook.md).
 | Concept | Summary | Detail |
 |---|---|---|
 | Estimation engine | One aggregation function for both modes (min of best, median of likely, max of worst, McConnell's CI90), bias guards that return structured signals, and `Estimate` as a self-validating value type created only through `createEstimate` | [estimation-engine](concepts/estimation-engine.md) |
-| Live sync | Room id is the 6-character session code (Crockford base32, no deep link) under the fixed `appId` `estimate-app-v1`. Trystero's Nostr strategy is the default (the library's own robustness ranking is Nostr, MQTT, BitTorrent, IPFS, and the Supabase and Firebase strategies need your own project). A self-hosted WebSocket relay is the escape hatch. An optional room password AES-GCM-encrypts the signaling handshake, without it the room id is visible as metadata on the relay. The facilitator's items are the single source of truth: participants send estimates only to the facilitator, and everyone else receives `syncState` snapshots. A peer that connects or reconnects pulls the snapshot itself (`requestSnapshot`) | ADR-001, ADR-003, [collaboration-mode](concepts/collaboration-mode.md) |
+| Live sync | Room id is the 6-character session code (Crockford base32, no deep link) under the fixed `appId` `estimate-app-v1`. Trystero's [Nostr](https://nostr.com) strategy is the default (the library's own robustness ranking is Nostr, MQTT, BitTorrent, IPFS, and the Supabase and Firebase strategies need your own project). A self-hosted WebSocket relay is the escape hatch. An optional room password AES-GCM-encrypts the signaling handshake, without it the room id is visible as metadata on the relay. The facilitator's items are the single source of truth: participants send estimates only to the facilitator, and everyone else receives `syncState` snapshots. A peer that connects or reconnects pulls the snapshot itself (`requestSnapshot`) | ADR-001, ADR-003, [collaboration-mode](concepts/collaboration-mode.md) |
 | Reliability | Versioned rounds, a values-free roster, acknowledged submissions with a kind-driven retry policy, a stable per-browser participant id, role-asymmetric link state | ADR-003 |
 | Trust boundary | Every inbound peer message is validated into domain values at the adapter edge, so the UI only sees valid `Estimate`s | [collaboration-mode](concepts/collaboration-mode.md): trust boundary |
 | State and UI access | Three stores in the application layer, read-only narrowed views for the UI, use cases for rule-bearing writes (R7, R8) | ADR-005, ADR-009 |
