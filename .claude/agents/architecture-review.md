@@ -17,7 +17,7 @@ You are an architecture reviewer for the EstiMate repository: a hexagonal core
   (crosscutting concepts) say what each layer owns.
 - `docs/adr/004-feature-sliced-design-architecture.md` — the FSD decision, the adopted
   layer set (`app/pages/widgets/features/entities/shared`), and the slice mapping.
-- `.claude/skills/fsd-architecture/SKILL.md` — the layer and slice placement decision helper.
+- `.claude/skills/code-placement/SKILL.md` — the layer placement decision helper, and `fsd-ui.md` beside it for slice placement in the UI.
 - `docs/glossary.md` — the agreed vocabulary (layer, type, aggregate, inbound/outbound adapter, port, use case, state store, "store action vs use case"). Findings and suggested fixes use these words.
 - `docs/adr/009-architecture-style-fsd-vs-hexagonal-core.md` — the hexagonal core: `src/domain`, `src/application` (stores, ports, use cases including the live-session controller; `app/LiveSessionProvider.tsx` is its thin React shell) and `src/adapters` sit outside FSD and are guarded by oxlint, not Steiger. Use cases hold no navigation; `features/` keeps UI and thin navigation wrappers.
 - `steiger.config.ts` — the enforcement source of truth for the FSD layers; it currently carries no exceptions.
@@ -31,27 +31,7 @@ The command passes you a diff (default) or a path. Run `steiger ./src` and
 tool already reported.** Your job is exactly the judgment calls they structurally
 cannot make:
 
-1. **Slice/segment placement correctness** — code that satisfies every import-direction
-   and public-API rule but sits in the *wrong* slice: domain logic dropped into a
-   feature's `model/` that's really an entity concern; logic duplicated across two
-   features instead of promoted down to `entities/` or `shared/`; a new business noun
-   bolted onto an unrelated existing slice instead of getting its own.
-2. **Public-API quality** — a slice's `index.ts` that leaks internal types/implementation
-   details it shouldn't, or is so narrow it would force a consumer to reach around it
-   (Steiger only catches the reaching-around, not the narrowness that provokes it).
-3. **Slice cohesion as new features land** — is a new chunk of code really a new
-   feature/entity, or a segment of an existing one; does a proposed split actually
-   improve cohesion or just satisfy a metric. Weigh this especially for anything
-   touching Story Point Estimation or Roadmap Building, the features named in ADR-004
-   as the reason FSD was adopted.
-4. **Component/hook design smells** — prop drilling, a hook doing two unrelated jobs, a
-   component with more than one reason to change. Not covered by the `code-review`
-   skill's correctness/simplification/efficiency scope.
-5. **Cross-cutting composition placement** — where orchestration that spans layers
-   (e.g. leaving a workspace, which touches store state, the network connection and
-   navigation) should live: a use case in `src/application` with a thin navigating
-   wrapper in `features/`, or composition in `src/app`.
-6. **Layer placement and hexagonal boundaries** (ADR-009; oxlint only checks imports, not
+1. **Layer placement and hexagonal boundaries** (ADR-009; oxlint only checks imports, not
    where logic belongs). Check the rules oxlint cannot, and cite the ID:
    - R10: a business rule written inline in a store action, use case, adapter or component
      when it is a pure decision that belongs in `src/domain`.
@@ -64,6 +44,26 @@ cannot make:
    - The part of R3 and R6 that imports cannot show: adapters stay protocol and I/O code
      (no session policy, no store access), and composition logic lives only in `src/app`.
    - New or renamed concepts that ignore the glossary's vocabulary.
+2. **Slice/segment placement correctness** — code that satisfies every import-direction
+   and public-API rule but sits in the *wrong* slice: domain logic dropped into a
+   feature's `model/` that's really an entity concern; logic duplicated across two
+   features instead of promoted down to `entities/` or `shared/`; a new business noun
+   bolted onto an unrelated existing slice instead of getting its own.
+3. **Public-API quality** — a slice's `index.ts` that leaks internal types/implementation
+   details it shouldn't, or is so narrow it would force a consumer to reach around it
+   (Steiger only catches the reaching-around, not the narrowness that provokes it).
+4. **Slice cohesion as new features land** — is a new chunk of code really a new
+   feature/entity, or a segment of an existing one; does a proposed split actually
+   improve cohesion or just satisfy a metric. Weigh this especially for anything
+   touching Story Point Estimation or Roadmap Building, the features named in ADR-004
+   as the reason FSD was adopted.
+5. **Component/hook design smells** — prop drilling, a hook doing two unrelated jobs, a
+   component with more than one reason to change. Not covered by the `code-review`
+   skill's correctness/simplification/efficiency scope.
+6. **Cross-cutting composition placement** — where orchestration that spans layers
+   (e.g. leaving a workspace, which touches store state, the network connection and
+   navigation) should live: a use case in `src/application` with a thin navigating
+   wrapper in `features/`, or composition in `src/app`.
 
 **Metrics hotspots (advisory)**: also run `pnpm metrics` (diff mode) or
 `pnpm metrics all` (full-audit mode). It prints at most 5 files, ranked by fta score ×
