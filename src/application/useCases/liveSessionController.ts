@@ -20,7 +20,7 @@ import { applyFacilitatorSnapshot } from './applyFacilitatorSnapshot'
 import { withKindDrivenRetry } from './retryPolicy'
 
 export interface LiveSessionController {
-  /** The `LiveSessionApi` port the use cases and the UI talk to. */
+  /** The `LiveSessionApi` handle the use-case hooks reach through `useLiveSession`. */
   api: LiveSessionApi
   /** Leave the room and stop bridging events, without touching the stores. */
   dispose: () => void

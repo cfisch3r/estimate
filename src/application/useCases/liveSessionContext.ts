@@ -2,7 +2,8 @@ import { createContext } from 'react'
 import type { Estimate } from '../../domain/estimate'
 
 export interface LiveSessionApi {
-  /** Join the Trystero room for `sessionId` and mirror its connection state into the store.
+  /** Join the live session `sessionId` through the transport port and mirror its
+   *  connection state into the connection store.
    *  Safe to call again mid-session to re-join after a connection loss — it tears down
    *  the old room first, so it doubles as `reconnect`. */
   connect: (sessionId: string) => void
