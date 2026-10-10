@@ -157,7 +157,7 @@ flowchart LR
   end
   subgraph APP["APPLICATION"]
     direction TB
-    UseCases["Use cases and live-session controller<br/>[Hooks and factory function]"]
+    UseCases["Use cases<br/>[Hooks and controller]"]
     Stores["State stores<br/>[Zustand stores]"]
   end
   subgraph AD["ADAPTERS"]
@@ -205,7 +205,7 @@ flowchart LR
 | Box | Layer | Responsibility |
 |---|---|---|
 | **Estimate and session rules** | Domain | Everything pure: `Estimate` and its factory, aggregation, guards, uncertainty guidance, item and round types, roster, snapshot, resend and connection rules, label rules, the finalize rule. No React, no I/O. Keeps the 100% coverage threshold. |
-| **Use cases and live-session controller** | Application | Submit, reveal, retry, finalize, join and leave, as straight-line code: read state, call a domain decision, write state, trigger an effect. The live-session controller (`createLiveSessionController`) owns one connection: connect, disconnect, send with retry, resend, snapshot pull, roster prune, announce, and the facilitator's snapshot broadcast when the stores change. It owns the ports the adapters implement, such as the peer transport (`ports/outbound/networkTransport.ts`). |
+| **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, as straight-line code: read state, call a domain decision, write state, trigger an effect. The use-case hooks and the live-session controller (a factory function) belong here. The controller (`createLiveSessionController`) owns one connection: connect, disconnect, send with retry, resend, snapshot pull, roster prune, announce, and the facilitator's snapshot broadcast when the stores change. It owns the ports the adapters implement, such as the peer transport (`ports/outbound/networkTransport.ts`). |
 | **State stores** | Application | The Zustand stores holding session, round and connection state. The UI reads them with selectors and may call a few trivial field setters (session name, unit, item selection and text fields). Every other write goes through a use case. |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. It implements the transport port, delivers validated messages to the handlers the controller registered, and never touches the stores. |
 | **Storage** | Adapters | The stable per-browser participant id today. Save, load and export would be further adapters behind ports. |
