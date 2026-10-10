@@ -190,7 +190,8 @@ imported. What it gives up is the textbook claim that the application layer hold
 state.
 
 **Ports exist only at external boundaries.** The peer transport already has one:
-`NetworkSessionApi` is an interface that the use cases depend on and React context
+`NetworkSessionApi` (since renamed `LiveSessionApi`, and a handle, not a port: see the
+naming note under stage 3d) is an interface that the use cases depend on and React context
 injects, and the test relay (ADR-007) is a second implementation behind the signaling
 contract. In the hybrid, the interface is owned by the application layer and the
 Trystero adapter implements it (the dashed edge in the diagram). The same pattern fits
@@ -336,9 +337,12 @@ already pure functions of state and event.
    Naming after 3d: the sections above use the names of the time. `NetworkProvider` is now
    `LiveSessionProvider`, and `NetworkSessionApi`, `NetworkSessionContext` and
    `useNetworkSession` are `LiveSessionApi`, `LiveSessionContext` and `useLiveSession`,
-   moved from `application/ports/` to `application/useCases/` next to the controller. They
-   are a handle the application hands between its own parts, not a port, and the name
-   no longer points at the network adapter (see the glossary).
+   moved from `application/ports/` to `application/useCases/` next to the controller; the old
+   files `ports/networkSessionContext.ts` and `ports/useNetworkSession.ts` no longer exist.
+   They are a handle the application hands between its own parts, not a port, and the name
+   no longer points at the network adapter (see the Handle entry in the
+   [glossary](../glossary.md)). Where the text above calls `NetworkSessionApi` a port or
+   places it with the ports, read it with this correction.
 
 Each stage ends with all CI checks green and can be the last one.
 
