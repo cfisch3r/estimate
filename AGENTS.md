@@ -90,10 +90,11 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   Checks docs for accuracy against shipped code, cross-reference integrity, and
   conformance to this file's conventions. Defaults to the current diff; `/doc-review all`
   for a full audit, or pass a path. Reports severity-ranked findings and applies nothing.
-- **`/architecture-review`** — read-only FSD architecture audit run in the
-  `architecture-review` subagent. Covers judgment calls Steiger/oxlint can't make: slice
-  placement, public-API quality, slice cohesion, component/hook design smells,
-  cross-cutting composition placement (see ADR-004). Defaults to the current diff;
+- **`/architecture-review`** — read-only architecture audit run in the
+  `architecture-review` subagent. Covers judgment calls Steiger/oxlint can't make: layer
+  placement (domain / application / adapters / UI, store action vs use case; see
+  ADR-009), FSD slice placement, public-API quality, slice cohesion, component/hook
+  design smells, cross-cutting composition placement (see ADR-004). Defaults to the current diff;
   `/architecture-review all` for a full audit, or pass a path.
 - **`/accessibility-review`** — read-only accessibility audit run in the
   `accessibility-review` subagent. Covers judgment calls oxlint's `jsx-a11y` plugin and
@@ -102,7 +103,8 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   scope (see ADR-008). Defaults to the current diff; `/accessibility-review all` for a
   full audit, or pass a path.
 - **`fsd-architecture` skill** — loaded automatically before creating a new file under
-  `src/` or moving code between slices; the "which slice does this belong in" reference.
+  `src/` or moving code between layers or slices; the "which layer, then which slice does this
+  belong in" reference.
 - **Hooks** (`.claude/settings.json` + `.claude/hooks/`) — a `PreToolUse` hard block on
   writes outside approved paths and edits to `nocturne.css`; a `PostToolUse` per-file
   `oxlint` check (surfaces output, never blocks); a `Stop` hook running `pnpm lint`

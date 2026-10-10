@@ -1,5 +1,5 @@
 ---
-description: Review the diff (or a path) for FSD architecture judgment calls Steiger/oxlint can't make — slice placement, public-API quality, slice cohesion, component/hook design smells, cross-cutting composition placement. Read-only — reports severity-ranked findings, applies nothing.
+description: Review the diff (or a path) for architecture judgment calls Steiger/oxlint can't make — layer placement (domain / application / adapters / UI), store action vs use case, FSD slice placement, public-API quality, slice cohesion, component/hook design smells, cross-cutting composition placement. Read-only — reports severity-ranked findings, applies nothing.
 argument-hint: "[all | <path>]"
 ---
 

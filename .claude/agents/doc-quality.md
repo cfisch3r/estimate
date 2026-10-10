@@ -57,6 +57,7 @@ Use `git diff` / `git diff main...HEAD` as appropriate to see changes. Do **not*
 
 - A doc that contradicts another doc (e.g. architecture.md vs. an ADR).
 - Stale dates, retired concepts referred to as current (e.g. milestones — AGENTS.md says they're retired), TODO/TBD left in a doc that reads as finished.
+- Architecture vocabulary that departs from `docs/glossary.md` (use "layer", not "lane", for architecture; "lane" only names a Mermaid subgraph; the glossary's Avoid column lists the words not to use).
 
 ## Output
 

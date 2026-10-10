@@ -1,9 +1,29 @@
 ---
 name: fsd-architecture
-description: Feature-Sliced Design conventions for this repo — which layer/slice new or moved code belongs in, the import-direction rule, and the public-API rule. Use before creating a new file under src/, moving code between slices, or adding a new feature/entity (e.g. Story Point Estimation, Roadmap Building).
+description: Where code belongs in this repo — first the architecture layer (domain, application, adapters, UI), then for UI code the Feature-Sliced Design layer and slice, the import-direction rule, and the public-API rule. Use before creating a new file under src/, moving code between layers or slices, or adding a new feature/entity (e.g. Story Point Estimation, Roadmap Building).
 ---
 
-# Feature-Sliced Design in this repo
+# Where code belongs in this repo
+
+## First: which layer?
+
+The architecture is a hexagonal core plus an FSD UI (`docs/adr/009-architecture-style-fsd-vs-hexagonal-core.md`;
+vocabulary in `docs/glossary.md`). Dependencies point inward. Ask in this order; the first
+yes wins:
+
+| Question | Home |
+|---|---|
+| Is it a pure rule or type (no React, no I/O, no globals) that decides something? | `src/domain` (100% test coverage; imports nothing outside itself) |
+| Is it talking to the outside world (peer transport, wire parsing, storage)? | `src/adapters/{network,storage}`; it implements a port owned by the application and imports no React, Zustand or UI |
+| Is it a user or peer intent run end to end, or state held in-process? | `src/application`: a use case (`useCases/`), or a store (`stores/`) if it only changes that one store. If it reaches another store, calls a port or triggers an effect, it is a use case, not a store action |
+| Is it wiring that picks which adapter fills which port? | `src/app` (composition) |
+| Is it something the user sees or does, plus navigation? | the FSD UI, below |
+
+UI rule: read store state with selectors; call only the trivial field setters directly;
+every rule-bearing write goes through a use case. Add a port only at a real external
+boundary. The rest of this skill covers the UI layers.
+
+# Feature-Sliced Design in the UI
 
 The rules themselves are enforced by scanners, not this skill — see
 `steiger.config.ts` (layer/slice/public-API boundaries) and `.oxlintrc.json`
@@ -39,10 +59,11 @@ flow spanning multiple pages. Don't add it speculatively.
 
 ## Segments inside a slice
 
-Within a slice, split by technical role: `ui/` (components), `model/` (state,
-types, and the stateful hooks that expose a use case — `useX` hooks live here,
-not in `lib/`), `api/` (external calls — network, storage), `lib/`
-(framework-free helpers specific to that slice). Not every slice needs every
+Within a slice, split by technical role: `ui/` (components), `model/` (UI state,
+types, and the hooks that add navigation or view logic to an application use case —
+`useX` hooks live here, not in `lib/`), `lib/` (framework-free helpers specific to that
+slice). A UI slice has no `api/` segment: calls to the outside world are adapters in
+`src/adapters`. Not every slice needs every
 segment — add one when there's something to put in it. Pure decision rules that
 more than one hook needs belong in `src/domain/` (e.g. `domain/roster.ts`, ADR-009
 stage 1; store transitions such as `domain/round.ts` and `domain/connection.ts`, stage 3b-1: stores hold state and call these), unit-tested directly; `src/domain/` (including `domain/estimate/`, which keeps its own
