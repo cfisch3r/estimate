@@ -36,9 +36,14 @@ Stakeholders: the facilitator, the participants, and the maintainers (Christian 
 
 ## 3. Context and scope
 
-Legend: solid arrow = a synchronous use or file access, dotted arrow = asynchronous network
-traffic or served content, `<-->` = both directions. Dashed box = external system. Edge labels say
-what crosses the edge.
+| Legend | Meaning |
+|---|---|
+| Solid arrow | A synchronous use or file access |
+| Dotted arrow | Asynchronous network traffic or served content |
+| Double arrow | Both directions |
+| Dashed box | External system |
+
+Edge labels say what crosses the edge.
 
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 60, "rankSpacing": 90, "padding": 14}}}%%
@@ -95,10 +100,12 @@ calling use cases and reading the stores. `src/app` (composition) sits beside th
 the FSD layer order but is the one place allowed to import an adapter, so the adapter box is wired
 in there.
 
-Legend: solid arrow = calls (the arrow points at the callee, a double arrow goes both ways). When
-the callee is an adapter, the call goes through an interface the application layer owns, so the
-source-code dependency still points inward. Dashed amber arrow = the adapter implements that
-interface, wired in at composition time. Dashed box = external system.
+| Legend | Meaning |
+|---|---|
+| Solid arrow | A call, pointing at the callee. When the callee is an adapter, the call goes through an interface the application owns, so the source-code dependency still points inward |
+| Double arrow | Calls in both directions |
+| Dashed amber arrow | The adapter implements that interface, wired in at composition time |
+| Dashed box | External system |
 
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 150, "padding": 14}}}%%
@@ -128,10 +135,15 @@ flowchart LR
 
 ### Level 2: what is inside each layer
 
-Legend: solid arrow = synchronous call or write (the arrow points at the callee, a double arrow
-goes both ways). Dotted arrow = events and callbacks from an adapter or a read of external state.
-Dashed box = external system. Boxes are labelled with their name and `[type]`. The ports and
-the "implements" relationship appear in the level 1 view only.
+| Legend | Meaning |
+|---|---|
+| Solid arrow | A synchronous call or write, pointing at the callee |
+| Double arrow | Both directions |
+| Dotted arrow | An event or callback from an adapter |
+| Dashed box | External system |
+| `[type]` line | The kind of component, under its name |
+
+Ports and the "implements" relationship appear in the level 1 view only.
 
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 70, "rankSpacing": 90, "padding": 14}}}%%
