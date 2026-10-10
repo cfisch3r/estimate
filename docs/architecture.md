@@ -1,247 +1,368 @@
 # EstiMate — Technical Architecture
 
-**Status:** Accepted
-**Based on:** [prd.md](prd.md), [adr/001-live-collaboration-architecture.md](adr/001-live-collaboration-architecture.md), [adr/003-session-reliability-model.md](adr/003-session-reliability-model.md), design_handoff_estimate_app/
+**Status:** Accepted. Structured after [arc42](https://arc42.org); this is the living description of the current architecture.
+**Based on:** [prd.md](prd.md), the design handoffs in `design_handoff_estimate_app/` and `design_handoffs/`, [ADR-001](adr/001-live-collaboration-architecture.md), [ADR-003](adr/003-session-reliability-model.md), [ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)
 
-## Context
+Decisions and their history live in the [ADRs](adr/); implementation detail of single
+topics lives in [concepts/](concepts/). This document is the map: it states how the system
+is built today, holds the context view and the building-block views, and links out for the
+rest. The words it uses are defined in the [glossary](glossary.md).
 
-This document was written as the architecture proposal before implementation began; it now
-also serves as the as-built reference and is kept in step with the code. Its starting point
-is [adr/001-live-collaboration-architecture.md](adr/001-live-collaboration-architecture.md),
-the [PRD](prd.md), and a high-fidelity clickable HTML prototype in
-`design_handoff_estimate_app/`. ADR-001 settles the hardest architectural call: live
-collaboration is peer-to-peer WebRTC (STUN + serverless signaling), with Manual mode as a
-first-class, equally-supported second mode — no backend operated by the product for live
-session communication.
+## 1. Introduction and goals
 
-What this document covers is everything ADR-001 doesn't: the framework, how P2P signaling
-concretely works, how a session is saved/loaded (a real point of tension with the PRD's
-"no operated server" phrasing, since ADR-001's constraint is scoped to live sync, not
-storage), styling/design-system approach, hosting, and module structure.
+EstiMate is a live three-point estimation tool for dev teams. A team estimates a backlog
+item by item, each member gives a best, most likely and worst case, and the app turns the
+submissions into a range with a confidence interval and counters known estimation biases
+([PRD](prd.md) §2).
 
-**As-built status.** The initial scaffold, the estimation engine (`domain/estimate`),
-the Zustand store, the single-user (Manual) screens, the Trystero P2P network layer
-(`adapters/network`), the Join Session screen, and the participant estimate round
-have all shipped (issues #1–#7), and the entry flow was rebuilt to a mode-selection
-screen plus a unified Workspace in the epic-0010 screen review (#34). The `src/` tree
-was migrated to Feature-Sliced Design (issue #109-era work — see
-[ADR-004](adr/004-feature-sliced-design-architecture.md) for the adopted layer set and
-full slice mapping); this document doesn't repeat that mapping, only the architectural
-decisions and rationale behind what's in each slice. For the concrete as-built detail of
-the Live-mode layer — the network adapter's component breakdown, the join sequence,
-the estimate round, the connection state machine, and the store fields it added — see
-[concepts/collaboration-mode.md](concepts/collaboration-mode.md); this document keeps the
-decisions and rationale, that one tracks the implementation. Still open: connection-fallback
-UX (#9) and session save/load (not built yet — session data is
-in-memory only; see #10).
+| Goal | Meaning for the architecture |
+|---|---|
+| Estimate live, together, with no server we operate | Peer-to-peer sessions (ADR-001) on a static single-page app |
+| A solo facilitator can use it too | Manual mode shares the estimation engine and the screens with Live mode |
+| Defensible ranges, bias guards | The estimation engine is pure, framework-free and identical in both modes |
+| Save and reopen a session later | Local-first, file-based persistence (section 8) |
 
-## Confirmed decisions
+Stakeholders: the facilitator, the participants, and the maintainers (Christian and Claude Code).
 
-- **Persistence:** local-first only, and file-based rather than an in-browser database. A session (session name, unit, and the full item list) is saved by downloading a JSON file and restored by importing one — no IndexedDB, no automatic history list (#10 supersedes the earlier IndexedDB-backed plan and the `SessionHistory` screen it assumed; that screen is slated for removal, not real persistence). Live-round-only fields (`submissions`, `revealed`, `round`) are excluded from the saved file — they're meaningless outside an in-progress live round and always reset on load. Save and Load are not symmetric across modes. Save is available to the facilitator regardless of mode — it's a one-way, read-only export of the current `items`, so it carries none of Load's desync risk. Load, though, is restricted to before a live session starts: importing a file replaces the facilitator's `items` locally without broadcasting the change, so doing it mid-live-session would desync connected participants. A facilitator can still load a saved session to resume an adjourned estimation — on the mode-select screen, before starting collaborative estimation, seeding the live session's initial `items` before anyone joins; the concrete screen flow for this is not yet designed. A participant, in either mode, never has a local item list at all — only the facilitator's broadcast round state — so Save/Load never apply to that role. CSV export and a shareable read-only link for reports (#11, #12) are separate, unblocked features. No cross-device "team" sync in MVP — a session lives on the device that created it, portable only insofar as the user moves the saved file themselves. This keeps the app at genuinely zero operated infrastructure, matching PRD §2's top-level goal, not just ADR-001's narrower live-sync text.
-- **Auth:** none. Open links only — anyone with a session link can view/edit it. Consistent with local-first persistence; revisit if/when cross-device history is ever built.
-- **Facilitator disconnect mid-session:** accepted as an MVP gap. If the facilitator's peer drops, the session stalls for remaining participants; no auto-reassignment or election. Document as a known limitation.
-- **Mode switching mid-session:** out of scope for MVP. Mode is fixed once chosen on the mode-selection screen (per PRD §4.1 flow). If P2P fails mid-session, the facilitator starts a fresh single-user session rather than converting in place.
-- **Estimation unit:** configurable per session (facilitator picks hours/days/weeks), not fixed and not per-item. Resolves an inconsistency between PRD §5's worked example (days) and the prototype's hardcoded "weeks" — neither was a real decision. Requires a `unit` field on `Session` (not currently in PRD §8's data model sketch) and a small dropdown in the Workspace sidebar. The false-precision guard's rounding granularity derives from this field via a lookup (e.g. `{hours: 1, days: 0.5, weeks: 0.5}`, exact values tunable).
-- **Unit selector control:** a native `<select class="input">` in the Workspace sidebar — reuses Nocturne's existing generic input styling, no new component or design mock needed.
-- **Symmetric-range / false-precision nudge styling:** ship using the same plain `.card-meta` muted-caption treatment used elsewhere for inline hints (no distinct "nudge" component exists in Nocturne today). Explicitly logged as a fast-follow design polish item, not blocking MVP build — pragmatic since the guard thresholds themselves are still untuned and likely to change after real usage.
-- **Design system: port Nocturne as-is, no Tailwind migration.** Nocturne's canonical stylesheet (CSS custom properties + global component classes) is the single source of truth for tokens and components, per its own bundled readme; it is ported verbatim to `src/design/nocturne.css` (see `AGENTS.md` — that file stays an unmodified diff against its source; app-specific rules go in their own stylesheet, e.g. `radio-tile.css`). Considered and rejected migrating it to Tailwind: the values are hand-tuned/procedurally generated (non-round spacing scale, OKLCH color ramps) and re-expressing them in a second config risks fidelity drift plus an ongoing sync burden against `nocturne.css`, for a benefit (utility-class layout ergonomics) that doesn't clearly apply here since there's no existing Tailwind codebase to align with. Layout glue uses scoped CSS referencing Nocturne's existing `--space-*` variables instead.
+## 2. Constraints
 
-## Recommended stack
+| Constraint | Source |
+|---|---|
+| No backend operated by the product for live communication. Signaling uses public [Nostr](https://nostr.com) relays, NAT traversal uses public [STUN](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols) servers | ADR-001, PRD §9 |
+| Static SPA: React 19, TypeScript (`strict`, `noUncheckedIndexedAccess`), Vite, [Zustand](https://zustand.docs.pmnd.rs), `react-router`, Phosphor icons. oxlint lints (it is the `create-vite` default, equivalent for our needs) and Prettier formats | AGENTS.md, ADR-006 |
+| Nocturne design system ported verbatim (`src/design/nocturne.css` is never edited, no Tailwind) | Section 9, product and design decisions |
+| Last two versions of evergreen Chrome, Firefox, Safari and Edge | AGENTS.md |
+| Solo-maintained: every change goes through a branch and a PR with required CI checks, Conventional Commit titles | AGENTS.md, [runbook](runbook.md) |
 
-**Frontend: React 19 + TypeScript + Vite, no meta-framework.**
-Static SPA — no server-side rendering needed, no routes that require backend data at request time. Phosphor's React icon package matches the prototype directly. Nocturne's design system is plain CSS custom properties + global classes (`.btn`, `.card`, `.field`, `.tag`, `.radio`), so it ports as-is via `className` — no CSS-in-JS conversion needed. React + hooks handles the prototype's interaction surface (drag-reorder, inline edit forms, async peer events) without extra tooling. (The initial scaffold took `create-vite`'s current default, React 19, rather than the React 18 assumed in early discussion — a version bump, not a design change.)
+## 3. Context and scope
 
-**Tooling: oxlint for linting, not ESLint.** `create-vite`'s current default template ships oxlint (a faster, Rust-based linter) rather than ESLint + typescript-eslint. Functionally equivalent for this project's needs — TypeScript/React rule coverage, no custom rule authoring required — so adopted as scaffolded rather than swapped for the originally-assumed ESLint setup. Prettier still handles formatting (oxlint doesn't format).
+| Legend | Meaning |
+|---|---|
+| Solid arrow | A synchronous use or file access |
+| Dotted arrow | Asynchronous network traffic or served content |
+| Double arrow | Both directions |
+| Dashed box | External system |
 
-**State management: a single reducer/store (Zustand)** rather than scattered `useState`, since WebRTC peer events arrive asynchronously and out of order — the network layer acts as an adapter that dispatches into the same stores, so Mode A (live) and Mode B (manual) differ only in which adapter is active, not in UI logic.
+Edge labels say what crosses the edge.
 
-**Hosting: static hosting**, currently IONOS Deploy Now (see [runbook.md](runbook.md)). No backend to provision or pay for — STUN servers and the P2P signaling network (below) are external services we don't operate.
-
-## P2P live-sync layer (Mode A)
-
-- **Room identity:** `generateSessionCode()` (`application/useCases/sessionCode.ts`) produces a 6-char Crockford-base32 code at session creation (crypto RNG, ambiguous glyphs removed) — short enough to read aloud or paste into chat. It is the Trystero `roomId`, with a fixed `appId` (`estimate-app-v1`) namespacing EstiMate's rooms. *(The proposal assumed a nanoid embedded in a `/join/<id>` deep link; the as-built code ships the human-shareable code with no deep-link route — see the concept doc's "Known MVP gaps".)*
-- **Signaling strategy:** Trystero's **Nostr strategy** (`trystero/nostr`) as the default — this is the library's own default and top recommendation, backed by hundreds of independent public relays (most redundancy of the decentralized options), no account/config required, matches ADR-001's "no server we operate." Library's own robustness ranking for the decentralized strategies: Nostr → MQTT → BitTorrent → IPFS. Supabase/Firebase strategies exist but require configuring your own project (not zero-setup); a self-hosted WebSocket relay strategy also exists as an explicit escape hatch if the public networks prove unreliable, mirroring ADR-001's bring-your-own-TURN framing. Verified against current Trystero docs (trystero.dev, github.com/dmotz/trystero).
-- **Room privacy:** `roomId` = the shared session code — this is the invite mechanism. `joinSession()` accepts an optional `password` (Trystero AES-GCM encrypts the signaling handshake); without it the roomId is visible as metadata on the public signaling medium. The 6-char code is already hard to guess, but a password closes the gap cheaply if a session warrants it.
-- **Data sync model: facilitator-owned, not CRDT.** **(Superseded 2026-09-15 by [ADR-003](adr/003-session-reliability-model.md), "Single owner" landed in #60.)** The facilitator's `items[]` is the sole source of truth for submissions, reveal state, and finalization; a participant's `liveRound` is a projection of the facilitator's `syncState` snapshot plus its own pending submission. A participant's `submitEstimate` is a targeted send to the facilitator's peerId only — it never reaches other participants, closing the pre-reveal estimate-value leak. This works because the PRD's aggregation (min of Best, max of Worst, median of Likely) is order-independent and idempotent on the facilitator's own accumulated list — no conflict resolution needed, and Mode A/B can share one calculation engine.
-- **Closed:** Trystero doesn't replay history to late joiners. The wire action for state recovery (`syncState`, carrying a `SessionSnapshot`) exists in `adapters/network/actions.ts`; the facilitator broadcasts it from the live-session controller on every real change, and — since #60 — a peer that just connected or reconnected pulls it directly via the `requestSnapshot` request/response action, rather than relying on the facilitator to notice the arrival and push one. Since #61, that pull applies the shared kind-driven retry policy (`withKindDrivenRetry`) too, rather than being a single best-effort attempt.
-
-## Module structure
-
-`src/` is organized by Feature-Sliced Design (FSD), except `src/domain/`, which sits
-outside FSD as the pure core ([ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)) — see
-[ADR-004](adr/004-feature-sliced-design-architecture.md) for the adopted layer set
-(`app/pages/widgets/features/entities/shared`), the full slice mapping, and the
-rationale. In brief, by architectural role rather than layer:
-
-- **The estimation engine** (`domain/estimate`, formerly `/calc`) — pure
-  functions: `aggregateEstimates()`, `computeCI90()` (McConnell's formula, PRD §5),
-  bias guards (symmetric-range, false-precision, outlier — PRD §6), and the
-  cone-of-uncertainty guidance rule (`uncertaintyGuidance`, PRD §6.1). Framework-free,
-  unit-testable, identical between Mode A and Mode B.
-- **The P2P wire layer** (`adapters/network`, implementing the application-owned `ports/outbound/networkTransport.ts`; the live-session controller in `application/useCases` holds the session logic and `app/NetworkProvider.tsx` is the thin React shell that wires them; formerly `/network`) — Trystero
-  wrapper: room join/create, typed actions (`submitEstimate`, `syncState`, `announce`,
-  `requestSnapshot` request/response), connection-state hooks, facilitator-authoritative
-  round state (ADR-003, #60).
-- **The session stores** (`application/stores`, formerly `/state`) — three
-  per-concern Zustand stores (ADR-005): `session.ts` (session domain data),
-  `connection.ts` (live-connection state), `round.ts` (round mechanics); the network
-  layer is an adapter dispatching into them. The application barrel exports narrowed views
-  of the three stores (`stores/publicStores.ts`): state plus the trivial field setters, with
-  every rule-bearing write behind a use case (`useItemActions`, `useRevealActions`, ...);
-  use cases and the live-session controller write through the full stores. The stable per-browser
-  `participantId` helper lives in `adapters/storage` (the join use case reaches it through an identity port), and `finalResultFor` is the
-  single finalize rule (aggregate the submissions, or fail with a message when there are
-  none). The session policies they and
-  the live-session controller apply are pure modules in `src/domain/` (ADR-009 stage 1): `roster.ts` (round membership
-  via `roundMemberIds`, the wire roster, the departed-name prune rule), `snapshot.ts`
-  (building the facilitator's snapshot) and `resend.ts` (whether a participant's
-  submission needs re-sending), plus `item.ts` (`isFinalized` and the item-list rules) and, since stage 3b-1, `connection.ts`, `round.ts`, `delivery.ts` and `navigation.ts`: the transitions that used to sit inside the stores'
-  `set(...)` calls. The stores only hold state and call the transition functions (use cases and one page hook call the rest); the snapshot adoption that spans
-  stores is the `applyFacilitatorSnapshot` use case, so the round store no longer reads the connection store.
-- **Session use cases** (`application/useCases`) — the hooks that compose the three
-  stores: start single-user / collaborative, join, teardown, reconnect, close workspace,
-  submit, reveal / retry / finalize. They contain no navigation; `features/session-lifecycle`
-  keeps thin wrappers that add it (start, leave workspace or live session, including whether
-  leaving needs a confirm click) plus the `useJoinFlow` UI flow. The UI imports the layer only
-  through `src/application/index.ts`.
-- **Screens** (`pages/*`, formerly `/screens`) — one per PRD §7 screen (ModeSelect,
-  Workspace, Join, Participant Estimate View, Summary, History). Built so far:
-  ModeSelect, Workspace (single-user path, collaborative session-code strip, and the
-  facilitator reveal panel — states 1c waiting / 1d revealed, driven by per-item
-  `submissions` / `revealed`, #8), Summary, History, Join, and Participant Estimate
-  View (#7 — lobby / estimating / waiting / revealed states driven by
-  `store.liveRound`). Pages are kept thin: per-state panels, a `model/` read-model hook
-  where the store reads are non-trivial, and the shared three-point entry form
-  (`ThreePointEstimateForm`, `features/estimate-round`) used by both Workspace and the
-  participant view; the single-user `finalizeEstimate` and participant `useSubmitEstimate` use cases live in `application/useCases`, the delivery-status UI is `pages/participant-estimate/ui/DeliveryStatus`, and `model/useFocusHeadingOnChange` moves focus to the new
-  panel's heading when the round view changes.
-- **Design-system primitives** (`shared/ui`, formerly `/components`) — Button, Card,
-  Field, GuardNote, ConfirmNote, GroupBox, InfoPopover, NavRow, Tag, RadioTile, BrandMark, Markdown / MarkdownEditor, LiveRegion (a persistent
-  `status`/`alert` container for announcements), VisuallyHidden (screen-reader-only
-  text) — thin wrappers / compositions over
-  Nocturne classes. RadioTile is currently unreferenced (unused since the #34
-  mode-select rebuild removed the RadioTile mode picker) but retained as a
-  design-system primitive. `Header` moved to `app/` instead — it carries
-  screen/mode-aware logic, not a business-agnostic primitive.
-- **CSS** — `src/design/` holds only the design-system layer: `nocturne.css` (verbatim
-  Nocturne port) and the generic composed patterns built from its primitives
-  (`radio-tile.css`, `markdown.css`). Component-owned styling lives beside its owner and
-  is imported by it: `range-bar.css` in `entities/estimate/ui`, `group-box.css`, `info-popover.css`, `nav-row.css` and `confirm-note.css` in `shared/ui` (beside the components that own them), `phase-picker.css` in
-  `features/estimate-round/ui`, `session-sidebar.css` in `widgets/session-sidebar/ui`,
-  `workspace.css` (`.workspace-*` rules only) in `pages/workspace/ui`, `header.css` in `app`.
-- **Persistence** — session save/load (JSON file export/import), CSV export and
-  shareable-report-link encode/decode have no home yet; there is no placeholder
-  directory. Under FSD each lands where its use case belongs: file (de)serialisation of
-  a session as a `features/` slice (a save/load use case) built on the application layer,
-  with any generic file/download helper in `shared/lib`, and the validation of loaded
-  data going through `createEstimate()`-style factories like every other adapter.
-
-The estimation engine's isolation as pure, framework-free functions is the single most load-bearing structural decision — PRD §4.2 and ADR-001 both require identical calculation/bias-guard behavior across both modes, and this makes it trivially unit-testable against the PRD §5–6 formulas independent of UI or networking.
-
-**Testing note (ADR-002):** browser-specific behavior — real reload/persistence, real P2P connection handling — is the trigger to add Playwright. The Trystero wire layer has shipped, but its jsdom-testable surface (actions, validation, state machine) doesn't yet trip that trigger — the #7 participant round, #8 facilitator reveal, and #60's `syncState`-only convergence (no separate reveal/roundReset events) all landed entirely in store + component tests. Real WebRTC peer connect/drop and real file save/load are what trip it. Scope it to a handful of golden-path smoke tests; keep edge cases in the estimation-engine/store/component tests. See ADR-002's 2026-09-07 update.
-
-## Estimation engine — detailed design
-
-**One aggregation function serves both modes.** `aggregateEstimates()` takes an array of `{best, likely, worst}` estimates and a strategy, and returns the group range. Fed a Live-mode session's N participant submissions or a Manual-mode session's single facilitator-entered set, it's the same call — a single-element array degenerates correctly (min/median/max of one value = that value), so Mode B isn't a special case, it's a consequence of the design (satisfies PRD §4.2 / ADR-001's shared-engine requirement).
-
-```ts
-interface AggregateStrategy {
-  best: 'min' | 'median' | 'mean'
-  likely: 'median' | 'mean'
-  worst: 'max' | 'median' | 'mean'
-}
-const DEFAULT_STRATEGY: AggregateStrategy = { best: 'min', likely: 'median', worst: 'max' }
-
-interface AggregateResult { min: number; expected: number; max: number; ci90: number }
-
-function aggregateEstimates(estimates: Estimate[], strategy = DEFAULT_STRATEGY): AggregateResult
-function computeCI90(expected: number, best: number, worst: number): number {
-  return expected + 1.28 * ((worst - best) / 3)   // McConnell's formula, PRD §5
-}
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 60, "rankSpacing": 90, "padding": 14}}}%%
+flowchart LR
+  Fac["Facilitator<br/>[Person]"]
+  Par["Participants<br/>[People]"]
+  App["EstiMate<br/>[Static single-page app in the browser]"]
+  Peers["Other EstiMate instances<br/>[Participants' browsers]"]
+  Relays["Signaling relays<br/>[Public Nostr relays]"]
+  Stun["STUN servers<br/>[Public servers]"]
+  Files["Files and browser storage<br/>[Saved sessions, participant id]"]
+  Fac -->|runs the session| App
+  Par -->|join with a code,<br/>submit estimates| Peers
+  App <-.->|WebRTC data channels| Peers
+  App <-.->|offers and answers| Relays
+  App -.->|NAT discovery| Stun
+  App <-->|session file, id| Files
+  linkStyle default stroke:#8a93a6,stroke-width:2px
+  classDef person fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
+  classDef sys fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
+  classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
+  class Fac,Par person
+  class App sys
+  class Peers,Relays,Stun,Files ext
 ```
 
-**`Estimate` is a self-validating value type, not a bare interface.** `best ≤ likely ≤ worst` is a domain invariant of what an Estimate *is* — not a UI-specific concern — so per hexagonal architecture's port/adapter separation, it's enforced once in the core rather than duplicated across every adapter that constructs one (the estimate form in #7, incoming Trystero peer messages, a future CSV import). `Estimate` is only producible via `createEstimate(input): Result<Estimate, string>`, which is the single point where the ordering (and finiteness) check happens:
+| External party | Interface |
+|---|---|
+| Other EstiMate instances | Direct [WebRTC](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API) data channels, typed wire actions (`adapters/network/actions.ts`). Every inbound message is untrusted ([trust boundary](concepts/collaboration-mode.md)) |
+| Signaling relays | [Trystero](https://trystero.dev)'s [Nostr](https://nostr.com) strategy exchanges offers and answers. The e2e suite uses a local WebSocket relay instead (ADR-007) |
+| STUN servers | Public servers for NAT traversal ([STUN](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols), [RFC 8489](https://www.rfc-editor.org/rfc/rfc8489)). No [TURN](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols) server ([RFC 8656](https://www.rfc-editor.org/rfc/rfc8656)) is operated (ADR-001) |
+| Files and browser storage | A stable per-browser participant id today, session files for save and load later |
 
-```ts
-interface RawEstimateInput { participantId: string; best: number; likely: number; worst: number }
-type Result<T> = { ok: true; value: T } | { ok: false; error: string }
+## 4. Solution strategy
 
-declare const EstimateBrand: unique symbol
-type Estimate = RawEstimateInput & { readonly [EstimateBrand]: true }
+| Strategy | Decision |
+|---|---|
+| Hexagonal core with an FSD UI | Pure domain, application (use cases and stores), adapters for the outside world (a [hexagonal](https://alistair.cockburn.us/hexagonal-architecture/) core), and a [Feature-Sliced Design](https://feature-sliced.design) UI. Dependencies point inward ([ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md), [ADR-004](adr/004-feature-sliced-design-architecture.md)) |
+| Peer-to-peer live sessions | [Trystero](https://trystero.dev) over WebRTC, no operated backend (ADR-001) |
+| Facilitator owns the live state | Versioned rounds, a values-free submission roster, acknowledged submissions (ADR-003) |
+| One estimation engine for both modes | `aggregateEstimates` is called with N submissions or one (section 8) |
+| Three small stores | Session, connection and round state are separate Zustand stores (ADR-005) |
+| Boundaries enforced by tools | [Steiger](https://github.com/feature-sliced/steiger) for the UI, oxlint for the layer imports, type tests for the store views (section 5) |
 
-function createEstimate(input: RawEstimateInput): Result<Estimate>
+## 5. Building block view
+
+### Level 1: layers
+
+Features and adapters may also use domain types directly; those edges are left out to keep the
+diagram readable. The arrow from the UI to the application layer stands for both of its uses:
+calling use cases and reading the stores. `src/app` (composition) sits beside the UI folders in
+the FSD layer order but is the one place allowed to import an adapter, so the adapter box is wired
+in there.
+
+| Legend | Meaning |
+|---|---|
+| Solid arrow | A call, pointing at the callee. When the callee is an adapter, the call goes through an interface the application owns, so the source-code dependency still points inward |
+| Double arrow | Calls in both directions |
+| Dashed amber arrow | The adapter implements that interface, wired in at composition time |
+| Dashed box | External system |
+
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 80, "rankSpacing": 150, "padding": 14}}}%%
+flowchart LR
+  UI["UI (FSD)<br/>[Pages, widgets, features]"]
+  APP["APPLICATION<br/>[Use cases, state stores]"]
+  DOM["DOMAIN<br/>[Pure rules and value types]"]
+  AD["ADAPTERS<br/>[Network, storage, export]"]
+  Ext["Peers, relays, browser storage<br/>[External systems]"]
+  UI -->|calls| APP
+  APP -->|uses rules| DOM
+  APP <-->|peer messages in,<br/>calls out via ports| AD
+  AD -.->|implements ports| APP
+  AD <-->|I/O| Ext
+  linkStyle default stroke:#8a93a6,stroke-width:2px
+  linkStyle 3 stroke:#d98a1c,stroke-width:3px,stroke-dasharray:7 5
+  classDef ui fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
+  classDef app fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
+  classDef dom fill:#fbe9bf,stroke:#9a6f1e,stroke-width:2px,color:#14171f
+  classDef ad fill:#ecd8f1,stroke:#7a3d8c,stroke-width:2px,color:#14171f
+  classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
+  class UI ui
+  class APP app
+  class DOM dom
+  class AD ad
+  class Ext ext
 ```
 
-The brand is compile-time only — it adds no runtime property, so `Estimate` stays plain, JSON-transparent data for network transport and file-based session storage — but it does make constructing one any other way (e.g. a bare `{best, likely, worst}` object literal) a type error everywhere `Estimate` is expected. This only guards against *accidental* misuse within our own code, though: TypeScript types don't exist at runtime, so they can't protect against a malformed message from an untrusted Trystero peer. The network layer therefore calls `createEstimate()` on every incoming peer message before it touches state — via `safeCreateEstimate()` in `adapters/network/actions.ts`, which also traps the throw path since peer input isn't guaranteed well-shaped. One shared validation function, not the ordering check re-implemented per adapter.
+### Level 2: what is inside each layer
 
-**Why `AggregateStrategy` is a per-field interface, not a single toggle:** PRD §5 requires the aggregation logic itself to be configurable, but its philosophy is asymmetric on purpose — `min`/`max` for Best/Worst specifically to *preserve* outliers ("don't average away the outliers... worst case tends to get optimistically averaged down"), `median` for Likely as a robust center. A single `'min-max' | 'average'` switch couldn't express that; three independent knobs can. Currently this is only a code-level configurability point — the PRD data model has no field for *which* strategy a session uses, so it's an engineering default for now, not a facilitator-facing setting (flagged below).
+| Legend | Meaning |
+|---|---|
+| Solid arrow | A synchronous call or write, pointing at the callee |
+| Double arrow | Both directions |
+| Dotted arrow | An event or callback from an adapter |
+| Dashed box | External system |
+| `[type]` line | The kind of component, under its name |
 
-**Bias guards return structured signals, not copy.** PRD §6's guards are real estimation-engine functions; the exact warning text belongs in the screens layer so product/design can iterate on wording without touching tested logic:
+Ports and the "implements" relationship appear in the level 1 view only.
 
-```ts
-interface GuardResult { fired: boolean; deviationPct?: number }
-function checkSymmetricRange(best: number, likely: number, worst: number, tolerance = 0.15): GuardResult
-function checkFalsePrecision(value: number, granularity: number): GuardResult
-function checkOutlier(estimate: Estimate, allEstimates: Estimate[], thresholdPct = 0.4): GuardResult
-function checkUncertaintyRange(best: number, worst: number, level: UncertaintyLevel): GuardResult
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 70, "rankSpacing": 90, "padding": 14}}}%%
+flowchart LR
+  subgraph UI["UI (FSD)"]
+    direction TB
+    Root["Composition root<br/>[App shell and provider]"]
+    Pages["Pages and widgets<br/>[React Components]"]
+    Features["Features<br/>[React Components and hooks]"]
+  end
+  subgraph APP["APPLICATION"]
+    direction TB
+    UseCases["Use cases<br/>[Hooks and controller]"]
+    Stores["State stores<br/>[Zustand stores]"]
+  end
+  subgraph AD["ADAPTERS"]
+    direction TB
+    Net["Network and wire parsing<br/>[Trystero adapter]"]
+    Store["Storage<br/>[Browser storage adapter]"]
+  end
+  subgraph DOM["DOMAIN"]
+    direction TB
+    Core["Estimate and session rules<br/>[Pure functions and value types]"]
+  end
+  Ext["Peers, relays, browser storage<br/>[External systems]"]
+  Root -->|creates the controller<br/>with the adapter| UseCases
+  Root -->|passes joinSession from| Net
+  Pages -->|composes| Features
+  Features -->|calls| UseCases
+  Pages & Features -->|reads state,<br/>trivial setters| Stores
+  UseCases -->|uses rules| Core
+  UseCases -->|reads and writes| Stores
+  UseCases -->|send, join, leave<br/>via transport port| Net
+  Net -.->|validated peer messages<br/>to registered handlers| UseCases
+  UseCases -->|reads identity<br/>via identity port| Store
+  Net <-->|WebRTC, relays| Ext
+  Store <-->|browser storage| Ext
+  linkStyle default stroke:#8a93a6,stroke-width:2px
+  style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
+  style APP fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
+  style DOM fill:#fbe9bf,stroke:#9a6f1e,stroke-width:2px,color:#14171f
+  style AD fill:#ecd8f1,stroke:#7a3d8c,stroke-width:2px,color:#14171f
+  classDef ui fill:#b9ccf7,stroke:#3d56a6,color:#14171f
+  classDef app fill:#b2dfc0,stroke:#2f7a43,color:#14171f
+  classDef dom fill:#f6d891,stroke:#9a6f1e,color:#14171f
+  classDef ad fill:#dcbfe5,stroke:#7a3d8c,color:#14171f
+  classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
+  class Root,Pages,Features ui
+  class UseCases,Stores app
+  class Core dom
+  class Net,Store ad
+  class Ext ext
 ```
 
-`domain/estimate/estimate.ts` also exports `validateEstimateValues` — the numeric half of `createEstimate`'s invariant, usable for a live form preview before a participant exists; `createEstimate` runs it after its `participantId` check. It returns a `code` and the affected `fields` alongside the error text, and `features/estimate-round` (`lib/describeEstimateIssue.ts`) turns those into the actionable form messages (naming the numbers and what to change) and marks the offending inputs `aria-invalid` with `aria-describedby` pointing at the message. A problem first appears only after the entry has settled (~600 ms, `model/useSettledIssue.ts`) or a field loses focus, so typing through an intermediate value doesn't flash it; an entry that is already invalid when the form opens is shown at once, a showing problem updates in place, a resolved one clears at once, and the submit button is never delayed.
+| Box | Layer | Responsibility |
+|---|---|---|
+| **Estimate and session rules** | Domain | Everything pure: `Estimate` and its factory, aggregation, guards, uncertainty guidance, item and round types, roster, snapshot, resend and connection rules, label rules, the finalize rule. No React, no I/O. Keeps the 100% coverage threshold. |
+| **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, as straight-line code: read state, call a domain decision, write state, trigger an effect. The use-case hooks and the live-session controller (a factory function) belong here. The controller (`createLiveSessionController`) owns one connection: connect, disconnect, send with retry, resend, snapshot pull, roster prune, announce, and the facilitator's snapshot broadcast when the stores change. It owns the ports the adapters implement, such as the peer transport (`ports/outbound/networkTransport.ts`). |
+| **State stores** | Application | The Zustand stores holding session, round and connection state. The UI reads them with selectors and may call a few trivial field setters (session name, unit, item selection and text fields). Every other write goes through a use case. |
+| **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. It implements the transport port, delivers validated messages to the handlers the controller registered, and never touches the stores. |
+| **Storage** | Adapters | The stable per-browser participant id today. Save, load and export would be further adapters behind ports. |
+| **Composition root** | UI (`src/app`, FSD's app layer) | `App.tsx` provides the identity port, and the live-session provider creates the controller with the network adapter and provides it to the UI. The one place in the UI that may import an adapter and the application's composition entry (R5, R6). |
+| **Features** | UI | UI-only features and their components. They call use cases and add navigation. |
+| **Pages and widgets** | UI | Screens and widgets composed from features and shared UI, plus routing (ADR-006) and the design system. |
+| **Peers, relays, browser storage** | External | Not part of the codebase. |
 
-The PRD §6.1 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`features/estimate-round/ui/PhasePicker.tsx`), local to their own view (guidance derived inside `features/estimate-round/model/useThreePointDraft.ts`, composed with the rest of the entry form by `ThreePointEstimateForm`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
+### Where things live
 
-**Tunable constants, not settled numbers:** the symmetric-range tolerance (proposed 15%) and outlier threshold (proposed: no range overlap, or `likely` deviates >40% of group spread) are UX-tuning parameters PRD leaves vague ("within a tolerance," "far from the group median") — ship as named constants, expect to retune after real sessions rather than treating these as final.
+| Part | Location |
+|---|---|
+| Domain | `src/domain` (rules and types), `src/domain/estimate` (the estimation engine, formerly `/calc`) |
+| Application | `src/application`: `stores/` (session, connection, round, plus the narrowed `publicStores`), `useCases/` (including the live-session controller), `ports/` and `ports/outbound/` (the peer transport), `composition.ts` and `testing.ts` (entries for `src/app` and tests only), `index.ts` (the barrel the UI imports) |
+| Adapters | `src/adapters/network` (Trystero transport, wire actions and parsing, signaling), `src/adapters/storage` (participant id) |
+| Composition | `src/app`: `App.tsx` provides the identity port, `NetworkProvider.tsx` is the thin React shell that wires the network adapter into the live-session controller |
+| UI | `src/pages`, `src/widgets`, `src/features`, `src/entities` (`item`, `estimate`), `src/shared`. The slice mapping is in ADR-004 and the placement helper is `.claude/skills/fsd-architecture` |
+| Styling | `src/design` holds the verbatim Nocturne port and generic composed patterns, component CSS sits beside its component |
 
-## Screens — gaps vs. the prototype
+### Rules
 
-The clickable prototype predates the estimation engine and unit decisions above, so it doesn't show where bias-guard output or unit selection actually render. Checked against Nocturne's stylesheet directly (`src/design/nocturne.css`) rather than assumed:
+These are the architecture rules. Each has an ID so that scanners, the review agent and the
+skill can cite it.
 
-**Already covered by the prototype, no gap:**
-- Outlier flag at Reveal — the warning icon on an outlier's row already exists in the design; it just needs to switch from hardcoded/simulated to driven by `checkOutlier()`'s real output.
-- Unit-aware labels — mechanical copy interpolation of `session.unit`, not a new visual pattern. Done in the Workspace and the Participant Estimate View (which now also receives the facilitator's unit over the wire — `unit` on `SessionSnapshot`, see #39). Still outstanding: the Session Summary table rows carry no unit suffix.
+| ID | Rule | Enforced by |
+|---|---|---|
+| R1 | The domain imports nothing outside itself, uses no I/O globals, and only test files import `vitest`. It keeps 100% test coverage | oxlint override on `src/domain/**`, coverage threshold in `vite.config.ts` |
+| R2 | The application layer imports the domain and itself. It may use React and Zustand, but no UI layer, router, transport library or adapter | oxlint override on `src/application/**` |
+| R3 | Adapters import the domain, other adapters and packages other than React, Zustand and the router. From the application they import only `application/ports/outbound/**` | oxlint override on `src/adapters/**` |
+| R4 | Inside the UI, imports point downward (`app`, `pages`, `widgets`, `features`, `entities`, `shared`), and a slice is reached only through its `index.ts` | Steiger (`pnpm arch`) |
+| R5 | The UI folders (`pages`, `widgets`, `features`, `entities`, `shared`) never import an adapter. They import the application only through `src/application/index.ts`. The `composition` and `testing` entries are for `src/app` and test files only | oxlint overrides on the UI folders |
+| R6 | Only `src/app` (the composition root) imports an adapter next to the application. It is the one exception to R5 | R5 together with R2 |
+| R7 | The UI reads store state through selectors on read-only views and may call only the trivial field setters. Every rule-bearing write goes through a use case | Type tests on the exported views (`publicStores.test.ts`), R5 |
+| R8 | Store action or use case: code that reaches another store, calls a port or triggers an effect is a use case. Stores do not reach into each other, except the round store writing items through `patchItem` (ADR-005) | `architecture-review` agent |
+| R9 | Ports exist only at real external boundaries (peer transport, identity and storage) and are owned by the application layer | `architecture-review` agent |
+| R10 | Pure decisions live in the domain as unit-tested functions, never inline in stores, use cases, adapters or components | `architecture-review` agent, domain coverage |
+| R11 | A relative `vi.mock` target must resolve, so a moved module cannot leave a stale mock | `src/viMockPaths.test.ts` |
 
-**Genuine gaps, resolved for MVP:**
-- Symmetric-range and false-precision nudges have no distinct visual pattern in Nocturne (only plain `.card-meta` caption styling exists). **Decision: ship with the plain caption treatment, log a fast-follow design task** for a more distinct "live nudge" treatment rather than blocking MVP on a design pass.
-- The unit selector is a genuinely new form control (the pre-redesign Create Session had none). **Decision: native `<select class="input">`** in the Workspace sidebar, reusing Nocturne's generic input styling — no new component or design mock required.
+The oxlint rules are path-based and rely on relative imports (there are no path aliases).
 
-## Open items still worth flagging (not blocking, but real)
+## 6. Runtime view
 
-- "No accounts / open links" means anyone with a link can edit a session — acceptable for MVP given local-first + no cross-device stakes, but worth a sentence in the report/UI so facilitators understand link = access.
-- Local-first, file-based persistence means a session genuinely does not survive unless the user explicitly saves it, and it only carries over to a different browser or device if that saved file is moved there manually — this should be stated plainly in the product UI (e.g., near the Save/Load actions), not just assumed understood.
-- Trystero has no built-in room-size or message-size limits documented, but the mesh topology (direct peer connections, no SFU) means the library itself advises keeping groups small — a non-issue for typical estimation session sizes, but worth remembering if group sessions ever grow large.
-- `AggregateStrategy` is only an engineering-level default for MVP (min/median/max, not facilitator-configurable) — PRD §5 calls for it to be "configurable" but neither the data model nor the prototype exposes a UI for it. Revisit if teams actually want to change aggregation policy per session, since that needs a schema field + UI, not just the code-level flexibility already designed in.
-- `onPeerJoin`/`onPeerLeave` fire on connect/disconnect, but Trystero does not replay history to a newcomer — the late-joiner state snapshot (above) is entirely our responsibility to implement, not something the library helps with.
-- **Markdown rendering is not implemented.** Item descriptions and the per-item Notes field are both labeled "Markdown supported" in the UI, but the values are stored and displayed as raw text — no parser/renderer is wired up anywhere. Found during the single-user screen review (2026-08-21) when a description containing `*`/`##`/`>` syntax rendered literally instead of formatted. Needs a markdown-to-safe-HTML renderer (e.g. `marked` + `DOMPurify`, or a React-native option like `react-markdown`) wired into `CardBody` (item description) and wherever Notes is displayed read-only. Not started; flagging so the "Markdown supported" copy doesn't ship as a false promise.
+| Scenario | Where it is described |
+|---|---|
+| Join a live session, participant and facilitator sides | [collaboration-mode](concepts/collaboration-mode.md): join sequence |
+| Estimate round, reveal, retry, finalize | [collaboration-mode](concepts/collaboration-mode.md): estimate round and facilitator reveal |
+| Late join and reconnect: the snapshot pull | [collaboration-mode](concepts/collaboration-mode.md): snapshot pull on connect and reconnect |
+| Connection states and what a participant is told | [collaboration-mode](concepts/collaboration-mode.md): connection state machine |
+| End-to-end flows under test | [e2e-testing](concepts/e2e-testing.md) |
+| Single-user estimate and finalize | The same use cases without the live-session controller: `finalizeEstimate` aggregates one estimate with the shared engine |
 
-## Build status &amp; what's next
+## 7. Deployment view
 
-The proposal above has been built out through issue #60: Vite + React 19 + TS scaffold,
-Nocturne ported as-is, the estimation engine (unit-tested against the PRD §5–6 formulas), the
-Zustand store, the single-user Workspace screens, the Trystero P2P network layer, the
-Join Session screen, the participant estimate round (lobby / estimating / waiting /
-revealed, driven by `store.liveRound`), participant display names on the wire (#40,
-`announce` action), and the facilitator reveal panel (#8 — Workspace states 1c waiting /
-1d revealed, driven by per-item `submissions` / `revealed`, with group aggregate + CI90
-via the estimation engine). The `src/` tree was later reorganized to Feature-Sliced
-Design — see [ADR-004](adr/004-feature-sliced-design-architecture.md) — the module
-names above map to their FSD slices per the "Module structure" section. Since #60
-(ADR-003, "Single owner"), a Reveal or Retry is just another
-`syncState` snapshot — there is no separate `reveal` / `roundReset` wire action, and a
-participant's `submitEstimate` targets the facilitator's peerId only. The live-session controller
-dispatches inbound `onEstimate` / `onSyncState` / `onAnnounce`, answers a peer's
-`requestSnapshot` pull (facilitator only), and broadcasts the facilitator's `syncState`
-(now carrying a values-free `roster`) on every real change. The epic-0010 screen review
-(#34) rebuilt the entry flow to a mode-selection screen plus the unified Workspace. (#39,
-the session unit on the wire, is done — `unit` on `SessionSnapshot`, broadcast on change,
-adopted by `applyRoundSnapshot`.) The PRD §6.1 cone-of-uncertainty guard (issue #17) is also
-done — `checkUncertaintyRange`, the Phase Picker, and the guidance-aware `RangeBar` states,
-wired into both the Workspace's own-estimate panel and the Participant Estimate View.
+The app is a static bundle with no server-side component. CI builds and checks it on every pull
+request and on `main`. A push to `main` triggers a build and the IONOS Deploy Now pipeline, which
+copies the bundle to IONOS Webspace. Browsers load the bundle from there and run the app, after
+which live sessions run peer to peer (section 3).
 
-Remaining MVP work, tracked on the EstiMate Roadmap board:
+| Legend | Meaning |
+|---|---|
+| Solid arrow | A synchronous step |
+| Dotted arrow | An asynchronous dispatch or a request over the network |
+| Dashed box | External system |
 
-- **Outlier flag** — the reveal panel does not yet surface `checkOutlier()` on the
-  per-participant list; the estimation-engine guard exists but nothing drives a UI flag from it.
-- **#9** — connection-fallback UX for peers that can't establish a direct connection.
-- **Persistence** — session save/load via JSON file, CSV export and the shareable
-  report link are not built yet and have no directory (see the Persistence note under
-  the module structure); save/load is tracked as #10.
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 60, "rankSpacing": 90, "padding": 14}}}%%
+flowchart LR
+  subgraph PIPE["DEPLOY PIPELINE"]
+    direction LR
+    Build["Build<br/>[GitHub Actions job]"]
+    Deploy["Deploy to IONOS<br/>[GitHub Actions workflow]"]
+  end
+  Api["IONOS Deploy Now API<br/>[External service]"]
+  Web["IONOS Webspace<br/>[Static file host]"]
+  Browser["Browser<br/>[Runs the single-page app]"]
+  Build -.->|dispatch deployment| Api
+  Api -.->|start workflow| Deploy
+  Deploy -->|rsync over SSH| Web
+  Browser -.->|loads the bundle| Web
+  linkStyle default stroke:#8a93a6,stroke-width:2px
+  style PIPE fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
+  classDef job fill:#b2dfc0,stroke:#2f7a43,color:#14171f
+  classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
+  class Build,Deploy job
+  class Api,Web,Browser ext
+```
+
+The e2e suite runs against a locally self-hosted signaling relay by default and against the
+public relays nightly ([ADR-007](adr/007-e2e-dual-mode-signaling.md)). The pipeline, secrets and
+releases are in the [runbook](runbook.md).
+
+## 8. Crosscutting concepts
+
+| Concept | Summary | Detail |
+|---|---|---|
+| Estimation engine | One aggregation function for both modes (min of best, median of likely, max of worst, McConnell's CI90), bias guards that return structured signals, and `Estimate` as a self-validating value type created only through `createEstimate` | [estimation-engine](concepts/estimation-engine.md) |
+| Live sync | Room id is the 6-character session code (Crockford base32, no deep link) under the fixed `appId` `estimate-app-v1`. Trystero's [Nostr](https://nostr.com) strategy is the default (the library's own robustness ranking is Nostr, MQTT, BitTorrent, IPFS, and the Supabase and Firebase strategies need your own project). A self-hosted WebSocket relay is the escape hatch. An optional room password AES-GCM-encrypts the signaling handshake, without it the room id is visible as metadata on the relay. The facilitator's items are the single source of truth: participants send estimates only to the facilitator, and everyone else receives `syncState` snapshots. A peer that connects or reconnects pulls the snapshot itself (`requestSnapshot`) | ADR-001, ADR-003, [collaboration-mode](concepts/collaboration-mode.md) |
+| Reliability | Versioned rounds, a values-free roster, acknowledged submissions with a kind-driven retry policy, a stable per-browser participant id, role-asymmetric link state | ADR-003 |
+| Trust boundary | Every inbound peer message is validated into domain values at the adapter edge, so the UI only sees valid `Estimate`s | [collaboration-mode](concepts/collaboration-mode.md): trust boundary |
+| State and UI access | Three stores in the application layer, read-only narrowed views for the UI, use cases for rule-bearing writes (R7, R8) | ADR-005, ADR-009 |
+| Navigation | `react-router`. Use cases contain no navigation, `features/session-lifecycle` wraps them with it | ADR-006 |
+| Persistence | Local-first and file-based. A session (name, unit, items) is saved as a JSON file and restored from one, live-round fields are excluded. Save is a read-only export available to the facilitator in either mode. Load is allowed only before a live session starts, because importing mid-session would silently replace the facilitator's items and desync participants, so a facilitator resumes an adjourned session from the mode-select screen. A participant never has a local item list. A session survives only if the user saves the file, and the UI must say so plainly. No accounts, no cross-device sync in the MVP. Not built yet | PRD §8 |
+| Estimation unit | The facilitator picks hours, days or weeks per session. The false-precision guard's rounding granularity derives from the unit through a lookup, and the unit travels on `SessionSnapshot`, which is how the participant view receives it | [estimation-engine](concepts/estimation-engine.md) |
+| Testing | Unit and component tests, a thin Playwright layer for real WebRTC, type tests for the store views, 100% coverage on the domain | ADR-002, ADR-007, [e2e-testing](concepts/e2e-testing.md) |
+| Accessibility | oxlint `jsx-a11y`, `jest-axe` scans, `@axe-core/playwright` scans, a tracked `color-contrast` exclusion | ADR-008 |
+| Styling and shared UI | Nocturne is the single source of tokens and components. `shared/ui` holds thin wrappers over Nocturne classes (Button, Card, Field, Markdown and MarkdownEditor, LiveRegion, and so on). `Header` lives in `app/` because it carries screen and mode-aware logic. `RadioTile` is unused but kept as a design-system primitive. Composed patterns sit in their own files in `src/design`, and component CSS sits beside its component | Section 9, product and design decisions |
+
+## 9. Architecture decisions
+
+| ADR | Decision |
+|---|---|
+| [001](adr/001-live-collaboration-architecture.md) | Peer-to-peer WebRTC for Live mode, Manual mode as a first-class fallback |
+| [002](adr/002-testing-strategy.md) | Layered tests with a thin Playwright layer |
+| [003](adr/003-session-reliability-model.md) | Facilitator-authoritative rounds and reliable delivery |
+| [004](adr/004-feature-sliced-design-architecture.md) | Feature-Sliced Design as the enforced UI architecture (the UI part is still current) |
+| [005](adr/005-session-store-decomposition.md) | Three per-concern stores |
+| [006](adr/006-router-adoption.md) | `react-router` replaces hand-rolled navigation |
+| [007](adr/007-e2e-dual-mode-signaling.md) | Local relay for e2e by default, public relays nightly |
+| [008](adr/008-accessibility-testing-strategy.md) | Three-layer automated accessibility checks |
+| [009](adr/009-architecture-style-fsd-vs-hexagonal-core.md) | Hexagonal core with an FSD UI, extracted in stages 1 to 3d (done) |
+
+Product and design decisions that have no ADR:
+
+| Decision | Reason |
+|---|---|
+| No authentication, open links | Consistent with local-first. Anyone with a link can join, so a link is access |
+| No mode switching mid-session | If the live connection fails, the facilitator starts a fresh single-user session |
+| Estimation unit is set per session (hours, days or weeks), not per item | Resolves the PRD example (days) against the prototype (weeks). A native `<select>` in the Workspace sidebar |
+| Nudge styling for the symmetric-range and false-precision guards uses the plain `.card-meta` caption | No distinct pattern exists in Nocturne, a design pass is a fast-follow |
+| Nocturne is ported as-is, no Tailwind | Its values are hand-tuned (non-round spacing, OKLCH ramps), a second config would drift from `nocturne.css` |
+
+## 10. Quality requirements
+
+| Quality | Scenario | How it is met |
+|---|---|---|
+| Correctness | The same inputs give the same range in both modes | One pure engine, 100% domain coverage |
+| Reliability | A dropped link or late join still ends on the right view | Snapshot pull, retry policy, versioned rounds (ADR-003), real-WebRTC e2e tests |
+| Privacy | A participant never sees another's values before the reveal | Targeted sends to the facilitator, a values-free roster |
+| Zero operations | No server to run or pay for | Static hosting, public relays and STUN |
+| Accessibility | Keyboard and screen-reader use of the estimate flow | ADR-008 |
+| Maintainability | A new feature has an obvious home, a boundary violation fails CI | Rules R1 to R11, the placement skill, the review agent |
+
+## 11. Risks and technical debt
+
+Work items are tracked on the EstiMate Roadmap board.
+
+| Item | Note |
+|---|---|
+| Facilitator disconnect stalls the session | Accepted MVP gap, no election or reassignment |
+| Mesh topology | Direct peer connections suit small groups, which is the normal estimation session size |
+| Session save and load, CSV export and the shareable link are not built | The `session-history` page is slated for removal, not real persistence |
+| Connection-fallback UX for peers that cannot connect directly | Not built |
+| Outlier flag | `checkOutlier` exists in the domain but nothing in the reveal panel uses it |
+| The Session Summary rows carry no unit suffix | Small gap in unit-aware labels |
+| `AggregateStrategy` is an engineering default, not a facilitator setting | Needs a schema field and UI if teams want it |
+| Guard thresholds (symmetric range 15%, outlier 40%) are untuned constants | Retune after real sessions |
+| Live participants can open `/workspace` | A route guard in `app/` is planned, no domain rule is needed |
+| The round is written in several places | A round state machine (ADR-009, option D) is a separate, deferred decision |
+| Layer rules are path-based oxlint patterns | Hand-maintained and probed once. A dependency-cruiser spike is planned to compare |
+
+## 12. Glossary
+
+See [glossary.md](glossary.md): layer, type, aggregate, entity, value object, inbound and outbound
+adapter, port, use case, state store, live-session controller, FSD slice and segment, and the words
+to avoid.

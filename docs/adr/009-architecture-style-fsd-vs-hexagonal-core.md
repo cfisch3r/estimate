@@ -64,6 +64,9 @@ the first two.
 valuable and can be stopped after.** Treat D as a separate follow-up decision about
 how the round is written, not part of this one.
 
+The two diagrams below are the decision-time snapshot. The living versions, kept in step
+with the code, are in [architecture.md](../architecture.md), section 5.
+
 Target structure, in two views. Features and adapters may also use domain types directly;
 those edges are left out to keep the diagrams readable. In the layer view the arrow from the
 UI to the application layer stands for both of its uses: calling use cases and reading the
