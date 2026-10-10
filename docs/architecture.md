@@ -54,11 +54,9 @@ flowchart LR
   Peers["Other EstiMate instances<br/>[Participants' browsers]"]
   Relays["Signaling relays<br/>[Public Nostr relays]"]
   Stun["STUN servers<br/>[Public servers]"]
-  Host["Static hosting<br/>[IONOS Deploy Now]"]
   Files["Files and browser storage<br/>[Saved sessions, participant id]"]
   Fac -->|runs the session| App
   Par -->|join with a code,<br/>submit estimates| Peers
-  Host -.->|serves the app bundle| App
   App <-.->|WebRTC data channels| Peers
   App <-.->|offers and answers| Relays
   App -.->|NAT discovery| Stun
@@ -69,7 +67,7 @@ flowchart LR
   classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
   class Fac,Par person
   class App sys
-  class Peers,Relays,Stun,Host,Files ext
+  class Peers,Relays,Stun,Files ext
 ```
 
 | External party | Interface |
@@ -77,7 +75,6 @@ flowchart LR
 | Other EstiMate instances | Direct WebRTC data channels, typed wire actions (`adapters/network/actions.ts`). Every inbound message is untrusted ([trust boundary](concepts/collaboration-mode.md)) |
 | Signaling relays | Trystero's Nostr strategy exchanges offers and answers. The e2e suite uses a local WebSocket relay instead (ADR-007) |
 | STUN servers | Public servers for NAT traversal. No TURN server is operated (ADR-001) |
-| Static hosting | Serves the built bundle, deployed by CI ([runbook](runbook.md)) |
 | Files and browser storage | A stable per-browser participant id today, session files for save and load later |
 
 ## 4. Solution strategy
@@ -262,11 +259,43 @@ The oxlint rules are path-based and rely on relative imports (there are no path 
 
 ## 7. Deployment view
 
-The app is a static bundle. CI builds and checks it on every pull request and on `main`, and the
-IONOS Deploy Now pipeline publishes `main`. There is no server-side component. The e2e suite runs
-against a locally self-hosted signaling relay by default and against the public relays nightly
-([ADR-007](adr/007-e2e-dual-mode-signaling.md)). Pipeline, secrets and releases are in the
-[runbook](runbook.md).
+The app is a static bundle with no server-side component. CI builds and checks it on every pull
+request and on `main`. A push to `main` triggers a build and the IONOS Deploy Now pipeline, which
+copies the bundle to IONOS Webspace. Browsers load the bundle from there and run the app, after
+which live sessions run peer to peer (section 3).
+
+| Legend | Meaning |
+|---|---|
+| Solid arrow | A synchronous step |
+| Dotted arrow | An asynchronous dispatch or a request over the network |
+| Dashed box | External system |
+
+```mermaid
+%%{init: {"flowchart": {"nodeSpacing": 60, "rankSpacing": 90, "padding": 14}}}%%
+flowchart LR
+  subgraph PIPE["DEPLOY PIPELINE"]
+    direction LR
+    Build["Build<br/>[GitHub Actions job]"]
+    Deploy["Deploy to IONOS<br/>[GitHub Actions workflow]"]
+  end
+  Api["IONOS Deploy Now API<br/>[External service]"]
+  Web["IONOS Webspace<br/>[Static file host]"]
+  Browser["Browser<br/>[Runs the single-page app]"]
+  Build -.->|dispatch deployment| Api
+  Api -.->|start workflow| Deploy
+  Deploy -->|rsync over SSH| Web
+  Browser -.->|loads the bundle| Web
+  linkStyle default stroke:#8a93a6,stroke-width:2px
+  style PIPE fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
+  classDef job fill:#b2dfc0,stroke:#2f7a43,color:#14171f
+  classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
+  class Build,Deploy job
+  class Api,Web,Browser ext
+```
+
+The e2e suite runs against a locally self-hosted signaling relay by default and against the
+public relays nightly ([ADR-007](adr/007-e2e-dual-mode-signaling.md)). The pipeline, secrets and
+releases are in the [runbook](runbook.md).
 
 ## 8. Crosscutting concepts
 
