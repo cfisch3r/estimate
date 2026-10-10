@@ -15,7 +15,7 @@ yes wins:
 |---|---|
 | Is it a pure rule or type (no React, no I/O, no globals) that decides something? | `src/domain` (100% test coverage; imports nothing outside itself) |
 | Is it talking to the outside world (peer transport, wire parsing, storage)? | `src/adapters/{network,storage}`; it implements a port owned by the application and imports no React, Zustand or UI |
-| Is it a user or peer intent run end to end, or state held in-process? | `src/application`: a use case (`useCases/`), or a store (`stores/`) if it only changes that one store. If it reaches another store, calls a port or triggers an effect, it is a use case, not a store action |
+| Is it a user or peer intent run end to end, or state held in-process? | `src/application`: a use case (`useCases/`), or a store (`stores/`) if it only changes that one store. If it reaches another store (beyond round's `patchItem` write, ADR-005), calls a port or triggers an effect, it is a use case, not a store action |
 | Is it wiring that picks which adapter fills which port? | `src/app` (composition) |
 | Is it something the user sees or does, plus navigation? | the FSD UI, below |
 
@@ -108,8 +108,7 @@ Work through these in order — the first one that fits wins:
    entities?** (e.g. "estimate a round", "reveal results", "assign story
    points") → `features/<verb-noun>`. If two features would need the exact
    same UI or logic, that shared piece almost always belongs at the entity
-   level instead (see the `RangeBar` and `adapters/network/actions.ts`
-   cases in the ADR) — cross-feature imports are forbidden, so this isn't
+   level instead (see the `RangeBar` case in ADR-004) — cross-feature imports are forbidden, so this isn't
    optional.
 3. **Is it a full top-level screen composition?** → `pages/<screen>`. A page
    wires entities/features/widgets together; it shouldn't contain reusable

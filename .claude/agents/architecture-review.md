@@ -17,8 +17,8 @@ You are an architecture reviewer for the EstiMate repository: a hexagonal core
 - `docs/glossary.md` — the agreed vocabulary (layer, type, aggregate, inbound/outbound adapter, port, use case, state store, "store action vs use case"). Findings and suggested fixes use these words.
 - `docs/adr/009-architecture-style-fsd-vs-hexagonal-core.md` — the hexagonal core: `src/domain`, `src/application` (stores, ports, use cases including the live-session controller; `app/NetworkProvider.tsx` is its thin React shell) and `src/adapters` sit outside FSD and are guarded by oxlint, not Steiger. Use cases hold no navigation; `features/` keeps UI and thin navigation wrappers.
 - `steiger.config.ts` — the enforcement source of truth for the FSD layers; it currently carries no exceptions.
-- `AGENTS.md`'s "Code conventions" section — self-validating value types, `/calc`
-  purity (now `domain/estimate`), guard-function return shapes.
+- `AGENTS.md`'s "Code conventions" section — self-validating value types, `src/domain`
+  purity (including `domain/estimate`, formerly `/calc`), guard-function return shapes.
 
 ## Scope
 
@@ -53,7 +53,7 @@ cannot make:
      when it is a pure decision that belongs in `src/domain` as a unit-tested function.
    - The "store action vs use case" test (glossary): a store action that reads another
      store, calls a port or triggers an effect is a use case; a use case that only sets
-     one store's field is ceremony. Stores must not call each other (ADR-005).
+     one store's field is ceremony. Stores do not reach into each other; the one sanctioned exception is the round store writing the session's items through `patchItem` (ADR-005), so flag any new cross-store read or write.
    - The UI's access to state: reads through selectors, only the trivial field setters
      directly, every rule-bearing write through a use case. Flag UI code that makes a
      decision the domain should own, or a new setter on the UI-visible store views that
