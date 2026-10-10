@@ -17,7 +17,7 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/concepts/estimation-engine.md` — the estimation engine's detailed design (aggregation, the `Estimate` value type, bias guards)
 - `docs/concepts/e2e-testing.md` — E2E testing technical concept: the Playwright/fixture/signaling component wiring, the dual-mode (local relay / real-world) build-and-run flows, and the spec-to-wire-action coverage map
 - `docs/runbook.md` — deployment & release runbook: the IONOS Deploy Now CD pipeline, secrets, troubleshooting, and versioning/release process
-- `docs/adr/004-feature-sliced-design-architecture.md` — accepted decision on Feature-Sliced Design (FSD) as the enforced architecture: the adopted layer set (`app/pages/widgets/features/entities/shared`), the slice mapping, and the completed follow-ups (store decomposition, see ADR-005; advisory `pnpm metrics` hotspots instead of a metrics ratchet). `.claude/skills/fsd-architecture/SKILL.md` has the day-to-day "which slice does new code belong in" guidance; `steiger.config.ts` is the enforcement source of truth for layer/slice/public-API boundaries
+- `docs/adr/004-feature-sliced-design-architecture.md` — accepted decision on Feature-Sliced Design (FSD) as the enforced architecture: the adopted layer set (`app/pages/widgets/features/entities/shared`), the slice mapping, and the completed follow-ups (store decomposition, see ADR-005; advisory `pnpm metrics` hotspots instead of a metrics ratchet). `.claude/skills/code-placement/fsd-ui.md` has the day-to-day "which slice does new code belong in" guidance; `steiger.config.ts` is the enforcement source of truth for layer/slice/public-API boundaries
 - `docs/adr/005-session-store-decomposition.md` — accepted decision on splitting the monolithic session store into three per-concern stores (`session.ts`, `connection.ts`, `round.ts`, now in `src/application/stores`; navigation is out of scope — see ADR-006). Implemented in issue #111.
 - `docs/adr/006-router-adoption.md` — accepted decision on replacing the hand-rolled `currentScreen`/`goToScreen` navigation state with `react-router`, resolving an FSD layer-direction conflict ADR-005 hit
 - `docs/adr/008-accessibility-testing-strategy.md` — accepted decision on the three-layer automated accessibility stack (oxlint `jsx-a11y`, `jest-axe` component scans, real-browser `@axe-core/playwright` e2e scans) and the deliberate, tracked `color-contrast` exclusion (issue #123)
@@ -104,7 +104,7 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   focus-order sanity, live-region needs, contrast judgment calls outside the e2e scan's
   scope (see ADR-008). Defaults to the current diff; `/accessibility-review all` for a
   full audit, or pass a path.
-- **`fsd-architecture` skill** — loaded automatically before creating a new file under
+- **`code-placement` skill** — loaded automatically before creating a new file under
   `src/` or moving code between layers or slices; the "which layer, then which slice does this
   belong in" reference.
 - **Hooks** (`.claude/settings.json` + `.claude/hooks/`) — a `PreToolUse` hard block on

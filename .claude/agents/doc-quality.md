@@ -57,7 +57,7 @@ Use `git diff` / `git diff main...HEAD` as appropriate to see changes. Do **not*
 
 - A doc that contradicts another doc (e.g. architecture.md vs. an ADR).
 - Stale dates, retired concepts referred to as current (e.g. milestones — AGENTS.md says they're retired), TODO/TBD left in a doc that reads as finished.
-- The skill (`.claude/skills/fsd-architecture/SKILL.md`) or the `architecture-review` agent citing a rule ID (R1 to R11) that does not exist in `docs/architecture-rules.md`, mapping a question to the wrong rule, or restating a rule in words that contradict it. A rule or its enforcement changed in `architecture-rules.md` without the skill's rule table and the agent's category 6 following.
+- The skill (`.claude/skills/code-placement/SKILL.md`) or the `architecture-review` agent citing a rule ID (R1 to R11) that does not exist in `docs/architecture-rules.md`, mapping a question to the wrong rule, or restating a rule in words that contradict it. A rule or its enforcement changed in `architecture-rules.md` without the skill's rule table and the agent's category 6 following.
 - Architecture vocabulary that departs from `docs/glossary.md` (use "layer", not "lane", for architecture; "lane" only names a Mermaid subgraph; the glossary's Avoid column lists the words not to use).
 
 ## Output

@@ -218,7 +218,7 @@ flowchart LR
 | Application | `src/application`: `stores/` (session, connection, round, plus the narrowed `publicStores`), `useCases/` (the use cases, the live-session controller and its `LiveSessionApi` context and hook), `ports/` and `ports/outbound/` (the peer transport and the identity port), `composition.ts` and `testing.ts` (entries for `src/app` and tests only), `index.ts` (the barrel the UI imports) |
 | Adapters | `src/adapters/network` (Trystero transport, wire actions and parsing, signaling), `src/adapters/storage` (participant id) |
 | Composition | `src/app`: `App.tsx` provides the identity port, `LiveSessionProvider.tsx` is the thin React shell that wires the network adapter into the live-session controller and provides its `LiveSessionApi` |
-| UI | `src/pages`, `src/widgets`, `src/features`, `src/entities` (`item`, `estimate`), `src/shared`. The slice mapping is in ADR-004 and the placement helper is `.claude/skills/fsd-architecture` |
+| UI | `src/pages`, `src/widgets`, `src/features`, `src/entities` (`item`, `estimate`), `src/shared`. The slice mapping is in ADR-004 and the placement helper is `.claude/skills/code-placement` |
 | Styling | `src/design` holds the verbatim Nocturne port and generic composed patterns, component CSS sits beside its component |
 
 ### Rules
