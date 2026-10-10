@@ -63,6 +63,7 @@ flowchart LR
   App <-.->|offers and answers| Relays
   App -.->|NAT discovery| Stun
   App <-->|session file, id| Files
+  linkStyle default stroke:#8a93a6,stroke-width:2px
   classDef person fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   classDef sys fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
   classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
@@ -120,6 +121,7 @@ flowchart LR
   APP <-->|peer messages in,<br/>calls out via ports| AD
   AD -.->|implements ports| APP
   AD <-->|I/O| Ext
+  linkStyle default stroke:#8a93a6,stroke-width:2px
   linkStyle 3 stroke:#d98a1c,stroke-width:3px,stroke-dasharray:7 5
   classDef ui fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   classDef app fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
@@ -183,6 +185,7 @@ flowchart LR
   UseCases -->|reads identity<br/>via identity port| Store
   Net <-->|WebRTC, relays| Ext
   Store <-->|browser storage| Ext
+  linkStyle default stroke:#8a93a6,stroke-width:2px
   style COMP fill:#f2f2f2,stroke:#555555,stroke-width:2px,color:#14171f
   style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   style APP fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
