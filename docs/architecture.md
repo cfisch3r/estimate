@@ -147,11 +147,9 @@ Ports and the "implements" relationship appear in the level 1 view only.
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 70, "rankSpacing": 90, "padding": 14}}}%%
 flowchart LR
-  subgraph COMP["COMPOSITION (src/app)"]
-    Root["Composition root<br/>[App.tsx, NetworkProvider]"]
-  end
   subgraph UI["UI (FSD)"]
     direction TB
+    Root["Composition root<br/>[App shell and provider]"]
     Pages["Pages and widgets<br/>[React Components]"]
     Features["Features<br/>[React Components and hooks]"]
   end
@@ -183,19 +181,16 @@ flowchart LR
   Net <-->|WebRTC, relays| Ext
   Store <-->|browser storage| Ext
   linkStyle default stroke:#8a93a6,stroke-width:2px
-  style COMP fill:#f2f2f2,stroke:#555555,stroke-width:2px,color:#14171f
   style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   style APP fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
   style DOM fill:#fbe9bf,stroke:#9a6f1e,stroke-width:2px,color:#14171f
   style AD fill:#ecd8f1,stroke:#7a3d8c,stroke-width:2px,color:#14171f
-  classDef comp fill:#dcdcdc,stroke:#555555,color:#14171f
   classDef ui fill:#b9ccf7,stroke:#3d56a6,color:#14171f
   classDef app fill:#b2dfc0,stroke:#2f7a43,color:#14171f
   classDef dom fill:#f6d891,stroke:#9a6f1e,color:#14171f
   classDef ad fill:#dcbfe5,stroke:#7a3d8c,color:#14171f
   classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
-  class Root comp
-  class Pages,Features ui
+  class Root,Pages,Features ui
   class UseCases,Stores app
   class Core dom
   class Net,Store ad
@@ -209,7 +204,7 @@ flowchart LR
 | **State stores** | Application | The Zustand stores holding session, round and connection state. The UI reads them with selectors and may call a few trivial field setters (session name, unit, item selection and text fields). Every other write goes through a use case. |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. It implements the transport port, delivers validated messages to the handlers the controller registered, and never touches the stores. |
 | **Storage** | Adapters | The stable per-browser participant id today. Save, load and export would be further adapters behind ports. |
-| **Composition root** | Composition | `App.tsx` provides the identity port, `NetworkProvider.tsx` creates the controller with the network adapter and provides it to the UI. The one place that imports both an adapter and the application's composition entry. |
+| **Composition root** | UI (`src/app`, FSD's app layer) | `App.tsx` provides the identity port, and the live-session provider creates the controller with the network adapter and provides it to the UI. The one place in the UI that may import an adapter and the application's composition entry (R5, R6). |
 | **Features** | UI | UI-only features and their components. They call use cases and add navigation. |
 | **Pages and widgets** | UI | Screens and widgets composed from features and shared UI, plus routing (ADR-006) and the design system. |
 | **Peers, relays, browser storage** | External | Not part of the codebase. |
