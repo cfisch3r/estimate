@@ -1,6 +1,6 @@
 # Feature-Sliced Design in the UI (reference)
 
-Loaded from `SKILL.md` when the code is UI code.
+Read from `SKILL.md` when the code is UI code.
 
 The rules themselves are enforced by scanners, not this skill — see
 `docs/architecture-rules.md`, `steiger.config.ts` (layer/slice/public-API boundaries, R4) and
