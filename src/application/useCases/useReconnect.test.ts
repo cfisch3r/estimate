@@ -5,8 +5,8 @@ import { useConnectionStore } from '../stores'
 
 const { connectMock } = vi.hoisted(() => ({ connectMock: vi.fn() }))
 
-vi.mock('../ports/useNetworkSession', () => ({
-  useNetworkSession: () => ({ connect: connectMock }),
+vi.mock('./useLiveSession', () => ({
+  useLiveSession: () => ({ connect: connectMock }),
 }))
 
 beforeEach(() => {

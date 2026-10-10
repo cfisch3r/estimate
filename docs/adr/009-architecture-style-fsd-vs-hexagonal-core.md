@@ -333,6 +333,13 @@ already pure functions of state and event.
    nothing outside itself, so the types stay in `domain/types.ts` and the port and the
    adapter import them from there.
 
+   Naming after 3d: the sections above use the names of the time. `NetworkProvider` is now
+   `LiveSessionProvider`, and `NetworkSessionApi`, `NetworkSessionContext` and
+   `useNetworkSession` are `LiveSessionApi`, `LiveSessionContext` and `useLiveSession`,
+   moved from `application/ports/` to `application/useCases/` next to the controller. They
+   are a handle the application hands between its own parts, not a port, and the name
+   no longer points at the network adapter (see the glossary).
+
 Each stage ends with all CI checks green and can be the last one.
 
 ### Enforcement

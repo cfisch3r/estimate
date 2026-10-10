@@ -7,8 +7,8 @@ const { sendEstimateMock } = vi.hoisted(() => ({
   sendEstimateMock: vi.fn(() => Promise.resolve()),
 }))
 
-vi.mock('../ports/useNetworkSession', () => ({
-  useNetworkSession: () => ({ sendEstimate: sendEstimateMock }),
+vi.mock('./useLiveSession', () => ({
+  useLiveSession: () => ({ sendEstimate: sendEstimateMock }),
 }))
 
 function setRound(submitted: boolean) {

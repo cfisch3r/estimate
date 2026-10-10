@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router'
 import { ParticipantIdentityContext } from '../application/composition'
-import { NetworkProvider } from './NetworkProvider'
+import { LiveSessionProvider } from './LiveSessionProvider'
 import { getOrCreateParticipantId } from '../adapters/storage/participantIdentity'
 import { ROUTES } from '../shared/lib/routes'
 import { Header } from './Header'
@@ -18,7 +18,7 @@ function App() {
   return (
     <BrowserRouter>
       <ParticipantIdentityContext.Provider value={participantIdentity}>
-        <NetworkProvider>
+        <LiveSessionProvider>
           <a href="#main-content" className="skip-link">
             Skip to main content
           </a>
@@ -35,7 +35,7 @@ function App() {
               <Route path={ROUTES.history} element={<SessionHistory />} />
             </Routes>
           </main>
-        </NetworkProvider>
+        </LiveSessionProvider>
       </ParticipantIdentityContext.Provider>
     </BrowserRouter>
   )

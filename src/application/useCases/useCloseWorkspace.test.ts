@@ -5,8 +5,8 @@ import { useConnectionStore, useSessionStore } from '../stores'
 
 const { disconnectMock } = vi.hoisted(() => ({ disconnectMock: vi.fn() }))
 
-vi.mock('../ports/useNetworkSession', () => ({
-  useNetworkSession: () => ({ disconnect: disconnectMock }),
+vi.mock('./useLiveSession', () => ({
+  useLiveSession: () => ({ disconnect: disconnectMock }),
 }))
 
 beforeEach(() => {

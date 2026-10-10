@@ -1,5 +1,5 @@
 import { useConnectionStore, useRoundStore, useSessionStore } from '../stores'
-import { useNetworkSession } from '../ports/useNetworkSession'
+import { useLiveSession } from './useLiveSession'
 
 /** Drop the P2P connection and reset everything a live session
  *  leaves behind outside the item list — the connection store, the
@@ -11,7 +11,7 @@ export function useTeardownLiveSession(): () => void {
   const leaveLiveSession = useConnectionStore((s) => s.leaveLiveSession)
   const clearRound = useRoundStore((s) => s.clearRound)
   const resetUnit = useSessionStore((s) => s.resetUnit)
-  const { disconnect } = useNetworkSession()
+  const { disconnect } = useLiveSession()
 
   return () => {
     disconnect()

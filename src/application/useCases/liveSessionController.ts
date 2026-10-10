@@ -7,7 +7,7 @@ import { FACILITATOR_PARTICIPANT_ID } from '../../domain/participantId'
 import { needsResend, roundKey } from '../../domain/resend'
 import { shouldPruneDeparted } from '../../domain/roster'
 import { buildSessionSnapshot, snapshotChangeKey } from '../../domain/snapshot'
-import type { NetworkSessionApi } from '../ports/networkSessionContext'
+import type { LiveSessionApi } from './liveSessionContext'
 import type {
   ConnectionState,
   JoinSession,
@@ -20,8 +20,8 @@ import { applyFacilitatorSnapshot } from './applyFacilitatorSnapshot'
 import { withKindDrivenRetry } from './retryPolicy'
 
 export interface LiveSessionController {
-  /** The `NetworkSessionApi` port the use cases and the UI talk to. */
-  api: NetworkSessionApi
+  /** The `LiveSessionApi` port the use cases and the UI talk to. */
+  api: LiveSessionApi
   /** Leave the room and stop bridging events, without touching the stores. */
   dispose: () => void
 }
@@ -113,7 +113,7 @@ export function createLiveSessionController(deps: {
     if (announcement) live?.sendAnnounce(announcement)
   }
 
-  const api: NetworkSessionApi = {
+  const api: LiveSessionApi = {
     connect: (sessionId) => {
       teardown()
       const session = deps.joinSession(sessionId)

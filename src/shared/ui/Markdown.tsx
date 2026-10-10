@@ -10,7 +10,7 @@ interface MarkdownProps {
 }
 
 // `description` is broadcast peer-to-peer and rendered in every participant's
-// browser (see NetworkProvider), so the facilitator's raw markdown is
+// browser (see LiveSessionProvider), so the facilitator's raw markdown is
 // effectively untrusted input by the time it reaches this component.
 marked.setOptions({ breaks: true })
 

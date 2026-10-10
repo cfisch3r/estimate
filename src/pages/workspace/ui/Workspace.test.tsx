@@ -9,8 +9,8 @@ import type { Item } from '../../../domain/types'
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
 
-vi.mock('../../../application/ports/useNetworkSession', () => ({
-  useNetworkSession: () => ({
+vi.mock('../../../application/useCases/useLiveSession', () => ({
+  useLiveSession: () => ({
     connect: vi.fn(),
     disconnect: vi.fn(),
     sendEstimate: vi.fn(),

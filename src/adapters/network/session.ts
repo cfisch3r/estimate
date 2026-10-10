@@ -9,7 +9,7 @@ import type { TransportSession } from '../../application/ports/outbound/networkT
  *  `import.meta.env.MODE` as a literal, an unreached `import()` call is ordinary
  *  dead code, so Rollup never emits that chunk — confirmed by bundle inspection,
  *  see ADR-007. Resolving it once here (rather than per `joinSession()` call) keeps
- *  `joinSession` itself synchronous, so `NetworkProvider.connect()` and its callers
+ *  `joinSession` itself synchronous, so `LiveSessionApi.connect()` and its callers
  *  don't need to change at all. */
 const { joinSignalingRoom } =
   import.meta.env.MODE === 'e2e'
