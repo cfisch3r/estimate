@@ -1,7 +1,7 @@
 # EstiMate — Technical Architecture
 
 **Status:** Accepted. Structured after [arc42](https://arc42.org); this is the living description of the current architecture.
-**Based on:** [prd.md](prd.md), [ADR-001](adr/001-live-collaboration-architecture.md), [ADR-003](adr/003-session-reliability-model.md), [ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)
+**Based on:** [prd.md](prd.md), the design handoffs in `design_handoff_estimate_app/` and `design_handoffs/`, [ADR-001](adr/001-live-collaboration-architecture.md), [ADR-003](adr/003-session-reliability-model.md), [ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)
 
 Decisions and their history live in the [ADRs](adr/); implementation detail of single
 topics lives in [concepts/](concepts/). This document is the map: it states how the system
@@ -29,16 +29,16 @@ Stakeholders: the facilitator, the participants, and the maintainers (Christian 
 | Constraint | Source |
 |---|---|
 | No backend operated by the product for live communication. Signaling uses public relays, NAT traversal uses public STUN servers | ADR-001, PRD §9 |
-| Static SPA: React 19, TypeScript (`strict`, `noUncheckedIndexedAccess`), Vite, Zustand, `react-router` | AGENTS.md, ADR-006 |
-| Nocturne design system ported verbatim (`src/design/nocturne.css` is never edited, no Tailwind) | Section 9 |
+| Static SPA: React 19, TypeScript (`strict`, `noUncheckedIndexedAccess`), Vite, Zustand, `react-router`, Phosphor icons. oxlint lints (it is the `create-vite` default, equivalent for our needs) and Prettier formats | AGENTS.md, ADR-006 |
+| Nocturne design system ported verbatim (`src/design/nocturne.css` is never edited, no Tailwind) | Section 9, product and design decisions |
 | Last two versions of evergreen Chrome, Firefox, Safari and Edge | AGENTS.md |
 | Solo-maintained: every change goes through a branch and a PR with required CI checks, Conventional Commit titles | AGENTS.md, [runbook](runbook.md) |
 
 ## 3. Context and scope
 
-Legend: solid arrow = a person uses the system or a file moves, dotted = data flows between the
-app and an external system, `<-->` = both directions. Dashed box = external system. Edge labels
-say what crosses the edge.
+Legend: solid arrow = a synchronous use or file access, dotted arrow = asynchronous network
+traffic or served content, `<-->` = both directions. Dashed box = external system. Edge labels say
+what crosses the edge.
 
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 60, "rankSpacing": 90, "padding": 14}}}%%
@@ -91,7 +91,9 @@ flowchart LR
 
 Features and adapters may also use domain types directly; those edges are left out to keep the
 diagram readable. The arrow from the UI to the application layer stands for both of its uses:
-calling use cases and reading the stores.
+calling use cases and reading the stores. `src/app` (composition) sits beside the UI folders in
+the FSD layer order but is the one place allowed to import an adapter, so the adapter box is wired
+in there.
 
 Legend: solid arrow = calls (the arrow points at the callee, a double arrow goes both ways). When
 the callee is an adapter, the call goes through an interface the application layer owns, so the
@@ -126,12 +128,17 @@ flowchart LR
 
 ### Level 2: what is inside each layer
 
-Legend: same notation as above. The ports and the "implements" relationship appear in the
-layer view only.
+Legend: solid arrow = synchronous call or write (the arrow points at the callee, a double arrow
+goes both ways). Dotted arrow = events and callbacks from an adapter or a read of external state.
+Dashed box = external system. Boxes are labelled with their name and `[type]`. The ports and
+the "implements" relationship appear in the level 1 view only.
 
 ```mermaid
 %%{init: {"flowchart": {"nodeSpacing": 70, "rankSpacing": 90, "padding": 14}}}%%
 flowchart LR
+  subgraph COMP["COMPOSITION (src/app)"]
+    Root["Composition root<br/>[App.tsx, NetworkProvider]"]
+  end
   subgraph UI["UI (FSD)"]
     direction TB
     Pages["Pages and widgets<br/>[React Components]"]
@@ -139,38 +146,43 @@ flowchart LR
   end
   subgraph APP["APPLICATION"]
     direction TB
-    UseCases["Use cases<br/>[Hooks]"]
+    UseCases["Use cases and live-session controller<br/>[Hooks and factory function]"]
     Stores["State stores<br/>[Zustand stores]"]
   end
   subgraph AD["ADAPTERS"]
     direction TB
     Net["Network and wire parsing<br/>[Trystero adapter]"]
-    Store["Storage and export<br/>[Browser and file adapters]"]
+    Store["Storage<br/>[Browser storage adapter]"]
   end
   subgraph DOM["DOMAIN"]
     direction TB
     Core["Estimate and session rules<br/>[Pure functions and value types]"]
   end
   Ext["Peers, relays, browser storage<br/>[External systems]"]
+  Root -->|creates the controller<br/>with the adapter| UseCases
+  Root -->|passes joinSession from| Net
   Pages -->|composes| Features
   Features -->|calls| UseCases
   Pages & Features -->|reads state,<br/>trivial setters| Stores
   UseCases -->|uses rules| Core
   UseCases -->|reads and writes| Stores
-  UseCases <-->|peer messages in,<br/>calls out via port| Net
-  UseCases -->|saves via port| Store
-  Net -->|reads state for<br/>snapshot broadcast| Stores
+  UseCases -->|send, join, leave<br/>via transport port| Net
+  Net -.->|validated peer messages<br/>to registered handlers| UseCases
+  UseCases -->|reads identity<br/>via identity port| Store
   Net <-->|WebRTC, relays| Ext
-  Store <-->|files, browser storage| Ext
+  Store <-->|browser storage| Ext
+  style COMP fill:#f2f2f2,stroke:#555555,stroke-width:2px,color:#14171f
   style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   style APP fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
   style DOM fill:#fbe9bf,stroke:#9a6f1e,stroke-width:2px,color:#14171f
   style AD fill:#ecd8f1,stroke:#7a3d8c,stroke-width:2px,color:#14171f
+  classDef comp fill:#dcdcdc,stroke:#555555,color:#14171f
   classDef ui fill:#b9ccf7,stroke:#3d56a6,color:#14171f
   classDef app fill:#b2dfc0,stroke:#2f7a43,color:#14171f
   classDef dom fill:#f6d891,stroke:#9a6f1e,color:#14171f
   classDef ad fill:#dcbfe5,stroke:#7a3d8c,color:#14171f
   classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
+  class Root comp
   class Pages,Features ui
   class UseCases,Stores app
   class Core dom
@@ -180,183 +192,15 @@ flowchart LR
 
 | Box | Layer | Responsibility |
 |---|---|---|
-| **Estimate and session rules** | Domain | Everything pure: `Estimate` and its factory, aggregation, guards, uncertainty guidance, item and round types, roster, snapshot and resend policies, label rules, the finalize rule. No React, no I/O. Keeps the 100% coverage threshold. |
-| **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, written as straight-line code: read state, call a domain decision, write state, trigger an effect. Owns the interfaces (ports) that adapters implement, such as the peer transport (`ports/outbound/networkTransport.ts`, since stage 3c). Replaces the use-case hooks that were in `features/` (stage 3a: now `src/application/useCases`; `features/` keeps thin navigation wrappers). |
-| **State stores** | Application | The Zustand stores holding the current session, round and connection state (see "Where state lives"). Lives in `src/application/stores` (stage 3a). The UI reads them directly with selectors and may call a few trivial field setters (session name, unit, item selection and text fields); every other write goes through a use case (stage 3b-2). |
-| **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. Calls the use cases when a peer message arrives, broadcasts the facilitator's snapshot when the stores change, and implements the peer-transport port the use cases send through. |
-| **Storage and export** | Adapters | Participant-identity storage today; future save/load and CSV and link export. Called by the application through the storage port it implements (an outbound adapter). An import adapter (backlog import, a later phase) would be a separate inbound adapter that calls the use cases, added when that phase is designed. |
-| **Features** | UI | UI-only features and their components. They call use cases; they no longer own them. |
+| **Estimate and session rules** | Domain | Everything pure: `Estimate` and its factory, aggregation, guards, uncertainty guidance, item and round types, roster, snapshot, resend and connection rules, label rules, the finalize rule. No React, no I/O. Keeps the 100% coverage threshold. |
+| **Use cases and live-session controller** | Application | Submit, reveal, retry, finalize, join and leave, as straight-line code: read state, call a domain decision, write state, trigger an effect. The live-session controller (`createLiveSessionController`) owns one connection: connect, disconnect, send with retry, resend, snapshot pull, roster prune, announce, and the facilitator's snapshot broadcast when the stores change. It owns the ports the adapters implement, such as the peer transport (`ports/outbound/networkTransport.ts`). |
+| **State stores** | Application | The Zustand stores holding session, round and connection state. The UI reads them with selectors and may call a few trivial field setters (session name, unit, item selection and text fields). Every other write goes through a use case. |
+| **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. It implements the transport port, delivers validated messages to the handlers the controller registered, and never touches the stores. |
+| **Storage** | Adapters | The stable per-browser participant id today. Save, load and export would be further adapters behind ports. |
+| **Composition root** | Composition | `App.tsx` provides the identity port, `NetworkProvider.tsx` creates the controller with the network adapter and provides it to the UI. The one place that imports both an adapter and the application's composition entry. |
+| **Features** | UI | UI-only features and their components. They call use cases and add navigation. |
 | **Pages and widgets** | UI | Screens and widgets composed from features and shared UI, plus routing (ADR-006) and the design system. |
 | **Peers, relays, browser storage** | External | Not part of the codebase. |
-
-### Where state lives
-
-State types and state transitions are separated from the thing that holds the
-current state:
-
-| Layer | Holds | Example |
-|---|---|---|
-| Domain | The state **types** and the **pure transitions** over them, as `(state, event) -> new state` | `Item`, `LiveRound`, reveal and retry of a round, versioned-round rule (ADR-003), applying a snapshot, `finalResultFor` |
-| Application | The Zustand **stores** that hold the current state, and the use cases that operate on them | the session, round and connection stores; submit, reveal, finalize |
-| UI | Short-lived state belonging to one component | the estimate draft, the selected phase, whether a popover is open |
-
-**This layer is not stateless, unlike textbook hexagonal architecture.** A browser app
-has one long-lived, in-process state with one implementation, so a port in front of it
-would add ceremony and nothing to swap. Keeping the stores in the application layer
-needs no exception to the inward-only dependency rule, because nothing outward is
-imported. What it gives up is the textbook claim that the application layer holds no
-state.
-
-**Ports exist only at external boundaries.** The peer transport already has one:
-`NetworkSessionApi` is an interface that the use cases depend on and React context
-injects, and the test relay (ADR-007) is a second implementation behind the signaling
-contract. In the hybrid, the interface is owned by the application layer and the
-Trystero adapter implements it (the dashed edge in the diagram). The same pattern fits
-the storage adapter later. Inbound adapters, such as incoming peer
-messages, call the use cases directly and need no port. The network adapter also reads
-state by subscribing to the stores to broadcast the facilitator's snapshot, which is an
-inward dependency and needs no port either.
-
-**Use cases are straight-line.** Because they call the stores directly, they are tested
-against the real stores (as the hook tests do today), not against fakes. That is only
-acceptable if they contain no rules: any `if` that expresses a business rule moves into a
-pure domain function with full branch coverage. A review of the 2026-10-05 refactor
-found a real bug in exactly such a hook (a stale read of the round at call time), so
-this has to be kept true rather than assumed. The `architecture-review` pass should
-check it.
-
-Zustand stays out of the domain so that the domain's "no framework, no I/O" rule stays
-literal. The four stores (`session`, `round`, `connection`, `publicStores`) are the
-only files in `src/application/stores` that import a package; the pure modules that
-used to sit beside them now live in `src/domain/` (stage 1) and import only each other (stage 2 removed the connection store's one adapter import, the identity helper: the store now receives the id as an argument), which supports the split. The connection store holds state about
-the link, not about the estimate; it is written mostly by the network adapter, with its
-pure rules (for example which departed participants to prune) in the domain. The
-facilitator remains the authority (ADR-003): their store holds the full round state and
-participants hold a derived snapshot; both are domain types.
-
-Moving the transition logic out of the stores' `set(...)` calls is the riskiest part of
-stage 3, and most store tests would be rewritten against the pure functions. It also
-makes option D (an explicit state machine) a small step later, since the transitions are
-already pure functions of state and event.
-
-### Staging
-
-1. **Extract the domain (done).** Move `entities/session/model/estimate/` and the other pure
-   modules (`item`, `types`, `participantId`, `participantLabel`, `roster`, `snapshot`,
-   `resend`, `finalResult`) into a `src/domain/` folder with an enforced "imports nothing
-   outside `domain/`" rule. This alone removes the weakest point left after the
-   2026-10-05/06 refactor (a convention-only boundary).
-2. **Extract the adapters (done).** Move `entities/session/api/` (transport, wire parsing,
-   signaling) and the participant-identity helper into `adapters/`.
-   `NetworkProvider` becomes the composition point that wires an adapter to the use
-   cases. One catch: `model/connection.ts` currently imports the identity helper,
-   so the use case would depend on an adapter, which contradicts the diagram. The
-   identity would have to be passed in (a port) or created at the composition point.
-   As built: the wire files went to `src/adapters/network/` and the identity helper to
-   `src/adapters/storage/`. The join use case (`useJoinLiveSession`) reads the id through an
-   application-owned identity port (`ParticipantIdentityApi`, provided in `app/App.tsx`) and
-   passes it to `joinLiveSession` as an argument, so the store imports no adapter.
-   `ConnectionStatus` moved into `src/domain/types.ts` because both the adapter and the
-   store need it. `NetworkProvider`, the `NetworkSessionApi` port, `retryPolicy` and
-   `sessionCode` stayed in `entities/session/api` until stage 3a moved them to `src/application`.
-   In stage 3a `NetworkProvider` still imported the network adapter, so the oxlint rule carried
-   one named exception for it; stage 3c removed it.
-3. **Extract the application layer (done).** Move the stores and use-case hooks into
-   `application/`. The FSD `features` layer keeps only UI. Sub-steps: 3a moves the code
-   (done); 3b-1 moves the store rules into the domain (done); 3b-2 narrows the UI-visible store types and adds `useItemActions` (done); 3c splits `NetworkProvider` (done); 3d retires the UI-only `entities/session` slice (done).
-   As built in 3a: `src/application/` holds `stores/` (`session`, `round`, `connection`,
-   `publicStores`, and `index.ts`, which the use cases import), `ports/`
-   (`NetworkSessionApi` and `ParticipantIdentityApi` with their React contexts and hooks),
-   `useCases/` (join, teardown, reconnect, start collaborative, start single-user, close
-   workspace, reveal actions, submit estimate, finalize estimate, plus `retryPolicy` and
-   `sessionCode`, each beside its only consumer) and `NetworkProvider.tsx`, which still held the connect, resend, pull,
-   prune and broadcast logic (split in 3c). `src/application/index.ts` is the layer's barrel and the only
-   thing the UI imports from it. The use cases contain no navigation: `features/session-lifecycle`
-   keeps thin wrappers that add it (`useStartCollaborative`, `useStartSingleUser`,
-   `useLeaveWorkspace`, `useLeaveLiveSession`) plus the UI flow `useJoinFlow`, and
-   `features/reveal-results`' `useRevealRound` is the labelled roster view plus `useRevealActions`.
-   At the end of 3a, `entities/session` held only UI (`ItemDetailShell`, `EstimateTriple`, `RangeBar`,
-   `DescriptionField`; split in 3d, below) and its barrel exported only the first three; UI code imports
-   domain symbols from `src/domain` directly. Enforcement as built: an oxlint override on
-   `src/application/**` lets it import the domain and itself only (no FSD layers, no
-   adapters), with a second override naming `NetworkProvider.tsx` and its test as the one
-   temporary exception allowed to import `adapters/network/session` and
-   `adapters/network/connection` (removed in 3c). The adapters rule and the "only `app/` composes adapters" rule
-   are unchanged. A guard test, `src/viMockPaths.test.ts`, fails when a relative `vi.mock`
-   target does not resolve, so a moved module cannot leave a mock pointing at a file that no longer exists (it does not detect a mock of a module the code under test stopped importing).
-
-   As built in 3b-1: the rules that sat inside the stores' `set(...)` calls and in
-   `NetworkProvider` are pure functions in `src/domain/`, and the stores only hold state
-   and call them. `connection.ts` has `deriveConnectionStatus` (moved out of
-   `NetworkProvider`), `normalizeSessionCode`, `facilitatorStart`, `participantJoin`,
-   `withConnectionStatus` (with the `hasEverConnected` latch) and `leavingNeedsConfirm`.
-   `item.ts` gained `firstPendingItemId`, `appendItem`, `removeItemFrom`, `moveItem` and
-   `updateItem`. `round.ts` has `upsertByParticipant`, `retryRoundPatch`,
-   `acceptRemoteEstimate` (the ADR-003 drop rules), `recordOwnSubmission`, `adoptSnapshot`
-   (versioned rounds, reveal-gated submissions, `mySubmission` carry-over); `snapshot.ts`
-   gained `sessionFieldsFromSnapshot`. `delivery.ts` holds the `DeliveryState` type and
-   `deliveryStateFor` (called by `useSubmitEstimate`; the UI imports the `DeliveryState` type from `src/domain/delivery`), `navigation.ts`
-   holds `advanceFrom` and `previousItemId`, and `participantId.ts` gained
-   `LOCAL_PARTICIPANT_ID`. Two application additions: `useCases/applyFacilitatorSnapshot.ts`
-   (not a hook; writes the session name and unit, then the round view) and
-   `useCases/finalizeWith.ts` (the finalize step shared by `finalizeEstimate` and
-   `useRevealActions`). The round store no longer reads the connection store, so the
-   store import cycle risk noted in ADR-005 is gone.
-
-   As built in 3b-2: the UI-access rule (decided 2026-10-08). The UI may read store state
-   with selectors and may call the trivial field setters directly (`setSessionName`,
-   `setUnit`, `selectItem`, `setItemTitle`, `setItemNotes`, `setItemDescription`). Every
-   write that carries a rule goes through a use case: `useItemActions` (add, remove,
-   reorder) joins `useRevealActions`, `useJoinLiveSession`, `useCloseWorkspace` and the
-   rest. `stores/publicStores.ts` now gives the UI explicit, read-only, state-only views plus
-   those setters for all three stores (selectors, `getState` and `subscribe`, no `setState`),
-   so calling any other action, or writing state around the use cases, is a compile error
-   (pinned by exact-key type tests). Tests that seed state import the full stores from
-   `application/testing`, which the lint rule allows in test files only, and the barrel-only lint rule keeps the UI from importing
-   the full stores that use cases and `NetworkProvider` use (`stores/index.ts`). The
-   stores are not moved into the UI: the network code and the use cases write them too,
-   so a UI-owned store would have forced a storage port. The round store's
-   `applySyncState` became `applyRoundSnapshot`, since it adopts only the round part of a
-   snapshot (`applyFacilitatorSnapshot` applies the whole thing); the title rule behind `setItemTitle` is now the domain's `renameItem` (a blank title is ignored, as for a new item, so an item cannot lose its name — the one small behaviour change in this stage); the dead `setMode` was
-   removed.
-
-   As built in 3c: `application/ports/outbound/networkTransport.ts` defines `TransportSession`,
-   `ConnectionState` and `JoinSession` (no React; `ParticipantAnnounce` is a domain type in
-   `domain/types.ts`, since `announcementFor` builds it); `adapters/network` implements it
-   and imports these types, and the lint rule lets adapters import only the
-   `application/ports/outbound/` folder, where React-free ports for external systems live
-   (the React contexts stay in `ports/`). `application/useCases/liveSessionController.ts` exports
-   `createLiveSessionController({ joinSession })`, returning `{ api, dispose }`; it holds
-   what `NetworkProvider` used to (connect, disconnect, `sendEstimate` with retry, resend,
-   snapshot pull, roster prune, announce, facilitator broadcast) and is tested without React
-   against a fake transport. `src/app/NetworkProvider.tsx` is a ~25-line shell that wires
-   `adapters/network`'s `joinSession` into the controller and provides
-   `NetworkSessionContext`; the application barrel no longer exports `NetworkProvider` or the controller: those, with
-   `NetworkSessionContext` and the port types the shell needs, come from a separate
-   `application/composition.ts` entry that the lint rule allows in `src/app` and in test
-   files only. The identity port's context and the `useNetworkSession` / `useParticipantIdentity`
-   hooks moved there too: no UI code outside `application` used them, only the composition
-   root and tests that provide them. The
-   temporary oxlint exception is gone: `application` imports no adapter at all. Three small
-   predicates moved into the domain: `shouldBroadcastSnapshot` and `announcementFor`
-   (`domain/connection.ts`) and `roundKey` (`domain/resend.ts`).
-
-   As built in 3d: `entities/session` held only UI by then, two concepts that never import
-   each other, so it became `entities/item` (`ItemDetailShell`, `DescriptionField`) and
-   `entities/estimate` (`EstimateTriple`, `RangeBar`), mirroring `domain/item.ts` and
-   `domain/estimate`. Each is used by several features or pages, so the cross-slice
-   problem described in the Context does not return. The `ConnectionStatus` types did not
-   move next to the transport port, as first planned: the domain function
-   `deriveConnectionStatus` takes the transport's status, and the domain may import
-   nothing outside itself, so the types stay in `domain/types.ts` and the port and the
-   adapter import them from there.
-
-Each stage ends with all CI checks green and can be the last one.
-
-### Enforcement
-
-Both enforcement questions were checked in a throwaway copy of the repo before this
-ADR was proposed, using the installed Steiger 0.7.0 with `@feature-sliced/steiger-plugin` 0.8.0 and oxlint 1.78.0.
 
 ### Where things live
 
@@ -380,8 +224,8 @@ skill can cite it.
 | R2 | The application layer imports the domain and itself. It may use React and Zustand, but no UI layer, router, transport library or adapter | oxlint override on `src/application/**` |
 | R3 | Adapters import the domain, other adapters and packages other than React, Zustand and the router. From the application they import only `application/ports/outbound/**` | oxlint override on `src/adapters/**` |
 | R4 | Inside the UI, imports point downward (`app`, `pages`, `widgets`, `features`, `entities`, `shared`), and a slice is reached only through its `index.ts` | Steiger (`pnpm arch`) |
-| R5 | The UI never imports an adapter. It imports the application only through `src/application/index.ts`. The `composition` and `testing` entries are for `src/app` and test files only | oxlint overrides on the UI folders |
-| R6 | Only `src/app` composes the application with an adapter | R5 together with R2 |
+| R5 | The UI folders (`pages`, `widgets`, `features`, `entities`, `shared`) never import an adapter. They import the application only through `src/application/index.ts`. The `composition` and `testing` entries are for `src/app` and test files only | oxlint overrides on the UI folders |
+| R6 | Only `src/app` (the composition root) imports an adapter next to the application. It is the one exception to R5 | R5 together with R2 |
 | R7 | The UI reads store state through selectors on read-only views and may call only the trivial field setters. Every rule-bearing write goes through a use case | Type tests on the exported views (`publicStores.test.ts`), R5 |
 | R8 | Store action or use case: code that reaches another store, calls a port or triggers an effect is a use case. Stores do not reach into each other, except the round store writing items through `patchItem` (ADR-005) | `architecture-review` agent |
 | R9 | Ports exist only at real external boundaries (peer transport, identity and storage) and are owned by the application layer | `architecture-review` agent |
@@ -414,15 +258,16 @@ against a locally self-hosted signaling relay by default and against the public 
 | Concept | Summary | Detail |
 |---|---|---|
 | Estimation engine | One aggregation function for both modes (min of best, median of likely, max of worst, McConnell's CI90), bias guards that return structured signals, and `Estimate` as a self-validating value type created only through `createEstimate` | [estimation-engine](concepts/estimation-engine.md) |
-| Live sync | Room id is the 6-character session code (Crockford base32) under a fixed `appId`. Trystero's Nostr strategy is the default, a self-hosted WebSocket relay is the escape hatch. A room password is optional. The facilitator's items are the single source of truth: participants send estimates only to the facilitator, and everyone else receives `syncState` snapshots. A peer that connects or reconnects pulls the snapshot itself (`requestSnapshot`) | ADR-001, ADR-003, [collaboration-mode](concepts/collaboration-mode.md) |
+| Live sync | Room id is the 6-character session code (Crockford base32, no deep link) under the fixed `appId` `estimate-app-v1`. Trystero's Nostr strategy is the default (the library's own robustness ranking is Nostr, MQTT, BitTorrent, IPFS, and the Supabase and Firebase strategies need your own project). A self-hosted WebSocket relay is the escape hatch. An optional room password AES-GCM-encrypts the signaling handshake, without it the room id is visible as metadata on the relay. The facilitator's items are the single source of truth: participants send estimates only to the facilitator, and everyone else receives `syncState` snapshots. A peer that connects or reconnects pulls the snapshot itself (`requestSnapshot`) | ADR-001, ADR-003, [collaboration-mode](concepts/collaboration-mode.md) |
 | Reliability | Versioned rounds, a values-free roster, acknowledged submissions with a kind-driven retry policy, a stable per-browser participant id, role-asymmetric link state | ADR-003 |
 | Trust boundary | Every inbound peer message is validated into domain values at the adapter edge, so the UI only sees valid `Estimate`s | [collaboration-mode](concepts/collaboration-mode.md): trust boundary |
 | State and UI access | Three stores in the application layer, read-only narrowed views for the UI, use cases for rule-bearing writes (R7, R8) | ADR-005, ADR-009 |
 | Navigation | `react-router`. Use cases contain no navigation, `features/session-lifecycle` wraps them with it | ADR-006 |
-| Persistence | Local-first and file-based. A session (name, unit, items) is saved as a JSON file and restored from one, live-round fields are excluded. Load is allowed before a live session starts, because importing mid-session would desync participants. A participant never has a local item list. No accounts, no cross-device sync in the MVP. Not built yet | PRD §8, issue #10 |
+| Persistence | Local-first and file-based. A session (name, unit, items) is saved as a JSON file and restored from one, live-round fields are excluded. Save is a read-only export available to the facilitator in either mode. Load is allowed only before a live session starts, because importing mid-session would silently replace the facilitator's items and desync participants, so a facilitator resumes an adjourned session from the mode-select screen. A participant never has a local item list. A session survives only if the user saves the file, and the UI must say so plainly. No accounts, no cross-device sync in the MVP. Not built yet | PRD §8 |
+| Estimation unit | The facilitator picks hours, days or weeks per session. The false-precision guard's rounding granularity derives from the unit through a lookup, and the unit travels on `SessionSnapshot`, which is how the participant view receives it | [estimation-engine](concepts/estimation-engine.md) |
 | Testing | Unit and component tests, a thin Playwright layer for real WebRTC, type tests for the store views, 100% coverage on the domain | ADR-002, ADR-007, [e2e-testing](concepts/e2e-testing.md) |
 | Accessibility | oxlint `jsx-a11y`, `jest-axe` scans, `@axe-core/playwright` scans, a tracked `color-contrast` exclusion | ADR-008 |
-| Styling | Nocturne as the single source of tokens and components, composed patterns in their own files, component CSS beside its component | Section 9 |
+| Styling and shared UI | Nocturne is the single source of tokens and components. `shared/ui` holds thin wrappers over Nocturne classes (Button, Card, Field, Markdown and MarkdownEditor, LiveRegion, and so on). `Header` lives in `app/` because it carries screen and mode-aware logic. `RadioTile` is unused but kept as a design-system primitive. Composed patterns sit in their own files in `src/design`, and component CSS sits beside its component | Section 9, product and design decisions |
 
 ## 9. Architecture decisions
 
@@ -461,17 +306,20 @@ Product and design decisions that have no ADR:
 
 ## 11. Risks and technical debt
 
+Work items are tracked on the EstiMate Roadmap board.
+
 | Item | Note |
 |---|---|
 | Facilitator disconnect stalls the session | Accepted MVP gap, no election or reassignment |
 | Mesh topology | Direct peer connections suit small groups, which is the normal estimation session size |
-| Session save and load, CSV export and the shareable link are not built | Issues #10 to #12. The `session-history` page is slated for removal, not real persistence |
-| Connection-fallback UX for peers that cannot connect directly | Issue #9 |
+| Session save and load, CSV export and the shareable link are not built | The `session-history` page is slated for removal, not real persistence |
+| Connection-fallback UX for peers that cannot connect directly | Not built |
 | Outlier flag | `checkOutlier` exists in the domain but nothing in the reveal panel uses it |
+| The Session Summary rows carry no unit suffix | Small gap in unit-aware labels |
 | `AggregateStrategy` is an engineering default, not a facilitator setting | Needs a schema field and UI if teams want it |
 | Guard thresholds (symmetric range 15%, outlier 40%) are untuned constants | Retune after real sessions |
-| Live participants can open `/workspace` | Issue #156, a route guard in `app/` |
-| The round is written in several places | The round state machine (ADR-009 option D) is a separate, deferred decision |
+| Live participants can open `/workspace` | A route guard in `app/` is planned, no domain rule is needed |
+| The round is written in several places | A round state machine (ADR-009, option D) is a separate, deferred decision |
 | Layer rules are path-based oxlint patterns | Hand-maintained and probed once. A dependency-cruiser spike is planned to compare |
 
 ## 12. Glossary
