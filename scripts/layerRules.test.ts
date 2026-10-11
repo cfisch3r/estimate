@@ -52,6 +52,16 @@ const reported: Array<{ rule: string; file: string; source: string }> = [
     source: "import { useState } from 'react'\nexport const x = useState\n",
   },
   {
+    rule: 'R1-R3-no-jsx-in-domain-or-adapters',
+    file: 'src/domain/view.tsx',
+    source: 'export const View = () => <div />\n',
+  },
+  {
+    rule: 'R1-R3-no-jsx-in-domain-or-adapters',
+    file: 'src/adapters/network/view.tsx',
+    source: 'export const View = () => <div />\n',
+  },
+  {
     rule: 'R2-application-no-router-or-transport',
     file: 'src/application/router.ts',
     source: "import { useNavigate } from 'react-router'\nexport const x = useNavigate\n",
@@ -133,6 +143,10 @@ const reported: Array<{ rule: string; file: string; source: string }> = [
 
 // Exceptions the rules grant on purpose. None of these may be reported.
 const allowed: Array<{ file: string; source: string }> = [
+  {
+    file: 'src/features/estimate/view.tsx',
+    source: 'export const View = () => <div />\n',
+  },
   {
     file: 'src/domain/testFixtures.ts',
     source: "import { vi } from 'vitest'\nexport const x = vi\n",

@@ -25,4 +25,4 @@ The import rules live in `.dependency-cruiser.cjs`, one named rule per ID, and r
 `pnpm arch`. dependency-cruiser resolves each import to a file first, so an import it cannot
 resolve would be missing from its graph. A `no-unresolvable-imports` rule reports those, and
 `scripts/layerRules.test.ts` plants one violation per rule in a throwaway project to prove each
-rule still fires. oxlint keeps only the domain's I/O globals ban (R1).
+rule still fires. One more rule forbids `.tsx` files in the domain and adapters, because a file with JSX imports React implicitly and its import line never appears. oxlint keeps only the domain's I/O globals ban (R1).

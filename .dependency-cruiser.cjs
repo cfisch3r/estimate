@@ -59,6 +59,19 @@ module.exports = {
       },
     },
     {
+      // A .tsx file gets `react/jsx-runtime` from the compiler without writing an import,
+      // so the import rules above cannot see that it depends on React. A module rule needs a
+      // dependents condition, and fewer than 100 dependents is true for any file here.
+      name: 'R1-R3-no-jsx-in-domain-or-adapters',
+      severity: 'error',
+      scope: 'module',
+      from: {},
+      module: {
+        path: '^src/(domain|adapters)/.*\\.tsx$',
+        numberOfDependentsLessThan: 100,
+      },
+    },
+    {
       name: 'R3-adapters-application-only-outbound-ports',
       severity: 'error',
       from: { path: '^src/adapters/' },
