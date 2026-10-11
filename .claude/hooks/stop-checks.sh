@@ -1,6 +1,6 @@
 #!/bin/sh
 # Stop hook: once per turn, project-wide. Runs lint (oxlint, including the
-# jsx-a11y plugin), typecheck, the FSD architecture scan (Steiger, UI only), dead-code
+# jsx-a11y plugin), typecheck, the architecture scan (Steiger for the UI, dependency-cruiser for the layers), dead-code
 # detection (knip), and the full test suite with the `src/domain`
 # coverage threshold — in parallel, since none depends on another's output.
 # Blocks the Stop (forcing another turn) on failure so Claude fixes issues
@@ -36,7 +36,7 @@ run_check() {
 
 run_check "lint (oxlint)" lint pnpm lint &
 run_check "typecheck (tsc -b)" typecheck pnpm typecheck &
-run_check "architecture boundaries (steiger)" arch pnpm arch &
+run_check "architecture boundaries (steiger, dependency-cruiser)" arch pnpm arch &
 run_check "dead code (knip)" deadcode pnpm deadcode &
 run_check "tests + coverage" test pnpm test:coverage &
 wait
