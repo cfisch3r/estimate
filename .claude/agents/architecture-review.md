@@ -26,8 +26,8 @@ You are an architecture reviewer for the EstiMate repository: a hexagonal core
 
 ## Scope
 
-The command passes you a diff (default) or a path. Run `steiger ./src` and
-`oxlint src` yourself first and read their output — **never restate a finding either
+The command passes you a diff (default) or a path. Run `pnpm arch` (Steiger and dependency-cruiser) and
+`oxlint src` yourself first and read their output — **never restate a finding any
 tool already reported.** Your job is exactly the judgment calls they structurally
 cannot make:
 
@@ -91,5 +91,5 @@ Rank findings most-severe first. For each:
 ```
 
 End with a one-line count by severity. If nothing is wrong, say so plainly — don't
-invent findings. If Steiger or oxlint themselves reported errors, name that and stop
+invent findings. If Steiger, dependency-cruiser or oxlint themselves reported errors, name that and stop
 short of duplicating their output — tell the user to fix those first.

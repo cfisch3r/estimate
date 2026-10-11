@@ -29,7 +29,7 @@ pnpm build                # type-check (tsc -b) and production build
 pnpm typecheck            # type-check only (tsc -b), no bundling
 pnpm preview              # serve the production build locally
 pnpm lint                 # oxlint
-pnpm arch                 # steiger — FSD architecture boundary check
+pnpm arch                 # steiger (FSD inside the UI) and dependency-cruiser (layer rules, `pnpm arch:layers`)
 pnpm format               # prettier --write
 pnpm format:check         # prettier --check
 pnpm test                 # vitest run, summary output

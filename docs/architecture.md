@@ -345,7 +345,7 @@ Work items are tracked on the EstiMate Roadmap board.
 | Guard thresholds (symmetric range 15%, outlier 40%) are untuned constants | Retune after real sessions |
 | Live participants can open `/workspace` | A route guard in `app/` is planned, no domain rule is needed |
 | The round is written in several places | A round state machine (ADR-009, option D) is a separate, deferred decision |
-| Layer rules are path-based oxlint patterns | Hand-maintained and probed once. A dependency-cruiser spike is planned to compare |
+| Layer rules are path-based oxlint patterns | Hand-maintained and probed once. A dependency-cruiser spike (`.dependency-cruiser.cjs` and a canary test, `pnpm arch:layers`) runs beside the oxlint patterns; adoption is undecided |
 
 ## 12. Glossary
 
