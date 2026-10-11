@@ -1,4 +1,4 @@
-// Spike: the import half of R1, and R2, R3 and R5 from docs/architecture-rules.md as
+// The import half of R1, and R2, R3 and R5 from docs/architecture-rules.md as
 // dependency-cruiser rules. R4 stays with Steiger, the I/O globals ban and coverage of R1 with
 // oxlint and vitest.
 const UI = '^src/(pages|widgets|features|entities|shared)/'

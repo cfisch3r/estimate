@@ -9,7 +9,7 @@ adapter.
 
 | ID | Rule | Enforced by |
 |---|---|---|
-| R1 | The domain imports nothing outside itself, uses no I/O globals, and only test files import `vitest`. It keeps 100% test coverage | dependency-cruiser (`pnpm arch:layers`) for the imports, oxlint override on `src/domain/**` for the I/O globals, coverage threshold in `vite.config.ts` |
+| R1 | The domain imports nothing outside itself, uses no I/O globals, and only test files import `vitest`. It keeps 100% test coverage | dependency-cruiser for the imports, oxlint override on `src/domain/**` for the I/O globals, coverage threshold in `vite.config.ts` |
 | R2 | The application layer imports the domain and itself. It may use React and Zustand, but no UI layer, router, transport library or adapter | dependency-cruiser |
 | R3 | Adapters import the domain, other adapters and packages other than React, Zustand and the router. From the application they import only `application/ports/outbound/**` | dependency-cruiser |
 | R4 | Inside the UI, imports point downward (`app`, `pages`, `widgets`, `features`, `entities`, `shared`), and a slice is reached only through its `index.ts` | Steiger (`pnpm arch`) |

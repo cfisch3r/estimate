@@ -345,7 +345,7 @@ Work items are tracked on the EstiMate Roadmap board.
 | Guard thresholds (symmetric range 15%, outlier 40%) are untuned constants | Retune after real sessions |
 | Live participants can open `/workspace` | A route guard in `app/` is planned, no domain rule is needed |
 | The round is written in several places | A round state machine (ADR-009, option D) is a separate, deferred decision |
-| A layer checker that resolves imports can miss what it cannot resolve | Type-only imports and ESM-only packages were both missing from its graph in the spike. The config enables both, reports unresolvable imports, and `scripts/layerRules.test.ts` fails if a rule stops firing |
+| A layer checker that resolves imports can miss what it cannot resolve | Type-only imports and ESM-only packages are missing from its graph unless configured. The config enables both, reports unresolvable imports, and `scripts/layerRules.test.ts` fails if a rule stops firing |
 
 ## 12. Glossary
 
