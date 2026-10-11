@@ -28,7 +28,10 @@ case "$file_path" in
 esac
 
 case "$file_path" in
-  "$root"/.git/*|"$root"/.env*|"$root"/node_modules/*)
+  */../*|*/..)
+    deny "Blocked: $file_path contains '..'. Use the absolute path."
+    ;;
+  "$root"/.git/*|*/node_modules/*|*/.env|*/.env.*)
     deny "Blocked: $file_path is not something to edit by hand (.git, .env files, node_modules)."
     ;;
   "$root"/*|"$HOME"/.claude/*|"$HOME"/obsidian/AgileDojo/0-Inbox/*|/private/tmp/claude-*/*)

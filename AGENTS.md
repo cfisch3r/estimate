@@ -108,7 +108,7 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   `src/` or moving code between layers or slices; the "which layer, then which slice does this
   belong in" reference.
 - **Hooks** (`.claude/settings.json` + `.claude/hooks/`) — a `PreToolUse` hard block on
-  writes outside the repo (apart from `~/.claude` and the Claude scratchpad), edits under `.git`, `node_modules` and `.env*`, and edits to `nocturne.css`; a `PostToolUse` per-file
+  writes outside the repo (apart from `~/.claude`, the Obsidian inbox and the Claude scratchpad), paths containing `..`, edits under `.git`, `node_modules` and `.env` files, and edits to `nocturne.css`; a `PostToolUse` per-file
   `oxlint` check (surfaces output, never blocks); a `Stop` hook running `pnpm lint`
   (including the `jsx-a11y` plugin)/typecheck/`pnpm arch`/`pnpm deadcode`/
   `pnpm test:coverage` once per turn.
