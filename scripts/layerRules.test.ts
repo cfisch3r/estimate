@@ -32,6 +32,8 @@ write('src/adapters/network/session.ts', 'export const session = 1\n')
 write('src/application/stores/session.ts', 'export const store = 1\n')
 write('src/application/composition.ts', 'export const composition = 1\n')
 write('src/application/testing.ts', 'export const testing = 1\n')
+write('src/application/ports/outbound/transport.ts', 'export type Transport = 1\n')
+write('src/features/estimate/index.ts', 'export const feature = 1\n')
 
 const reported: Array<{ rule: string; file: string; source: string }> = [
   {
@@ -59,6 +61,22 @@ const reported: Array<{ rule: string; file: string; source: string }> = [
     file: 'src/application/adapter.ts',
     source:
       "import { session } from '../adapters/network/session'\nexport const x = session\n",
+  },
+  {
+    rule: 'R2-application-no-ui-no-adapter',
+    file: 'src/application/ui.ts',
+    source: "import { feature } from '../features/estimate'\nexport const x = feature\n",
+  },
+  {
+    rule: 'R2-application-no-router-or-transport',
+    file: 'src/application/transport.ts',
+    source: "import { joinRoom } from 'trystero'\nexport const x = joinRoom\n",
+  },
+  {
+    rule: 'R3-adapters-no-ui-no-framework',
+    file: 'src/adapters/network/ui.ts',
+    source:
+      "import { feature } from '../../features/estimate'\nexport const x = feature\n",
   },
   {
     rule: 'R3-adapters-no-ui-no-framework',
@@ -115,6 +133,20 @@ const reported: Array<{ rule: string; file: string; source: string }> = [
 
 // Exceptions the rules grant on purpose. None of these may be reported.
 const allowed: Array<{ file: string; source: string }> = [
+  {
+    file: 'src/domain/testFixtures.ts',
+    source: "import { vi } from 'vitest'\nexport const x = vi\n",
+  },
+  {
+    file: 'src/adapters/network/port.ts',
+    source:
+      "import type { Transport } from '../../application/ports/outbound/transport'\nexport type X = Transport\n",
+  },
+  {
+    file: 'src/app/allowed.test.ts',
+    source:
+      "import { testing } from '../application/testing'\nexport const x = testing\n",
+  },
   {
     file: 'src/domain/allowed.test.ts',
     source: "import { it } from 'vitest'\nit('x', () => {})\n",
