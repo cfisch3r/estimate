@@ -31,8 +31,8 @@ The command passes you a diff (default) or a path. Run `pnpm arch` (Steiger and 
 tool already reported.** Your job is exactly the judgment calls they structurally
 cannot make:
 
-1. **Layer placement and hexagonal boundaries** (ADR-009; oxlint only checks imports, not
-   where logic belongs). Check the rules oxlint cannot, and cite the ID:
+1. **Layer placement and hexagonal boundaries** (ADR-009; the scanners only check imports, not
+   where logic belongs). Check the rules they cannot, and cite the ID:
    - R10: a business rule written inline in a store action, use case, adapter or component
      when it is a pure decision that belongs in `src/domain`.
    - R8: the "store action vs use case" test (glossary). A use case that only sets one

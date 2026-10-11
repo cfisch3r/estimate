@@ -382,6 +382,12 @@ therefore not checked by it; they are allowed by design, and the reverse directi
 is covered by the oxlint rule above. A dedicated dependency-boundary tool is not
 needed for these rules.
 
+*Update 2026-10-11:* this judgment did not hold. The per-folder globs were hard to read and
+review, and a tool that reads the real import graph shows the layer edges directly. The layer
+imports are now checked by dependency-cruiser (`.dependency-cruiser.cjs`, one named rule per
+rule ID in [architecture-rules.md](../architecture-rules.md)) and the `no-restricted-imports`
+overrides are gone. oxlint keeps only the domain's I/O globals ban.
+
 ## Consequences
 
 **Positive**
@@ -412,7 +418,7 @@ needed for these rules.
 |---|---|
 | Where do the stores live? | Settled: application layer; types and transitions in the domain (see "Where state lives") |
 | Can Steiger be scoped to the UI folder, and is an `entities` layer required there? | Settled by a check: yes, and no (see "Enforcement") |
-| Can the domain and adapter boundaries be enforced with current tooling? | Settled by a check: yes, with oxlint (see "Enforcement") |
+| Can the domain and adapter boundaries be enforced with current tooling? | Settled by a check: yes, with oxlint (see "Enforcement"); since replaced by dependency-cruiser, see the 2026-10-11 update there |
 | Should the round be an explicit state machine, and with what? | Deferred to a separate decision; the pure transitions from stage 3 are its prerequisite |
 | How does the connection store get the participant identity without depending on an adapter? | Settled in stage 2: the join use case reads it through an application-owned port, provided in `app/App.tsx`, and passes it to the store as an argument |
 | Folder names and the domain's internal structure per concept | Settled in stage 1: a flat `src/domain/` with an `estimate/` subfolder; adapters settled in stage 2 as `adapters/network` and `adapters/storage`; the application layer's folder settled in stage 3a as `src/application` with `stores`, `ports` and `useCases` |
