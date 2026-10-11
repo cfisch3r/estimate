@@ -1,6 +1,6 @@
 #!/bin/sh
 # PreToolUse hard block (deterministic, outside model judgment): deny Edit/Write
-# outside the repo's approved paths, and any edit to nocturne.css — a verbatim,
+# outside the repo, and any edit to nocturne.css — a verbatim,
 # unmodified port of the Nocturne design system (see AGENTS.md). Everything else
 # (lint, size/complexity rules, architecture boundaries) is enforced by scanners,
 # not here — see docs/adr/004-feature-sliced-design-architecture.md and
@@ -28,14 +28,11 @@ case "$file_path" in
 esac
 
 case "$file_path" in
-  "$root"/src/*|"$root"/docs/*|"$root"/.claude/*|"$root"/.github/*|"$root"/public/*|"$root"/e2e/*|"$root"/scripts/*|"$HOME"/obsidian/AgileDojo/0-Inbox/*) echo '{}'; exit 0 ;;
-  "$HOME"/.claude/*) echo '{}'; exit 0 ;;
-  "$root"/package.json|"$root"/pnpm-lock.yaml|"$root"/tsconfig*.json|"$root"/vite.config.ts \
-    |"$root"/.oxlintrc.json|"$root"/.prettierrc.json|"$root"/.prettierignore|"$root"/knip.json \
-    |"$root"/steiger.config.ts|"$root"/.oxlintrc.metrics.json|"$root"/index.html \
-    |"$root"/README.md|"$root"/AGENTS.md|"$root"/CHANGELOG.md|"$root"/LICENSE \
-    |"$root"/.gitignore|"$root"/.mcp.json|"$root"/playwright.config.ts)
+  "$root"/.git/*|"$root"/.env*|"$root"/node_modules/*)
+    deny "Blocked: $file_path is not something to edit by hand (.git, .env files, node_modules)."
+    ;;
+  "$root"/*|"$HOME"/.claude/*|"$HOME"/obsidian/AgileDojo/0-Inbox/*|/private/tmp/claude-*/*)
     echo '{}'; exit 0 ;;
 esac
 
-deny "Blocked: writes are limited to src/, docs/, scripts/, .claude/, .github/, and known root config files in this repo (see .claude/hooks/pretooluse-guard.sh). If this path should be writable, update the guardrails hook rather than working around it."
+deny "Blocked: writes are limited to this repo, ~/.claude, the Obsidian inbox and the Claude scratchpad (see .claude/hooks/pretooluse-guard.sh)."
