@@ -36,3 +36,6 @@ coverage
 .playwright-mcp/
 playwright-report/
 test-results/
+
+# Throwaway project created by src/layerRules.test.ts
+.layer-canary-*
