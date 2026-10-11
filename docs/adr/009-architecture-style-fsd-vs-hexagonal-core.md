@@ -382,6 +382,12 @@ therefore not checked by it; they are allowed by design, and the reverse directi
 is covered by the oxlint rule above. A dedicated dependency-boundary tool is not
 needed for these rules.
 
+*Update 2026-10-11:* this judgment did not hold. The per-folder globs were hard to read and
+review, and a tool that reads the real import graph shows the layer edges directly. The layer
+imports are now checked by dependency-cruiser (`.dependency-cruiser.cjs`, one named rule per
+rule ID in [architecture-rules.md](../architecture-rules.md)) and the `no-restricted-imports`
+overrides are gone. oxlint keeps only the domain's I/O globals ban.
+
 ## Consequences
 
 **Positive**

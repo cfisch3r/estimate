@@ -87,7 +87,7 @@ flowchart LR
 | One estimation engine for both modes | `aggregateEstimates` is called with N submissions or one (section 8) |
 | Three small stores | Session, connection and round state are separate Zustand stores (ADR-005) |
 | Wiring at composition time | `src/app` picks which adapter fills which port and hands the use-case hooks their controller and identity through React contexts (section 8) |
-| Boundaries enforced by tools | [Steiger](https://github.com/feature-sliced/steiger) for the UI, oxlint for the layer imports, type tests for the store views (section 5) |
+| Boundaries enforced by tools | [Steiger](https://github.com/feature-sliced/steiger) for the UI, [dependency-cruiser](https://github.com/sverweij/dependency-cruiser) for the layer imports, type tests for the store views (section 5) |
 
 ## 5. Building block view
 
@@ -345,7 +345,7 @@ Work items are tracked on the EstiMate Roadmap board.
 | Guard thresholds (symmetric range 15%, outlier 40%) are untuned constants | Retune after real sessions |
 | Live participants can open `/workspace` | A route guard in `app/` is planned, no domain rule is needed |
 | The round is written in several places | A round state machine (ADR-009, option D) is a separate, deferred decision |
-| Layer rules are path-based oxlint patterns | Hand-maintained and probed once. A dependency-cruiser spike (`.dependency-cruiser.cjs` and a canary test, `pnpm arch:layers`) runs beside the oxlint patterns; adoption is undecided |
+| A layer checker that resolves imports can miss what it cannot resolve | Type-only imports and ESM-only packages were both missing from its graph in the spike. The config enables both, reports unresolvable imports, and `scripts/layerRules.test.ts` fails if a rule stops firing |
 
 ## 12. Glossary
 

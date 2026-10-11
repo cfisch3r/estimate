@@ -3,8 +3,8 @@
 Read from `SKILL.md` when the code is UI code.
 
 The rules themselves are enforced by scanners, not this skill — see
-`docs/architecture-rules.md`, `steiger.config.ts` (layer/slice/public-API boundaries, R4) and
-`.oxlintrc.json` (general lint, import restrictions). This skill is the *why* and *where*:
+`docs/architecture-rules.md`, `steiger.config.ts` (slice and public-API boundaries, R4),
+`.dependency-cruiser.cjs` (layer imports, R1 to R3 and R5) and `.oxlintrc.json` (general lint). This skill is the *why* and *where*:
 what to do before the scanner would even have a chance to complain.
 
 Full decision record: `docs/adr/004-feature-sliced-design-architecture.md`.
