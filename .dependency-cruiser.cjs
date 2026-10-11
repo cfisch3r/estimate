@@ -1,4 +1,6 @@
-// Spike: the layer rules R1 to R5 from docs/architecture-rules.md as dependency-cruiser rules.
+// Spike: the import half of R1, and R2, R3 and R5 from docs/architecture-rules.md as
+// dependency-cruiser rules. R4 stays with Steiger, the I/O globals ban and coverage of R1 with
+// oxlint and vitest.
 const UI = '^src/(pages|widgets|features|entities|shared)/'
 const TEST = '\\.test\\.tsx?$'
 // Domain files that may import vitest (R1): tests and their helpers.
@@ -72,25 +74,25 @@ module.exports = {
       name: 'R5-ui-application-only-through-barrel',
       severity: 'error',
       from: { path: UI },
-      to: { path: '^src/application/(stores|ports|useCases)' },
+      to: { path: '^src/application/(stores|ports|useCases)(/|\\.|$)' },
     },
     {
       name: 'R5-composition-entry-only-in-app-and-tests',
       severity: 'error',
       from: { path: UI, pathNot: TEST },
-      to: { path: '^src/application/composition' },
+      to: { path: '^src/application/composition(/|\\.|$)' },
     },
     {
       name: 'R5-testing-entry-only-in-tests',
       severity: 'error',
       from: { path: '^src/(pages|widgets|features|entities|shared|app)/', pathNot: TEST },
-      to: { path: '^src/application/testing' },
+      to: { path: '^src/application/testing(/|\\.|$)' },
     },
     {
       name: 'R5-app-application-only-through-barrel',
       severity: 'error',
       from: { path: '^src/app/' },
-      to: { path: '^src/application/(stores|ports|useCases)' },
+      to: { path: '^src/application/(stores|ports|useCases)(/|\\.|$)' },
     },
   ],
   options: {
@@ -104,6 +106,5 @@ module.exports = {
       conditionNames: ['import', 'require', 'node', 'default', 'types'],
     },
     doNotFollow: { path: 'node_modules' },
-    exclude: { path: '^src/design/' },
   },
 }

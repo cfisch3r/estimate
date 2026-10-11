@@ -23,4 +23,4 @@ adapter.
 
 The oxlint rules are path-based and rely on relative imports (there are no path aliases).
 
-Spike: `.dependency-cruiser.cjs` (`pnpm arch:layers`, part of `pnpm arch`) expresses R1 to R5 a second time, one named rule per ID, with `src/layerRules.test.ts` as its canary test. Whether it replaces the oxlint patterns is undecided.
+Spike: `.dependency-cruiser.cjs` (`pnpm arch:layers`, part of `pnpm arch`) expresses R1 to R5 a second time, one named rule per ID, with `scripts/layerRules.test.ts` as its canary test. Whether it replaces the oxlint patterns is undecided.
