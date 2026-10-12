@@ -232,7 +232,8 @@ participants hold a derived snapshot; both are domain types.
 Moving the transition logic out of the stores' `set(...)` calls is the riskiest part of
 stage 3, and most store tests would be rewritten against the pure functions. It also
 makes option D (an explicit state machine) a small step later, since the transitions are
-already pure functions of state and event.
+already pure functions of state and event (decided against for now, see the 2026-10-12
+update).
 
 ### Staging
 
