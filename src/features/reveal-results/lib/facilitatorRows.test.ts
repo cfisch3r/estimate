@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createEstimate } from '../../../domain/estimate'
 import type { Item } from '../../../domain/types'
 import { buildFacilitatorRows } from './facilitatorRows'
+import { collecting } from '../../../domain/testFixtures'
 
 function item(submissions: { participantId: string; best: number }[]): Item {
   return {
@@ -9,18 +10,18 @@ function item(submissions: { participantId: string; best: number }[]): Item {
     title: 'Item',
     description: '',
     notes: '',
-    finalResult: null,
-    submissions: submissions.map(({ participantId, best }) => {
-      const result = createEstimate({
-        participantId,
-        best,
-        likely: best + 1,
-        worst: best + 3,
-      })
-      if (!result.ok) throw new Error(result.error)
-      return result.value
-    }),
-    revealed: false,
+    state: collecting(
+      submissions.map(({ participantId, best }) => {
+        const result = createEstimate({
+          participantId,
+          best,
+          likely: best + 1,
+          worst: best + 3,
+        })
+        if (!result.ok) throw new Error(result.error)
+        return result.value
+      }),
+    ),
     round: 0,
   }
 }

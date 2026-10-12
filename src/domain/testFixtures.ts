@@ -1,6 +1,6 @@
 import { aggregateEstimates, createEstimate } from './estimate'
-import type { Estimate } from './estimate'
-import type { Item } from './types'
+import type { AggregateResult, Estimate } from './estimate'
+import type { Item, RoundState } from './types'
 
 export function estimateOf(
   participantId: string,
@@ -19,14 +19,39 @@ export function itemOf(overrides: Partial<Item> = {}): Item {
     title: 'Item',
     description: '',
     notes: '',
-    finalResult: null,
-    submissions: [],
-    revealed: false,
+    state: { phase: 'collecting', submissions: [] },
     round: 0,
     ...overrides,
   }
 }
 
 export function finalizedItemOf(overrides: Partial<Item> = {}): Item {
-  return itemOf({ finalResult: aggregateEstimates([estimateOf('p')]), ...overrides })
+  return itemOf({
+    state: {
+      phase: 'finalized',
+      submissions: [],
+      result: aggregateEstimates([estimateOf('p')]),
+    },
+    ...overrides,
+  })
+}
+
+export function collecting(submissions: Estimate[] = []): RoundState {
+  return { phase: 'collecting', submissions }
+}
+
+export function revealedWith(submissions: Estimate[] = []): RoundState {
+  return { phase: 'revealed', submissions }
+}
+
+export function finalizedWith(
+  result: AggregateResult,
+  submissions: Estimate[] = [],
+): RoundState {
+  return { phase: 'finalized', submissions, result }
+}
+
+/** The item's final range, or null while it is not finalized. */
+export function finalResultOf(item: Item): AggregateResult | null {
+  return item.state.phase === 'finalized' ? item.state.result : null
 }

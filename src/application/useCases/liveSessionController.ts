@@ -221,7 +221,7 @@ export function createLiveSessionController(deps: {
             shouldPruneDeparted(
               participantId,
               peerParticipants.values(),
-              activeItem?.submissions.map((s) => s.participantId) ?? [],
+              activeItem?.state.submissions.map((s) => s.participantId) ?? [],
             )
           ) {
             useConnectionStore.getState().removeParticipant(participantId)

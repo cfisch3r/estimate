@@ -45,9 +45,9 @@ export function SessionSummary() {
               {finalizedItems.map((item) => (
                 <tr key={item.id}>
                   <td>{item.title}</td>
-                  <td>{item.finalResult.min}</td>
-                  <td>{item.finalResult.expected}</td>
-                  <td>{item.finalResult.max}</td>
+                  <td>{item.state.result.min}</td>
+                  <td>{item.state.result.expected}</td>
+                  <td>{item.state.result.max}</td>
                 </tr>
               ))}
             </tbody>

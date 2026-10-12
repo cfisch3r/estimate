@@ -4,6 +4,16 @@
 **Date:** 2026-10-06
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [005-session-store-decomposition.md](005-session-store-decomposition.md), [003-session-reliability-model.md](003-session-reliability-model.md), [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [006-router-adoption.md](006-router-adoption.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md)
 
+> **Update 2026-10-12:** option D was settled in the narrow form. The round phase is a
+> discriminated union, `RoundState` (`collecting`, `revealed`, `finalized`), replacing
+> the loose `revealed` and `finalResult` fields on `Item`, so "finalized but not
+> revealed" cannot be represented. The transitions (`revealState`, `finalizeState`,
+> `retryRoundPatch`) are pure functions in `src/domain/round.ts`, tested as a table. A
+> reducer over the old fields and a library such as XState were rejected: the round has
+> three phases and three events, the hard parts are the guards in `acceptRemoteEstimate`
+> and `adoptSnapshot`, and the domain takes no dependencies. The wire format
+> (`SessionSnapshot`) stays flat; `buildSessionSnapshot` derives `revealed` from the phase.
+
 > This ADR proposes; it moves no code and changes no enforcement. ADR-004 stays in
 > force until this one is accepted. If accepted, ADR-004 is superseded **for the
 > non-UI part of `src/`** only, and each stage below would be its own change, open to

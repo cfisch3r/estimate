@@ -4,6 +4,12 @@ import { useRoundStore } from './round'
 import { useSessionStore } from './session'
 import { useConnectionStore } from './connection'
 import type { Item } from '../../domain/types'
+import {
+  collecting,
+  finalResultOf,
+  finalizedWith,
+  revealedWith,
+} from '../../domain/testFixtures'
 
 function resetStore() {
   useSessionStore.setState({
@@ -51,8 +57,8 @@ describe('finalizeItem', () => {
       )
 
     const state = useSessionStore.getState()
-    expect(state.items[0]!.finalResult).toMatchObject({ min: 2, expected: 5, max: 8 })
-    expect(state.items[1]!.finalResult).toBeNull()
+    expect(finalResultOf(state.items[0]!)).toMatchObject({ min: 2, expected: 5, max: 8 })
+    expect(finalResultOf(state.items[1]!)).toBeNull()
   })
 })
 
@@ -66,9 +72,7 @@ describe('applyRemoteEstimate', () => {
           title: 'Retry queue',
           description: '',
           notes: '',
-          finalResult: null,
-          submissions: [],
-          revealed: false,
+          state: { phase: 'collecting', submissions: [] },
           round: 0,
           ...overrides,
         },
@@ -85,7 +89,7 @@ describe('applyRemoteEstimate', () => {
     round.applyRemoteEstimate('i1', makeEstimate({ participantId: 'a', worst: 9 }))
     round.applyRemoteEstimate('i1', makeEstimate({ participantId: 'b' }))
 
-    const { submissions } = useSessionStore.getState().items[0]!
+    const { submissions } = useSessionStore.getState().items[0]!.state
     expect(submissions).toHaveLength(2)
     expect(submissions[0]).toMatchObject({ participantId: 'a', worst: 9 })
   })
@@ -95,15 +99,15 @@ describe('applyRemoteEstimate', () => {
     useRoundStore
       .getState()
       .applyRemoteEstimate('a-finalized-item', makeEstimate({ participantId: 'a' }))
-    expect(useSessionStore.getState().items[0]!.submissions).toHaveLength(0)
+    expect(useSessionStore.getState().items[0]!.state.submissions).toHaveLength(0)
   })
 
   it('ignores submissions once the item is revealed or finalized', () => {
-    seedActiveItem({ revealed: true })
+    seedActiveItem({ state: revealedWith() })
     useRoundStore
       .getState()
       .applyRemoteEstimate('i1', makeEstimate({ participantId: 'a' }))
-    expect(useSessionStore.getState().items[0]!.submissions).toHaveLength(0)
+    expect(useSessionStore.getState().items[0]!.state.submissions).toHaveLength(0)
   })
 
   it('is a no-op when no item is active', () => {
@@ -117,7 +121,7 @@ describe('applyRemoteEstimate', () => {
     useRoundStore
       .getState()
       .applyRemoteEstimate('i1', makeEstimate({ participantId: 'a' }), 1)
-    expect(useSessionStore.getState().items[0]!.submissions).toHaveLength(0)
+    expect(useSessionStore.getState().items[0]!.state.submissions).toHaveLength(0)
   })
 
   it('records a submission whose round matches the active item’s round', () => {
@@ -125,7 +129,7 @@ describe('applyRemoteEstimate', () => {
     useRoundStore
       .getState()
       .applyRemoteEstimate('i1', makeEstimate({ participantId: 'a' }), 2)
-    expect(useSessionStore.getState().items[0]!.submissions).toHaveLength(1)
+    expect(useSessionStore.getState().items[0]!.state.submissions).toHaveLength(1)
   })
 
   it('records a submission with no round at all (older build) rather than treating it as stale', () => {
@@ -133,7 +137,7 @@ describe('applyRemoteEstimate', () => {
     useRoundStore
       .getState()
       .applyRemoteEstimate('i1', makeEstimate({ participantId: 'a' }))
-    expect(useSessionStore.getState().items[0]!.submissions).toHaveLength(1)
+    expect(useSessionStore.getState().items[0]!.state.submissions).toHaveLength(1)
   })
 })
 
@@ -147,9 +151,7 @@ describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
           title: 'Retry queue',
           description: '',
           notes: '',
-          finalResult: null,
-          submissions: [],
-          revealed: false,
+          state: { phase: 'collecting', submissions: [] },
           round: 0,
           ...overrides,
         },
@@ -158,9 +160,7 @@ describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
           title: 'Next',
           description: '',
           notes: '',
-          finalResult: null,
-          submissions: [],
-          revealed: false,
+          state: { phase: 'collecting', submissions: [] },
           round: 0,
         },
       ],
@@ -171,15 +171,14 @@ describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
   it('revealRound flips the flag on the target item', () => {
     seed()
     useRoundStore.getState().revealRound('i1')
-    expect(useSessionStore.getState().items[0]!.revealed).toBe(true)
+    expect(useSessionStore.getState().items[0]!.state.phase).toBe('revealed')
   })
 
   it('retryRound clears submissions and the revealed flag', () => {
-    seed({ revealed: true, submissions: [makeEstimate({ participantId: 'a' })] })
+    seed({ state: revealedWith([makeEstimate({ participantId: 'a' })]) })
     useRoundStore.getState().retryRound('i1')
     expect(useSessionStore.getState().items[0]!).toMatchObject({
-      revealed: false,
-      submissions: [],
+      state: collecting(),
     })
   })
 
@@ -192,13 +191,13 @@ describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
 
   it('retryRound clears a finalized item’s recorded range (reopen)', () => {
     const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
-    seed({ revealed: true, finalResult: finalized })
+    seed({ state: finalizedWith(finalized) })
 
     // retryRound also backs the confirm-guarded "Reopen item" control (#36) for an
     // already-finalized item, so the stale range must not survive the reopen.
     useRoundStore.getState().retryRound('i1')
 
-    expect(useSessionStore.getState().items[0]!.finalResult).toBeNull()
+    expect(finalResultOf(useSessionStore.getState().items[0]!)).toBeNull()
   })
 })
 

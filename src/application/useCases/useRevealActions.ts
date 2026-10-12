@@ -29,7 +29,7 @@ export function useRevealActions(itemId: string): RevealActions {
       // submission that landed since the last render is still aggregated.
       const current = useSessionStore.getState().items.find((i) => i.id === itemId)
       if (!current) return { ok: false, error: 'Unknown item.' }
-      return finalizeWith(current.id, current.submissions)
+      return finalizeWith(current.id, current.state.submissions)
     },
   }
 }

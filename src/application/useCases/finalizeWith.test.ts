@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { estimateOf } from '../../domain/testFixtures'
 import { finalizeWith } from './finalizeWith'
 import { useSessionStore } from '../stores'
+import { finalResultOf } from '../../domain/testFixtures'
 
 beforeEach(() => {
   useSessionStore.setState({
@@ -19,7 +20,7 @@ describe('finalizeWith', () => {
 
     expect(finalizeWith(id, [estimateOf('a'), estimateOf('b')])).toEqual({ ok: true })
 
-    expect(useSessionStore.getState().items[0]?.finalResult).not.toBeNull()
+    expect(finalResultOf(useSessionStore.getState().items[0]!)).not.toBeNull()
   })
 
   it('reports an error and records nothing when there are no submissions', () => {
@@ -27,6 +28,6 @@ describe('finalizeWith', () => {
 
     expect(finalizeWith(id, []).ok).toBe(false)
 
-    expect(useSessionStore.getState().items[0]?.finalResult).toBeNull()
+    expect(finalResultOf(useSessionStore.getState().items[0]!)).toBeNull()
   })
 })

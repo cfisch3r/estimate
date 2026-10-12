@@ -4,7 +4,9 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { SessionSummary } from './SessionSummary'
 import { useSessionStore } from '../../../application/testing'
+import type { AggregateResult } from '../../../domain/estimate'
 import type { Item } from '../../../domain/types'
+import { collecting, finalizedWith } from '../../../domain/testFixtures'
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
 
@@ -21,15 +23,17 @@ function renderSessionSummary() {
   )
 }
 
-function item(id: string, title: string, finalResult: Item['finalResult'] = null): Item {
+function item(
+  id: string,
+  title: string,
+  finalResult: AggregateResult | null = null,
+): Item {
   return {
     id,
     title,
     description: '',
     notes: '',
-    finalResult,
-    submissions: [],
-    revealed: false,
+    state: finalResult ? finalizedWith(finalResult) : collecting(),
     round: 0,
   }
 }

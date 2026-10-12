@@ -3,8 +3,10 @@ import type { AggregateResult, Estimate } from '../../domain/estimate'
 import {
   acceptRemoteEstimate,
   adoptSnapshot,
+  finalizeState,
   recordOwnSubmission,
   retryRoundPatch,
+  revealState,
 } from '../../domain/round'
 import { patchItem, useSessionStore } from './session'
 import type { LiveRound, SessionSnapshot } from '../../domain/types'
@@ -43,17 +45,26 @@ export interface RoundStore {
   clearRound: () => void
 }
 
+function findItem(id: string) {
+  return useSessionStore.getState().items.find((i) => i.id === id)
+}
+
 export const useRoundStore = create<RoundStore>((set) => ({
   liveRound: null,
 
-  finalizeItem: (id, finalResult) => patchItem(id, { finalResult }),
+  finalizeItem: (id, finalResult) => {
+    const item = findItem(id)
+    if (item) patchItem(id, { state: finalizeState(item.state, finalResult) })
+  },
 
-  revealRound: (id) => patchItem(id, { revealed: true }),
+  revealRound: (id) => {
+    const item = findItem(id)
+    if (item) patchItem(id, { state: revealState(item.state) })
+  },
 
   retryRound: (id) => {
-    const item = useSessionStore.getState().items.find((i) => i.id === id)
-    if (!item) return
-    patchItem(id, retryRoundPatch(item))
+    const item = findItem(id)
+    if (item) patchItem(id, retryRoundPatch(item))
   },
 
   applyRoundSnapshot: (snapshot) =>
@@ -63,7 +74,9 @@ export const useRoundStore = create<RoundStore>((set) => ({
     const session = useSessionStore.getState()
     const active = session.items.find((item) => item.id === session.activeItemId)
     const submissions = acceptRemoteEstimate(active, itemId, estimate, round)
-    if (active && submissions) patchItem(active.id, { submissions })
+    if (active && submissions) {
+      patchItem(active.id, { state: { phase: 'collecting', submissions } })
+    }
   },
 
   submitEstimate: (estimate) =>

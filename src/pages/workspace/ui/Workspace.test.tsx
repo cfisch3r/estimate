@@ -6,6 +6,12 @@ import { Workspace } from './Workspace'
 import { createEstimate, type Estimate } from '../../../domain/estimate'
 import { useSessionStore, useConnectionStore } from '../../../application/testing'
 import type { Item } from '../../../domain/types'
+import {
+  collecting,
+  finalResultOf,
+  finalizedWith,
+  revealedWith,
+} from '../../../domain/testFixtures'
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
 
@@ -35,9 +41,7 @@ function item(overrides: Partial<Item> = {}): Item {
     title: 'Item',
     description: '',
     notes: '',
-    finalResult: null,
-    submissions: [],
-    revealed: false,
+    state: { phase: 'collecting', submissions: [] },
     round: 0,
     ...overrides,
   }
@@ -130,7 +134,7 @@ describe('Workspace', () => {
     expect(screen.getByText('Add an item to get started')).toBeInTheDocument()
 
     useSessionStore.setState({
-      items: [item({ id: '1', title: 'A', finalResult: finalized })],
+      items: [item({ id: '1', title: 'A', state: finalizedWith(finalized) })],
       activeItemId: null,
     })
     rerender(
@@ -279,7 +283,7 @@ describe('Workspace — live facilitator reveal flow', () => {
   }
 
   it('lists participants with waiting/submitted status and gates Reveal on a submission', () => {
-    setupRound({ submissions: [estimate('p1')] })
+    setupRound({ state: collecting([estimate('p1')]) })
     renderWorkspace()
 
     expect(screen.getByText('Participants')).toBeInTheDocument()
@@ -291,7 +295,7 @@ describe('Workspace — live facilitator reveal flow', () => {
   })
 
   it('announces how many participants have submitted through a status region', () => {
-    setupRound({ submissions: [estimate('p1')] })
+    setupRound({ state: collecting([estimate('p1')]) })
     renderWorkspace()
 
     const count = screen.getByText('1 of 2 submitted')
@@ -307,19 +311,19 @@ describe('Workspace — live facilitator reveal flow', () => {
 
   it('reveals the round: sets the flag, shows the aggregated bar and values', async () => {
     const user = userEvent.setup()
-    setupRound({ submissions: [estimate('p1', 2, 4, 8), estimate('p2', 3, 5, 10)] })
+    setupRound({ state: collecting([estimate('p1', 2, 4, 8), estimate('p2', 3, 5, 10)]) })
     renderWorkspace()
 
     await user.click(screen.getByRole('button', { name: /Reveal estimates/ }))
 
-    expect(useSessionStore.getState().items[0]!.revealed).toBe(true)
+    expect(useSessionStore.getState().items[0]!.state.phase).toBe('revealed')
     expect(screen.getByText('Participant estimates')).toBeInTheDocument()
     expect(screen.getByText('2d / 4d / 8d')).toBeInTheDocument()
     expect(screen.getByText('best case')).toBeInTheDocument()
   })
 
   it('marks a non-responder "No response" after reveal', () => {
-    setupRound({ revealed: true, submissions: [estimate('p1')] })
+    setupRound({ state: revealedWith([estimate('p1')]) })
     renderWorkspace()
 
     expect(screen.getByText('Alex').closest('li')!).toHaveTextContent('No response')
@@ -328,8 +332,7 @@ describe('Workspace — live facilitator reveal flow', () => {
   it('finalizes a revealed item by aggregating submissions', async () => {
     const user = userEvent.setup()
     setupRound({
-      revealed: true,
-      submissions: [estimate('p1', 2, 4, 8), estimate('p2', 4, 6, 12)],
+      state: revealedWith([estimate('p1', 2, 4, 8), estimate('p2', 4, 6, 12)]),
     })
     renderWorkspace()
 
@@ -337,7 +340,7 @@ describe('Workspace — live facilitator reveal flow', () => {
     // reads "…& view summary" rather than "…& next →".
     await user.click(screen.getByRole('button', { name: 'Finalize & view summary' }))
 
-    expect(useSessionStore.getState().items[0]!.finalResult).toEqual({
+    expect(finalResultOf(useSessionStore.getState().items[0]!)).toEqual({
       min: 2,
       expected: 5,
       max: 12,
@@ -349,22 +352,20 @@ describe('Workspace — live facilitator reveal flow', () => {
 
   it('retries a revealed round: clears submissions, returns to waiting', async () => {
     const user = userEvent.setup()
-    setupRound({ revealed: true, submissions: [estimate('p1')] })
+    setupRound({ state: revealedWith([estimate('p1')]) })
     renderWorkspace()
 
     await user.click(screen.getByRole('button', { name: 'Retry round' }))
 
     const stored = useSessionStore.getState().items[0]!
-    expect(stored.revealed).toBe(false)
-    expect(stored.submissions).toHaveLength(0)
+    expect(stored.state.phase).toBe('collecting')
+    expect(stored.state.submissions).toHaveLength(0)
     expect(screen.getByText('Participants')).toBeInTheDocument()
   })
 
   it('hides Retry and shows Update/Reopen for an already-finalized item (re-open is a separate confirm flow, #36)', () => {
     setupRound({
-      revealed: true,
-      finalResult: { min: 1, expected: 2, max: 3, ci90: 3 },
-      submissions: [estimate('p1')],
+      state: finalizedWith({ min: 1, expected: 2, max: 3, ci90: 3 }, [estimate('p1')]),
     })
     renderWorkspace()
 
@@ -383,20 +384,18 @@ describe('Workspace — live facilitator reveal flow', () => {
   it('reopens a finalized item only after a second confirming click', async () => {
     const user = userEvent.setup()
     setupRound({
-      revealed: true,
-      finalResult: { min: 1, expected: 2, max: 3, ci90: 3 },
-      submissions: [estimate('p1')],
+      state: finalizedWith({ min: 1, expected: 2, max: 3, ci90: 3 }, [estimate('p1')]),
     })
     renderWorkspace()
 
     await user.click(screen.getByRole('button', { name: 'Reopen item' }))
-    expect(useSessionStore.getState().items[0]!.finalResult).not.toBeNull()
+    expect(finalResultOf(useSessionStore.getState().items[0]!)).not.toBeNull()
 
     await user.click(screen.getByRole('button', { name: 'Click again to reopen' }))
     const stored = useSessionStore.getState().items[0]!
-    expect(stored.finalResult).toBeNull()
-    expect(stored.revealed).toBe(false)
-    expect(stored.submissions).toHaveLength(0)
+    expect(finalResultOf(stored)).toBeNull()
+    expect(stored.state.phase).toBe('collecting')
+    expect(stored.state.submissions).toHaveLength(0)
   })
 
   it('leaves the manual estimate inputs in place for single-user mode', () => {

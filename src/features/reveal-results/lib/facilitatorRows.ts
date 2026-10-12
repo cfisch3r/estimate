@@ -18,10 +18,10 @@ export function buildFacilitatorRows(
   item: Item,
   participantNames: Record<string, string>,
 ): FacilitatorRow[] {
-  const submissionById = new Map(item.submissions.map((s) => [s.participantId, s]))
+  const submissionById = new Map(item.state.submissions.map((s) => [s.participantId, s]))
   const ids = roundMemberIds(
     participantNames,
-    item.submissions.map((s) => s.participantId),
+    item.state.submissions.map((s) => s.participantId),
   )
   const labels = participantLabels(ids, participantNames)
   return ids.map((id, index) => {

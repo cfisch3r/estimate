@@ -48,9 +48,9 @@ export function ActiveItemPanel({
         initial={
           isFinalized(item)
             ? {
-                best: item.finalResult.min,
-                likely: item.finalResult.expected,
-                worst: item.finalResult.max,
+                best: item.state.result.min,
+                likely: item.state.result.expected,
+                worst: item.state.result.max,
               }
             : null
         }

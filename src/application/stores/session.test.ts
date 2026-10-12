@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { aggregateEstimates, createEstimate } from '../../domain/estimate'
 import { patchItem, useSessionStore } from './session'
+import { finalizedWith } from '../../domain/testFixtures'
 
 function resetStore() {
   useSessionStore.setState({
@@ -21,7 +22,7 @@ describe('addItem', () => {
       title: 'Migrate auth service',
       description: '',
       notes: '',
-      finalResult: null,
+      state: { phase: 'collecting', submissions: [] },
     })
   })
 
@@ -98,12 +99,12 @@ describe('patchItem', () => {
     addItem('B')
     const [first, second] = useSessionStore.getState().items
 
-    patchItem(first!.id, { revealed: true, round: 2 })
+    patchItem(first!.id, { state: { phase: 'revealed', submissions: [] }, round: 2 })
 
     const state = useSessionStore.getState()
-    expect(state.items[0]).toMatchObject({ revealed: true, round: 2 })
+    expect(state.items[0]).toMatchObject({ state: { phase: 'revealed' }, round: 2 })
     expect(state.items[1]).toMatchObject({
-      revealed: second!.revealed,
+      state: second!.state,
       round: second!.round,
     })
   })
@@ -117,7 +118,9 @@ describe('selectFirstPending', () => {
     const [first, second] = useSessionStore.getState().items
     const estimate = createEstimate({ participantId: 'p', best: 1, likely: 2, worst: 3 })
     if (!estimate.ok) throw new Error(estimate.error)
-    patchItem(first!.id, { finalResult: aggregateEstimates([estimate.value]) })
+    patchItem(first!.id, {
+      state: finalizedWith(aggregateEstimates([estimate.value])),
+    })
 
     useSessionStore.getState().selectFirstPending()
 

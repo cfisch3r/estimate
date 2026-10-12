@@ -5,6 +5,7 @@ import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import { EstimateTriple } from '../../../entities/estimate'
 import type { EstimationUnit } from '../../../domain/estimate'
 import { isFinalized } from '../../../domain/item'
+import { isRevealed } from '../../../domain/round'
 import { ItemDetailShell } from '../../../entities/item'
 import type { Item } from '../../../domain/types'
 import { useRevealRound } from '../model/useRevealRound'
@@ -32,7 +33,8 @@ export function LiveFacilitatorPanel({
   onNavigatePrev,
 }: LiveFacilitatorPanelProps) {
   const { roster, reveal, retry, finalize } = useRevealRound(item)
-  const submittedCount = item.submissions.length
+  const revealed = isRevealed(item.state)
+  const submittedCount = item.state.submissions.length
   const {
     openKey: infoOpen,
     open: openInfo,
@@ -44,14 +46,14 @@ export function LiveFacilitatorPanel({
   // submissions), which would drop focus to <body>. Hand it to the participants
   // group's label, which is on screen in every state.
   const participantsRef = useRef<HTMLSpanElement>(null)
-  const previous = useRef({ itemId: item.id, revealed: item.revealed })
+  const previous = useRef({ itemId: item.id, revealed })
   useEffect(() => {
     const was = previous.current
-    previous.current = { itemId: item.id, revealed: item.revealed }
-    if (was.itemId === item.id && was.revealed && !item.revealed) {
+    previous.current = { itemId: item.id, revealed }
+    if (was.itemId === item.id && was.revealed && !revealed) {
       participantsRef.current?.focus()
     }
-  }, [item.id, item.revealed])
+  }, [item.id, revealed])
 
   function handleFinalizeAndAdvance() {
     if (finalize().ok) onAdvance()
@@ -66,7 +68,7 @@ export function LiveFacilitatorPanel({
     >
       <GroupBox
         labelRef={participantsRef}
-        label={item.revealed ? 'Participant estimates' : 'Participants'}
+        label={revealed ? 'Participant estimates' : 'Participants'}
         info={PARTICIPANT_ESTIMATES_INFO}
         infoOpen={infoOpen === 'estimate'}
         onInfoOpen={() => openInfo('estimate')}
@@ -74,7 +76,7 @@ export function LiveFacilitatorPanel({
       >
         <LiveRegion>
           <VisuallyHidden>
-            {item.revealed || roster.length === 0
+            {revealed || roster.length === 0
               ? ''
               : `${submittedCount} of ${roster.length} submitted`}
           </VisuallyHidden>
@@ -98,7 +100,7 @@ export function LiveFacilitatorPanel({
                 }}
               >
                 <span>{row.label}</span>
-                {item.revealed ? (
+                {revealed ? (
                   <span className={row.submission ? undefined : 'text-muted'}>
                     {row.submission ? (
                       <EstimateTriple
@@ -122,9 +124,9 @@ export function LiveFacilitatorPanel({
         )}
       </GroupBox>
 
-      {item.revealed && (
+      {revealed && (
         <AggregatedRange
-          submissions={item.submissions}
+          submissions={item.state.submissions}
           unit={unit}
           infoOpen={infoOpen === 'range'}
           onInfoOpen={() => openInfo('range')}
@@ -132,7 +134,7 @@ export function LiveFacilitatorPanel({
         />
       )}
 
-      {!item.revealed ? (
+      {!revealed ? (
         <PreRevealFooter submittedCount={submittedCount} onReveal={reveal} />
       ) : isFinalized(item) ? (
         <FinalizedFooter

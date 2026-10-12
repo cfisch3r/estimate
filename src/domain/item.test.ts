@@ -43,9 +43,7 @@ describe('appendItem', () => {
         title: 'Migrate',
         description: 'd',
         notes: '',
-        finalResult: null,
-        submissions: [],
-        revealed: false,
+        state: { phase: 'collecting', submissions: [] },
         round: 0,
       },
     ])

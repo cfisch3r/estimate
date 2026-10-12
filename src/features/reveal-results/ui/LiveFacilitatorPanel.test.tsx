@@ -6,6 +6,7 @@ import { createEstimate } from '../../../domain/estimate'
 import { useConnectionStore, useSessionStore } from '../../../application/testing'
 import type { Item } from '../../../domain/types'
 import { LiveFacilitatorPanel } from './LiveFacilitatorPanel'
+import { collecting, finalizedWith, revealedWith } from '../../../domain/testFixtures'
 
 const A11Y = { rules: { 'color-contrast': { enabled: false } } }
 
@@ -21,9 +22,7 @@ function seed(patch: Partial<Item>) {
     title: 'Story',
     description: '',
     notes: '',
-    finalResult: null,
-    submissions: [estimate('p1')],
-    revealed: false,
+    state: collecting([estimate('p1')]),
     round: 0,
   }
   useSessionStore.setState({
@@ -60,16 +59,16 @@ describe('LiveFacilitatorPanel', () => {
     const { container } = render(<Host />)
     expect(await axe(container, A11Y)).toHaveNoViolations()
 
-    act(() => seed({ revealed: true }))
+    act(() => seed({ state: revealedWith([estimate('p1')]) }))
     expect(await axe(container, A11Y)).toHaveNoViolations()
 
-    act(() => seed({ revealed: true, finalResult }))
+    act(() => seed({ state: finalizedWith(finalResult, [estimate('p1')]) }))
     expect(await axe(container, A11Y)).toHaveNoViolations()
   })
 
   it('announces the armed reopen prompt in a live region', async () => {
     const user = userEvent.setup()
-    seed({ revealed: true, finalResult })
+    seed({ state: finalizedWith(finalResult, [estimate('p1')]) })
     render(<Host />)
 
     expect(screen.queryByText('Click Reopen item again to confirm.')).toBeNull()
@@ -84,7 +83,7 @@ describe('LiveFacilitatorPanel', () => {
 
   it('moves focus to the participants label after a confirmed reopen', async () => {
     const user = userEvent.setup()
-    seed({ revealed: true, finalResult })
+    seed({ state: finalizedWith(finalResult, [estimate('p1')]) })
     render(<Host />)
 
     await user.click(screen.getByRole('button', { name: 'Reopen item' }))
@@ -95,7 +94,7 @@ describe('LiveFacilitatorPanel', () => {
 
   it('moves focus to the participants label after Retry round too', async () => {
     const user = userEvent.setup()
-    seed({ revealed: true })
+    seed({ state: revealedWith([estimate('p1')]) })
     render(<Host />)
 
     await user.click(screen.getByRole('button', { name: 'Retry round' }))
@@ -117,8 +116,8 @@ describe('LiveFacilitatorPanel', () => {
     render(<Host />)
     const spy = vi.spyOn(HTMLElement.prototype, 'focus')
 
-    act(() => seed({ id: 'i2', revealed: true }))
-    act(() => seed({ id: 'i3', revealed: false }))
+    act(() => seed({ id: 'i2', state: revealedWith([estimate('p1')]) }))
+    act(() => seed({ id: 'i3', state: collecting([estimate('p1')]) }))
 
     expect(spy).not.toHaveBeenCalled()
     spy.mockRestore()

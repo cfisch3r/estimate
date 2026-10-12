@@ -1,10 +1,9 @@
-import type { AggregateResult } from './estimate'
-import type { Item } from './types'
+import type { FinalizedState, Item } from './types'
 
-/** Whether an item's estimate has been finalized — narrows `finalResult` to
- *  non-null, so callers don't re-spell the `!== null` test. */
-export function isFinalized(item: Item): item is Item & { finalResult: AggregateResult } {
-  return item.finalResult !== null
+/** Whether an item's estimate has been finalized — narrows `state` to the
+ *  finalized variant, so callers can read `state.result` without a null check. */
+export function isFinalized(item: Item): item is Item & { state: FinalizedState } {
+  return item.state.phase === 'finalized'
 }
 
 /** The id of the first item that still needs an estimate, or null if none. */
@@ -34,9 +33,7 @@ export function appendItem(
     title,
     description: draft.description,
     notes: '',
-    finalResult: null,
-    submissions: [],
-    revealed: false,
+    state: { phase: 'collecting', submissions: [] },
     round: 0,
   }
   return {

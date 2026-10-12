@@ -4,7 +4,13 @@ import {
   sessionFieldsFromSnapshot,
   snapshotChangeKey,
 } from './snapshot'
-import { estimateOf, finalizedItemOf, itemOf } from './testFixtures'
+import {
+  collecting,
+  estimateOf,
+  finalizedItemOf,
+  itemOf,
+  revealedWith,
+} from './testFixtures'
 import type { SessionSnapshot } from './types'
 
 const base = {
@@ -41,7 +47,7 @@ describe('buildSessionSnapshot', () => {
       title: 'T',
       description: 'D',
       round: 3,
-      submissions: [estimateOf('a')],
+      state: collecting([estimateOf('a')]),
     })
     const snapshot = buildSessionSnapshot({ ...base, items: [active], activeItemId: 'x' })
     expect(snapshot.currentItem).toEqual({ id: 'x', title: 'T', description: 'D' })
@@ -56,7 +62,7 @@ describe('buildSessionSnapshot', () => {
     const submissions = [estimateOf('a')]
     const snapshot = buildSessionSnapshot({
       ...base,
-      items: [itemOf({ id: 'x', revealed: true, submissions })],
+      items: [itemOf({ id: 'x', state: revealedWith(submissions) })],
       activeItemId: 'x',
     })
     expect(snapshot.revealed).toBe(true)
@@ -68,7 +74,7 @@ describe('snapshotChangeKey', () => {
   it('ignores the frozen submission values but tracks everything else', () => {
     const snapshot = buildSessionSnapshot({
       ...base,
-      items: [itemOf({ id: 'x', revealed: true, submissions: [estimateOf('a')] })],
+      items: [itemOf({ id: 'x', state: revealedWith([estimateOf('a')]) })],
       activeItemId: 'x',
     })
     expect(snapshotChangeKey({ ...snapshot, submissions: [] })).toBe(

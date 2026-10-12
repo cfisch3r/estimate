@@ -1,4 +1,5 @@
 import { isFinalized } from './item'
+import { isRevealed } from './round'
 import { buildRoster } from './roster'
 import type { Item, SessionRole, SessionSnapshot } from './types'
 import type { EstimationUnit } from './estimate'
@@ -20,7 +21,7 @@ interface SnapshotInput {
  *  "N of M submitted". */
 export function buildSessionSnapshot(input: SnapshotInput): SessionSnapshot {
   const active = input.items.find((item) => item.id === input.activeItemId) ?? null
-  const revealed = active?.revealed ?? false
+  const revealed = active ? isRevealed(active.state) : false
   return {
     currentItem: active
       ? { id: active.id, title: active.title, description: active.description }
@@ -31,10 +32,10 @@ export function buildSessionSnapshot(input: SnapshotInput): SessionSnapshot {
     round: active?.round ?? 0,
     roster: buildRoster(
       input.participantNames,
-      active?.submissions.map((s) => s.participantId) ?? [],
+      active?.state.submissions.map((s) => s.participantId) ?? [],
       input.connectedParticipantIds,
     ),
-    submissions: revealed && active ? active.submissions : [],
+    submissions: revealed && active ? active.state.submissions : [],
     finalizedItemIds: input.items.filter(isFinalized).map((item) => item.id),
   }
 }

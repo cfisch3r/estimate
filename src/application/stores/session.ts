@@ -92,7 +92,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
  *  content fields they own. */
 export function patchItem(
   id: string,
-  patch: Partial<Pick<Item, 'finalResult' | 'revealed' | 'round' | 'submissions'>>,
+  patch: Partial<Pick<Item, 'state' | 'round'>>,
 ): void {
   useSessionStore.setState((state) => ({ items: updateItem(state.items, id, patch) }))
 }

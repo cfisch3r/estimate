@@ -1,21 +1,31 @@
 import type { AggregateResult, Estimate, EstimationUnit } from './estimate'
 
+/** Where an item's round stands. A tagged union rather than loose
+ *  `revealed` / `finalResult` fields, so the combination "finalized but not
+ *  revealed" has no representation. Transitions live in `round.ts`.
+ *
+ *  Live mode (facilitator side): `submissions` are the estimates received for
+ *  the current round, keyed by participantId (last write wins). Always empty in
+ *  single-user mode and after a Retry. */
+export type RoundState =
+  /** Waiting for estimates; values stay with the facilitator (ADR-003). */
+  | { phase: 'collecting'; submissions: Estimate[] }
+  /** The group has seen the estimates; the facilitator has not finalized. */
+  | { phase: 'revealed'; submissions: Estimate[] }
+  /** The item has a final range. */
+  | { phase: 'finalized'; submissions: Estimate[]; result: AggregateResult }
+
+export type FinalizedState = Extract<RoundState, { phase: 'finalized' }>
+
 export interface Item {
   id: string
   title: string
   description: string
   notes: string
-  finalResult: AggregateResult | null
-  /** Live mode (facilitator side): participant submissions received for the
-   *  current round on this item, keyed by participantId (last write wins).
-   *  Always empty in single-user mode and after a Retry. */
-  submissions: Estimate[]
-  /** Live mode (facilitator side): whether this round's estimates have been
-   *  revealed — Workspace state 1d. Reset to false by Retry. */
-  revealed: boolean
+  state: RoundState
   /** Live mode: this item's round number, bumped by Retry. Lets a participant
    *  that reconnects after missing both a Reveal and the following Retry tell
-   *  the new round apart from the old one, which a `revealed` transition alone
+   *  the new round apart from the old one, which a phase transition alone
    *  can't do (ADR-003, "Versioned rounds"). */
   round: number
 }

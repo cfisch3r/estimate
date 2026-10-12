@@ -1,12 +1,23 @@
 import { describe, expect, it } from 'vitest'
+import { aggregateEstimates } from './estimate'
 import {
   acceptRemoteEstimate,
   adoptSnapshot,
+  finalizeState,
+  isRevealed,
   recordOwnSubmission,
   retryRoundPatch,
+  revealState,
   upsertByParticipant,
 } from './round'
-import { estimateOf, finalizedItemOf, itemOf } from './testFixtures'
+import {
+  collecting,
+  estimateOf,
+  finalizedItemOf,
+  finalizedWith,
+  itemOf,
+  revealedWith,
+} from './testFixtures'
 import type { LiveRound, SessionSnapshot } from './types'
 
 describe('upsertByParticipant', () => {
@@ -30,24 +41,56 @@ describe('upsertByParticipant', () => {
   })
 })
 
+describe('round phase transitions', () => {
+  const a = estimateOf('a')
+  const result = aggregateEstimates([a])
+  const phases = {
+    collecting: collecting([a]),
+    revealed: revealedWith([a]),
+    finalized: finalizedWith(result, [a]),
+  }
+
+  it.each([
+    ['collecting', 'revealed'],
+    ['revealed', 'revealed'],
+    ['finalized', 'finalized'],
+  ] as const)('reveal from %s leads to %s', (from, to) => {
+    expect(revealState(phases[from]).phase).toBe(to)
+  })
+
+  it('reveal keeps the submissions and leaves a finalized round untouched', () => {
+    expect(revealState(phases.collecting)).toEqual(phases.revealed)
+    expect(revealState(phases.finalized)).toBe(phases.finalized)
+  })
+
+  it.each(['collecting', 'revealed', 'finalized'] as const)(
+    'finalize from %s keeps the submissions and records the result',
+    (from) => {
+      expect(finalizeState(phases[from], result)).toEqual(phases.finalized)
+    },
+  )
+
+  it.each([
+    ['collecting', false],
+    ['revealed', true],
+    ['finalized', true],
+  ] as const)('%s is revealed: %s', (phase, revealed) => {
+    expect(isRevealed(phases[phase])).toBe(revealed)
+  })
+})
+
 describe('retryRoundPatch', () => {
   it('clears the round and bumps the round number', () => {
-    const item = finalizedItemOf({
-      revealed: true,
-      round: 2,
-      submissions: [estimateOf('a')],
-    })
+    const item = finalizedItemOf({ round: 2 })
     expect(retryRoundPatch(item)).toEqual({
-      submissions: [],
-      revealed: false,
+      state: { phase: 'collecting', submissions: [] },
       round: 3,
-      finalResult: null,
     })
   })
 })
 
 describe('acceptRemoteEstimate', () => {
-  const active = itemOf({ id: 'i1', round: 1, submissions: [estimateOf('a')] })
+  const active = itemOf({ id: 'i1', round: 1, state: collecting([estimateOf('a')]) })
   const incoming = estimateOf('b')
 
   it('records a submission for the active item and round', () => {
@@ -91,7 +134,7 @@ describe('acceptRemoteEstimate', () => {
 
   it('drops an estimate once the round is revealed', () => {
     expect(
-      acceptRemoteEstimate({ ...active, revealed: true }, 'i1', incoming, 1),
+      acceptRemoteEstimate({ ...active, state: revealedWith() }, 'i1', incoming, 1),
     ).toBeNull()
   })
 

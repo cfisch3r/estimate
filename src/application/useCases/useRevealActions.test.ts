@@ -3,6 +3,7 @@ import { act, renderHook } from '@testing-library/react'
 import { createEstimate } from '../../domain/estimate'
 import { useRevealActions } from './useRevealActions'
 import { useRoundStore, useSessionStore } from '../stores'
+import { collecting, finalResultOf } from '../../domain/testFixtures'
 
 function itemId(): string {
   const item = useSessionStore.getState().items[0]
@@ -26,7 +27,7 @@ describe('useRevealActions', () => {
 
     act(() => result.current.reveal())
 
-    expect(useSessionStore.getState().items[0]?.revealed).toBe(true)
+    expect(useSessionStore.getState().items[0]?.state.phase).toBe('revealed')
   })
 
   it('finalizes from the submissions present at call time', () => {
@@ -36,7 +37,7 @@ describe('useRevealActions', () => {
     if (!estimate.ok) throw new Error('bad fixture')
     useSessionStore.setState((s) => ({
       items: s.items.map((i) =>
-        i.id === id ? { ...i, submissions: [estimate.value] } : i,
+        i.id === id ? { ...i, state: collecting([estimate.value]) } : i,
       ),
     }))
 
@@ -46,7 +47,7 @@ describe('useRevealActions', () => {
     })
 
     expect(outcome).toEqual({ ok: true })
-    expect(useSessionStore.getState().items[0]?.finalResult).toBeDefined()
+    expect(finalResultOf(useSessionStore.getState().items[0]!)).not.toBeNull()
   })
 
   it('reports an unknown item instead of finalizing', () => {
