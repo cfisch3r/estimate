@@ -4,6 +4,17 @@
 **Date:** 2026-10-06
 **Related:** [004-feature-sliced-design-architecture.md](004-feature-sliced-design-architecture.md), [005-session-store-decomposition.md](005-session-store-decomposition.md), [003-session-reliability-model.md](003-session-reliability-model.md), [001-live-collaboration-architecture.md](001-live-collaboration-architecture.md), [006-router-adoption.md](006-router-adoption.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md)
 
+> **Update 2026-10-12:** option D (an explicit round state machine) was decided against
+> for now. A library such as XState does not fit: the round has three phases and three
+> events, the hard parts are the guards in `acceptRemoteEstimate` and `adoptSnapshot`
+> rather than the transitions, and the domain takes no dependencies. A reducer over the
+> current `revealed` and `finalResult` fields would not help either, because it would
+> leave the meaningless "finalized but not revealed" combination representable. The one
+> form worth doing is a tagged union for the phase (`collecting`, `revealed`,
+> `finalized`), with the wire's flat `revealed` flag derived from it. Trying it showed it
+> adds a type, three transition functions and a wide rename, with no bug to fix, so it
+> waits until a round feature would otherwise add more implicit states.
+
 > This ADR proposes; it moves no code and changes no enforcement. ADR-004 stays in
 > force until this one is accepted. If accepted, ADR-004 is superseded **for the
 > non-UI part of `src/`** only, and each stage below would be its own change, open to
@@ -419,6 +430,6 @@ overrides are gone. oxlint keeps only the domain's I/O globals ban.
 | Where do the stores live? | Settled: application layer; types and transitions in the domain (see "Where state lives") |
 | Can Steiger be scoped to the UI folder, and is an `entities` layer required there? | Settled by a check: yes, and no (see "Enforcement") |
 | Can the domain and adapter boundaries be enforced with current tooling? | Settled by a check: yes, with oxlint (see "Enforcement"); since replaced by dependency-cruiser, see the 2026-10-11 update there |
-| Should the round be an explicit state machine, and with what? | Deferred to a separate decision; the pure transitions from stage 3 are its prerequisite |
+| Should the round be an explicit state machine, and with what? | Not now (see the 2026-10-12 update): no library and no reducer; a tagged-union phase is the only worthwhile form, deferred until a round feature needs it |
 | How does the connection store get the participant identity without depending on an adapter? | Settled in stage 2: the join use case reads it through an application-owned port, provided in `app/App.tsx`, and passes it to the store as an argument |
 | Folder names and the domain's internal structure per concept | Settled in stage 1: a flat `src/domain/` with an `estimate/` subfolder; adapters settled in stage 2 as `adapters/network` and `adapters/storage`; the application layer's folder settled in stage 3a as `src/application` with `stores`, `ports` and `useCases` |
