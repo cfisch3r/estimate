@@ -205,7 +205,7 @@ flowchart LR
 | **State stores** | Application | The Zustand stores holding session, round and connection state. The UI reads them with selectors and may call a few trivial field setters (session name, unit, item selection and text fields). Every other write goes through a use case. |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. It implements the transport port, delivers validated messages to the handlers the controller registered, and never touches the stores. |
 | **Storage** | Adapters | The stable per-browser participant id today. Save, load and export would be further adapters behind ports. |
-| **Composition root** | UI (`src/app`, FSD's app layer) | `App.tsx` provides the identity port, and the live-session provider creates the controller with the network adapter and provides it to the UI. The one place in the UI that may import an adapter and the application's composition entry (R5, R6). |
+| **Composition root** | UI (`src/app`, FSD's app layer) | `App.tsx` provides the identity port, and the live-session provider creates the controller with the network adapter and provides it to the UI. The one place in the UI that may import an adapter and the application's composition entry (`ui-no-adapters`, `composition-root`). |
 | **Features** | UI | UI-only features and their components. They call use cases and add navigation. |
 | **Pages and widgets** | UI | Screens and widgets composed from features and shared UI, plus routing (ADR-006) and the design system. |
 | **Peers, relays, browser storage** | External | Not part of the codebase. |
@@ -223,7 +223,7 @@ flowchart LR
 
 ### Rules
 
-Dependencies point inward, and only `src/app` touches an adapter. The rules R1 to R11, with
+Dependencies point inward, and only `src/app` touches an adapter. The architecture rules, with
 the scanner or review that enforces each, are in [architecture-rules.md](architecture-rules.md).
 
 ## 6. Runtime view
@@ -285,8 +285,8 @@ releases are in the [runbook](runbook.md).
 | Live sync | Room id is the 6-character session code (Crockford base32, no deep link) under the fixed `appId` `estimate-app-v1`. Trystero's [Nostr](https://nostr.com) strategy is the default (the library's own robustness ranking is Nostr, MQTT, BitTorrent, IPFS, and the Supabase and Firebase strategies need your own project). A self-hosted WebSocket relay is the escape hatch. An optional room password AES-GCM-encrypts the signaling handshake, without it the room id is visible as metadata on the relay. The facilitator's items are the single source of truth: participants send estimates only to the facilitator, and everyone else receives `syncState` snapshots. A peer that connects or reconnects pulls the snapshot itself (`requestSnapshot`) | ADR-001, ADR-003, [collaboration-mode](concepts/collaboration-mode.md) |
 | Reliability | Versioned rounds, a values-free roster, acknowledged submissions with a kind-driven retry policy, a stable per-browser participant id, role-asymmetric link state | ADR-003 |
 | Trust boundary | Every inbound peer message is validated into domain values at the adapter edge, so the UI only sees valid `Estimate`s | [collaboration-mode](concepts/collaboration-mode.md): trust boundary |
-| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (the peer transport in `ports/outbound`, participant identity). The use-case hooks reach the live-session controller, and the identity port, through React contexts, because a hook cannot import an object created at runtime. The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (R5, R6) | [glossary](glossary.md): port and handle, ADR-009 |
-| State and UI access | Three stores in the application layer, read-only narrowed views for the UI, use cases for rule-bearing writes (R7, R8) | ADR-005, ADR-009 |
+| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (the peer transport in `ports/outbound`, participant identity). The use-case hooks reach the live-session controller, and the identity port, through React contexts, because a hook cannot import an object created at runtime. The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (`ui-no-adapters`, `composition-root`) | [glossary](glossary.md): port and handle, ADR-009 |
+| State and UI access | Three stores in the application layer, read-only narrowed views for the UI, use cases for rule-bearing writes (`ui-reads-views`, `store-vs-usecase`) | ADR-005, ADR-009 |
 | Navigation | `react-router`. Use cases contain no navigation, `features/session-lifecycle` wraps them with it | ADR-006 |
 | Persistence | Local-first and file-based. A session (name, unit, items) is saved as a JSON file and restored from one, live-round fields are excluded. Save is a read-only export available to the facilitator in either mode. Load is allowed only before a live session starts, because importing mid-session would silently replace the facilitator's items and desync participants, so a facilitator resumes an adjourned session from the mode-select screen. A participant never has a local item list. A session survives only if the user saves the file, and the UI must say so plainly. No accounts, no cross-device sync in the MVP. Not built yet | PRD §8 |
 | Estimation unit | The facilitator picks hours, days or weeks per session. The false-precision guard's rounding granularity derives from the unit through a lookup, and the unit travels on `SessionSnapshot`, which is how the participant view receives it | [estimation-engine](concepts/estimation-engine.md) |
@@ -327,7 +327,7 @@ Product and design decisions that have no ADR:
 | Privacy | A participant never sees another's values before the reveal | Targeted sends to the facilitator, a values-free roster |
 | Zero operations | No server to run or pay for | Static hosting, public relays and STUN |
 | Accessibility | Keyboard and screen-reader use of the estimate flow | ADR-008 |
-| Maintainability | A new feature has an obvious home, a boundary violation fails CI | [Rules R1 to R11](architecture-rules.md), the placement skill, the review agent |
+| Maintainability | A new feature has an obvious home, a boundary violation fails CI | [Architecture rules](architecture-rules.md), the placement skill, the review agent |
 
 ## 11. Risks and technical debt
 

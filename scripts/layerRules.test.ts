@@ -37,99 +37,99 @@ write('src/features/estimate/index.ts', 'export const feature = 1\n')
 
 const reported: Array<{ rule: string; file: string; source: string }> = [
   {
-    rule: 'R1-domain-imports-nothing-outside-itself',
+    rule: 'pure-domain-imports-nothing-outside-itself',
     file: 'src/domain/value.ts',
     source: "import { useState } from 'react'\nexport const x = useState\n",
   },
   {
-    rule: 'R1-domain-imports-nothing-outside-itself',
+    rule: 'pure-domain-imports-nothing-outside-itself',
     file: 'src/domain/typeOnly.ts',
     source: "import type { ReactNode } from 'react'\nexport type X = ReactNode\n",
   },
   {
-    rule: 'R1-domain-tests-import-only-domain-and-vitest',
+    rule: 'pure-domain-tests-import-only-domain-and-vitest',
     file: 'src/domain/package.test.ts',
     source: "import { useState } from 'react'\nexport const x = useState\n",
   },
   {
-    rule: 'R1-R3-no-jsx-in-domain-or-adapters',
+    rule: 'no-jsx-in-domain-or-adapters',
     file: 'src/domain/view.tsx',
     source: 'export const View = () => <div />\n',
   },
   {
-    rule: 'R1-R3-no-jsx-in-domain-or-adapters',
+    rule: 'no-jsx-in-domain-or-adapters',
     file: 'src/adapters/network/view.tsx',
     source: 'export const View = () => <div />\n',
   },
   {
-    rule: 'R2-application-no-router-or-transport',
+    rule: 'app-layer-core-no-router-or-transport',
     file: 'src/application/router.ts',
     source: "import { useNavigate } from 'react-router'\nexport const x = useNavigate\n",
   },
   {
-    rule: 'R2-application-no-ui-no-adapter',
+    rule: 'app-layer-core-no-ui-no-adapter',
     file: 'src/application/adapter.ts',
     source:
       "import { session } from '../adapters/network/session'\nexport const x = session\n",
   },
   {
-    rule: 'R2-application-no-ui-no-adapter',
+    rule: 'app-layer-core-no-ui-no-adapter',
     file: 'src/application/ui.ts',
     source: "import { feature } from '../features/estimate'\nexport const x = feature\n",
   },
   {
-    rule: 'R2-application-no-router-or-transport',
+    rule: 'app-layer-core-no-router-or-transport',
     file: 'src/application/transport.ts',
     source: "import { joinRoom } from 'trystero'\nexport const x = joinRoom\n",
   },
   {
-    rule: 'R3-adapters-no-ui-no-framework',
+    rule: 'adapters-inward-no-ui-no-framework',
     file: 'src/adapters/network/ui.ts',
     source:
       "import { feature } from '../../features/estimate'\nexport const x = feature\n",
   },
   {
-    rule: 'R3-adapters-no-ui-no-framework',
+    rule: 'adapters-inward-no-ui-no-framework',
     file: 'src/adapters/network/react.ts',
     source: "import { useState } from 'react'\nexport const x = useState\n",
   },
   {
-    rule: 'R3-adapters-no-ui-no-framework',
+    rule: 'adapters-inward-no-ui-no-framework',
     file: 'src/adapters/network/zustand.ts',
     source: "import { create } from 'zustand'\nexport const x = create\n",
   },
   {
-    rule: 'R3-adapters-application-only-outbound-ports',
+    rule: 'adapters-inward-application-only-outbound-ports',
     file: 'src/adapters/network/stores.ts',
     source:
       "import { store } from '../../application/stores/session'\nexport const x = store\n",
   },
   {
-    rule: 'R5-ui-no-adapter',
+    rule: 'ui-no-adapters-no-adapter-import',
     file: 'src/features/estimate/adapter.ts',
     source:
       "import { session } from '../../adapters/network/session'\nexport const x = session\n",
   },
   {
-    rule: 'R5-ui-application-only-through-barrel',
+    rule: 'ui-no-adapters-ui-application-only-through-barrel',
     file: 'src/features/estimate/stores.ts',
     source:
       "import { store } from '../../application/stores/session'\nexport const x = store\n",
   },
   {
-    rule: 'R5-composition-entry-only-in-app-and-tests',
+    rule: 'ui-no-adapters-composition-entry-only-in-app-and-tests',
     file: 'src/features/estimate/composition.ts',
     source:
       "import { composition } from '../../application/composition'\nexport const x = composition\n",
   },
   {
-    rule: 'R5-testing-entry-only-in-tests',
+    rule: 'ui-no-adapters-testing-entry-only-in-tests',
     file: 'src/features/estimate/testing.ts',
     source:
       "import { testing } from '../../application/testing'\nexport const x = testing\n",
   },
   {
-    rule: 'R5-app-application-only-through-barrel',
+    rule: 'ui-no-adapters-app-application-only-through-barrel',
     file: 'src/app/stores.ts',
     source:
       "import { store } from '../application/stores/session'\nexport const x = store\n",
