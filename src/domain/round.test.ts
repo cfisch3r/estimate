@@ -94,15 +94,14 @@ describe('acceptRemoteEstimate', () => {
   const incoming = estimateOf('b')
 
   it('records a submission for the active item and round', () => {
-    expect(acceptRemoteEstimate(active, 'i1', incoming, 1)).toEqual([
-      estimateOf('a'),
-      incoming,
-    ])
+    expect(acceptRemoteEstimate(active, 'i1', incoming, 1)).toEqual(
+      collecting([estimateOf('a'), incoming]),
+    )
   })
 
   it('replaces the same participant resubmitting', () => {
     const revised = estimateOf('a', 7, 8, 9)
-    expect(acceptRemoteEstimate(active, 'i1', revised, 1)).toEqual([revised])
+    expect(acceptRemoteEstimate(active, 'i1', revised, 1)).toEqual(collecting([revised]))
   })
 
   it('drops an estimate when there is no active item', () => {
@@ -114,17 +113,15 @@ describe('acceptRemoteEstimate', () => {
   })
 
   it('records a legacy peer estimate with an empty itemId against the active round', () => {
-    expect(acceptRemoteEstimate(active, '', incoming, 1)).toEqual([
-      estimateOf('a'),
-      incoming,
-    ])
+    expect(acceptRemoteEstimate(active, '', incoming, 1)).toEqual(
+      collecting([estimateOf('a'), incoming]),
+    )
   })
 
   it('records an estimate from an older build that sends no round', () => {
-    expect(acceptRemoteEstimate(active, 'i1', incoming)).toEqual([
-      estimateOf('a'),
-      incoming,
-    ])
+    expect(acceptRemoteEstimate(active, 'i1', incoming)).toEqual(
+      collecting([estimateOf('a'), incoming]),
+    )
   })
 
   it('drops a stale-round estimate (an in-flight send from before a Retry)', () => {

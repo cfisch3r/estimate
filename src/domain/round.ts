@@ -40,8 +40,8 @@ export function retryRoundPatch(item: Item): Pick<Item, 'state' | 'round'> {
   return { state: { phase: 'collecting', submissions: [] }, round: item.round + 1 }
 }
 
-/** The facilitator's submission list for the active item after an incoming
- *  targeted estimate, or `null` when the estimate must be dropped.
+/** The facilitator's round state for the active item after an incoming
+ *  targeted estimate (still `collecting`, with the submission upserted), or `null` when the estimate must be dropped.
  *
  *  Facilitator-only: `sendEstimate` targets the facilitator alone, so a
  *  participant never receives another peer's estimate (ADR-003, "Single owner").
@@ -54,7 +54,7 @@ export function acceptRemoteEstimate(
   itemId: string,
   estimate: Estimate,
   round?: number,
-): Estimate[] | null {
+): RoundState | null {
   if (
     !active ||
     // An empty itemId is a pre-#8 peer's bare estimate — record it against
@@ -69,7 +69,10 @@ export function acceptRemoteEstimate(
   ) {
     return null
   }
-  return upsertByParticipant(active.state.submissions, estimate)
+  return {
+    phase: 'collecting',
+    submissions: upsertByParticipant(active.state.submissions, estimate),
+  }
 }
 
 /** The participant's round view after submitting their own (already valid)

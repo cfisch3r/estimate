@@ -92,7 +92,19 @@ export const useSessionStore = create<SessionStore>((set) => ({
  *  content fields they own. */
 export function patchItem(
   id: string,
-  patch: Partial<Pick<Item, 'state' | 'round'>>,
+  patch: RoundPatch | ((item: Item) => RoundPatch),
 ): void {
-  useSessionStore.setState((state) => ({ items: updateItem(state.items, id, patch) }))
+  useSessionStore.setState((state) => {
+    const item = state.items.find((i) => i.id === id)
+    if (!item) return {}
+    return {
+      items: updateItem(
+        state.items,
+        id,
+        typeof patch === 'function' ? patch(item) : patch,
+      ),
+    }
+  })
 }
+
+type RoundPatch = Partial<Pick<Item, 'state' | 'round'>>

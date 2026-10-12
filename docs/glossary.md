@@ -48,6 +48,7 @@ and use "lane" and "slice" in their own sense. They are not rewritten.
 | **Value object** | A value with no identity, compared by content and validated on creation. `Estimate` is one (`createEstimate`). |
 | **Session** | One estimation meeting. Live (peer to peer) or manual. |
 | **Round** | One pass of everyone estimating one item; the facilitator can retry it. |
+| **Round phase** | Where a round stands: `collecting` (waiting for estimates), `revealed` (the group has seen them) or `finalized` (the item has a final range). Held as the tagged union `RoundState` on the item; on the wire it appears only as the flat `revealed` flag, true from `revealed` on. |
 | **Submission** | One participant's estimate for the current round. |
 | **Roster** | The values-free list of who has submitted, sent in the snapshot ([ADR-003](adr/003-session-reliability-model.md)). |
 | **Snapshot** | A derived, read-only copy of the facilitator's round state that participants hold (applied via `applyRoundSnapshot` to a `LiveRound`). The facilitator stays the authority. |
