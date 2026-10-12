@@ -1,9 +1,9 @@
-// The import half of R1, and R2, R3 and R5 from docs/architecture-rules.md as
-// dependency-cruiser rules. R4 stays with Steiger, the I/O globals ban and coverage of R1 with
+// The import half of `pure-domain`, and `app-layer-core`, `adapters-inward` and `ui-no-adapters` from docs/architecture-rules.md as
+// dependency-cruiser rules. `fsd-downward` stays with Steiger, the I/O globals ban and coverage of `pure-domain` with
 // oxlint and vitest.
 const UI = '^src/(pages|widgets|features|entities|shared)/'
 const TEST = '\\.test\\.tsx?$'
-// Domain files that may import vitest (R1): tests and their helpers.
+// Domain files that may import vitest (`pure-domain`): tests and their helpers.
 const DOMAIN_TEST_SUPPORT = [
   '^src/domain/.*\\.test\\.tsx?$',
   '^src/domain/testFixtures\\.ts$',
@@ -22,25 +22,25 @@ module.exports = {
       to: { couldNotResolve: true },
     },
     {
-      name: 'R1-domain-imports-nothing-outside-itself',
+      name: 'pure-domain-imports-nothing-outside-itself',
       severity: 'error',
       from: { path: '^src/domain/', pathNot: DOMAIN_TEST_SUPPORT },
       to: { pathNot: '^src/domain/' },
     },
     {
-      name: 'R1-domain-tests-import-only-domain-and-vitest',
+      name: 'pure-domain-tests-import-only-domain-and-vitest',
       severity: 'error',
       from: { path: DOMAIN_TEST_SUPPORT },
       to: { pathNot: ['^src/domain/', 'node_modules/vitest/'] },
     },
     {
-      name: 'R2-application-no-ui-no-adapter',
+      name: 'app-layer-core-no-ui-no-adapter',
       severity: 'error',
       from: { path: '^src/application/' },
       to: { path: '^src/(pages|widgets|features|entities|shared|app|adapters)/' },
     },
     {
-      name: 'R2-application-no-router-or-transport',
+      name: 'app-layer-core-no-router-or-transport',
       severity: 'error',
       from: { path: '^src/application/' },
       to: {
@@ -48,7 +48,7 @@ module.exports = {
       },
     },
     {
-      name: 'R3-adapters-no-ui-no-framework',
+      name: 'adapters-inward-no-ui-no-framework',
       severity: 'error',
       from: { path: '^src/adapters/' },
       to: {
@@ -62,7 +62,7 @@ module.exports = {
       // A .tsx file gets `react/jsx-runtime` from the compiler without writing an import,
       // so the import rules above cannot see that it depends on React. A module rule needs a
       // dependents condition, and fewer than 100 dependents is true for any file here.
-      name: 'R1-R3-no-jsx-in-domain-or-adapters',
+      name: 'no-jsx-in-domain-or-adapters',
       severity: 'error',
       scope: 'module',
       from: {},
@@ -72,37 +72,37 @@ module.exports = {
       },
     },
     {
-      name: 'R3-adapters-application-only-outbound-ports',
+      name: 'adapters-inward-application-only-outbound-ports',
       severity: 'error',
       from: { path: '^src/adapters/' },
       to: { path: '^src/application/', pathNot: '^src/application/ports/outbound/' },
     },
     {
-      name: 'R5-ui-no-adapter',
+      name: 'ui-no-adapters-no-adapter-import',
       severity: 'error',
       from: { path: UI },
       to: { path: '^src/adapters/' },
     },
     {
-      name: 'R5-ui-application-only-through-barrel',
+      name: 'ui-no-adapters-ui-application-only-through-barrel',
       severity: 'error',
       from: { path: UI },
       to: { path: '^src/application/(stores|ports|useCases)(/|\\.|$)' },
     },
     {
-      name: 'R5-composition-entry-only-in-app-and-tests',
+      name: 'ui-no-adapters-composition-entry-only-in-app-and-tests',
       severity: 'error',
       from: { path: UI, pathNot: TEST },
       to: { path: '^src/application/composition(/|\\.|$)' },
     },
     {
-      name: 'R5-testing-entry-only-in-tests',
+      name: 'ui-no-adapters-testing-entry-only-in-tests',
       severity: 'error',
       from: { path: '^src/(pages|widgets|features|entities|shared|app)/', pathNot: TEST },
       to: { path: '^src/application/testing(/|\\.|$)' },
     },
     {
-      name: 'R5-app-application-only-through-barrel',
+      name: 'ui-no-adapters-app-application-only-through-barrel',
       severity: 'error',
       from: { path: '^src/app/' },
       to: { path: '^src/application/(stores|ports|useCases)(/|\\.|$)' },

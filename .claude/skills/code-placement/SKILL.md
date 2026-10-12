@@ -19,23 +19,23 @@ yes wins:
 | Is it wiring that picks which adapter fills which port? | `src/app` (composition) |
 | Is it something the user sees or does, plus navigation? | the FSD UI, below |
 
-The rules behind this table are in `docs/architecture-rules.md`; cite them by ID. Placement
+The rules behind this table are in `docs/architecture-rules.md`; cite them by name. Placement
 questions map to them like this:
 
 | Question | Rules |
 |---|---|
-| Can the domain import this, or use this global? | R1 |
-| Is it a pure decision written inline outside the domain? | R10 |
-| May the application import this? | R2 |
-| What may an adapter import? | R3 |
-| Do I need a new port? | R9 |
-| May the UI import an adapter or reach into the application? | R5, R6 |
-| How does the UI read and write store state? | R7 |
-| Store action or use case? | R8 |
-| Does a moved module leave a stale `vi.mock` path? | R11 |
+| Can the domain import this, or use this global? | `pure-domain` |
+| Is it a pure decision written inline outside the domain? | `pure-decisions-in-domain` |
+| May the application import this? | `app-layer-core` |
+| What may an adapter import? | `adapters-inward` |
+| Do I need a new port? | `ports-at-boundaries` |
+| May the UI import an adapter or reach into the application? | `ui-no-adapters`, `composition-root` |
+| How does the UI read and write store state? | `ui-reads-views` |
+| Store action or use case? | `store-vs-usecase` |
+| Does a moved module leave a stale `vi.mock` path? | `no-stale-mocks` |
 
 ## UI code
 
 For code in the FSD UI (`pages`, `widgets`, `features`, `entities`, `shared`), read
 [fsd-ui.md](fsd-ui.md) in this folder: the FSD layers in use, segments, the public-API rule
-and where a new slice belongs (R4). Skip it for domain, application and adapter code.
+and where a new slice belongs (`fsd-downward`). Skip it for domain, application and adapter code.
