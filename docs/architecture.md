@@ -344,7 +344,7 @@ Work items are tracked on the EstiMate Roadmap board.
 | `AggregateStrategy` is an engineering default, not a facilitator setting | Needs a schema field and UI if teams want it |
 | Guard thresholds (symmetric range 15%, outlier 40%) are untuned constants | Retune after real sessions |
 | Live participants can open `/workspace` | A route guard in `app/` is planned, no domain rule is needed |
-| The round is written in several places | The phase is a tagged union (`RoundState`) with the transitions in `domain/round.ts`, so illegal states cannot be built. The writes still go through `patchItem`; a transition library was rejected (ADR-009, update 2026-10-12) |
+| The round is written in several places | The phase is a tagged union, so illegal states cannot be built, but every write still goes through `patchItem` |
 | A layer checker that resolves imports can miss what it cannot resolve | Type-only imports and ESM-only packages are missing from its graph unless configured. The config enables both, reports unresolvable imports, and `scripts/layerRules.test.ts` fails if a rule stops firing |
 
 ## 12. Glossary
