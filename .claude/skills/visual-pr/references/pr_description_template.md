@@ -1,4 +1,4 @@
-[{RELEVANT LINK}]({RELEVANT LINK})  | [{RELEVANT LINK 2}]({RELEVANT LINK 2})  | ...
+{`Closes #{n}` for issue-sized work. Omit this line otherwise; never leave a placeholder or guess an issue number.}
 
 ## Why the change
 
@@ -10,13 +10,7 @@
 
 ## Change outline
 
-{Use the smallest combination of the following `/show-me`-style views that explains the implementation. Prefer `diff` blocks for changes to existing shapes and complete blocks for mostly new shapes. Do not include headings for views that are not relevant.}
-
-{...short-description...}
-
-```diff|sql|json|etc
-{Show changed SQL tables, important columns and relationships, and endpoint request/response contracts.}
-```
+{Use the smallest combination of the following show-me-style views that explains the implementation. Prefer `diff` blocks for changes to existing shapes and complete blocks for mostly new shapes. Do not include headings for views that are not relevant.}
 
 {...short-description...}
 

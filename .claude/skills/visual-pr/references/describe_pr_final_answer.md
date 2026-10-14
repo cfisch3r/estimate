@@ -1,8 +1,6 @@
 ### Status
 
 - PR: [#{number} - {title}]({pr_url})
-- Description saved: [.humanlayer/tasks/{task-dir}/pr-description.md](cloud permalink from hook)
-- Ticket: [{TICKET_ID}]({ticket_url}) (if applicable)
 
 ### Summary
 
@@ -15,4 +13,4 @@
 
 ### Next Steps
 
-The PR description has been updated at [pr_url].
+The PR description has been updated. Reviews per AGENTS.md come next; ask before merging.
