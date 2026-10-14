@@ -1,4 +1,4 @@
-Closes #{n} | [Visual walkthrough]({artifact_url}) (optional, private)
+{Header line, each part optional: `Closes #{n}` for issue-sized work, `[Visual walkthrough]({artifact_url})` when an artifact was published (private). Omit the whole line when neither applies; never leave a placeholder or guess an issue number.}
 
 ## Why the change
 
