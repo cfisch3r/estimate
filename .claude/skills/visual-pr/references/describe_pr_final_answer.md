@@ -1,7 +1,6 @@
 ### Status
 
 - PR: [#{number} - {title}]({pr_url})
-- Visual walkthrough: {artifact_url} (if published)
 
 ### Summary
 

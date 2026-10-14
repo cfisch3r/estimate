@@ -1,22 +1,8 @@
 ---
 name: show-me
-description: Help the user understand the current topic visually (diagrams, code-shape sketches, artifacts), or review the agent's plan/strategy for implementing an issue, task or feature before any code is written.
+description: Help the user understand the current topic visually with concise diagrams, code-shape sketches, and focused HTML artifacts.
 disable-model-invocation: true
 ---
-
-## Plan review
-
-When the user asks to see or review the plan/strategy for an issue, task or feature, present it for approval instead of explaining a topic. Stop afterwards: no branch, edits or todo list until the user approves. Read the relevant issue, `docs/architecture.md` and `docs/architecture-rules.md` first, and cite rules by name. Use the views below to show:
-
-1. **Goal and scope**: one or two sentences, plus what is explicitly out of scope.
-2. **Approach**: two to four views (file-tree diff, layer/slice placement, call or data flow, step sequence). Draw each at the level where the user can disagree with it.
-3. **Decisions**: each real fork with its options, trade-offs and your recommendation. Do not list options you would not pursue.
-4. **Open questions**: only those the user must answer.
-5. **Verification**: how you will prove it works (tests, checks, manual run).
-
-Publish it as an artifact (see "Artifact" below) so the user can comment on individual decisions. After the user says they commented, read the comments with `ArtifactComments`, revise the plan, and republish to the same URL. Small plans may stay in the terminal.
-
-## Explaining a topic
 
 Help the user understand the current topic of conversation visually. Skip the preamble and keep prose brief. Pick the smallest view that makes the key point clear.
 
@@ -129,11 +115,11 @@ function expandSkill(command: string): string {
 }
 ```
 
-- For a visual UI, layout, state comparison, or concept too dense for Mermaid, or for any plan review, publish one focused artifact (see "Artifact" below) — a diagram, an infographic, or a short slide deck, whichever fits the point. Match the product's colors, type, spacing, and components (Nocturne for UI mockups); use real labels and data.
+- For a visual UI, layout, state comparison, or concept too dense for Mermaid, write one focused HTML file — a diagram, an infographic, or a short slide deck, whichever fits the point. Match the product's colors, type, spacing, and components; use real labels and data; support desktop and mobile. Then open it for the user:
 
-### Artifact
-
-Use the `Artifact` tool: load the `artifact-design` skill first, write the HTML to the scratchpad directory, and publish it (private by default). Republish to the same file path or `url` when revising. Do not declare runtime capabilities: the artifact's built-in comments are enough, and `ArtifactComments` reads them. Give the user the link.
+```
+Bash(open path/to/show-me-{description}.html)
+```
 
 ### guidance
 

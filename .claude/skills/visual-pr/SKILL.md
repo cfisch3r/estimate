@@ -29,11 +29,9 @@ Create or update the pull request for the current branch with a concise descript
    - Mermaid diagrams must render on GitHub: explicit text colours, short edge labels.
    - No AI attribution lines in the body (AGENTS.md).
 
-5. For a change that needs more than static blocks (UI layout, state transitions, a dense data flow), publish a visual walkthrough as an artifact using the process in `../show-me/SKILL.md` ("Artifact"), and put its link in the template's header line. The artifact is private, so only the owner can open it; the PR body must stand on its own without it.
-
-6. Publish the description:
+5. Publish the description:
    - Write the body to the scratchpad directory, then `gh pr edit {number} --body-file {path}` and confirm it succeeded.
 
-7. Report using `references/describe_pr_final_answer.md`.
+6. Report using `references/describe_pr_final_answer.md`.
 
 Write as one human talking to another: avoid jargon and slang, and use simple, coherent, concise language.
