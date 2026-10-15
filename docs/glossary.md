@@ -31,12 +31,12 @@ The words for judging how closely a change needs to be read ([review-risk.md](re
 
 | Term | Meaning in this repo | Avoid |
 |---|---|---|
-| **Risk class** | A named kind of change in the review risk catalogue, such as `wire-contract` or `domain-math`, with a minimum risk level. A file can belong to several. | "category", "tag" |
+| **Risk category** | A named kind of change in the review risk catalogue, such as `wire-contract` or `domain-math`, with a minimum risk level. A file can belong to several. | "category", "tag" |
 | **Floor** | The minimum risk a change gets from the catalogue's path patterns and diff checks. A reviewer or an agent may raise the risk above it and never lower it. | "baseline" |
 | **Diff check** | A fixed, deterministic check on the content of a diff that a path pattern cannot express (for example, a coverage threshold went down). It can set the floor. | "heuristic", "signal" |
-| **Signal** | Evidence gathered for the risk-review agent (git history, changed-line coverage, dependency diff). It may be missing and never sets a class or the floor. | "diff check" |
+| **Signal** | Evidence gathered for the risk-review agent (git history, changed-line coverage, dependency diff). It may be missing and never sets a category or the floor. | "diff check" |
 | **Hot spot** | A place in a diff, named by file and line, that needs a reader's judgment, with the reason. | |
-| **Review guide** | The block at the top of a pull request body: the risk and classes, the hot spots, what can be skimmed, and what is and is not verified. | "summary" |
+| **Review guide** | The block at the top of a pull request body: the risk and categories, the hot spots, what can be skimmed, and what is and is not verified. | "summary" |
 
 ## Feature-Sliced Design
 

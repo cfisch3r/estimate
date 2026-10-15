@@ -9,7 +9,7 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/prd.md` — product requirements
 - `docs/architecture.md` — the technical architecture in arc42 form: context view, layer and component views, crosscutting concepts, risks. Start here for where code belongs
 - `docs/architecture-rules.md` — the architecture rules with what enforces each; cite them by name in reviews
-- `docs/review-risk.md` — the review risk catalogue: named classes of change with a minimum risk each, so a review can cite them by name (`wire-contract`, `domain-math`); the data block is meant to be read by tooling that has not landed yet
+- `docs/review-risk.md` — the review risk catalogue: named categories of change with a minimum risk each, so a review can cite them by name (`wire-contract`, `domain-math`); the data block is meant to be read by tooling that has not landed yet
 - `docs/adr/001-live-collaboration-architecture.md` — accepted decision on the peer-to-peer live-collaboration architecture
 - `docs/adr/002-testing-strategy.md` — accepted decision on the layered test strategy: unit/component, plus a thin Playwright e2e layer since #26 landed the real browser-connection behaviour that was this ADR's own trigger — see that ADR's 2026-09-07 and 2026-09-30 updates, and ADR-007 for the e2e layer's own design
 - `docs/adr/007-e2e-dual-mode-signaling.md` — accepted decision on dual-mode signaling for the Playwright e2e suite: a locally self-hosted relay by default (blocking CI), production Nostr relays in a separate nightly/manual job
