@@ -25,6 +25,17 @@ doc, add it here instead of guessing.
 | **Layer view** / **component view** | The two kinds of diagram in ADR-009: layers and their dependencies, and the boxes inside each layer. | |
 | **Lane** | Only the name of a Mermaid subgraph in our diagram convention (AGENTS.md). Never used for architecture itself. | |
 
+## Review
+
+The words for judging how closely a change needs to be read ([review-risk.md](review-risk.md)).
+
+| Term | Meaning in this repo | Avoid |
+|---|---|---|
+| **Risk class** | A named kind of change in the review risk catalogue, such as `wire-contract` or `domain-math`, with a minimum risk level. A file can belong to several. | "category", "tag" |
+| **Floor** | The minimum risk a change gets from the catalogue's path and trigger rules. A reviewer or an agent may raise the risk above it and never lower it. | "baseline" |
+| **Hot spot** | A place in a diff, named by file and line, that needs a reader's judgment, with the reason. | |
+| **Review guide** | The block at the top of a pull request body: the risk and classes, the hot spots, what can be skimmed, and what is and is not verified. | "summary" |
+
 ## Feature-Sliced Design
 
 These words belong to FSD only. They do not describe the target layers above.
