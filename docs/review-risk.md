@@ -15,13 +15,40 @@ the intended use. Remove this note when the tooling lands.
 
 ## How it is used (intended)
 
-- The **floor script** reads the YAML block below from `main` (never from the pull request being
-  checked), matches the changed files against it and reports the matched classes and the highest
-  minimum risk.
-- The **`risk-review` agent** receives that result. It may raise the risk, add classes and name
-  hot spots. It may never go below the floor.
-- The **review guide** at the top of a pull request body names the classes and the risk level,
-  using the names from this file.
+Legend: solid line = data passed on. Scripts are deterministic; the agent is the only model step.
+
+```mermaid
+flowchart TD
+  Diff["Changed files and diff<br/>[git]"]
+  Floor["Floor script<br/>[script]"]
+  Sig["Signals script<br/>[script]"]
+  Agent["risk-review agent<br/>[model, read-only]"]
+  Guide["Guide script<br/>[script]"]
+  PR["Review guide<br/>[top of the PR body]"]
+
+  Diff --> Floor
+  Diff --> Sig
+  Floor -->|"floor, classes"| Agent
+  Sig -->|"evidence"| Agent
+  Floor -->|"floor"| Guide
+  Agent -->|"risk, hot spots"| Guide
+  Guide --> PR
+
+  classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
+  classDef model fill:#FEF08A,stroke:#CA8A04,color:#422006
+  classDef data fill:#E2E8F0,stroke:#64748B,color:#0F172A
+
+  class Floor,Sig,Guide script
+  class Agent model
+  class Diff,PR data
+```
+
+| Step | Role |
+|---|---|
+| **Floor script** | Reads the YAML block below from `main` (never from the pull request being checked), matches the changed files against it and reports the matched classes and the highest minimum risk. |
+| **Signals script** | Gathers evidence for the agent: git history, changed-line coverage, the dependency diff. A signal may be missing and never sets a class. |
+| **`risk-review` agent** | Receives the floor and the evidence. It may raise the risk, add classes and name hot spots. It may never go below the floor. |
+| **Guide script** | Takes the higher of the floor and the agent's risk, drops hot spots for files not in the diff and renders the guide, using the class names from this file. |
 
 ## Risk levels
 
