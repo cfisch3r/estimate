@@ -9,9 +9,9 @@ attention. A model can judge a diff, but its worst mistake is calling a dangerou
 risk. So the rules below set a **floor** by path patterns and diff checks, and the model may only raise the
 risk above it.
 
-Status: the floor script, the `risk-review` agent and the review guide are planned and not in the
-repository yet. Until they land, this file is read by people only, and the next section describes
-the intended use. Remove this note when the tooling lands.
+Status: the floor script exists (`pnpm review:floor`). The signals script, the `risk-review`
+agent and the review guide are planned and not in the repository yet, and the next section
+describes the intended use. Remove this note when the tooling lands.
 
 ## How it is used (intended)
 
