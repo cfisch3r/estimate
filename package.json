@@ -22,7 +22,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "deadcode": "knip",
-    "metrics": "node scripts/metrics.mjs"
+    "metrics": "node scripts/metrics.mjs",
+    "review:floor": "node scripts/reviewFloor.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
@@ -58,6 +59,7 @@
     "steiger": "^0.7.0",
     "typescript": "~6.0.2",
     "vite": "^8.2.0",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "yaml": "^2.9.1"
   }
 }
