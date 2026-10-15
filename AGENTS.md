@@ -77,7 +77,7 @@ pnpm test:e2e:real-world  # same specs against production signaling (public Nost
 pnpm test:e2e:ui          # Playwright UI mode, for local debugging
 pnpm deadcode             # knip — unused exports/files/dependencies
 pnpm metrics              # advisory complexity/size hotspots in the diff (`pnpm metrics all` for src/); never gates
-pnpm review:floor         # minimum review risk of the branch from docs/review-risk.md (`pnpm review:floor <commit>` for changes since a commit); prints JSON
+pnpm review:floor         # minimum review risk of the branch plus working tree from docs/review-risk.md (`pnpm review:floor <commit>` for changes since a commit); prints JSON
 ```
 
 Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm format:check`, `pnpm test`,

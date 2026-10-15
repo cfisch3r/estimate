@@ -181,6 +181,14 @@ describe('diff checks', () => {
     expect(floor.categories[0]?.diffChecks).toEqual(['testsRemovedOrSkipped'])
   })
 
+  it('flags skipIf and todo as well', () => {
+    const floor = floorOf({
+      path: 'src/shared/lib/format.test.ts',
+      added: ['  it.skipIf(slow)("x", () => {})'],
+    })
+    expect(floor.categories[0]?.diffChecks).toEqual(['testsRemovedOrSkipped'])
+  })
+
   it('does not flag a string that only mentions a skipped test', () => {
     const floor = floorOf({
       path: 'src/shared/lib/format.test.ts',
@@ -362,6 +370,8 @@ describe('readGitDiff', () => {
     expect(diff.before('added.ts')).toBeUndefined()
     expect(diff.after('gone.ts')).toBeUndefined()
     expect(diff.addedLines(byPath['keep.ts'] as ChangedFile)).toEqual(['six'])
+    write('keep.ts', 'one\ntwo\nthree\nfour\nfive\nsix\n++i\n')
+    expect(diff.addedLines(byPath['keep.ts'] as ChangedFile)).toEqual(['six', '++i'])
     expect(diff.addedLines(byPath['untracked.ts'] as ChangedFile)).toEqual([
       'u1',
       'u2',
@@ -370,6 +380,7 @@ describe('readGitDiff', () => {
   })
 
   it('reports only what changed since a given commit', () => {
+    git('checkout', '--', 'keep.ts')
     const since = git('rev-parse', 'HEAD').trim()
     write('later.ts', 'later\n')
     git('add', '.')

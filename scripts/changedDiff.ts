@@ -121,9 +121,12 @@ export function readGitDiff(options: { cwd?: string; from?: string } = {}): Diff
       }
       const paths = file.oldPath ? [file.oldPath, file.path] : [file.path]
       const patch = git(cwd, ['diff', '-U0', '--no-color', '-M', from, '--', ...paths])
-      return patch
+      // Skip the header (everything before the first hunk) so a code line that starts
+      // with `++` is not taken for the `+++ b/file` line.
+      const hunks = patch.slice(Math.max(patch.indexOf('\n@@'), 0))
+      return hunks
         .split('\n')
-        .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
+        .filter((line) => line.startsWith('+'))
         .map((line) => line.slice(1))
     },
   }

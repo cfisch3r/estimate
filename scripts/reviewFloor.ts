@@ -15,7 +15,7 @@ import {
 //   pnpm review:floor              the branch against main
 //   pnpm review:floor <commit>     only what changed since <commit>
 //
-// Prints JSON: { base, floor, categories: [{ name, minRisk, files, diffChecks }] }.
+// Prints JSON: { base, since, floor, categories: [{ name, minRisk, files, diffChecks }] }.
 
 export const RISK_LEVELS = ['low', 'medium', 'high', 'critical'] as const
 export type RiskLevel = (typeof RISK_LEVELS)[number]
@@ -162,7 +162,8 @@ function coverageThresholdLowered(diff: Diff): string[] {
 
 // A call at the start of a line, so a string that merely mentions `it.skip(` (as the
 // tests of this script do) is not taken for a skipped test.
-const SKIP_CALL = /^\s*((it|test|describe)(\.\w+)*\.(skip|only)\b|xit\(|xdescribe\()/
+const SKIP_CALL =
+  /^\s*((it|test|describe)(\.\w+)*\.(skip\w*|only|todo)\b|xit\(|xdescribe\()/
 
 function testsRemovedOrSkipped(diff: Diff): string[] {
   return diff.files
@@ -272,6 +273,7 @@ export function evaluateFloor(catalogue: Category[], diff: Diff): Floor {
 
 function main() {
   const since = process.argv[2]
+  if (since?.startsWith('-')) throw new Error(`Expected a commit, got "${since}"`)
   const base = baseRef(process.cwd())
   const catalogue = parseCatalogue(showAt(base, CATALOGUE_PATH))
   const diff = readGitDiff(since ? { from: since } : {})
@@ -284,7 +286,7 @@ function main() {
   )
 }
 
-if (import.meta.main) {
+if (process.argv[1] === import.meta.filename) {
   try {
     main()
   } catch (error) {
