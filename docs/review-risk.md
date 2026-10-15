@@ -39,18 +39,18 @@ The one fenced `yaml` block in this file is the data the floor script reads. Eve
 - `name`: the class name, unique, kebab-case.
 - `min-risk`: one of the levels above.
 - `paths`: glob patterns, relative to the repository root. A file matches if any pattern matches.
-- `triggers`: names from the fixed set in [Triggers](#triggers). May be empty.
+- `diff-checks`: names from the fixed set in [Diff checks](#diff-checks). May be empty.
 - `fallback`: optional, `true` for the class that applies only when nothing else matched.
 
-A class matches when any changed file matches one of its `paths` or any of its `triggers` is true.
+A class matches when any changed file matches one of its `paths` or any of its `diff-checks` is true.
 
-An unknown key, a missing `min-risk` or an unknown trigger name is an error.
+An unknown key, a missing `min-risk` or an unknown diff-check name is an error.
 
 ```yaml
 - name: domain-math
   min-risk: high
   paths: ['src/domain/**']
-  triggers: []
+  diff-checks: []
 
 - name: live-session-state
   min-risk: high
@@ -62,7 +62,7 @@ An unknown key, a missing `min-risk` or an unknown trigger name is an error.
     - 'src/adapters/network/connection*.ts'
     - 'src/adapters/network/signaling.ts'
     - 'src/adapters/network/signaling.wsRelay.ts'
-  triggers: []
+  diff-checks: []
 
 - name: wire-contract
   min-risk: high
@@ -71,7 +71,7 @@ An unknown key, a missing `min-risk` or an unknown trigger name is an error.
     - 'src/adapters/network/actions*.ts'
     - 'src/adapters/network/signalingContract.ts'
     - 'src/domain/snapshot*.ts'
-  triggers: []
+  diff-checks: []
 
 - name: guardrail-weakened
   min-risk: high
@@ -96,7 +96,7 @@ An unknown key, a missing `min-risk` or an unknown trigger name is an error.
     - '.githooks/**'
     - 'docs/architecture-rules.md'
     - 'docs/review-risk.md'
-  triggers: [coverageThresholdLowered, testsRemovedOrSkipped, strictnessLoosened]
+  diff-checks: [coverageThresholdLowered, testsRemovedOrSkipped, strictnessLoosened]
 
 - name: release-and-deploy
   min-risk: high
@@ -106,18 +106,18 @@ An unknown key, a missing `min-risk` or an unknown trigger name is an error.
     - 'release-please-config.json'
     - '.release-please-manifest.json'
     - 'docs/runbook.md'
-  triggers: []
+  diff-checks: []
 
 - name: dependencies
   min-risk: medium
   paths: ['pnpm-lock.yaml']
-  triggers: [dependencyFieldsChanged]
+  diff-checks: [dependencyFieldsChanged]
 
 - name: mechanical
   min-risk: low
   fallback: true
   paths: ['docs/**', '**/*.md']
-  triggers: [pureRename]
+  diff-checks: [pureRename]
 ```
 
 ## Why each class exists
@@ -132,13 +132,13 @@ An unknown key, a missing `min-risk` or an unknown trigger name is an error.
 | `dependencies` | Supply chain, bundle size and behaviour drift. Any change to the lockfile or to the dependency fields of `package.json` counts; the version bump of the package itself, written by the release tooling, does not. |
 | `mechanical` | Documentation changes and pure renames. Skim only. |
 
-## Triggers
+## Diff checks
 
-A trigger is a check on the diff that a path pattern cannot express. The set is fixed so that the
-floor script can check each one without judgment. Adding a trigger means adding it to the script
-and to this table.
+A diff check is a check on the diff that a path pattern cannot express. The set is fixed so that the
+floor script can check each one without judgment. Adding a diff check means adding it to the script
+and to this table. A diff check is not a signal: it sets the floor and is always deterministic, while a signal is evidence for the agent that may be missing and never sets a class.
 
-| Trigger | True when |
+| Diff check | True when |
 |---|---|
 | `coverageThresholdLowered` | A coverage threshold number in `vite.config.ts` went down or was removed |
 | `testsRemovedOrSkipped` | A test file was deleted, or `.skip`, `.only`, `xit` or `xdescribe` was added to a test |

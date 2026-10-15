@@ -32,7 +32,7 @@ The words for judging how closely a change needs to be read ([review-risk.md](re
 | Term | Meaning in this repo | Avoid |
 |---|---|---|
 | **Risk class** | A named kind of change in the review risk catalogue, such as `wire-contract` or `domain-math`, with a minimum risk level. A file can belong to several. | "category", "tag" |
-| **Floor** | The minimum risk a change gets from the catalogue's path and trigger rules. A reviewer or an agent may raise the risk above it and never lower it. | "baseline" |
+| **Floor** | The minimum risk a change gets from the catalogue's path patterns and diff checks. A reviewer or an agent may raise the risk above it and never lower it. | "baseline" |
 | **Hot spot** | A place in a diff, named by file and line, that needs a reader's judgment, with the reason. | |
 | **Review guide** | The block at the top of a pull request body: the risk and classes, the hot spots, what can be skimmed, and what is and is not verified. | "summary" |
 
