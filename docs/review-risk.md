@@ -40,9 +40,9 @@ The one fenced `yaml` block in this file is the data the floor script reads. Eve
 - `min-risk`: one of the levels above.
 - `paths`: glob patterns, relative to the repository root. A file matches if any pattern matches.
 - `triggers`: names from the fixed set in [Triggers](#triggers). May be empty.
+- `fallback`: optional, `true` for the class that applies only when nothing else matched.
 
 A class matches when any changed file matches one of its `paths` or any of its `triggers` is true.
-- `fallback`: optional, `true` for the class that applies only when nothing else matched.
 
 An unknown key, a missing `min-risk` or an unknown trigger name is an error.
 
@@ -150,10 +150,12 @@ and to this table.
 
 1. A file can match several classes. A test file matches the class of the file it tests: same
    directory, same name with `.test` before the extension (`signaling.test.ts` for
-   `signaling.ts`). A change to a test is not hidden from the review.
+   `signaling.ts`). A change to a test is not hidden from the review. This rule only adds
+   matches; a test file listed in a class's `paths` matches that class either way.
 2. The floor is the highest `min-risk` among the matched classes.
 3. The `fallback` class applies only when no other class matched and every changed file matches
-   its paths or is a pure rename.
+   its paths or is a pure rename. A rename of a file that matches another class keeps that
+   class, so `pureRename` never lowers the floor of the renamed file.
 4. A change that matches no class has the floor `low`. The agent still assesses it and may raise
    it.
 5. A change to this file is `guardrail-weakened` by rule, because the file lists itself.
