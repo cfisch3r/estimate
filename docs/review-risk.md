@@ -9,10 +9,11 @@ attention. A model can judge a diff, but its worst mistake is calling a dangerou
 risk. So the rules below set a **floor** by path and pattern, and the model may only raise the
 risk above it.
 
-Status: the floor script, the `risk-review` agent and the review guide that read this file are
-built after it. Until they exist, the catalogue is read by people.
+Status: the floor script, the `risk-review` agent and the review guide are planned and not in the
+repository yet. Until they land, this file is read by people only, and the next section describes
+the intended use. Remove this note when the tooling lands.
 
-## How it is used
+## How it is used (intended)
 
 - The **floor script** reads the YAML block below from `main` (never from the pull request being
   checked), matches the changed files against it and reports the matched classes and the highest
@@ -39,6 +40,8 @@ The one fenced `yaml` block in this file is the data the floor script reads. Eve
 - `min-risk`: one of the levels above.
 - `paths`: glob patterns, relative to the repository root. A file matches if any pattern matches.
 - `triggers`: names from the fixed set in [Triggers](#triggers). May be empty.
+
+A class matches when any changed file matches one of its `paths` or any of its `triggers` is true.
 - `fallback`: optional, `true` for the class that applies only when nothing else matched.
 
 An unknown key, a missing `min-risk` or an unknown trigger name is an error.
@@ -87,6 +90,10 @@ An unknown key, a missing `min-risk` or an unknown trigger name is an error.
     - 'AGENTS.md'
     - '.claude/hooks/**'
     - '.claude/settings.json'
+    - '.claude/agents/**'
+    - '.claude/skills/**'
+    - '.claude/commands/**'
+    - '.githooks/**'
     - 'docs/architecture-rules.md'
     - 'docs/review-risk.md'
   triggers: [coverageThresholdLowered, testsRemovedOrSkipped, strictnessLoosened]
@@ -119,10 +126,10 @@ An unknown key, a missing `min-risk` or an unknown trigger name is an error.
 |---|---|
 | `domain-math` | The estimation rules (aggregation, the `Estimate` invariant, bias guards) produce plausible numbers when they are wrong. Nothing crashes, and the domain keeps 100% coverage so a gap in tests is a signal (`pure-domain`). |
 | `live-session-state` | Who owns the round, what a reconnect restores and when a submission is acknowledged are easy to break without a visible error. They follow [ADR-003](adr/003-session-reliability-model.md) and the store split in [ADR-005](adr/005-session-store-decomposition.md). The class covers the stores, the use cases, the ports and the adapters that hold per-connection state. |
-| `wire-contract` | Peers may run different builds, so a change to what is sent or accepted between them must stay compatible. This is the repository's one-way door: once a build is out, its messages cannot be recalled. It covers peer message parsing, the action definitions, the signaling contract and the session snapshot that the facilitator sends. |
+| `wire-contract` | Peers may run different builds, so a change to what is sent or accepted between them must stay compatible. This is the repository's one-way door: once a build is out, its messages cannot be recalled. It covers peer message parsing, the action definitions, the signaling contract and the session snapshot that the facilitator sends. The snapshot files are in `src/domain`, so they match `domain-math` as well. |
 | `guardrail-weakened` | A change that loosens a check makes every later change less safe: type strictness, lint and architecture rules, coverage thresholds, removed or skipped tests, the verbatim design-system stylesheet, and the instructions and hooks that guide the agents. The catalogue and the architecture rules are in this class too, so a change cannot lower its own floor without being flagged. |
 | `release-and-deploy` | Merging to `main` ships to production. Workflows, release configuration and the runbook decide what ships and how. |
-| `dependencies` | Supply chain, bundle size and behaviour drift. Only a change to the dependency fields counts; a version bump written by the release tooling does not. |
+| `dependencies` | Supply chain, bundle size and behaviour drift. Any change to the lockfile or to the dependency fields of `package.json` counts; the version bump of the package itself, written by the release tooling, does not. |
 | `mechanical` | Documentation changes and pure renames. Skim only. |
 
 ## Triggers
@@ -141,8 +148,9 @@ and to this table.
 
 ## Matching rules
 
-1. A file can match several classes. Test files next to a matched file match its class too, so a
-   change to a test is not hidden from the review.
+1. A file can match several classes. A test file matches the class of the file it tests: same
+   directory, same name with `.test` before the extension (`signaling.test.ts` for
+   `signaling.ts`). A change to a test is not hidden from the review.
 2. The floor is the highest `min-risk` among the matched classes.
 3. The `fallback` class applies only when no other class matched and every changed file matches
    its paths or is a pure rename.
