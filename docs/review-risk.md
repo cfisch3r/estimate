@@ -6,7 +6,7 @@ can cite it ("this is `wire-contract`"). The words follow the [glossary](glossar
 
 The catalogue exists because a reader of an agent's pull request should know where to spend
 attention. A model can judge a diff, but its worst mistake is calling a dangerous change low
-risk. So the rules below set a **floor** by path and pattern, and the model may only raise the
+risk. So the rules below set a **floor** by path patterns and diff checks, and the model may only raise the
 risk above it.
 
 Status: the floor script, the `risk-review` agent and the review guide are planned and not in the
@@ -19,20 +19,22 @@ Legend: solid line = data passed on. Scripts are deterministic; the agent is the
 
 ```mermaid
 flowchart TD
-  Diff["Changed files and diff<br/>[git]"]
+  Diff["Changed files and diff<br/>[Git diff]"]
   Floor["Floor script<br/>[script]"]
   Sig["Signals script<br/>[script]"]
   Agent["risk-review agent<br/>[model, read-only]"]
   Guide["Guide script<br/>[script]"]
-  PR["Review guide<br/>[top of the PR body]"]
+  PR["Review guide<br/>[Markdown block]"]
 
-  Diff --> Floor
-  Diff --> Sig
+  Cat["Catalogue on main<br/>[YAML block]"]
+  Cat -->|"classes, paths"| Floor
+  Diff -->|"changed files"| Floor
+  Diff -->|"changed files"| Sig
   Floor -->|"floor, classes"| Agent
   Sig -->|"evidence"| Agent
   Floor -->|"floor"| Guide
-  Agent -->|"risk, hot spots"| Guide
-  Guide --> PR
+  Agent -->|"risk, classes, hot spots"| Guide
+  Guide -->|"rendered guide"| PR
 
   classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
   classDef model fill:#FEF08A,stroke:#CA8A04,color:#422006
@@ -40,7 +42,7 @@ flowchart TD
 
   class Floor,Sig,Guide script
   class Agent model
-  class Diff,PR data
+  class Diff,PR,Cat data
 ```
 
 | Step | Role |
@@ -151,7 +153,7 @@ An unknown key, a missing `min-risk` or an unknown diff-check name is an error.
 
 | Class | Why it matters here |
 |---|---|
-| `domain-math` | The estimation rules (aggregation, the `Estimate` invariant, bias guards) produce plausible numbers when they are wrong. Nothing crashes, and the domain keeps 100% coverage so a gap in tests is a signal (`pure-domain`). |
+| `domain-math` | The estimation rules (aggregation, the `Estimate` invariant, bias guards) produce plausible numbers when they are wrong. Nothing crashes, and the domain keeps 100% coverage so a gap in tests is itself a warning sign (`pure-domain`). |
 | `live-session-state` | Who owns the round, what a reconnect restores and when a submission is acknowledged are easy to break without a visible error. They follow [ADR-003](adr/003-session-reliability-model.md) and the store split in [ADR-005](adr/005-session-store-decomposition.md). The class covers the stores, the use cases, the ports and the adapters that hold per-connection state. |
 | `wire-contract` | Peers may run different builds, so a change to what is sent or accepted between them must stay compatible. This is the repository's one-way door: once a build is out, its messages cannot be recalled. It covers peer message parsing, the action definitions, the signaling contract and the session snapshot that the facilitator sends. The snapshot files are in `src/domain`, so they match `domain-math` as well. |
 | `guardrail-weakened` | A change that loosens a check makes every later change less safe: type strictness, lint and architecture rules, coverage thresholds, removed or skipped tests, the verbatim design-system stylesheet, and the instructions and hooks that guide the agents. The catalogue and the architecture rules are in this class too, so a change cannot lower its own floor without being flagged. |
@@ -163,7 +165,9 @@ An unknown key, a missing `min-risk` or an unknown diff-check name is an error.
 
 A diff check is a check on the diff that a path pattern cannot express. The set is fixed so that the
 floor script can check each one without judgment. Adding a diff check means adding it to the script
-and to this table. A diff check is not a signal: it sets the floor and is always deterministic, while a signal is evidence for the agent that may be missing and never sets a class.
+and to this table.
+A diff check is not a signal: it sets the floor and is always deterministic, while a signal is
+evidence for the agent that may be missing and never sets a class.
 
 | Diff check | True when |
 |---|---|
