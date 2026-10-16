@@ -156,7 +156,7 @@ describe('skim only and agent notes', () => {
       },
     })
     expect(data.skimOnly).toEqual([{ file: 'docs/x.md', why: 'Text follows the code.' }])
-    expect(data.evidence.at(-1)).toEqual({ kind: 'note', text: 'Read the callers.' })
+    expect(data.evidence.at(-1)).toEqual({ kind: 'reviewer', text: 'Read the callers.' })
     expect(data.evidence.filter((e) => e.text === 'Read the callers.')).toHaveLength(1)
   })
 })
@@ -299,7 +299,7 @@ describe('the delta', () => {
       categoriesRemoved: [],
       hotSpots: { unchanged: 0 },
     })
-    expect(next.delta?.hotSpots.changed).toEqual([{ ...spot, line: 9 }])
+    expect(next.delta?.hotSpots.moved).toEqual([{ ...spot, line: 9, was: 7 }])
     expect(next.delta?.hotSpots.new.map((s) => s.file)).toEqual(['src/domain/b.ts'])
     expect(next.delta?.evidenceAdded.map((e) => e.text)).toEqual([
       'Changed-line coverage: 1 changed line(s) never ran: src/domain/b.ts:2',
@@ -309,7 +309,7 @@ describe('the delta', () => {
     ])
     expect(renderVisible(next)).toContain('- Risk: high → critical')
     expect(renderVisible(next)).toContain(
-      '- Hot spots: 1 new, 1 changed, 0 resolved, 0 unchanged',
+      '- Hot spots: 1 new, 1 moved, 0 resolved, 0 unchanged',
     )
   })
 
@@ -323,11 +323,76 @@ describe('the delta', () => {
     const next = build({ covers: 'c'.repeat(40), previous: two })
     expect(next.delta?.hotSpots).toEqual({
       new: [],
-      changed: [],
+      moved: [],
       resolved: [{ ...spot, file: 'docs/x.md', rule: 'general' }],
       unchanged: 1,
     })
     expect(next.delta?.risk).toBeUndefined()
+  })
+
+  it('does not call a spot changed because the reviewer reworded it', () => {
+    const a = build({ agent: { risk: 'high', hotSpots: [spot] } })
+    const b = build({
+      covers: 'b'.repeat(40),
+      agent: { risk: 'high', hotSpots: [{ ...spot, reason: 'Another way to say it.' }] },
+      previous: a,
+    })
+    expect(b.delta?.hotSpots).toEqual({ new: [], moved: [], resolved: [], unchanged: 1 })
+  })
+
+  it('does not compare the reviewer notes, only what the scripts measured', () => {
+    const a = build({ agent: { risk: 'high', evidenceNotes: ['Read the callers.'] } })
+    const same = build({
+      covers: 'b'.repeat(40),
+      agent: {
+        risk: 'high',
+        evidenceNotes: ['Looked at the callers again.', 'New note.'],
+      },
+      previous: a,
+    })
+    expect(same.delta?.evidenceAdded).toEqual([])
+    expect(same.delta?.evidenceRemoved).toEqual([])
+    const measured = build({
+      covers: 'c'.repeat(40),
+      agent: { risk: 'high', evidenceNotes: ['Read the callers.'] },
+      signals: {},
+      previous: a,
+    })
+    expect(measured.delta?.evidenceAdded.map((e) => e.kind)).toEqual([
+      'not-checked',
+      'not-checked',
+    ])
+    expect(measured.delta?.evidenceRemoved.length).toBeGreaterThan(0)
+  })
+
+  it('pairs spots with the same file and rule by the nearest line, whatever the order', () => {
+    const a = build({
+      agent: { risk: 'high', hotSpots: [spot, { ...spot, line: 20, reason: 'Second.' }] },
+    })
+    const b = build({
+      covers: 'b'.repeat(40),
+      agent: {
+        risk: 'high',
+        hotSpots: [
+          { ...spot, line: 21, reason: 'Second.' },
+          { ...spot, line: 8 },
+        ],
+      },
+      previous: a,
+    })
+    expect(b.delta?.hotSpots.new).toEqual([])
+    expect(b.delta?.hotSpots.resolved).toEqual([])
+    expect(b.delta?.hotSpots.moved.map((s) => [s.was, s.line])).toEqual([
+      [20, 21],
+      [7, 8],
+    ])
+    expect(renderVisible(b)).toContain('  - moved from line 20: `src/domain/a.ts:21`')
+  })
+
+  it('renders a reviewer note with its own label', () => {
+    expect(
+      renderVisible(build({ agent: { risk: 'high', evidenceNotes: ['Read it.'] } })),
+    ).toContain('- Reviewer note: Read it.')
   })
 
   it('matches several spots with the same file and rule one by one', () => {

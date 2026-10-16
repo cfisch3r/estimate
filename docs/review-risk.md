@@ -78,7 +78,11 @@ a pull request body. A script writes it, so the rules hold whatever the agent sa
   it are escaped.
 - The evidence lists what the scripts measured and what they could not (coverage, dependencies
   and audit, history, metrics), what the script itself dropped or overrode, then the agent's
-  notes.
+  notes, labelled "Reviewer note".
+- On a re-run, "Since last version" pairs hot spots by file and rule, nearest line first. A spot is
+  *moved* only when its line differs, and a reworded reason is not a change. The reviewer's notes
+  are not compared either: the agent words them differently on every run, so only what the
+  scripts measured counts as a change in the evidence.
 
 | Part | Content |
 |---|---|
@@ -87,7 +91,7 @@ a pull request body. A script writes it, so the rules hold whatever the agent sa
 | Hot spots | `file:line`, the reason and the rule or ADR |
 | Skim only | Files a reader can skim, each with a reason |
 | Evidence | Checked, not checked and notes |
-| Since last version | Only on a re-run: risk and category changes, hot spots new, changed and resolved, evidence changes. Only the latest one is kept |
+| Since last version | Only on a re-run: risk and category changes, hot spots new, moved and resolved, and changes in what the scripts measured. Only the latest one is kept |
 
 The same data is stored as JSON in a hidden HTML comment inside the block, so nothing has to
 parse the Markdown, and the next run can compare against it. Do not edit the block by hand;
