@@ -147,8 +147,8 @@ describe('structure and hand edits', () => {
     const data = guideData({ risk: 'low', floor: 'low' })
     // The data and the text agree, so only the floor comparison can catch it.
     expect(renderVisible(data)).toContain('**low**')
-    expect(check({ body: bodyOf(data) }).problems).toContain(
-      'The guide says low, below the floor high.',
+    expect(check({ body: bodyOf(data) }).problems[0]).toMatch(
+      /^The guide says low, below the floor high\. /,
     )
   })
 })
@@ -156,7 +156,9 @@ describe('structure and hand edits', () => {
 describe('floor', () => {
   it('fails when the risk is below the floor', () => {
     const result = check({ floor: floorOf('critical', ['domain-math']) })
-    expect(result.problems).toContain('The guide says high, below the floor critical.')
+    expect(result.problems[0]).toMatch(
+      /^The guide says high, below the floor critical\. /,
+    )
   })
 
   it('fails when a matched category is missing', () => {

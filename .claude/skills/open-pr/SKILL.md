@@ -14,7 +14,7 @@ Run every `pnpm` command in the repository root. Keep every temporary file in th
 ## Before you start
 
 - Stop if the branch is `main`, has no commits ahead of `main`, or has uncommitted changes. Commit first (AGENTS.md: never commit to `main`, one branch per issue `issue-<n>-<slug>`, new commits over amending).
-- Stop and tell the user if a different pull request of the user's is already open, unless it is release-please's. The user wants one open at a time. Continue only if they ask for it. The open pull request of this very branch is the one you are updating.
+- Stop and tell the user if a different pull request of the user's is already open, unless it is release-please's. The user wants one open at a time. Continue only if they ask for it. The open pull request of this very branch is the one you are updating, and only at the user's request (see *Updating the guide*).
 - Push the branch with upstream. The guide covers the local `HEAD`, so push first and do not commit again until step 5 is done.
 
 ## Workflow

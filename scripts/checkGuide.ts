@@ -67,13 +67,15 @@ export function checkGuide(input: CheckInput): Check {
   // Hand edits: the visible text must be what the data renders to.
   if (problems.length === 0 && !rendersTo(data, visible)) {
     problems.push(
-      'The guide text differs from its data, so it was edited by hand. Run `pnpm review:guide` again.',
+      'The guide text differs from its data, so it was edited by hand or written by an older version of the script. Run `pnpm review:guide` again.',
     )
   }
 
   // Floor: the stated risk is at least the floor, and every matched category is named.
   if (level(data.risk) < level(input.floor.floor)) {
-    problems.push(`The guide says ${data.risk}, below the floor ${input.floor.floor}.`)
+    problems.push(
+      `The guide says ${data.risk}, below the floor ${input.floor.floor}. Later commits may have raised the floor; ask for an update of the guide.`,
+    )
   }
   const missing = input.floor.categories
     .map((c) => c.name)

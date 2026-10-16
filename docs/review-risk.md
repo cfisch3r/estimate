@@ -80,9 +80,7 @@ a pull request body. A script writes it, so the rules hold whatever the agent sa
 - The evidence lists what the scripts measured and what they could not (coverage, dependencies
   and audit, history, metrics), what the script itself dropped or overrode, then the agent's
   notes, labelled "Reviewer note".
-- An update on request writes a new guide over the old one. Nothing compares the two: the agent
-  words everything differently on every run, so a comparison mostly listed rewordings and moved
-  lines.
+- An update on request writes a new guide over the old one; nothing compares the two.
 
 | Part | Content |
 |---|---|
