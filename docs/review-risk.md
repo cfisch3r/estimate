@@ -11,8 +11,9 @@ risk above it.
 
 ## How it is used
 
-The `open-pr` skill runs this flow before it opens a pull request, and again when a push makes
-the guide stale.
+The `open-pr` skill runs this flow once, before it opens a pull request. The guide describes the
+pull request as opened: pushes do not change it, and the maintainer asks for an update when they
+want one.
 
 Legend: solid line = data passed on. Scripts are deterministic; the agent is the only model step.
 
@@ -79,25 +80,20 @@ a pull request body. A script writes it, so the rules hold whatever the agent sa
 - The evidence lists what the scripts measured and what they could not (coverage, dependencies
   and audit, history, metrics), what the script itself dropped or overrode, then the agent's
   notes, labelled "Reviewer note".
-- On a re-run, "Since last version" pairs hot spots by file and rule, nearest line first. A spot is
-  *moved* only when its line differs, and a reworded reason is not a change. The reviewer's notes
-  are not compared either: the agent words them differently on every run, so only what the
-  scripts measured counts as a change in the evidence. The price: a new problem that the agent
-  reports under the same file, rule and line as an old one looks unchanged. A guide stored in an
-  older shape is reported as damaged by the check; running the script again replaces it, without a
-  "Since last version" section for that run.
+- An update on request writes a new guide over the old one. Nothing compares the two: the agent
+  words everything differently on every run, so a comparison mostly listed rewordings and moved
+  lines.
 
 | Part | Content |
 |---|---|
-| Marker | `Covers: <commit>`, the commit the guide was written for (the full commit ID is in the data) |
+| Marker | `Covers: <commit>`, the commit the guide was written for, so a reader can see what it describes (the full commit ID is in the data) |
 | Risk | The level and the category names |
 | Hot spots | `file:line`, the reason and the rule or ADR |
 | Skim only | Files a reader can skim, each with a reason |
 | Evidence | Checked, not checked and notes |
-| Since last version | Only on a re-run: risk and category changes, hot spots new, moved and resolved, and changes in what the scripts measured. Only the latest one is kept |
 
 The same data is stored as JSON in a hidden HTML comment inside the block, so nothing has to
-parse the Markdown, and the next run can compare against it. Do not edit the block by hand;
+parse the Markdown. Do not edit the block by hand;
 run the script again.
 
 ## Checking the guide
@@ -115,10 +111,11 @@ network call (apart from `gh` for `--pr`). It exits 1 and lists the problems it 
 | Structure | The `Covers:` marker or one of the four parts is missing |
 | Hand edits | The visible text differs from what the data renders to (checked only when the structure is intact) |
 | Floor | The stated risk is below the floor, or a matched category is missing |
-| Freshness | The marker is not a full commit ID, is not in the branch history (after a rebase), or the changes after it touch a category other than `mechanical` |
 
 With `--pr`, the body is checked against the branch that is checked out, so run it on the pull
-request's branch.
+request's branch. The floor is the one of the branch as it is now, so the check also shows when
+later commits raised it above the guide. Nothing runs the check after the pull request opened;
+run it, or ask for an update, when you want to know.
 
 The skip line is for trivial pull requests, and only the maintainer asks for it. The check does
 not run in CI: a required check would need a rule for which pull requests are exempt (release

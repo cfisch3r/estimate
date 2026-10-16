@@ -1,11 +1,11 @@
 ---
 name: open-pr
-description: Open or update the pull request for the current branch with a Review guide at the top of its body (risk, hot spots, skim-only files, evidence) and a short description below. Use whenever you are about to run `gh pr create` or change a PR body, and before pushing more commits to an open PR that touches risk-relevant files.
+description: Open the pull request for the current branch with a Review guide at the top of its body (risk, hot spots, skim-only files, evidence) and a short description below. Use whenever you are about to run `gh pr create`, when the user asks to update the Review guide of an open PR, or when a PR body changes.
 ---
 
 # Open a Pull Request
 
-Create or update the pull request for the current branch. The body has two parts: the **Review guide** at the top, written by scripts from the risk catalogue (`docs/review-risk.md`), so a reader sees where to spend attention, and a concise description below, so a reader understands why the change exists and the shape of the implementation. The view conventions (diff blocks, trees, Mermaid) come from `../show-me/SKILL.md`.
+Create the pull request for the current branch, or update its body. The body has two parts: the **Review guide** at the top, written by scripts from the risk catalogue (`docs/review-risk.md`), so a reader sees where to spend attention, and a concise description below, so a reader understands why the change exists and the shape of the implementation. The view conventions (diff blocks, trees, Mermaid) come from `../show-me/SKILL.md`.
 
 ## Where things run
 
@@ -27,10 +27,10 @@ Run every `pnpm` command in the repository root. Keep every temporary file in th
 
 3. **Write the guide into the body.**
    - New PR: `pnpm review:guide --floor $S/floor.json --signals $S/signals.json --agent $S/agent.json --body $S/desc.md > $S/final.md`.
-   - Existing PR: `gh pr view <n> --json body --jq .body > $S/prev.md`, then the same command with `--body $S/prev.md`, so the script replaces the old guide and adds the "Since last version" block. If the description changed, replace the text below the `<!-- review-guide:end -->` line in `final.md` with `$S/desc.md`. If the title no longer fits, use `gh pr edit <n> --title`.
+   - Existing PR (an update the user asked for): `gh pr view <n> --json body --jq .body > $S/prev.md`, then the same command with `--body $S/prev.md`, so the script replaces the old guide. If the description changed, replace the text below the `<!-- review-guide:end -->` line in `final.md` with `$S/desc.md`. If the title no longer fits, use `gh pr edit <n> --title`.
    - Never write or edit the guide by hand.
 
-4. **Check it.** `pnpm review:check-guide --body $S/final.md` must pass. If it fails, fix the cause (usually: run the steps again on the pushed head) and never edit the guide to satisfy the check.
+4. **Check it.** `pnpm review:check-guide --body $S/final.md` must pass. If it fails, run steps 2 and 3 again and never edit the guide to satisfy the check.
 
 5. **Publish.**
    - New PR: `gh pr create --title "<conventional title>" --body-file $S/final.md`.
@@ -46,8 +46,8 @@ Only when the user asks for it, for a trivial pull request. Put this line at the
 Review guide: skipped (typo fix in one doc)
 ```
 
-## Updating an open PR
+## Updating the guide
 
-Before pushing more commits to an open PR, including fixes after a review, run `pnpm review:check-guide --pr <n>` on its branch. If it says the guide is out of date, push, then run steps 2 to 5 again with the PR's current body. A guide stays fresh only when every change after it matches no category except `mechanical` (plain documentation, pure renames); documentation in a guardrail path, such as `AGENTS.md` or `docs/review-risk.md`, does not. The check decides, not you.
+The guide is written once, when the PR opens, and describes that commit (the `Covers:` marker). Pushing more commits does not make it stale and needs no check. Run the steps again only when the user asks to update the guide of an open PR: push first, then steps 2 to 5 with the PR's current body. The new guide replaces the old one; nothing compares them. `pnpm review:check-guide --pr <n>` shows on request whether the branch's floor has outgrown the guide.
 
 Write as one human talking to another: avoid jargon and slang, and use simple, coherent, concise language.
