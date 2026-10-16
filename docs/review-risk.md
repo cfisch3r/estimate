@@ -189,6 +189,7 @@ a duplicate `name`, more than one `fallback`, and so on.
     - '.claude/commands/**'
     - '.githooks/**'
     - 'scripts/review*.ts'
+    - 'scripts/checkGuide*.ts'
     - 'scripts/changedDiff.ts'
     - 'docs/architecture-rules.md'
     - 'docs/review-risk.md'
