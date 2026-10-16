@@ -24,6 +24,7 @@ interface Change {
   before?: string
   after?: string
   added?: string[]
+  lines?: number[]
 }
 
 function diffOf(...changes: Change[]): Diff {
@@ -39,7 +40,7 @@ function diffOf(...changes: Change[]): Diff {
     before: (path) => byPath.get(path)?.before,
     after: (path) => byPath.get(path)?.after,
     addedLines: (file) => byPath.get(file.path)?.added ?? [],
-    addedLineNumbers: () => [],
+    addedLineNumbers: (file) => byPath.get(file.path)?.lines ?? [],
   }
 }
 
@@ -91,6 +92,17 @@ describe('paths', () => {
   })
 })
 
+describe('changed lines', () => {
+  it('lists the changed lines of each file that still exists', () => {
+    const floor = floorOf(
+      { path: 'src/a.ts', lines: [3, 4] },
+      { path: 'src/gone.ts', status: 'deleted', lines: [] },
+    )
+    expect(floor.changedFiles).toEqual(['src/a.ts', 'src/gone.ts'])
+    expect(floor.changedLines).toEqual({ 'src/a.ts': [3, 4] })
+  })
+})
+
 describe('mechanical fallback', () => {
   it('applies to a docs-only change at the lowest risk', () => {
     const floor = floorOf({ path: 'docs/runbook-notes.md' }, { path: 'README.md' })
@@ -131,7 +143,12 @@ describe('mechanical fallback', () => {
   })
 
   it('has the floor low and no category for an empty change', () => {
-    expect(floorOf()).toEqual({ floor: 'low', categories: [], changedFiles: [] })
+    expect(floorOf()).toEqual({
+      floor: 'low',
+      categories: [],
+      changedFiles: [],
+      changedLines: {},
+    })
   })
 })
 

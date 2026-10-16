@@ -12,10 +12,10 @@ risk above it.
 Status: the floor script (`pnpm review:floor`), the signals script (`pnpm review:signals`) and
 the `risk-review` agent (`/risk-review`) exist, and so does the guide script
 (`pnpm review:guide`). The check script and the `open-pr` skill that runs the agent and puts the
-guide into a pull request before it opens are planned and not in the repository yet, and the next section describes the intended use. Remove this note when they
-land.
+guide into a pull request before it opens are planned and not in the repository yet. Until they
+land, the flow below is run by hand. Remove this note when they land.
 
-## How it is used (intended)
+## How it is used
 
 Legend: solid line = data passed on. Scripts are deterministic; the agent is the only model step.
 
@@ -34,6 +34,7 @@ flowchart TD
   Diff -->|"changed files"| Sig
   Floor -->|"floor, categories"| Agent
   Sig -->|"evidence"| Agent
+  Sig -->|"evidence"| Guide
   Floor -->|"floor"| Guide
   Agent -->|"risk, categories, hot spots"| Guide
   Guide -->|"rendered guide"| PR
@@ -52,7 +53,7 @@ flowchart TD
 | **Floor script** | Reads the YAML block below from the base branch (`origin/main`, else `main`; never from the pull request being checked, also when given a commit to start from), matches the changed files against it and reports the matched categories and the highest minimum risk. |
 | **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
 | **`risk-review` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
-| **Guide script** | Takes the higher of the floor and the agent's risk, drops hot spots for files not in the diff and renders the guide, using the category names from this file. |
+| **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, turns the signals into the Evidence section and renders the guide. |
 
 ## The agent's answer
 
@@ -63,7 +64,7 @@ runs both scripts itself, and a signal never makes a category or a hot spot on i
 |---|---|
 | `risk` | A [risk level](#risk-levels), at least the floor |
 | `categories` | Names from the catalogue, including every category the floor found |
-| `hotSpots` | Up to eight places to read closely, most important first: `file` and `line` (in the diff), a one-sentence `reason` and a `rule` (architecture rule, ADR number or catalogue category) |
+| `hotSpots` | Up to eight places to read closely, most important first: `file` and `line` (a line the change added or changed), a one-sentence `reason` and a `rule` (architecture rule, ADR number or catalogue category) |
 | `skimOnly` | Files that can be skimmed, each with a `why` |
 | `evidenceNotes` | Short notes on what was and was not verified |
 
@@ -75,9 +76,12 @@ a pull request body. A script writes it, so the rules hold whatever the agent sa
 - The risk is the higher of the floor and the agent's risk. A lower answer is ignored and noted
   in the evidence.
 - Categories are the floor's plus the catalogue names the agent added. Other names are dropped.
-- A hot spot must be a line of a changed file, up to eight. Others are dropped and noted.
-- The evidence lists what the scripts measured (coverage, audit) and what they could not, then
-  the agent's notes.
+- A hot spot must be a line the change added or changed, up to eight. Others are dropped and
+  noted. The floor script supplies the changed lines. Agent text cannot end the block: comment
+  markers in it are escaped.
+- The evidence lists what the scripts measured and what they could not (coverage, dependencies
+  and audit, history, metrics), what the script itself dropped or overrode, then the agent's
+  notes.
 
 | Part | Content |
 |---|---|

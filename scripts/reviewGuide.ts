@@ -98,7 +98,10 @@ const DATA_PREFIX = '<!-- review-guide-data: '
 const higher = (a: RiskLevel, b: RiskLevel) =>
   RISK_LEVELS.indexOf(a) >= RISK_LEVELS.indexOf(b) ? a : b
 
-const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim()
+// Agent text goes into the visible Markdown, so it is put on one line and cannot open or
+// close an HTML comment, which would cut the guide block short.
+const oneLine = (text: string) =>
+  text.replace(/\s+/g, ' ').trim().replace(/<!--/g, '&lt;!--').replace(/-->/g, '--&gt;')
 const isText = (value: unknown): value is string =>
   typeof value === 'string' && oneLine(value) !== ''
 
@@ -244,7 +247,7 @@ export function buildGuide(input: GuideInput): GuideData {
     ]),
   ]
 
-  const inDiff = new Set(floor.changedFiles)
+  const changedLines = floor.changedLines
   const rawSpots = Array.isArray(agent.hotSpots) ? (agent.hotSpots as unknown[]) : []
   const spots: HotSpot[] = []
   for (const raw of rawSpots) {
@@ -255,10 +258,9 @@ export function buildGuide(input: GuideInput): GuideData {
     const { file, line, reason, rule } = spot
     if (
       isText(file) &&
-      inDiff.has(file) &&
       typeof line === 'number' &&
-      Number.isInteger(line) &&
-      line > 0 &&
+      Object.hasOwn(changedLines, file) &&
+      changedLines[file]?.includes(line) &&
       isText(reason)
     ) {
       spots.push({
@@ -271,7 +273,7 @@ export function buildGuide(input: GuideInput): GuideData {
   }
   const dropped = rawSpots.length - spots.length
   if (dropped > 0)
-    note(`Dropped ${dropped} hot spot(s) that are not a line of a changed file`)
+    note(`Dropped ${dropped} hot spot(s) that are not a changed line of the change`)
   if (spots.length > MAX_HOT_SPOTS) {
     note(`Showing ${MAX_HOT_SPOTS} of ${spots.length} hot spots`)
   }
@@ -354,7 +356,7 @@ export function computeDelta(previous: GuideData, next: GuideData): Delta {
 
 // --- rendering ------------------------------------------------------------------------
 
-const code = (text: string) => `\`${text}\``
+const code = (text: string) => `\`${text.replace(/`/g, "'")}\``
 const spotLine = (s: HotSpot) =>
   `${code(`${s.file}:${s.line}`)} — ${s.reason} (${s.rule})`
 const evidenceLine = (e: EvidenceItem) =>
@@ -437,7 +439,9 @@ export interface ParsedGuide {
 }
 
 /** Reads the guide in a body, or undefined when there is none or its data is unreadable. */
-export function parseGuide(body: string): ParsedGuide | undefined {
+export function parseGuide(rawBody: string): ParsedGuide | undefined {
+  // GitHub returns a body edited in the browser with Windows line endings.
+  const body = rawBody.replace(/\r\n/g, '\n')
   const block = BLOCK.exec(body)?.[0]
   if (!block) return undefined
   const start = block.indexOf(DATA_PREFIX)

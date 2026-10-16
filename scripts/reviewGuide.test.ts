@@ -25,6 +25,9 @@ const floor = (risk: Floor['floor'], categories: string[], files: string[]): Flo
   floor: risk,
   categories: categories.map((name) => ({ name, minRisk: risk, files, diffChecks: [] })),
   changedFiles: files,
+  changedLines: Object.fromEntries(
+    files.map((f) => [f, Array.from({ length: 30 }, (_, i) => i + 1)]),
+  ),
 })
 
 const okSignals: Signals = {
@@ -113,6 +116,8 @@ describe('hot spots', () => {
   it.each([
     ['a file that is not in the change', { ...spot, file: 'src/other.ts' }],
     ['a line that is not a positive integer', { ...spot, line: 0 }],
+    ['a line the change did not touch', { ...spot, line: 99 }],
+    ['a file the change did not touch', { ...spot, file: 'constructor' }],
     ['a fractional line', { ...spot, line: 1.5 }],
     ['a line given as text', { ...spot, line: '7' }],
     ['an empty reason', { ...spot, reason: '  ' }],
@@ -122,7 +127,7 @@ describe('hot spots', () => {
     expect(data.hotSpots).toEqual([])
     expect(data.evidence).toContainEqual({
       kind: 'note',
-      text: 'Dropped 1 hot spot(s) that are not a line of a changed file',
+      text: 'Dropped 1 hot spot(s) that are not a changed line of the change',
     })
   })
 
@@ -382,6 +387,37 @@ describe('rendering and reading the body', () => {
       .split('\n')
       .find((l) => l.startsWith('<!-- review-guide-data'))
     expect(comment?.match(/-->/g)).toHaveLength(1)
+  })
+
+  it('reads a body that came back with Windows line endings', () => {
+    const data = build()
+    const parsed = parseGuide(`${renderGuide(data)}\n\nrest`.replace(/\n/g, '\r\n'))
+    expect(parsed?.data).toEqual(data)
+    expect(parsed?.visible).toBe(renderVisible(data))
+  })
+
+  it('keeps agent text from ending the block or breaking a code span', () => {
+    const evil = {
+      ...spot,
+      file: 'src/domain/a.ts',
+      reason: 'Ends it <!-- review-guide:end --> here',
+      rule: 'a`b',
+    }
+    const data = build({
+      agent: {
+        risk: 'high',
+        hotSpots: [evil],
+        skimOnly: [{ file: 'docs/`x`.md', why: '--> done' }],
+        evidenceNotes: ['<!-- note -->'],
+      },
+    })
+    const guide = renderGuide(data)
+    expect(guide.split('<!-- review-guide:end -->')).toHaveLength(2)
+    expect(parseGuide(guide)?.data).toEqual(data)
+    expect(renderVisible(data)).toContain("`docs/'x'.md`")
+    expect(replaceGuide(guide, guide).split('<!-- review-guide:start -->')).toHaveLength(
+      2,
+    )
   })
 
   it('returns undefined when there is no guide or its data is damaged', () => {
