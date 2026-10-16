@@ -129,7 +129,7 @@ describe('hot spots', () => {
     const data = dropped([bad])
     expect(data.hotSpots).toEqual([])
     expect(data.evidence).toContainEqual({
-      kind: 'note',
+      kind: 'warning',
       text: 'Dropped 1 hot spot(s) that are not a changed line of the change or have no title or body',
     })
   })
@@ -139,7 +139,7 @@ describe('hot spots', () => {
     const data = dropped(many)
     expect(data.hotSpots.map((s) => s.line)).toEqual([1, 2, 3, 4, 5, 6, 7, 8])
     expect(data.evidence).toContainEqual({
-      kind: 'note',
+      kind: 'warning',
       text: 'Showing 8 of 10 hot spots',
     })
   })
@@ -482,6 +482,34 @@ describe('not verified', () => {
       agent: { risk: 'high', evidenceNotes: ['Read the callers.'] } as AgentAnswer,
     })
     expect(data.evidence.some((e) => e.text === 'Read the callers.')).toBe(false)
+  })
+})
+
+describe('warnings and the guide block', () => {
+  it('shows dropped hot spots under Not verified, not in the folded block', () => {
+    const visible = renderVisible(
+      build({ agent: { risk: 'high', hotSpots: [{ ...spot, line: 99 }] } }),
+    )
+    const [shown, folded] = visible.split('<details>')
+    expect(shown).toContain('- Dropped 1 hot spot(s)')
+    expect(folded).not.toContain('Dropped 1 hot spot(s)')
+  })
+
+  it('finds the guide when the description quotes the start marker earlier', () => {
+    const guide = renderGuide(build())
+    const body = `Quote: <!-- review-guide:start --> and <!-- review-guide:end -->\n\n${guide}\n`
+    expect(parseGuide(body)?.data).toEqual(build())
+    expect(replaceGuide(body, 'NEW')).toBe(
+      'Quote: <!-- review-guide:start --> and <!-- review-guide:end -->\n\nNEW\n',
+    )
+  })
+
+  it('writes plain text when the covered commit is not a full commit ID', () => {
+    const visible = renderVisible(
+      build({ covers: 'main', repoUrl: 'https://github.com/someone/estimate' }),
+    )
+    expect(visible).toContain('   `src/domain/a.ts:7` · domain-math')
+    expect(visible).not.toContain('](')
   })
 })
 

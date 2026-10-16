@@ -36,9 +36,10 @@ export interface SkimItem {
 export interface EvidenceItem {
   /**
    * `reviewer` is what the agent could not verify; the others are the script's facts.
-   * `not-checked` and `reviewer` are shown as "Not verified", the rest is folded.
+   * `warning` is the script saying the guide lacks content it was given (dropped hot spots).
+   * `not-checked`, `reviewer` and `warning` are shown as "Not verified", the rest is folded.
    */
-  kind: 'checked' | 'not-checked' | 'note' | 'reviewer'
+  kind: 'checked' | 'not-checked' | 'note' | 'reviewer' | 'warning'
   text: string
 }
 
@@ -238,6 +239,7 @@ export function buildGuide(input: GuideInput): GuideData {
   const { floor, agent } = input
   const evidence = evidenceFromSignals(input.signals)
   const note = (text: string) => evidence.push({ kind: 'note', text })
+  const warn = (text: string) => evidence.push({ kind: 'warning', text })
 
   let agentRisk: RiskLevel = floor.floor
   if (RISK_LEVELS.includes(agent.risk as RiskLevel)) {
@@ -295,11 +297,11 @@ export function buildGuide(input: GuideInput): GuideData {
   }
   const dropped = rawSpots.length - spots.length
   if (dropped > 0)
-    note(
+    warn(
       `Dropped ${dropped} hot spot(s) that are not a changed line of the change or have no title or body`,
     )
   if (spots.length > MAX_HOT_SPOTS) {
-    note(`Showing ${MAX_HOT_SPOTS} of ${spots.length} hot spots`)
+    warn(`Showing ${MAX_HOT_SPOTS} of ${spots.length} hot spots`)
   }
 
   const skim: SkimItem[] = []
@@ -352,9 +354,10 @@ const encodePath = (path: string) =>
 
 function renderSpot(s: HotSpot, number: number, data: GuideData): string[] {
   const place = code(`${s.file}:${s.line}`)
-  const reference = data.repoUrl
-    ? `[${place}](${data.repoUrl}/blob/${data.covers}/${encodePath(s.file)}#L${s.line})`
-    : place
+  const reference =
+    data.repoUrl && FULL_SHA.test(data.covers)
+      ? `[${place}](${data.repoUrl}/blob/${data.covers}/${encodePath(s.file)}#L${s.line})`
+      : place
   const lines = [
     `${number}. **${s.title}**`,
     '',
@@ -398,7 +401,7 @@ export function renderVisible(data: GuideData): string {
   for (const s of data.skimOnly) lines.push(`- ${code(s.file)} — ${s.why}`)
   lines.push('', '### Not verified', '')
   const gaps = data.evidence.filter(
-    (e) => e.kind === 'not-checked' || e.kind === 'reviewer',
+    (e) => e.kind === 'not-checked' || e.kind === 'reviewer' || e.kind === 'warning',
   )
   if (gaps.length === 0) lines.push('Nothing flagged.')
   for (const e of gaps) lines.push(`- ${e.text}`)
@@ -418,8 +421,18 @@ export function renderGuide(data: GuideData): string {
 
 // --- reading and replacing the block in a body ----------------------------------------
 
+const FULL_SHA = /^[0-9a-f]{40}$/
 const REPO_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/
-const BLOCK = new RegExp(`${START}[\\s\\S]*?${END}`)
+/**
+ * Where the guide block is: from the last start marker to the first end marker after it,
+ * so a description that quotes the marker earlier in the body does not confuse it.
+ */
+function blockRange(body: string): [number, number] | undefined {
+  const start = body.lastIndexOf(START)
+  if (start < 0) return undefined
+  const end = body.indexOf(END, start)
+  return end < 0 ? undefined : [start, end + END.length]
+}
 
 export interface ParsedGuide {
   data: GuideData
@@ -444,7 +457,7 @@ const isSpot = (v: unknown) =>
 
 const isEvidence = (v: unknown) =>
   isObject(v) &&
-  ['checked', 'not-checked', 'note', 'reviewer'].includes(v.kind as string) &&
+  ['checked', 'not-checked', 'note', 'reviewer', 'warning'].includes(v.kind as string) &&
   typeof v.text === 'string'
 
 const isSkim = (v: unknown) =>
@@ -474,8 +487,9 @@ function isGuideData(value: unknown): value is GuideData {
 export function parseGuide(rawBody: string): ParsedGuide | undefined {
   // GitHub returns a body edited in the browser with Windows line endings.
   const body = rawBody.replace(/\r\n/g, '\n')
-  const block = BLOCK.exec(body)?.[0]
-  if (!block) return undefined
+  const range = blockRange(body)
+  if (!range) return undefined
+  const block = body.slice(...range)
   const start = block.indexOf(DATA_PREFIX)
   const end = block.lastIndexOf(' -->\n' + END)
   if (start < 0 || end < start) return undefined
@@ -491,7 +505,8 @@ export function parseGuide(rawBody: string): ParsedGuide | undefined {
 
 /** Puts the guide at the end of the body, or replaces the one that is there, wherever it is. */
 export function replaceGuide(body: string, guide: string): string {
-  if (BLOCK.test(body)) return body.replace(BLOCK, () => guide)
+  const range = blockRange(body)
+  if (range) return body.slice(0, range[0]) + guide + body.slice(range[1])
   const rest = body.trim()
   return rest === '' ? `${guide}\n` : `${rest}\n\n${guide}\n`
 }
@@ -533,9 +548,16 @@ function main() {
     (c) => c.name,
   )
 
-  const repoUrl = githubUrl(
-    execFileSync('git', ['remote', 'get-url', 'origin'], { cwd, encoding: 'utf8' }),
-  )
+  let remote = ''
+  try {
+    remote = execFileSync('git', ['remote', 'get-url', 'origin'], {
+      cwd,
+      encoding: 'utf8',
+    })
+  } catch {
+    // No origin remote: the references stay plain text.
+  }
+  const repoUrl = githubUrl(remote)
   const guide = renderGuide(
     buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl }),
   )

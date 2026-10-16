@@ -72,17 +72,19 @@ runs both scripts itself, and a signal never makes a category or a hot spot on i
 a pull request body, below the description. A script writes it, so the rules hold whatever the agent says:
 
 - The risk is the higher of the floor and the agent's risk. A lower answer is ignored and noted
-  in the folded block.
+  under "Checked by the scripts".
 - Categories are the floor's plus the catalogue names the agent added. Other names are dropped.
 - A hot spot must be a line the change added or changed, up to eight. Others are dropped and
   noted. The floor script supplies the changed lines. Agent text cannot end the block: `<` and `>` in
   it are escaped.
 - Each hot spot carries facts that the script adds from the signals, never the agent: "No test
   runs this line" when the changed-line coverage lists the line, and the number of `fix:` commits
-  of the file in the last six months when it is two or more. A line that coverage does not list
+  of the file in the last six months when it is two or more (the history signal lists only the
+  ten files with the most fixes, so a file further down gets no fact). A line that coverage does not list
   may be covered or have no statement, so nothing is said about it.
 - "Not verified" lists what a reader has to check by hand: the signals that could not run or have
-  no data for a file, then the agent's `notVerified` entries. What the scripts did measure, and
+  no data for a file, a warning when the script dropped hot spots or showed only eight of more
+  (the guide then lacks content), then the agent's `notVerified` entries. What the scripts did measure, and
   what the script itself dropped or overrode, sits in a collapsed "Checked by the scripts" block
   below it.
 - A hot spot links to its file and line at the commit the guide covers when the repository has a

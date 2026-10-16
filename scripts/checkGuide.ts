@@ -39,7 +39,7 @@ export function checkGuide(input: CheckInput): Check {
   if (!parsed) {
     if (body.includes('<!-- review-guide:start -->')) {
       return failed(
-        'The guide is there, but its data is missing or damaged. Run `pnpm review:guide` again.',
+        'The guide is there, but its data is missing or damaged, or was written by an older version of the script. Run `pnpm review:guide` again.',
       )
     }
     // A deliberate skip is only valid when there is no guide to check.

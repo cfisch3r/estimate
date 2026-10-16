@@ -27,7 +27,7 @@ Run every `pnpm` command in the repository root. Keep every temporary file in th
 
 3. **Write the guide into the body.**
    - New PR: `pnpm review:guide --floor $S/floor.json --signals $S/signals.json --agent $S/agent.json --body $S/desc.md > $S/final.md`.
-   - Existing PR (an update the user asked for): `gh pr view <n> --json body --jq .body > $S/prev.md`, then the same command with `--body $S/prev.md`, so the script replaces the old guide. If the description changed, replace the text above the `<!-- review-guide:start -->` line in `final.md` with `$S/desc.md`. If the title no longer fits, use `gh pr edit <n> --title`.
+   - Existing PR (an update the user asked for): `gh pr view <n> --json body --jq .body > $S/prev.md`, then the same command with `--body $S/prev.md`, so the script replaces the old guide. If the description changed, replace everything outside the guide block in `final.md` with `$S/desc.md` and keep the block where it is (an older PR has it at the top, a newer one at the end). If the title no longer fits, use `gh pr edit <n> --title`.
    - Never write or edit the guide by hand.
 
 4. **Check it.** `pnpm review:check-guide --body $S/final.md` must pass. If it fails, run steps 2 and 3 again and never edit the guide to satisfy the check.
