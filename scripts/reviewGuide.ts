@@ -29,7 +29,8 @@ export interface SkimItem {
 }
 
 export interface EvidenceItem {
-  kind: 'checked' | 'not-checked' | 'note'
+  /** `reviewer` is the agent's own wording; the others are the script's facts. */
+  kind: 'checked' | 'not-checked' | 'note' | 'reviewer'
   text: string
 }
 
@@ -39,7 +40,13 @@ export interface Delta {
   risk?: { from: RiskLevel; to: RiskLevel }
   categoriesAdded: string[]
   categoriesRemoved: string[]
-  hotSpots: { new: HotSpot[]; changed: HotSpot[]; resolved: HotSpot[]; unchanged: number }
+  hotSpots: {
+    new: HotSpot[]
+    /** The same spot (file and rule) on another line; `was` is the earlier line. */
+    moved: Array<HotSpot & { was: number }>
+    resolved: HotSpot[]
+    unchanged: number
+  }
   evidenceAdded: EvidenceItem[]
   evidenceRemoved: EvidenceItem[]
 }
@@ -293,7 +300,9 @@ export function buildGuide(input: GuideInput): GuideData {
   const agentNotes = Array.isArray(agent.evidenceNotes)
     ? (agent.evidenceNotes as unknown[])
     : []
-  for (const text of agentNotes) if (isText(text)) note(oneLine(text))
+  for (const text of agentNotes) {
+    if (isText(text)) evidence.push({ kind: 'reviewer', text: oneLine(text) })
+  }
 
   const data: GuideData = {
     version: 1,
@@ -311,37 +320,56 @@ export function buildGuide(input: GuideInput): GuideData {
 
 // --- the delta ------------------------------------------------------------------------
 
-const spotKey = (spot: HotSpot, nth: number) => `${spot.file}\0${spot.rule}\0${nth}`
 const evidenceKey = (item: EvidenceItem) => `${item.kind}\0${item.text}`
 
-function keyed(spots: HotSpot[]): Map<string, HotSpot> {
-  const seen = new Map<string, number>()
-  const out = new Map<string, HotSpot>()
-  for (const spot of spots) {
-    const base = `${spot.file}\0${spot.rule}`
-    const nth = seen.get(base) ?? 0
-    seen.set(base, nth + 1)
-    out.set(spotKey(spot, nth), spot)
+/**
+ * Pairs the spots of two guides that name the same file and rule, nearest line first, so
+ * a reordered or reworded list does not look like new and resolved spots. The agent words
+ * its reasons differently on every run, so a spot is the same spot whatever it says.
+ */
+function pairSpots(previous: HotSpot[], next: HotSpot[]) {
+  const pairs: Array<{ was: HotSpot; now: HotSpot; j: number }> = []
+  const usedWas = new Set<number>()
+  const usedNow = new Set<number>()
+  const candidates: Array<{ i: number; j: number; gap: number }> = []
+  previous.forEach((was, i) =>
+    next.forEach((now, j) => {
+      if (was.file === now.file && was.rule === now.rule) {
+        candidates.push({ i, j, gap: Math.abs(was.line - now.line) })
+      }
+    }),
+  )
+  candidates.sort((a, b) => a.gap - b.gap || a.i - b.i || a.j - b.j)
+  for (const { i, j } of candidates) {
+    if (usedWas.has(i) || usedNow.has(j)) continue
+    usedWas.add(i)
+    usedNow.add(j)
+    pairs.push({ was: previous[i] as HotSpot, now: next[j] as HotSpot, j })
   }
-  return out
+  return {
+    // In the order of the new guide, which is the order a reader sees.
+    pairs: pairs.sort((a, b) => a.j - b.j),
+    resolved: previous.filter((_, i) => !usedWas.has(i)),
+    added: next.filter((_, j) => !usedNow.has(j)),
+  }
 }
 
-/** What changed since the previous guide. Hot spots are matched by file and rule. */
+/**
+ * What changed since the previous guide. Hot spots are paired by file and rule; a spot is
+ * moved only when its line differs. The reviewer's notes are not compared: they are
+ * reworded on every run, and only the script's facts say something about the change.
+ */
 export function computeDelta(previous: GuideData, next: GuideData): Delta {
-  const was = keyed(previous.hotSpots)
-  const now = keyed(next.hotSpots)
-  const spots: Delta['hotSpots'] = { new: [], changed: [], resolved: [], unchanged: 0 }
-  for (const [key, spot] of now) {
-    const before = was.get(key)
-    if (!before) spots.new.push(spot)
-    else if (before.line !== spot.line || before.reason !== spot.reason)
-      spots.changed.push(spot)
-    else spots.unchanged += 1
+  const { pairs, resolved, added } = pairSpots(previous.hotSpots, next.hotSpots)
+  const spots: Delta['hotSpots'] = { new: added, moved: [], resolved, unchanged: 0 }
+  for (const { was, now } of pairs) {
+    if (was.line === now.line) spots.unchanged += 1
+    else spots.moved.push({ ...now, was: was.line })
   }
-  for (const [key, spot] of was) if (!now.has(key)) spots.resolved.push(spot)
 
-  const wasEvidence = new Set(previous.evidence.map(evidenceKey))
-  const nowEvidence = new Set(next.evidence.map(evidenceKey))
+  const facts = (data: GuideData) => data.evidence.filter((e) => e.kind !== 'reviewer')
+  const wasEvidence = new Set(facts(previous).map(evidenceKey))
+  const nowEvidence = new Set(facts(next).map(evidenceKey))
   return {
     since: previous.covers,
     ...(previous.risk === next.risk
@@ -350,8 +378,8 @@ export function computeDelta(previous: GuideData, next: GuideData): Delta {
     categoriesAdded: next.categories.filter((c) => !previous.categories.includes(c)),
     categoriesRemoved: previous.categories.filter((c) => !next.categories.includes(c)),
     hotSpots: spots,
-    evidenceAdded: next.evidence.filter((e) => !wasEvidence.has(evidenceKey(e))),
-    evidenceRemoved: previous.evidence.filter((e) => !nowEvidence.has(evidenceKey(e))),
+    evidenceAdded: facts(next).filter((e) => !wasEvidence.has(evidenceKey(e))),
+    evidenceRemoved: facts(previous).filter((e) => !nowEvidence.has(evidenceKey(e))),
   }
 }
 
@@ -361,7 +389,7 @@ const code = (text: string) => `\`${text.replace(/`/g, "'")}\``
 const spotLine = (s: HotSpot) =>
   `${code(`${s.file}:${s.line}`)} — ${s.reason} (${s.rule})`
 const evidenceLine = (e: EvidenceItem) =>
-  `${e.kind === 'checked' ? 'Checked' : e.kind === 'not-checked' ? 'Not checked' : 'Note'}: ${e.text}`
+  `${{ checked: 'Checked', 'not-checked': 'Not checked', note: 'Note', reviewer: 'Reviewer note' }[e.kind]}: ${e.text}`
 
 function renderDelta(delta: Delta): string[] {
   const lines = [
@@ -377,12 +405,12 @@ function renderDelta(delta: Delta): string[] {
     lines.push(`- Categories added: ${delta.categoriesAdded.join(', ')}`)
   if (delta.categoriesRemoved.length > 0)
     lines.push(`- Categories removed: ${delta.categoriesRemoved.join(', ')}`)
-  const { new: added, changed, resolved, unchanged } = delta.hotSpots
+  const { new: added, moved, resolved, unchanged } = delta.hotSpots
   lines.push(
-    `- Hot spots: ${added.length} new, ${changed.length} changed, ${resolved.length} resolved, ${unchanged} unchanged`,
+    `- Hot spots: ${added.length} new, ${moved.length} moved, ${resolved.length} resolved, ${unchanged} unchanged`,
   )
   for (const s of added) lines.push(`  - new: ${spotLine(s)}`)
-  for (const s of changed) lines.push(`  - changed: ${spotLine(s)}`)
+  for (const s of moved) lines.push(`  - moved from line ${s.was}: ${spotLine(s)}`)
   for (const s of resolved) lines.push(`  - resolved: ${spotLine(s)}`)
   for (const e of delta.evidenceAdded) lines.push(`- Evidence added — ${evidenceLine(e)}`)
   for (const e of delta.evidenceRemoved)
@@ -442,19 +470,66 @@ export interface ParsedGuide {
 const isStrings = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((v) => typeof v === 'string')
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isSpot = (v: unknown) =>
+  isObject(v) &&
+  typeof v.file === 'string' &&
+  typeof v.line === 'number' &&
+  typeof v.reason === 'string' &&
+  typeof v.rule === 'string'
+
+const isEvidence = (v: unknown) =>
+  isObject(v) &&
+  ['checked', 'not-checked', 'note', 'reviewer'].includes(v.kind as string) &&
+  typeof v.text === 'string'
+
+const isSkim = (v: unknown) =>
+  isObject(v) && typeof v.file === 'string' && typeof v.why === 'string'
+
+const all = (value: unknown, test: (v: unknown) => boolean) =>
+  Array.isArray(value) && value.every(test)
+
+/** Whether a stored delta has the shape the renderer reads (an older one had `changed`). */
+function isDelta(value: unknown): boolean {
+  if (!isObject(value)) return false
+  const spots = value.hotSpots
+  const risk = value.risk
+  return (
+    typeof value.since === 'string' &&
+    (risk === undefined ||
+      (isObject(risk) &&
+        RISK_LEVELS.includes(risk.from as RiskLevel) &&
+        RISK_LEVELS.includes(risk.to as RiskLevel))) &&
+    isStrings(value.categoriesAdded) &&
+    isStrings(value.categoriesRemoved) &&
+    isObject(spots) &&
+    all(spots.new, isSpot) &&
+    all(
+      spots.moved,
+      (v) => isSpot(v) && typeof (v as { was?: unknown }).was === 'number',
+    ) &&
+    all(spots.resolved, isSpot) &&
+    typeof spots.unchanged === 'number' &&
+    all(value.evidenceAdded, isEvidence) &&
+    all(value.evidenceRemoved, isEvidence)
+  )
+}
+
 /** Whether parsed JSON has the shape the check and the delta rely on. */
 function isGuideData(value: unknown): value is GuideData {
-  if (typeof value !== 'object' || value === null) return false
-  const d = value as Record<string, unknown>
+  if (!isObject(value)) return false
   return (
-    d.version === 1 &&
-    typeof d.covers === 'string' &&
-    RISK_LEVELS.includes(d.risk as RiskLevel) &&
-    RISK_LEVELS.includes(d.floor as RiskLevel) &&
-    isStrings(d.categories) &&
-    Array.isArray(d.hotSpots) &&
-    Array.isArray(d.skimOnly) &&
-    Array.isArray(d.evidence)
+    value.version === 1 &&
+    typeof value.covers === 'string' &&
+    RISK_LEVELS.includes(value.risk as RiskLevel) &&
+    RISK_LEVELS.includes(value.floor as RiskLevel) &&
+    isStrings(value.categories) &&
+    all(value.hotSpots, isSpot) &&
+    all(value.skimOnly, isSkim) &&
+    all(value.evidence, isEvidence) &&
+    (value.delta === undefined || isDelta(value.delta))
   )
 }
 
