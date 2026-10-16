@@ -10,9 +10,9 @@ risk. So the rules below set a **floor** by path patterns and diff checks, and t
 risk above it.
 
 Status: the floor script (`pnpm review:floor`), the signals script (`pnpm review:signals`) and
-the `risk-review` agent (`/risk-review`) exist. The guide script, the review guide and the
-`open-pr` skill that runs the agent before a pull request opens are planned and not in the
-repository yet, and the next section describes the intended use. Remove this note when they
+the `risk-review` agent (`/risk-review`) exist, and so does the guide script
+(`pnpm review:guide`). The check script and the `open-pr` skill that runs the agent and puts the
+guide into a pull request before it opens are planned and not in the repository yet, and the next section describes the intended use. Remove this note when they
 land.
 
 ## How it is used (intended)
@@ -66,6 +66,31 @@ runs both scripts itself, and a signal never makes a category or a hot spot on i
 | `hotSpots` | Up to eight places to read closely, most important first: `file` and `line` (in the diff), a one-sentence `reason` and a `rule` (architecture rule, ADR number or catalogue category) |
 | `skimOnly` | Files that can be skimmed, each with a `why` |
 | `evidenceNotes` | Short notes on what was and was not verified |
+
+## The review guide
+
+`pnpm review:guide` turns the floor, the signals and the agent's answer into the block at the top of
+a pull request body. A script writes it, so the rules hold whatever the agent says:
+
+- The risk is the higher of the floor and the agent's risk. A lower answer is ignored and noted
+  in the evidence.
+- Categories are the floor's plus the catalogue names the agent added. Other names are dropped.
+- A hot spot must be a line of a changed file, up to eight. Others are dropped and noted.
+- The evidence lists what the scripts measured (coverage, audit) and what they could not, then
+  the agent's notes.
+
+| Part | Content |
+|---|---|
+| Marker | `Covers: <commit>`, the commit the guide was written for (the full commit ID is in the data) |
+| Risk | The level and the category names |
+| Hot spots | `file:line`, the reason and the rule or ADR |
+| Skim only | Files a reader can skim, each with a reason |
+| Evidence | Checked, not checked and notes |
+| Since last version | Only on a re-run: risk and category changes, hot spots new, changed and resolved, evidence changes. Only the latest one is kept |
+
+The same data is stored as JSON in a hidden HTML comment inside the block, so nothing has to
+parse the Markdown, and the next run can compare against it. Do not edit the block by hand;
+run the script again.
 
 ## Risk levels
 

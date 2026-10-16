@@ -131,7 +131,7 @@ describe('mechanical fallback', () => {
   })
 
   it('has the floor low and no category for an empty change', () => {
-    expect(floorOf()).toEqual({ floor: 'low', categories: [] })
+    expect(floorOf()).toEqual({ floor: 'low', categories: [], changedFiles: [] })
   })
 })
 

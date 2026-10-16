@@ -16,7 +16,8 @@ import {
 //   pnpm review:floor              the branch against main
 //   pnpm review:floor <commit>     only what changed since <commit>
 //
-// Prints JSON: { base, since, floor, categories: [{ name, minRisk, files, diffChecks }] }.
+// Prints JSON: { base, since, floor, categories: [{ name, minRisk, files, diffChecks }],
+// changedFiles }.
 
 export const RISK_LEVELS = ['low', 'medium', 'high', 'critical'] as const
 export type RiskLevel = (typeof RISK_LEVELS)[number]
@@ -51,6 +52,8 @@ export interface MatchedCategory {
 export interface Floor {
   floor: RiskLevel
   categories: MatchedCategory[]
+  /** Every changed file, so a later step can tell whether a path is part of the change. */
+  changedFiles: string[]
 }
 
 const KEYS = new Set(['name', 'min-risk', 'paths', 'diff-checks', 'fallback'])
@@ -269,6 +272,7 @@ export function evaluateFloor(catalogue: Category[], diff: Diff): Floor {
   return {
     floor: matched.reduce<RiskLevel>((acc, m) => higher(acc, m.minRisk), 'low'),
     categories: matched,
+    changedFiles: diff.files.map((f) => f.path),
   }
 }
 
