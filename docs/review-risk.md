@@ -9,9 +9,9 @@ attention. A model can judge a diff, but its worst mistake is calling a dangerou
 risk. So the rules below set a **floor** by path patterns and diff checks, and the model may only raise the
 risk above it.
 
-Status: the floor script exists (`pnpm review:floor`). The signals script, the `risk-review`
-agent and the review guide are planned and not in the repository yet, and the next section
-describes the intended use. Remove this note when the tooling lands.
+Status: the floor script (`pnpm review:floor`) and the signals script (`pnpm review:signals`)
+exist. The `risk-review` agent and the review guide are planned and not in the repository yet,
+and the next section describes the intended use. Remove this note when the tooling lands.
 
 ## How it is used (intended)
 
@@ -48,7 +48,7 @@ flowchart TD
 | Step | Role |
 |---|---|
 | **Floor script** | Reads the YAML block below from the base branch (`origin/main`, else `main`; never from the pull request being checked, also when given a commit to start from), matches the changed files against it and reports the matched categories and the highest minimum risk. |
-| **Signals script** | Gathers evidence for the agent: git history, changed-line coverage, the dependency diff. A signal may be missing and never sets a category. |
+| **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
 | **`risk-review` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
 | **Guide script** | Takes the higher of the floor and the agent's risk, drops hot spots for files not in the diff and renders the guide, using the category names from this file. |
 
@@ -124,7 +124,7 @@ a duplicate `name`, more than one `fallback`, and so on.
     - '.claude/skills/**'
     - '.claude/commands/**'
     - '.githooks/**'
-    - 'scripts/reviewFloor*.ts'
+    - 'scripts/review*.ts'
     - 'scripts/changedDiff.ts'
     - 'docs/architecture-rules.md'
     - 'docs/review-risk.md'

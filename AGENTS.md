@@ -78,6 +78,7 @@ pnpm test:e2e:ui          # Playwright UI mode, for local debugging
 pnpm deadcode             # knip — unused exports/files/dependencies
 pnpm metrics              # advisory complexity/size hotspots in the diff (`pnpm metrics all` for src/); never gates
 pnpm review:floor         # minimum review risk of the branch plus working tree from docs/review-risk.md (`pnpm review:floor <commit>` for changes since a commit); prints JSON
+pnpm review:signals       # evidence for the risk review of the branch plus working tree: file history, metrics, changed-line coverage (runs the unit tests), dependency diff and audit; each section may say "not available"; prints JSON
 ```
 
 Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm format:check`, `pnpm test`,
