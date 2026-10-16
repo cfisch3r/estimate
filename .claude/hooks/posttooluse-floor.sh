@@ -7,13 +7,14 @@ set -eu
 input=$(cat)
 command=$(printf '%s' "$input" | jq -r '.tool_input.command // empty')
 
-case "$command" in
-  *"gh pr create"*) ;;
-  *) echo '{}'; exit 0 ;;
-esac
+# The command itself must be `gh pr create`: at the start of a line or after ; & | (, not just
+# mentioned in a heredoc or an echo.
+printf '%s' "$command" | grep -qE '(^|[;&|(])[[:space:]]*gh pr create([[:space:]]|$)' ||
+  { echo '{}'; exit 0; }
 
-# Only after a successful create: the command prints the new pull request's URL.
-printf '%s' "$input" | grep -q '/pull/[0-9]' || { echo '{}'; exit 0; }
+# Only after a successful create: its output holds the new pull request's URL.
+printf '%s' "$input" | jq -r '.tool_response | if type == "object" then (.stdout // "") else tostring end' |
+  grep -q '/pull/[0-9]' || { echo '{}'; exit 0; }
 
 root="${CLAUDE_PROJECT_DIR:-$PWD}"
 cd "$root"
