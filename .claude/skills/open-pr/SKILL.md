@@ -43,6 +43,6 @@ Review guide: skipped (typo fix in one doc)
 
 ## Updating an open PR
 
-Before pushing more commits to an open PR, run `pnpm review:check-guide --pr <n>` on its branch. If it says the guide is out of date, run steps 2 to 5 again after the push, with the PR's current body as `--body`. A change that only touches documentation does not make a guide stale.
+Before pushing more commits to an open PR, run `pnpm review:check-guide --pr <n>` on its branch. If it says the guide is out of date, run steps 2 to 5 again after the push, with the PR's current body as `--body`. Only changes that match nothing but the `mechanical` category (plain documentation, pure renames) leave a guide fresh; documentation in a guardrail path, such as `AGENTS.md` or `docs/review-risk.md`, does not. The check decides, not you.
 
 Write as one human talking to another: avoid jargon and slang, and use simple, coherent, concise language.
