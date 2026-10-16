@@ -1,6 +1,6 @@
 # Review risk catalogue
 
-The named categories of change that deserve a closer look in a pull request, and the minimum risk
+The named categories of change that deserve a closer look when reviewing a branch, and the minimum risk
 each one carries. Each category has a short name so that a review guide, a review or a discussion
 can cite it ("this is `wire-contract`"). The words follow the [glossary](glossary.md).
 
@@ -11,9 +11,8 @@ risk above it.
 
 ## How it is used
 
-The `open-pr` skill runs this flow once, before it opens a pull request. The guide describes the
-pull request as opened: pushes do not change it, and the maintainer asks for an update when they
-want one.
+`/risk-review` runs this flow when the maintainer reviews a branch; only the floor script runs
+when a PR opens. The guide describes the commit it names: run the command again after new commits.
 
 Legend: solid line = data passed on. Scripts are deterministic; the agent is the only model step.
 
@@ -24,7 +23,7 @@ flowchart TD
   Sig["Signals script<br/>[script]"]
   Agent["risk-review agent<br/>[model, read-only]"]
   Guide["Guide script<br/>[script]"]
-  PR["Review guide<br/>[Markdown block]"]
+  Page["Review guide<br/>[HTML page, artifact]"]
 
   Cat["Catalogue on main<br/>[YAML block]"]
   Cat -->|"categories, paths"| Floor
@@ -35,7 +34,7 @@ flowchart TD
   Sig -->|"evidence"| Guide
   Floor -->|"floor"| Guide
   Agent -->|"risk, categories, hot spots"| Guide
-  Guide -->|"rendered guide"| PR
+  Guide -->|"rendered guide"| Page
 
   classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
   classDef model fill:#FEF08A,stroke:#CA8A04,color:#422006
@@ -43,7 +42,7 @@ flowchart TD
 
   class Floor,Sig,Guide script
   class Agent model
-  class Diff,PR,Cat data
+  class Diff,Page,Cat data
 ```
 
 | Step | Role |
@@ -51,7 +50,7 @@ flowchart TD
 | **Floor script** | Reads the YAML block below from the base branch (`origin/main`, else `main`; never from the pull request being checked, also when given a commit to start from), matches the changed files against it and reports the matched categories and the highest minimum risk. |
 | **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
 | **`risk-review` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
-| **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide. |
+| **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide page. |
 
 ## The agent's answer
 
@@ -68,15 +67,17 @@ runs both scripts itself, and a signal never makes a category or a hot spot on i
 
 ## The review guide
 
-`pnpm review:guide` turns the floor, the signals and the agent's answer into the block at the end of
-a pull request body, below the description. A script writes it, so the rules hold whatever the agent says:
+The guide is built on request, when the maintainer reviews a branch: `/risk-review` runs the
+scripts and the agent and publishes the result as a private artifact. The pull request body
+carries no guide. `pnpm review:guide` turns the floor, the signals and the agent's answer into one
+self-contained HTML page. A script writes it, so the rules hold whatever the agent says:
 
 - The risk is the higher of the floor and the agent's risk. A lower answer is ignored and noted
   under "Checked by the scripts".
 - Categories are the floor's plus the catalogue names the agent added. Other names are dropped.
 - A hot spot must be a line the change added or changed, up to eight. Others are dropped and
-  noted. The floor script supplies the changed lines. Agent text cannot end the block: `<` and `>` in
-  it are escaped.
+  noted. The floor script supplies the changed lines. Agent text is escaped, so it cannot add
+  markup to the page.
 - Each hot spot carries facts that the script adds from the signals, never the agent: "No test
   runs this line" when the changed-line coverage lists the line, and the number of `fix:` commits
   of the file in the last six months when it is two or more (the history signal lists only the
@@ -89,44 +90,23 @@ a pull request body, below the description. A script writes it, so the rules hol
   below it.
 - A hot spot links to its file and line at the commit the guide covers when the repository has a
   GitHub address (read from the `origin` remote); otherwise the reference is plain text.
-- An update on request writes a new guide over the old one; nothing compares the two.
+- The page describes the commit it names. After new commits, run the command again; it
+  publishes over the earlier artifact of the same pull request and nothing compares the two.
 
 | Part | Content |
 |---|---|
-| Marker | `Covers: <commit>`, the commit the guide was written for, so a reader can see what it describes (the full commit ID is in the data) |
+| Marker | `Covers <commit>`, the commit the guide was written for, so a reader can see what it describes |
 | Risk | The level and the category names |
 | Hot spots | A headline, what the change is and what makes it a hot spot, the reference (`file:line`, linked to the covered commit) with the rule or ADR, and facts from the signals |
 | Skim only | Files a reader can skim, each with a reason |
 | Not verified | What a reader has to check by hand; the scripts' own findings are folded below it |
 
-The same data is stored as JSON in a hidden HTML comment inside the block, so nothing has to
-parse the Markdown. Do not edit the block by hand;
-run the script again.
+Do not edit the page by hand; run the command again.
 
-## Checking the guide
-
-`pnpm review:check-guide --body <file>` (or `--pr <number>`) checks the guide in a pull request
-body. It exists for what a reader cannot easily see; a reader still notices a missing guide.
-It takes its facts (risk, categories, commit) from the hidden JSON and reads the visible text only
-to check its structure and that it matches the data. It uses no model, no coverage run and no
-network call (apart from `gh` for `--pr`). It exits 1 and lists the problems it finds:
-
-| Check | Fails when |
-|---|---|
-| Presence | There is no guide and no skip line, or the data comment is missing or damaged |
-| Skip | `Review guide: skipped (reason)` has no reason. A skip line next to a guide is ignored and the guide is checked |
-| Structure | The `Covers:` marker or one of the four parts is missing |
-| Hand edits | The visible text differs from what the data renders to (checked only when the structure is intact) |
-| Floor | The stated risk is below the floor, or a matched category is missing |
-
-With `--pr`, the body is checked against the branch that is checked out, so run it on the pull
-request's branch. The floor is the one of the branch as it is now, so the check also shows when
-later commits raised it above the guide. Nothing runs the check after the pull request opened;
-run it, or ask for an update, when you want to know.
-
-The skip line is for trivial pull requests, and only the maintainer asks for it. The check does
-not run in CI: a required check would need a rule for which pull requests are exempt (release
-pull requests, bot updates), and a reader's attention already covers a missing guide.
+When a pull request opens, the agent reports the minimum risk and categories first in its answer. A `PostToolUse` hook on `gh pr create`
+(`.claude/hooks/posttooluse-floor.sh`) also shows the floor to the maintainer, so the report does not
+depend on the agent. That costs seconds and no model, and it is the only automatic signal: the
+guide itself exists only when the maintainer asks for it.
 
 ## Risk levels
 
@@ -201,7 +181,6 @@ a duplicate `name`, more than one `fallback`, and so on.
     - '.claude/commands/**'
     - '.githooks/**'
     - 'scripts/review*.ts'
-    - 'scripts/checkGuide*.ts'
     - 'scripts/changedDiff.ts'
     - 'docs/architecture-rules.md'
     - 'docs/review-risk.md'

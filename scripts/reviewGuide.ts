@@ -4,16 +4,15 @@ import { baseRef, repoRoot, showAt } from './changedDiff.ts'
 import { parseCatalogue, RISK_LEVELS, type Floor, type RiskLevel } from './reviewFloor.ts'
 import type { Section } from './reviewSignals.ts'
 
-// The Review guide at the end of a pull request body. A script writes it, not the model:
-// the script takes the higher of the floor and the agent's risk, drops hot spots that are
-// not part of the change, and renders the same data twice, as Markdown for the reader and
-// as JSON in a hidden comment for the check script.
+// The Review guide, built on request while reviewing a branch. A script writes it, not the
+// model: the script takes the higher of the floor and the agent's risk, drops hot spots
+// that are not part of the change, adds the facts from the signals, and renders one
+// self-contained HTML page that is published as an artifact.
 //
 //   pnpm review:guide --floor floor.json --signals signals.json --agent agent.json \
-//     [--body body.md] [--covers <commit>]
+//     [--covers <commit>] [--title <page title>]
 //
-// Prints the guide block, or the whole body with the guide block put at its end when
-// --body is given. The inputs are the outputs of `pnpm review:floor`,
+// Prints the HTML page. The inputs are the outputs of `pnpm review:floor`,
 // `pnpm review:signals` and the `risk-review` agent.
 
 export interface HotSpot {
@@ -44,7 +43,6 @@ export interface EvidenceItem {
 }
 
 export interface GuideData {
-  version: 2
   covers: string
   /** `https://github.com/<owner>/<repo>`, to link a hot spot to the file at `covers`. */
   repoUrl?: string
@@ -92,18 +90,12 @@ const MAX_HOT_SPOTS = 8
 const MAX_LISTED = 10
 /** Fix commits that make a file worth a note on its hot spots. */
 const MIN_FIXES = 2
-const START = '<!-- review-guide:start -->'
-const END = '<!-- review-guide:end -->'
-const DATA_PREFIX = '<!-- review-guide-data: '
 
 const higher = (a: RiskLevel, b: RiskLevel) =>
   RISK_LEVELS.indexOf(a) >= RISK_LEVELS.indexOf(b) ? a : b
 
-// Agent text goes into the visible Markdown, so it is put on one line and every `<` and `>`
-// is escaped. That way it cannot open or close an HTML comment (`-->` or `--!>`) or add
-// markup, which would cut the guide block short.
-const oneLine = (text: string) =>
-  text.replace(/\s+/g, ' ').trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')
+// Agent text is put on one line; the renderer escapes it for HTML.
+const oneLine = (text: string) => text.replace(/\s+/g, ' ').trim()
 const isText = (value: unknown): value is string =>
   typeof value === 'string' && oneLine(value) !== ''
 
@@ -321,7 +313,6 @@ export function buildGuide(input: GuideInput): GuideData {
   }
 
   const data: GuideData = {
-    version: 2,
     covers: input.covers,
     ...(input.repoUrl ? { repoUrl: input.repoUrl } : {}),
     risk,
@@ -336,11 +327,21 @@ export function buildGuide(input: GuideInput): GuideData {
 
 // --- rendering ------------------------------------------------------------------------
 
-const code = (text: string) => `\`${text.replace(/`/g, "'")}\``
+/** Escapes text for HTML, in content and in a quoted attribute. */
+const esc = (text: string) =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+const code = (text: string) => `<code>${esc(text)}</code>`
 const evidenceLine = (e: EvidenceItem) =>
-  `${{ checked: 'Checked', 'not-checked': 'Not checked', note: 'Note', reviewer: 'Reviewer note' }[e.kind]}: ${e.text}`
+  `${{ checked: 'Checked', 'not-checked': 'Not checked', note: 'Note', reviewer: 'Reviewer note', warning: 'Warning' }[e.kind]}: ${e.text}`
 
-/** Percent-encodes a path for a Markdown link, parentheses included. */
+const FULL_SHA = /^[0-9a-f]{40}$/
+
+/** Percent-encodes a path for a link, parentheses included. */
 const encodePath = (path: string) =>
   path
     .split('/')
@@ -352,163 +353,99 @@ const encodePath = (path: string) =>
     )
     .join('/')
 
-function renderSpot(s: HotSpot, number: number, data: GuideData): string[] {
+const DARK_TOKENS = `--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--card:#161b22;--link:#58a6ff;--low:#3fb950;--medium:#d29922;--high:#f0883e;--critical:#ff7b72;color-scheme:dark;`
+const STYLE = `
+:root{--bg:#ffffff;--fg:#1f2328;--muted:#59636e;--line:#d1d9e0;--card:#f6f8fa;--link:#0969da;--low:#1a7f37;--medium:#9a6700;--high:#bc4c00;--critical:#cf222e}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${DARK_TOKENS}}}
+:root[data-theme="dark"]{${DARK_TOKENS}}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:1.6rem;margin:0 0 4px}
+h2{font-size:1.1rem;margin:32px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+code{font:0.9em ui-monospace,monospace;overflow-wrap:anywhere}
+a{color:var(--link)}
+.muted{color:var(--muted)}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-weight:600;border:1px solid currentColor}
+.risk-low{color:var(--low)}.risk-medium{color:var(--medium)}.risk-high{color:var(--high)}.risk-critical{color:var(--critical)}
+.spots{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.spot{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px}
+.spot p{margin:6px 0 0}
+.spot .title{font-weight:600;margin:0}
+.facts{color:var(--muted);font-size:0.9rem}
+ul.plain{margin:0;padding-left:20px}
+details{margin-top:16px}
+summary{cursor:pointer;color:var(--muted)}
+`
+
+function htmlSpot(s: HotSpot, data: GuideData): string {
   const place = code(`${s.file}:${s.line}`)
   const reference =
     data.repoUrl && FULL_SHA.test(data.covers)
-      ? `[${place}](${data.repoUrl}/blob/${data.covers}/${encodePath(s.file)}#L${s.line})`
+      ? `<a href="${esc(`${data.repoUrl}/blob/${data.covers}/${encodePath(s.file)}#L${s.line}`)}">${place}</a>`
       : place
-  const lines = [
-    `${number}. **${s.title}**`,
-    '',
-    `   ${s.body}`,
-    '',
-    `   ${reference} · ${s.rule}`,
-  ]
-  if (s.facts.length > 0) lines.push('', `   Facts: ${s.facts.join(' · ')}`)
-  return lines
+  return [
+    '<li class="spot">',
+    `<p class="title">${esc(s.title)}</p>`,
+    `<p>${esc(s.body)}</p>`,
+    `<p>${reference} · ${esc(s.rule)}</p>`,
+    ...(s.facts.length > 0
+      ? [`<p class="facts">Facts: ${s.facts.map(esc).join(' · ')}</p>`]
+      : []),
+    '</li>',
+  ].join('\n')
 }
 
-/** The data as JSON that is safe inside an HTML comment. */
-function dataComment(data: GuideData): string {
-  const json = JSON.stringify(data).replace(/</g, '\\u003c').replace(/>/g, '\\u003e')
-  return `${DATA_PREFIX}${json} -->`
-}
-
-/** The visible Markdown of the guide, without the data comment. */
-export function renderVisible(data: GuideData): string {
-  const lines = [
-    '## Review guide',
-    '',
-    `Covers: ${code(data.covers.slice(0, 7))}`,
-    '',
-    '### Risk',
-    '',
-  ]
+/** The guide as one self-contained HTML page: title, style and content, for an artifact. */
+export function renderHtml(data: GuideData, title = 'Review guide'): string {
   const raised = data.risk !== data.floor ? `, raised from the floor ${data.floor}` : ''
   const names =
     data.categories.length > 0
       ? data.categories.map(code).join(', ')
       : 'no category matched'
-  lines.push(`**${data.risk}**${raised} — ${names}`, '', '### Hot spots', '')
-  if (data.hotSpots.length === 0) lines.push('None.')
-  data.hotSpots.forEach((s, i) => {
-    if (i > 0) lines.push('')
-    lines.push(...renderSpot(s, i + 1, data))
-  })
-  lines.push('', '### Skim only', '')
-  if (data.skimOnly.length === 0) lines.push('None.')
-  for (const s of data.skimOnly) lines.push(`- ${code(s.file)} — ${s.why}`)
-  lines.push('', '### Not verified', '')
   const gaps = data.evidence.filter(
     (e) => e.kind === 'not-checked' || e.kind === 'reviewer' || e.kind === 'warning',
   )
-  if (gaps.length === 0) lines.push('Nothing flagged.')
-  for (const e of gaps) lines.push(`- ${e.text}`)
   const checked = data.evidence.filter((e) => e.kind === 'checked' || e.kind === 'note')
-  if (checked.length > 0) {
-    lines.push('', '<details>', '<summary>Checked by the scripts</summary>', '')
-    for (const e of checked) lines.push(`- ${evidenceLine(e)}`)
-    lines.push('', '</details>')
-  }
-  return lines.join('\n')
-}
+  const list = (items: string[], empty: string) =>
+    items.length === 0
+      ? `<p class="muted">${empty}</p>`
+      : `<ul class="plain">\n${items.map((i) => `<li>${i}</li>`).join('\n')}\n</ul>`
 
-/** The whole guide block: visible Markdown, hidden data, and the markers around both. */
-export function renderGuide(data: GuideData): string {
-  return [START, renderVisible(data), '', dataComment(data), END].join('\n')
-}
-
-// --- reading and replacing the block in a body ----------------------------------------
-
-const FULL_SHA = /^[0-9a-f]{40}$/
-const REPO_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/
-/**
- * Where the guide block is: from the last start marker to the first end marker after it,
- * so a description that quotes the marker earlier in the body does not confuse it.
- */
-function blockRange(body: string): [number, number] | undefined {
-  const start = body.lastIndexOf(START)
-  if (start < 0) return undefined
-  const end = body.indexOf(END, start)
-  return end < 0 ? undefined : [start, end + END.length]
-}
-
-export interface ParsedGuide {
-  data: GuideData
-  /** The block's visible Markdown, without the markers and the data comment. */
-  visible: string
-}
-
-const isStrings = (value: unknown): value is string[] =>
-  Array.isArray(value) && value.every((v) => typeof v === 'string')
-
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value)
-
-const isSpot = (v: unknown) =>
-  isObject(v) &&
-  typeof v.file === 'string' &&
-  typeof v.line === 'number' &&
-  typeof v.title === 'string' &&
-  typeof v.body === 'string' &&
-  typeof v.rule === 'string' &&
-  isStrings(v.facts)
-
-const isEvidence = (v: unknown) =>
-  isObject(v) &&
-  ['checked', 'not-checked', 'note', 'reviewer', 'warning'].includes(v.kind as string) &&
-  typeof v.text === 'string'
-
-const isSkim = (v: unknown) =>
-  isObject(v) && typeof v.file === 'string' && typeof v.why === 'string'
-
-const all = (value: unknown, test: (v: unknown) => boolean) =>
-  Array.isArray(value) && value.every(test)
-
-/** Whether parsed JSON has the shape the check relies on. */
-function isGuideData(value: unknown): value is GuideData {
-  if (!isObject(value)) return false
-  return (
-    value.version === 2 &&
-    typeof value.covers === 'string' &&
-    (value.repoUrl === undefined ||
-      (typeof value.repoUrl === 'string' && REPO_URL.test(value.repoUrl))) &&
-    RISK_LEVELS.includes(value.risk as RiskLevel) &&
-    RISK_LEVELS.includes(value.floor as RiskLevel) &&
-    isStrings(value.categories) &&
-    all(value.hotSpots, isSpot) &&
-    all(value.skimOnly, isSkim) &&
-    all(value.evidence, isEvidence)
-  )
-}
-
-/** Reads the guide in a body, or undefined when there is none or its data is unreadable. */
-export function parseGuide(rawBody: string): ParsedGuide | undefined {
-  // GitHub returns a body edited in the browser with Windows line endings.
-  const body = rawBody.replace(/\r\n/g, '\n')
-  const range = blockRange(body)
-  if (!range) return undefined
-  const block = body.slice(...range)
-  const start = block.indexOf(DATA_PREFIX)
-  const end = block.lastIndexOf(' -->\n' + END)
-  if (start < 0 || end < start) return undefined
-  try {
-    const data: unknown = JSON.parse(block.slice(start + DATA_PREFIX.length, end))
-    if (!isGuideData(data)) return undefined
-    const visible = block.slice(START.length + 1, start).trimEnd()
-    return { data, visible }
-  } catch {
-    return undefined
-  }
-}
-
-/** Puts the guide at the end of the body, or replaces the one that is there, wherever it is. */
-export function replaceGuide(body: string, guide: string): string {
-  const range = blockRange(body)
-  if (range) return body.slice(0, range[0]) + guide + body.slice(range[1])
-  const rest = body.trim()
-  return rest === '' ? `${guide}\n` : `${rest}\n\n${guide}\n`
+  return [
+    `<title>${esc(title)}</title>`,
+    `<style>${STYLE}</style>`,
+    '<main>',
+    `<h1>${esc(title)}</h1>`,
+    `<p class="muted">Covers ${code(data.covers.slice(0, 7))}</p>`,
+    '<h2>Risk</h2>',
+    `<p><span class="badge risk-${data.risk}">${data.risk}</span>${esc(raised)} — ${names}</p>`,
+    '<h2>Hot spots</h2>',
+    data.hotSpots.length === 0
+      ? '<p class="muted">None.</p>'
+      : `<ol class="spots">\n${data.hotSpots.map((s) => htmlSpot(s, data)).join('\n')}\n</ol>`,
+    '<h2>Skim only</h2>',
+    list(
+      data.skimOnly.map((s) => `${code(s.file)} — ${esc(s.why)}`),
+      'None.',
+    ),
+    '<h2>Not verified</h2>',
+    list(
+      gaps.map((e) => esc(e.text)),
+      'Nothing flagged.',
+    ),
+    ...(checked.length > 0
+      ? [
+          '<details>',
+          '<summary>Checked by the scripts</summary>',
+          list(
+            checked.map((e) => esc(evidenceLine(e))),
+            '',
+          ),
+          '</details>',
+        ]
+      : []),
+    '</main>',
+  ].join('\n')
 }
 
 /** The GitHub address of a remote (https or ssh form), or undefined for any other host. */
@@ -540,13 +477,18 @@ export function originUrl(cwd: string): string | undefined {
 
 function option(name: string): string | undefined {
   const index = process.argv.indexOf(`--${name}`)
-  return index < 0 ? undefined : process.argv[index + 1]
+  const value = process.argv[index + 1]
+  return index < 0 || value === undefined || value.startsWith('--') ? undefined : value
+}
+
+function required(name: string): string {
+  const path = option(name)
+  if (!path) throw new Error(`Missing --${name} <file>`)
+  return path
 }
 
 function readJson(name: string): unknown {
-  const path = option(name)
-  if (!path) throw new Error(`Missing --${name} <file>`)
-  return JSON.parse(readFileSync(path, 'utf8'))
+  return JSON.parse(readFileSync(required(name), 'utf8'))
 }
 
 function main() {
@@ -554,9 +496,7 @@ function main() {
   const base = baseRef(cwd)
   const floor = readJson('floor') as Floor
   const signals = readJson('signals') as Signals
-  const agent = parseAgentAnswer(readFileSync(option('agent') ?? '', 'utf8'))
-  const bodyPath = option('body')
-  const body = bodyPath ? readFileSync(bodyPath, 'utf8') : undefined
+  const agent = parseAgentAnswer(readFileSync(required('agent'), 'utf8'))
   const covers =
     option('covers') ??
     execFileSync('git', ['rev-parse', 'HEAD'], { cwd, encoding: 'utf8' }).trim()
@@ -565,10 +505,8 @@ function main() {
   )
 
   const repoUrl = originUrl(cwd)
-  const guide = renderGuide(
-    buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl }),
-  )
-  process.stdout.write((body === undefined ? guide : replaceGuide(body, guide)) + '\n')
+  const data = buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl })
+  process.stdout.write(renderHtml(data, option('title')) + '\n')
 }
 
 if (process.argv[1] === import.meta.filename) {

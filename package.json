@@ -25,8 +25,7 @@
     "metrics": "node scripts/metrics.mjs",
     "review:floor": "node scripts/reviewFloor.ts",
     "review:signals": "node scripts/reviewSignals.ts",
-    "review:guide": "node scripts/reviewGuide.ts",
-    "review:check-guide": "node scripts/checkGuide.ts"
+    "review:guide": "node scripts/reviewGuide.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",
