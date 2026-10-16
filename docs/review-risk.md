@@ -1,6 +1,6 @@
 # Review risk catalogue
 
-The named categories of change that deserve a closer look in a pull request, and the minimum risk
+The named categories of change that deserve a closer look when reviewing a branch, and the minimum risk
 each one carries. Each category has a short name so that a review guide, a review or a discussion
 can cite it ("this is `wire-contract`"). The words follow the [glossary](glossary.md).
 
@@ -11,9 +11,8 @@ risk above it.
 
 ## How it is used
 
-The `open-pr` skill runs this flow once, before it opens a pull request. The guide describes the
-pull request as opened: pushes do not change it, and the maintainer asks for an update when they
-want one.
+`/risk-review` runs this flow when the maintainer reviews a branch; the `open-pr` skill runs only
+the floor script. The guide describes the commit it names: run the command again after new commits.
 
 Legend: solid line = data passed on. Scripts are deterministic; the agent is the only model step.
 
@@ -24,7 +23,7 @@ flowchart TD
   Sig["Signals script<br/>[script]"]
   Agent["risk-review agent<br/>[model, read-only]"]
   Guide["Guide script<br/>[script]"]
-  PR["Review guide<br/>[HTML page, artifact]"]
+  Page["Review guide<br/>[HTML page, artifact]"]
 
   Cat["Catalogue on main<br/>[YAML block]"]
   Cat -->|"categories, paths"| Floor
@@ -35,7 +34,7 @@ flowchart TD
   Sig -->|"evidence"| Guide
   Floor -->|"floor"| Guide
   Agent -->|"risk, categories, hot spots"| Guide
-  Guide -->|"rendered guide"| PR
+  Guide -->|"rendered guide"| Page
 
   classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
   classDef model fill:#FEF08A,stroke:#CA8A04,color:#422006
@@ -43,7 +42,7 @@ flowchart TD
 
   class Floor,Sig,Guide script
   class Agent model
-  class Diff,PR,Cat data
+  class Diff,Page,Cat data
 ```
 
 | Step | Role |
