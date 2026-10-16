@@ -10,8 +10,10 @@ risk. So the rules below set a **floor** by path patterns and diff checks, and t
 risk above it.
 
 Status: the floor script (`pnpm review:floor`), the signals script (`pnpm review:signals`) and
-the `risk-review` agent (`/risk-review`) exist. The guide script and the review guide are planned
-and not in the repository yet, and the next section describes the intended use. Remove this note when the tooling lands.
+the `risk-review` agent (`/risk-review`) exist. The guide script, the review guide and the
+`open-pr` skill that runs the agent before a pull request opens are planned and not in the
+repository yet, and the next section describes the intended use. Remove this note when they
+land.
 
 ## How it is used (intended)
 
