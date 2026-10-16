@@ -84,7 +84,8 @@ a pull request body. A script writes it, so the rules hold whatever the agent sa
   are not compared either: the agent words them differently on every run, so only what the
   scripts measured counts as a change in the evidence. The price: a new problem that the agent
   reports under the same file, rule and line as an old one looks unchanged. A guide stored in an
-  older shape is reported as damaged; run the script again.
+  older shape is reported as damaged by the check; running the script again replaces it, without a
+  "Since last version" section for that run.
 
 | Part | Content |
 |---|---|

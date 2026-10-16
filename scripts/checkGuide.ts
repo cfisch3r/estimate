@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { repoRoot } from './changedDiff.ts'
 import { RISK_LEVELS, readFloor, type Floor } from './reviewFloor.ts'
-import { parseGuide, renderVisible } from './reviewGuide.ts'
+import { parseGuide, renderVisible, type GuideData } from './reviewGuide.ts'
 
 // Checks the Review guide in a pull request body. It covers what a reader cannot easily
 // see: a guide below the floor, a guide for old code, a guide edited by hand. A reader still
@@ -69,7 +69,7 @@ export function checkGuide(input: CheckInput): Check {
   }
 
   // Hand edits: the visible text must be what the data renders to.
-  if (problems.length === 0 && visible !== renderVisible(data)) {
+  if (problems.length === 0 && !rendersTo(data, visible)) {
     problems.push(
       'The guide text differs from its data, so it was edited by hand. Run `pnpm review:guide` again.',
     )
@@ -107,6 +107,15 @@ export function checkGuide(input: CheckInput): Check {
   }
 
   return problems.length > 0 ? { status: 'failed', problems } : { status: 'ok', problems }
+}
+
+/** Whether the data renders to the visible text; data that cannot be rendered does not. */
+function rendersTo(data: GuideData, visible: string): boolean {
+  try {
+    return renderVisible(data) === visible
+  } catch {
+    return false
+  }
 }
 
 function failed(problem: string): Check {

@@ -498,6 +498,37 @@ describe('rendering and reading the body', () => {
     expect(parseGuide(guide.replace('"since":"', '"since":3,"x":"'))).toBeUndefined()
   })
 
+  it.each([
+    ['an evidence item that is not an object', '"evidence":[', '"evidence":[null,'],
+    ['an unknown evidence kind', '"kind":"checked"', '"kind":"mystery"'],
+    ['a hot spot without a line', '"line":7', '"lin":7'],
+    ['a risk that is not a level', '"risk":"high"', '"risk":"x"'],
+  ])('does not read data with %s', (_label, from, to) => {
+    const data = build({ signals: okSignals })
+    const guide = renderGuide(data)
+    expect(guide).toContain(from)
+    expect(parseGuide(guide.replace(from, to))).toBeUndefined()
+  })
+
+  it('does not read a delta with entries of the wrong shape', () => {
+    const rerun = build({ covers: 'b'.repeat(40), previous: build() })
+    const guide = renderGuide(rerun)
+    expect(
+      parseGuide(guide.replace('"evidenceAdded":[', '"evidenceAdded":[null,')),
+    ).toBeUndefined()
+    expect(
+      parseGuide(
+        guide.replace(
+          '"moved":[',
+          '"moved":[{"file":"a","line":1,"reason":"r","rule":"x"},',
+        ),
+      ),
+    ).toBeUndefined()
+    expect(
+      parseGuide(guide.replace('"since":"', '"since":"1","x":"'))?.data.delta?.since,
+    ).toBe('1')
+  })
+
   it('returns undefined when there is no guide or its data is damaged', () => {
     expect(parseGuide('just text')).toBeUndefined()
     const guide = renderGuide(build())

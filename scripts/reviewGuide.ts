@@ -470,40 +470,66 @@ export interface ParsedGuide {
 const isStrings = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((v) => typeof v === 'string')
 
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const isSpot = (v: unknown) =>
+  isObject(v) &&
+  typeof v.file === 'string' &&
+  typeof v.line === 'number' &&
+  typeof v.reason === 'string' &&
+  typeof v.rule === 'string'
+
+const isEvidence = (v: unknown) =>
+  isObject(v) &&
+  ['checked', 'not-checked', 'note', 'reviewer'].includes(v.kind as string) &&
+  typeof v.text === 'string'
+
+const isSkim = (v: unknown) =>
+  isObject(v) && typeof v.file === 'string' && typeof v.why === 'string'
+
+const all = (value: unknown, test: (v: unknown) => boolean) =>
+  Array.isArray(value) && value.every(test)
+
 /** Whether a stored delta has the shape the renderer reads (an older one had `changed`). */
 function isDelta(value: unknown): boolean {
-  if (typeof value !== 'object' || value === null) return false
-  const d = value as Record<string, unknown>
-  const spots = d.hotSpots as Record<string, unknown> | undefined
+  if (!isObject(value)) return false
+  const spots = value.hotSpots
+  const risk = value.risk
   return (
-    typeof d.since === 'string' &&
-    isStrings(d.categoriesAdded) &&
-    isStrings(d.categoriesRemoved) &&
-    typeof spots === 'object' &&
-    spots !== null &&
-    Array.isArray(spots.new) &&
-    Array.isArray(spots.moved) &&
-    Array.isArray(spots.resolved) &&
+    typeof value.since === 'string' &&
+    (risk === undefined ||
+      (isObject(risk) &&
+        RISK_LEVELS.includes(risk.from as RiskLevel) &&
+        RISK_LEVELS.includes(risk.to as RiskLevel))) &&
+    isStrings(value.categoriesAdded) &&
+    isStrings(value.categoriesRemoved) &&
+    isObject(spots) &&
+    all(spots.new, isSpot) &&
+    all(
+      spots.moved,
+      (v) => isSpot(v) && typeof (v as { was?: unknown }).was === 'number',
+    ) &&
+    all(spots.resolved, isSpot) &&
     typeof spots.unchanged === 'number' &&
-    Array.isArray(d.evidenceAdded) &&
-    Array.isArray(d.evidenceRemoved)
+    all(value.evidenceAdded, isEvidence) &&
+    all(value.evidenceRemoved, isEvidence)
   )
 }
 
 /** Whether parsed JSON has the shape the check and the delta rely on. */
 function isGuideData(value: unknown): value is GuideData {
-  if (typeof value !== 'object' || value === null) return false
-  const d = value as Record<string, unknown>
+  if (!isObject(value)) return false
   return (
-    d.version === 1 &&
-    typeof d.covers === 'string' &&
-    RISK_LEVELS.includes(d.risk as RiskLevel) &&
-    RISK_LEVELS.includes(d.floor as RiskLevel) &&
-    isStrings(d.categories) &&
-    Array.isArray(d.hotSpots) &&
-    Array.isArray(d.skimOnly) &&
-    Array.isArray(d.evidence) &&
-    (d.delta === undefined || isDelta(d.delta))
+    value.version === 1 &&
+    typeof value.covers === 'string' &&
+    RISK_LEVELS.includes(value.risk as RiskLevel) &&
+    RISK_LEVELS.includes(value.floor as RiskLevel) &&
+    isStrings(value.categories) &&
+    all(value.hotSpots, isSpot) &&
+    all(value.skimOnly, isSkim) &&
+    all(value.evidence, isEvidence) &&
+    (value.delta === undefined || isDelta(value.delta))
   )
 }
 
