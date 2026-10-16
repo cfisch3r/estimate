@@ -11,9 +11,9 @@ risk above it.
 
 Status: the floor script (`pnpm review:floor`), the signals script (`pnpm review:signals`) and
 the `risk-review` agent (`/risk-review`) exist, and so does the guide script
-(`pnpm review:guide`). The check script and the `open-pr` skill that runs the agent and puts the
-guide into a pull request before it opens are planned and not in the repository yet. Until they
-land, the flow below is run by hand. Remove this note when they land.
+(`pnpm review:guide`) and the check script (`pnpm review:check-guide`). The `open-pr` skill that
+runs the agent and puts the guide into a pull request before it opens is planned and not in the
+repository yet. Until it lands, the flow below is run by hand. Remove this note when it lands.
 
 ## How it is used
 
@@ -95,6 +95,26 @@ a pull request body. A script writes it, so the rules hold whatever the agent sa
 The same data is stored as JSON in a hidden HTML comment inside the block, so nothing has to
 parse the Markdown, and the next run can compare against it. Do not edit the block by hand;
 run the script again.
+
+## Checking the guide
+
+`pnpm review:check-guide --body <file>` (or `--pr <number>`) checks the guide in a pull request
+body. It exists for what a reader cannot easily see; a reader still notices a missing guide.
+It reads the hidden JSON, never the Markdown, and uses no model, no coverage run and no network
+call (apart from `gh` for `--pr`). It exits 1 and lists every problem it finds:
+
+| Check | Fails when |
+|---|---|
+| Presence | There is no guide and no skip line, or the data comment is missing or damaged |
+| Skip | `Review guide: skipped (reason)` has no reason. A skip line is accepted only when there is no guide |
+| Structure | The `Covers:` marker or one of the four parts is missing |
+| Hand edits | The visible text differs from what the data renders to |
+| Floor | The stated risk is below the floor, or a matched category is missing |
+| Freshness | The marker commit is not in the branch history (after a rebase), or the changes after it touch a category other than `mechanical` |
+
+The skip line is for trivial pull requests, and only the maintainer asks for it. The check does
+not run in CI: a required check would need a rule for which pull requests are exempt (release
+pull requests, bot updates), and a reader's attention already covers a missing guide.
 
 ## Risk levels
 
