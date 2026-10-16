@@ -386,7 +386,7 @@ describe('rendering and reading the body', () => {
     const comment = renderGuide(data)
       .split('\n')
       .find((l) => l.startsWith('<!-- review-guide-data'))
-    expect(comment?.match(/-->/g)).toHaveLength(1)
+    expect(comment?.split('-->')).toHaveLength(2)
   })
 
   it('reads a body that came back with Windows line endings', () => {
@@ -408,11 +408,13 @@ describe('rendering and reading the body', () => {
         risk: 'high',
         hotSpots: [evil],
         skimOnly: [{ file: 'docs/`x`.md', why: '--> done' }],
-        evidenceNotes: ['<!-- note -->'],
+        evidenceNotes: ['<!-- note --!> <b>bold</b>'],
       },
     })
     const guide = renderGuide(data)
     expect(guide.split('<!-- review-guide:end -->')).toHaveLength(2)
+    expect(renderVisible(data)).not.toMatch(/[<>]/)
+    expect(renderVisible(data)).toContain('&lt;b&gt;bold&lt;/b&gt;')
     expect(parseGuide(guide)?.data).toEqual(data)
     expect(renderVisible(data)).toContain("`docs/'x'.md`")
     expect(replaceGuide(guide, guide).split('<!-- review-guide:start -->')).toHaveLength(

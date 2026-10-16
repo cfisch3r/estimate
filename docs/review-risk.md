@@ -77,8 +77,8 @@ a pull request body. A script writes it, so the rules hold whatever the agent sa
   in the evidence.
 - Categories are the floor's plus the catalogue names the agent added. Other names are dropped.
 - A hot spot must be a line the change added or changed, up to eight. Others are dropped and
-  noted. The floor script supplies the changed lines. Agent text cannot end the block: comment
-  markers in it are escaped.
+  noted. The floor script supplies the changed lines. Agent text cannot end the block: `<` and `>` in
+  it are escaped.
 - The evidence lists what the scripts measured and what they could not (coverage, dependencies
   and audit, history, metrics), what the script itself dropped or overrode, then the agent's
   notes.

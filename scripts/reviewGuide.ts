@@ -98,10 +98,11 @@ const DATA_PREFIX = '<!-- review-guide-data: '
 const higher = (a: RiskLevel, b: RiskLevel) =>
   RISK_LEVELS.indexOf(a) >= RISK_LEVELS.indexOf(b) ? a : b
 
-// Agent text goes into the visible Markdown, so it is put on one line and cannot open or
-// close an HTML comment, which would cut the guide block short.
+// Agent text goes into the visible Markdown, so it is put on one line and every `<` and `>`
+// is escaped. That way it cannot open or close an HTML comment (`-->` or `--!>`) or add
+// markup, which would cut the guide block short.
 const oneLine = (text: string) =>
-  text.replace(/\s+/g, ' ').trim().replace(/<!--/g, '&lt;!--').replace(/-->/g, '--&gt;')
+  text.replace(/\s+/g, ' ').trim().replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const isText = (value: unknown): value is string =>
   typeof value === 'string' && oneLine(value) !== ''
 
