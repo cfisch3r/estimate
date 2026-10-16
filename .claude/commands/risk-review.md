@@ -9,7 +9,9 @@ it is now; run the command again after new commits to get a new one.
 
 The branch against the base branch (`origin/main`, else `main`), plus uncommitted and
 untracked changes. If the branch is `main` with no uncommitted changes, tell the user there is
-nothing to review and stop. The floor and signals scripts always cover the whole branch, so
+nothing to review and stop. Stop as well, and say so, when the working tree has uncommitted changes
+or the branch is not pushed: the page links its hot spots to the commit it covers, so that
+commit must be the pushed `HEAD`. The floor and signals scripts always cover the whole branch, so
 there is no path scope. Run every `pnpm` command in the repository root and keep every
 temporary file in the scratchpad directory (`$S` below, an absolute path): a file inside the
 repository would change the floor.
@@ -25,8 +27,9 @@ repository would change the floor.
    (use the number of the branch's open pull request from `gh pr view --json number`; without
    one, `--title "Review guide <branch>"`). Never write or edit the page by hand.
 4. Publish `$S/guide.html` as an artifact. If an artifact with that title already exists
-   (`Artifact` with `action: "list"`), pass its `url` so the link stays the same; otherwise it is
-   a new private one. Pass a short `description` and the icon `shield`.
+   (`Artifact` with `action: "list"`), read it once (`action: "read"`), then publish the freshly
+   generated `$S/guide.html` with its `url` so the link stays the same; otherwise it is a new
+   private one. Pass a short `description` and the icon `shield`.
 
 ## Report
 

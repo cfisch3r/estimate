@@ -477,13 +477,18 @@ export function originUrl(cwd: string): string | undefined {
 
 function option(name: string): string | undefined {
   const index = process.argv.indexOf(`--${name}`)
-  return index < 0 ? undefined : process.argv[index + 1]
+  const value = process.argv[index + 1]
+  return index < 0 || value === undefined || value.startsWith('--') ? undefined : value
+}
+
+function required(name: string): string {
+  const path = option(name)
+  if (!path) throw new Error(`Missing --${name} <file>`)
+  return path
 }
 
 function readJson(name: string): unknown {
-  const path = option(name)
-  if (!path) throw new Error(`Missing --${name} <file>`)
-  return JSON.parse(readFileSync(path, 'utf8'))
+  return JSON.parse(readFileSync(required(name), 'utf8'))
 }
 
 function main() {
@@ -491,7 +496,7 @@ function main() {
   const base = baseRef(cwd)
   const floor = readJson('floor') as Floor
   const signals = readJson('signals') as Signals
-  const agent = parseAgentAnswer(readFileSync(option('agent') ?? '', 'utf8'))
+  const agent = parseAgentAnswer(readFileSync(required('agent'), 'utf8'))
   const covers =
     option('covers') ??
     execFileSync('git', ['rev-parse', 'HEAD'], { cwd, encoding: 'utf8' }).trim()
