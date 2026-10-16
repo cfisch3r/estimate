@@ -9,9 +9,11 @@ attention. A model can judge a diff, but its worst mistake is calling a dangerou
 risk. So the rules below set a **floor** by path patterns and diff checks, and the model may only raise the
 risk above it.
 
-Status: the floor script (`pnpm review:floor`) and the signals script (`pnpm review:signals`)
-exist. The `risk-review` agent and the review guide are planned and not in the repository yet,
-and the next section describes the intended use. Remove this note when the tooling lands.
+Status: the floor script (`pnpm review:floor`), the signals script (`pnpm review:signals`) and
+the `risk-review` agent (`/risk-review`) exist. The guide script, the review guide and the
+`open-pr` skill that runs the agent before a pull request opens are planned and not in the
+repository yet, and the next section describes the intended use. Remove this note when they
+land.
 
 ## How it is used (intended)
 
@@ -51,6 +53,19 @@ flowchart TD
 | **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
 | **`risk-review` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
 | **Guide script** | Takes the higher of the floor and the agent's risk, drops hot spots for files not in the diff and renders the guide, using the category names from this file. |
+
+## The agent's answer
+
+The `risk-review` agent replies with one JSON object, which the guide script reads. The agent
+runs both scripts itself, and a signal never makes a category or a hot spot on its own.
+
+| Field | Content |
+|---|---|
+| `risk` | A [risk level](#risk-levels), at least the floor |
+| `categories` | Names from the catalogue, including every category the floor found |
+| `hotSpots` | Up to eight places to read closely, most important first: `file` and `line` (in the diff), a one-sentence `reason` and a `rule` (architecture rule, ADR number or catalogue category) |
+| `skimOnly` | Files that can be skimmed, each with a `why` |
+| `evidenceNotes` | Short notes on what was and was not verified |
 
 ## Risk levels
 
