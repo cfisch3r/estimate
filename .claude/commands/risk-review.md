@@ -3,8 +3,8 @@ description: Rate the risk of the current branch for its pull request — the de
 ---
 
 Run a risk review by delegating to the `risk-review` subagent. This is a read-only audit —
-it reports an answer and does not edit code. The `open-pr` skill is planned to run the same agent
-before it opens a pull request; this command is for running it on demand.
+it reports an answer and does not edit code. The `open-pr` skill runs the same agent before it opens
+a pull request; this command is for running it on demand.
 
 ## Scope
 
