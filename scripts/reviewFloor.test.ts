@@ -39,6 +39,7 @@ function diffOf(...changes: Change[]): Diff {
     before: (path) => byPath.get(path)?.before,
     after: (path) => byPath.get(path)?.after,
     addedLines: (file) => byPath.get(file.path)?.added ?? [],
+    addedLineNumbers: () => [],
   }
 }
 
@@ -376,6 +377,11 @@ describe('readGitDiff', () => {
       'u1',
       'u2',
       '',
+    ])
+    expect(diff.addedLineNumbers(byPath['keep.ts'] as ChangedFile)).toEqual([6, 7])
+    expect(diff.addedLineNumbers(byPath['gone.ts'] as ChangedFile)).toEqual([])
+    expect(diff.addedLineNumbers(byPath['untracked.ts'] as ChangedFile)).toEqual([
+      1, 2, 3,
     ])
   })
 

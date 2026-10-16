@@ -23,7 +23,8 @@
     "format:check": "prettier --check .",
     "deadcode": "knip",
     "metrics": "node scripts/metrics.mjs",
-    "review:floor": "node scripts/reviewFloor.ts"
+    "review:floor": "node scripts/reviewFloor.ts",
+    "review:signals": "node scripts/reviewSignals.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

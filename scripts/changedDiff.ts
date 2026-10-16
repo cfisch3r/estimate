@@ -26,6 +26,8 @@ export interface Diff {
   after(path: string): string | undefined
   /** The lines the change added to the file (without the leading `+`). */
   addedLines(file: ChangedFile): string[]
+  /** The 1-based line numbers the change added to the file, as they are now. */
+  addedLineNumbers(file: ChangedFile): number[]
 }
 
 function git(cwd: string, args: string[]): string {
@@ -114,6 +116,20 @@ export function readGitDiff(options: { cwd?: string; from?: string } = {}): Diff
       } catch {
         return undefined
       }
+    },
+    addedLineNumbers: (file) => {
+      if (untrackedPaths.has(file.path)) {
+        const count = readText(cwd, file.path).split('\n').length
+        return Array.from({ length: count }, (_, i) => i + 1)
+      }
+      const paths = file.oldPath ? [file.oldPath, file.path] : [file.path]
+      const patch = git(cwd, ['diff', '-U0', '--no-color', '-M', from, '--', ...paths])
+      // Hunk header: @@ -old,count +new,count @@ (count is 1 when left out, 0 for a pure deletion)
+      return [...patch.matchAll(/^@@ -\S+ \+(\d+)(?:,(\d+))? @@/gm)].flatMap((m) => {
+        const start = Number(m[1])
+        const count = m[2] === undefined ? 1 : Number(m[2])
+        return Array.from({ length: count }, (_, i) => start + i)
+      })
     },
     addedLines: (file) => {
       if (untrackedPaths.has(file.path)) {
