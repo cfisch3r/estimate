@@ -95,6 +95,11 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   Checks docs for accuracy against shipped code, cross-reference integrity, and
   conformance to this file's conventions. Defaults to the current diff; `/doc-review all`
   for a full audit, or pass a path. Reports severity-ranked findings and applies nothing.
+- **`/risk-review`** — read-only risk rating of the branch, run in the `risk-review`
+  subagent. Starts from the deterministic floor (`pnpm review:floor`, see
+  `docs/review-risk.md`), may raise the risk and name hot spots but never lower the floor, and
+  replies with one JSON answer (risk, categories, hot spots, skim-only files, evidence notes).
+  Applies nothing.
 - **`/architecture-review`** — read-only architecture audit run in the
   `architecture-review` subagent. Covers judgment calls Steiger/oxlint can't make: layer
   placement (domain / application / adapters / UI, store action vs use case; see
