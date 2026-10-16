@@ -100,17 +100,21 @@ run the script again.
 
 `pnpm review:check-guide --body <file>` (or `--pr <number>`) checks the guide in a pull request
 body. It exists for what a reader cannot easily see; a reader still notices a missing guide.
-It reads the hidden JSON, never the Markdown, and uses no model, no coverage run and no network
-call (apart from `gh` for `--pr`). It exits 1 and lists every problem it finds:
+It takes its facts (risk, categories, commit) from the hidden JSON and reads the visible text only
+to check its structure and that it matches the data. It uses no model, no coverage run and no
+network call (apart from `gh` for `--pr`). It exits 1 and lists the problems it finds:
 
 | Check | Fails when |
 |---|---|
 | Presence | There is no guide and no skip line, or the data comment is missing or damaged |
-| Skip | `Review guide: skipped (reason)` has no reason. A skip line is accepted only when there is no guide |
+| Skip | `Review guide: skipped (reason)` has no reason. A skip line next to a guide is ignored and the guide is checked |
 | Structure | The `Covers:` marker or one of the four parts is missing |
-| Hand edits | The visible text differs from what the data renders to |
+| Hand edits | The visible text differs from what the data renders to (checked only when the structure is intact) |
 | Floor | The stated risk is below the floor, or a matched category is missing |
-| Freshness | The marker commit is not in the branch history (after a rebase), or the changes after it touch a category other than `mechanical` |
+| Freshness | The marker is not a full commit ID, is not in the branch history (after a rebase), or the changes after it touch a category other than `mechanical` |
+
+With `--pr`, the body is checked against the branch that is checked out, so run it on the pull
+request's branch.
 
 The skip line is for trivial pull requests, and only the maintainer asks for it. The check does
 not run in CI: a required check would need a rule for which pull requests are exempt (release

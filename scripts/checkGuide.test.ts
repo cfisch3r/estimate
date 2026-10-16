@@ -136,6 +136,20 @@ describe('structure and hand edits', () => {
     expect(result.problems[0]).toMatch(/data is missing or damaged/)
   })
 
+  it.each([
+    '"categories":["domain-math"],',
+    '"risk":"high",',
+    '"hotSpots":[',
+    '"covers":"',
+  ])('fails, without throwing, when the data lacks %s', (piece) => {
+    const body = bodyOf()
+    const broken = body.replace(piece, piece.replace(/^"(\w+)"/, '"x$1"'))
+    expect(broken).not.toBe(body)
+    const result = check({ body: broken })
+    expect(result.status).toBe('failed')
+    expect(result.problems[0]).toMatch(/data is missing or damaged/)
+  })
+
   it('does not trust hidden data that was edited to match a lowered risk', () => {
     const data = guideData({ risk: 'low', floor: 'low' })
     // The data and the text agree, so only the floor comparison can catch it.

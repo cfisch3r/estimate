@@ -77,9 +77,9 @@ pnpm test:e2e:real-world  # same specs against production signaling (public Nost
 pnpm test:e2e:ui          # Playwright UI mode, for local debugging
 pnpm deadcode             # knip — unused exports/files/dependencies
 pnpm metrics              # advisory complexity/size hotspots in the diff (`pnpm metrics all` for src/); never gates
+pnpm review:check-guide   # check the Review guide in a PR body (`--body <file>` or `--pr <n>`): structure, floor, freshness, hand edits, or a deliberate skip line; exits 1 on a problem
 pnpm review:floor         # minimum review risk of the branch plus working tree from docs/review-risk.md (`pnpm review:floor <commit>` for changes since a commit); prints JSON
 pnpm review:guide         # render the Review guide block from the floor, signals and risk-review answer files (`--floor`, `--signals`, `--agent`; optional `--body`, `--covers`); prints Markdown
-pnpm review:check-guide    # check the Review guide in a PR body (`--body <file>` or `--pr <n>`): structure, floor, freshness, hand edits, or a deliberate skip line; exits 1 on a problem
 pnpm review:signals       # evidence for the risk review of the branch plus working tree: file history, metrics, changed-line coverage (runs the unit tests), dependency diff and audit; each section may say "not available"; prints JSON
 ```
 
