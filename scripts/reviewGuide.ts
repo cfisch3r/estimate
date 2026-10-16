@@ -353,7 +353,7 @@ const encodePath = (path: string) =>
     )
     .join('/')
 
-const DARK_TOKENS = `--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--card:#161b22;--link:#58a6ff;--low:#3fb950;--medium:#d29922;--high:#f0883e;--critical:#ff7b72;`
+const DARK_TOKENS = `--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--card:#161b22;--link:#58a6ff;--low:#3fb950;--medium:#d29922;--high:#f0883e;--critical:#ff7b72;color-scheme:dark;`
 const STYLE = `
 :root{--bg:#ffffff;--fg:#1f2328;--muted:#59636e;--line:#d1d9e0;--card:#f6f8fa;--link:#0969da;--low:#1a7f37;--medium:#9a6700;--high:#bc4c00;--critical:#cf222e}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${DARK_TOKENS}}}
