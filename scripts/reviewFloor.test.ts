@@ -380,9 +380,7 @@ describe('readGitDiff', () => {
     ])
     expect(diff.addedLineNumbers(byPath['keep.ts'] as ChangedFile)).toEqual([6, 7])
     expect(diff.addedLineNumbers(byPath['gone.ts'] as ChangedFile)).toEqual([])
-    expect(diff.addedLineNumbers(byPath['untracked.ts'] as ChangedFile)).toEqual([
-      1, 2, 3,
-    ])
+    expect(diff.addedLineNumbers(byPath['untracked.ts'] as ChangedFile)).toEqual([1, 2])
   })
 
   it('reports only what changed since a given commit', () => {

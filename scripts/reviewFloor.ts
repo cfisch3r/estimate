@@ -3,6 +3,7 @@ import { parse } from 'yaml'
 import {
   baseRef,
   readGitDiff,
+  repoRoot,
   showAt,
   type ChangedFile,
   type Diff,
@@ -274,9 +275,10 @@ export function evaluateFloor(catalogue: Category[], diff: Diff): Floor {
 function main() {
   const since = process.argv[2]
   if (since?.startsWith('-')) throw new Error(`Expected a commit, got "${since}"`)
-  const base = baseRef(process.cwd())
-  const catalogue = parseCatalogue(showAt(base, CATALOGUE_PATH))
-  const diff = readGitDiff(since ? { from: since } : {})
+  const cwd = repoRoot()
+  const base = baseRef(cwd)
+  const catalogue = parseCatalogue(showAt(base, CATALOGUE_PATH, cwd))
+  const diff = readGitDiff(since ? { cwd, from: since } : { cwd })
   console.log(
     JSON.stringify(
       { base, since: since ?? null, ...evaluateFloor(catalogue, diff) },

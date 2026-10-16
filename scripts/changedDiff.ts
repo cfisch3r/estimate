@@ -47,6 +47,11 @@ function gitOrUndefined(cwd: string, args: string[]): string | undefined {
   }
 }
 
+/** The root of the repository, so paths from git resolve from any subdirectory. */
+export function repoRoot(cwd = process.cwd()): string {
+  return git(cwd, ['rev-parse', '--show-toplevel']).trim()
+}
+
 /** The ref of the default branch: `origin/main` if it exists, otherwise `main`. */
 export function baseRef(cwd: string): string {
   for (const ref of ['origin/main', 'main']) {
@@ -119,7 +124,9 @@ export function readGitDiff(options: { cwd?: string; from?: string } = {}): Diff
     },
     addedLineNumbers: (file) => {
       if (untrackedPaths.has(file.path)) {
-        const count = readText(cwd, file.path).split('\n').length
+        const text = readText(cwd, file.path)
+        const count =
+          text === '' ? 0 : text.split('\n').length - (text.endsWith('\n') ? 1 : 0)
         return Array.from({ length: count }, (_, i) => i + 1)
       }
       const paths = file.oldPath ? [file.oldPath, file.path] : [file.path]

@@ -182,9 +182,18 @@ describe('dependencies', () => {
         pkg({ react: '^19.1.0', marked: '^18.0.0' }, { vitest: '^4.0.0' }),
       ),
     ).toEqual([
-      { name: 'marked', from: null, to: '^18.0.0' },
-      { name: 'react', from: '^19.0.0', to: '^19.1.0' },
-      { name: 'zustand', from: '^5.0.0', to: null },
+      { field: 'dependencies', name: 'marked', from: null, to: '^18.0.0' },
+      { field: 'dependencies', name: 'react', from: '^19.0.0', to: '^19.1.0' },
+      { field: 'dependencies', name: 'zustand', from: '^5.0.0', to: null },
+    ])
+  })
+
+  it('reports a package that moved between dependency fields', () => {
+    expect(
+      dependencyChanges(pkg({}, { vitest: '^4.0.0' }), pkg({ vitest: '^4.0.0' })),
+    ).toEqual([
+      { field: 'dependencies', name: 'vitest', from: null, to: '^4.0.0' },
+      { field: 'devDependencies', name: 'vitest', from: '^4.0.0', to: null },
     ])
   })
 
@@ -239,7 +248,7 @@ describe('dependencies', () => {
     )
     expect(dependenciesSignal(diff, () => audit)).toEqual({
       status: 'ok',
-      changed: [{ name: 'yaml', from: null, to: '^2.9.1' }],
+      changed: [{ field: 'dependencies', name: 'yaml', from: null, to: '^2.9.1' }],
       lockfileEntries: ['yaml@2.9.1'],
       advisories: {
         status: 'ok',

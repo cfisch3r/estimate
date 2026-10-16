@@ -2,7 +2,13 @@ import { execFileSync } from 'node:child_process'
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { baseRef, readGitDiff, type ChangedFile, type Diff } from './changedDiff.ts'
+import {
+  baseRef,
+  readGitDiff,
+  repoRoot,
+  type ChangedFile,
+  type Diff,
+} from './changedDiff.ts'
 
 // Evidence for the `risk-review` agent: git history, advisory hotspots, changed-line
 // coverage and the dependency diff. A signal only shapes where the agent looks; it never
@@ -128,6 +134,7 @@ export function runCoverage(cwd: string, timeoutMs: number): () => CoverageRepor
   return () => {
     const dir = mkdtempSync(join(tmpdir(), 'review-coverage-'))
     try {
+      let cause = 'no error'
       try {
         execFileSync(
           'pnpm',
@@ -148,13 +155,17 @@ export function runCoverage(cwd: string, timeoutMs: number): () => CoverageRepor
             cause: error,
           })
         }
+        cause =
+          error instanceof Error
+            ? (error.message.split('\n')[0] ?? 'failed')
+            : String(error)
       }
       try {
         return JSON.parse(
           readFileSync(join(dir, 'coverage-final.json'), 'utf8'),
         ) as CoverageReport
       } catch (error) {
-        throw new Error('the coverage run wrote no report', { cause: error })
+        throw new Error(`the coverage run wrote no report (${cause})`, { cause: error })
       }
     } finally {
       rmSync(dir, { recursive: true, force: true })
@@ -172,6 +183,7 @@ const DEPENDENCY_FIELDS = [
 ]
 
 export interface DependencyChange {
+  field: string
   name: string
   from: string | null
   to: string | null
@@ -187,17 +199,25 @@ export function dependencyChanges(
       ? (JSON.parse(text) as Record<string, Record<string, string> | undefined>)
       : {}
     return new Map(
-      DEPENDENCY_FIELDS.flatMap((field) => Object.entries(json[field] ?? {})).map(
-        ([name, range]) => [name, range],
+      DEPENDENCY_FIELDS.flatMap((field) =>
+        Object.entries(json[field] ?? {}).map(([name, range]) => [
+          `${field}\0${name}`,
+          range,
+        ]),
       ),
     )
   }
   const was = read(before)
   const now = read(after)
   return [...new Set([...was.keys(), ...now.keys()])]
-    .filter((name) => was.get(name) !== now.get(name))
-    .sort()
-    .map((name) => ({ name, from: was.get(name) ?? null, to: now.get(name) ?? null }))
+    .filter((key) => was.get(key) !== now.get(key))
+    .sort(
+      (a, b) => a.split('\0')[1]!.localeCompare(b.split('\0')[1]!) || a.localeCompare(b),
+    )
+    .map((key) => {
+      const [field = '', name = ''] = key.split('\0')
+      return { field, name, from: was.get(key) ?? null, to: now.get(key) ?? null }
+    })
 }
 
 /** The `name@version` entries a change added to pnpm-lock.yaml. */
@@ -310,7 +330,7 @@ export function runAudit(cwd: string, timeoutMs: number): () => AuditReport {
 // --- run ------------------------------------------------------------------------------
 
 function main() {
-  const cwd = process.cwd()
+  const cwd = repoRoot()
   const base = baseRef(cwd)
   const diff = readGitDiff({ cwd })
   const subjectsOf = (path: string) =>
