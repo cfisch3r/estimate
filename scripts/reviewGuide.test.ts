@@ -11,10 +11,7 @@ import {
   githubUrl,
   originUrl,
   parseAgentAnswer,
-  parseGuide,
-  renderGuide,
-  renderVisible,
-  replaceGuide,
+  renderHtml,
   type AgentAnswer,
   type GuideData,
   type GuideInput,
@@ -22,8 +19,8 @@ import {
 } from './reviewGuide.ts'
 
 // The guide script holds the rules that the agent's prompt only asks for: the risk is the
-// higher of the floor and the agent's, hot spots must be lines of the change, and what the
-// reader sees is rendered from the same data the check script reads back.
+// higher of the floor and the agent's, hot spots must be lines of the change, and the
+// page the reader sees is rendered from that data with all text escaped.
 const NAMES = ['domain-math', 'wire-contract', 'guardrail-weakened', 'mechanical']
 
 const floor = (risk: Floor['floor'], categories: string[], files: string[]): Floor => ({
@@ -70,7 +67,7 @@ describe('risk and categories', () => {
   it('raises the risk above the floor and says so', () => {
     const data = build({ agent: { risk: 'critical' } })
     expect(data.risk).toBe('critical')
-    expect(renderVisible(data)).toContain('**critical**, raised from the floor high')
+    expect(renderHtml(data)).toContain('>critical</span>, raised from the floor high')
   })
 
   it('never goes below the floor, and notes it', () => {
@@ -107,7 +104,7 @@ describe('risk and categories', () => {
 
   it('says so when no category matched', () => {
     const data = build({ floor: floor('low', [], ['src/x.ts']), agent: { risk: 'low' } })
-    expect(renderVisible(data)).toContain('**low** — no category matched')
+    expect(renderHtml(data)).toContain('>low</span> — no category matched')
   })
 })
 
@@ -265,9 +262,13 @@ describe('evidence from the signals', () => {
   })
 })
 
-describe('rendering and reading the body', () => {
-  it('renders the four parts and the marker', () => {
-    const visible = renderVisible(
+const REPO = 'https://github.com/someone/estimate'
+const page = (overrides: Partial<GuideInput> & { agent?: AgentAnswer } = {}) =>
+  renderHtml(build(overrides))
+
+describe('rendering the page', () => {
+  it('renders the four parts, the covered commit and the title', () => {
+    const html = renderHtml(
       build({
         agent: {
           risk: 'high',
@@ -275,124 +276,73 @@ describe('rendering and reading the body', () => {
           skimOnly: [{ file: 'docs/x.md', why: 'Text.' }],
         },
       }),
+      'Review guide PR 7',
     )
-    expect(visible).toContain('Covers: `aaaaaaa`')
-    expect(visible).toContain('### Risk\n\n**high** — `domain-math`')
-    expect(visible).toContain(
-      '1. **Rounds the wrong way**\n\n   The value is rounded down where it should round up.\n\n   `src/domain/a.ts:7` · domain-math',
+    expect(html).toContain('<title>Review guide PR 7</title>')
+    expect(html).toContain('<h1>Review guide PR 7</h1>')
+    expect(html).toContain('Covers <code>aaaaaaa</code>')
+    expect(html).toContain(
+      '<span class="badge risk-high">high</span> — <code>domain-math</code>',
     )
-    expect(visible).toContain('### Skim only\n\n- `docs/x.md` — Text.')
-    expect(visible).toContain('### Not verified\n\nNothing flagged.')
-    expect(visible).toContain(
-      '<details>\n<summary>Checked by the scripts</summary>\n\n- Checked:',
-    )
+    expect(html).toContain('<p class="title">Rounds the wrong way</p>')
+    expect(html).toContain('<p>The value is rounded down where it should round up.</p>')
+    expect(html).toContain('<p><code>src/domain/a.ts:7</code> · domain-math</p>')
+    expect(html).toContain('<li><code>docs/x.md</code> — Text.</li>')
+    expect(html).toContain('<h2>Not verified</h2>\n<p class="muted">Nothing flagged.</p>')
+    expect(html).toContain('<summary>Checked by the scripts</summary>')
   })
 
-  it('says None for empty parts', () => {
-    const visible = renderVisible(build({ agent: { risk: 'high' }, signals: {} }))
-    expect(visible).toContain('### Hot spots\n\nNone.')
-    expect(visible).toContain('### Skim only\n\nNone.')
+  it('says the risk was raised above the floor', () => {
+    const html = page({ agent: { risk: 'critical' } })
+    expect(html).toContain('risk-critical">critical</span>, raised from the floor high')
   })
 
-  it('reads back exactly what it rendered, including text that looks like markup', () => {
+  it('says None for empty parts and names a change without a category', () => {
+    const html = page({
+      agent: { risk: 'low' },
+      floor: floor('low', [], ['docs/x.md']),
+      signals: {},
+    })
+    expect(html).toContain('<h2>Hot spots</h2>\n<p class="muted">None.</p>')
+    expect(html).toContain('<h2>Skim only</h2>\n<p class="muted">None.</p>')
+    expect(html).toContain('no category matched')
+  })
+
+  it('escapes agent text so it cannot add markup', () => {
     const nasty = {
       ...spot,
-      body: 'Ends the comment --> and opens <script> & "quotes" $& \\',
+      title: '<img src=x onerror=1>',
+      body: 'Ends the comment --> and opens <script>alert(1)</script> & "quotes"',
+      rule: 'a`b<i>',
     }
-    const data = build({ agent: { risk: 'high', hotSpots: [nasty] } })
-    const parsed = parseGuide(`${renderGuide(data)}\n\nrest of the body`)
-    expect(parsed?.data).toEqual(data)
-    expect(parsed?.visible).toBe(renderVisible(data))
-    // The data comment must close only where it ends, whatever the text says.
-    const comment = renderGuide(data)
-      .split('\n')
-      .find((l) => l.startsWith('<!-- review-guide-data'))
-    expect(comment?.split('-->')).toHaveLength(2)
-  })
-
-  it('reads a body that came back with Windows line endings', () => {
-    const data = build()
-    const parsed = parseGuide(`${renderGuide(data)}\n\nrest`.replace(/\n/g, '\r\n'))
-    expect(parsed?.data).toEqual(data)
-    expect(parsed?.visible).toBe(renderVisible(data))
-  })
-
-  it('keeps agent text from ending the block or breaking a code span', () => {
-    const evil = {
-      ...spot,
-      file: 'src/domain/a.ts',
-      body: 'Ends it <!-- review-guide:end --> here',
-      rule: 'a`b',
-    }
-    const data = build({
+    const html = page({
       agent: {
         risk: 'high',
-        hotSpots: [evil],
-        skimOnly: [{ file: 'docs/`x`.md', why: '--> done' }],
+        hotSpots: [nasty],
+        skimOnly: [{ file: 'docs/<x>.md', why: '</li><b>done</b>' }],
         notVerified: ['<!-- note --!> <b>bold</b>'],
       },
     })
-    const guide = renderGuide(data)
-    expect(guide.split('<!-- review-guide:end -->')).toHaveLength(2)
-    const withoutDetails = renderVisible(data).replace(
-      /<\/?details>|<summary>.*<\/summary>/g,
-      '',
+    const body = html.slice(html.indexOf('<main>'))
+    expect(body).not.toMatch(/<(script|img|b|i)\b/)
+    expect(body).toContain(
+      '&lt;script&gt;alert(1)&lt;/script&gt; &amp; &quot;quotes&quot;',
     )
-    expect(withoutDetails).not.toMatch(/[<>]/)
-    expect(renderVisible(data)).toContain('&lt;b&gt;bold&lt;/b&gt;')
-    expect(parseGuide(guide)?.data).toEqual(data)
-    expect(renderVisible(data)).toContain("`docs/'x'.md`")
-    expect(replaceGuide(guide, guide).split('<!-- review-guide:start -->')).toHaveLength(
-      2,
+    expect(body).toContain('docs/&lt;x&gt;.md')
+    expect(body).toContain('&lt;!-- note --!&gt; &lt;b&gt;bold&lt;/b&gt;')
+  })
+
+  it('escapes the title', () => {
+    expect(renderHtml(build(), '<b>x</b>')).toContain(
+      '<title>&lt;b&gt;x&lt;/b&gt;</title>',
     )
   })
 
-  it.each([
-    ['an evidence item that is not an object', '"evidence":[', '"evidence":[null,'],
-    ['an unknown evidence kind', '"kind":"checked"', '"kind":"mystery"'],
-    ['a hot spot without a line', '"line":7', '"lin":7'],
-    ['a hot spot without a title', '"title":"Rounds', '"titl":"Rounds'],
-    ['a hot spot without facts', '"facts":[]', '"fact":[]'],
-    ['a risk that is not a level', '"risk":"high"', '"risk":"x"'],
-  ])('does not read data with %s', (_label, from, to) => {
-    const data = build({ signals: okSignals })
-    const guide = renderGuide(data)
-    expect(guide).toContain(from)
-    expect(parseGuide(guide.replace(from, to))).toBeUndefined()
-  })
-
-  it('returns undefined when there is no guide or its data is damaged', () => {
-    expect(parseGuide('just text')).toBeUndefined()
-    const guide = renderGuide(build())
-    expect(parseGuide(guide.replace('"version":2', '"version":1'))).toBeUndefined()
-    expect(parseGuide(guide.replace('{"version"', '{"versio'))).toBeUndefined()
-    expect(parseGuide(guide.replace('<!-- review-guide-data: ', ''))).toBeUndefined()
-  })
-
-  it('puts the guide at the end of a body that has none', () => {
-    const guide = renderGuide(build())
-    expect(replaceGuide('## Why the change\n\nBecause.', guide)).toBe(
-      `## Why the change\n\nBecause.\n\n${guide}\n`,
-    )
-    expect(replaceGuide('', guide)).toBe(`${guide}\n`)
-  })
-
-  it('replaces the guide that is there and leaves the rest alone', () => {
-    const old = renderGuide(build())
-    const next = renderGuide(build({ covers: 'b'.repeat(40) }))
-    const body = `## Why the change\n\nBecause $& it.\n\n${old}\n`
-    expect(replaceGuide(body, next)).toBe(
-      `## Why the change\n\nBecause $& it.\n\n${next}\n`,
-    )
-    expect(replaceGuide(body, `${next} $&`)).toContain(`${next} $&`)
-  })
-
-  it('replaces a guide that sits at the top, where older bodies have it', () => {
-    const old = renderGuide(build())
-    const next = renderGuide(build({ covers: 'b'.repeat(40) }))
-    expect(replaceGuide(`${old}\n\n## Why the change\n`, next)).toBe(
-      `${next}\n\n## Why the change\n`,
-    )
+  it('has light and dark colours and a body background', () => {
+    const html = page()
+    expect(html).toContain('prefers-color-scheme: dark')
+    expect(html).toContain(':root[data-theme="dark"]')
+    expect(html).toContain('background:var(--bg)')
   })
 })
 
@@ -431,55 +381,48 @@ describe('facts on hot spots', () => {
   })
 
   it('shows the facts under the reference, joined with a dot', () => {
-    const visible = renderVisible(
-      build({
-        signals: {
-          coverage: {
-            status: 'ok',
-            checkedFiles: 1,
-            uncovered: ['src/domain/a.ts:7'],
-            notInReport: [],
-          },
-          history: { status: 'ok', files: [{ path: 'src/domain/a.ts', fixes: 3 }] },
+    const html = page({
+      signals: {
+        coverage: {
+          status: 'ok',
+          checkedFiles: 1,
+          uncovered: ['src/domain/a.ts:7'],
+          notInReport: [],
         },
-      }),
-    )
-    expect(visible).toContain(
-      '`src/domain/a.ts:7` · domain-math\n\n   Facts: No test runs this line · 3 fix commits in the last 6 months',
+        history: { status: 'ok', files: [{ path: 'src/domain/a.ts', fixes: 3 }] },
+      },
+    })
+    expect(html).toContain(
+      '<p class="facts">Facts: No test runs this line · 3 fix commits in the last 6 months</p>',
     )
   })
 })
 
 describe('not verified', () => {
   it('lists the script gaps and the agent gaps, and folds the checked facts', () => {
-    const visible = renderVisible(
-      build({
-        signals: {
-          ...okSignals,
-          coverage: { status: 'not available', reason: 'timed out' },
-        },
-        agent: {
-          risk: 'high',
-          notVerified: ['Behaviour with an older peer is untested.'],
-        },
-      }),
+    const html = page({
+      signals: {
+        ...okSignals,
+        coverage: { status: 'not available', reason: 'timed out' },
+      },
+      agent: {
+        risk: 'high',
+        notVerified: ['Behaviour with an older peer is untested.'],
+      },
+    })
+    expect(html).toContain(
+      '<h2>Not verified</h2>\n<ul class="plain">\n<li>Changed-line coverage: timed out</li>\n<li>Behaviour with an older peer is untested.</li>\n</ul>\n<details>',
     )
-    expect(visible).toContain(
-      '### Not verified\n\n- Changed-line coverage: timed out\n- Behaviour with an older peer is untested.\n\n<details>',
-    )
-    expect(visible).toContain('- Note: Dependencies: none changed')
-    expect(visible).not.toContain('Reviewer note')
+    expect(html).toContain('<li>Note: Dependencies: none changed</li>')
+    expect(html).not.toContain('Reviewer note')
   })
 
   it('says nothing is flagged and adds no folded block when there is nothing to show', () => {
-    const visible = renderVisible(
-      build({ signals: { dependencies: undefined }, agent: { risk: 'high' } }),
-    )
-    expect(visible).not.toContain('<details>')
     const quiet = build({ agent: { risk: 'high' } })
     quiet.evidence = []
-    expect(renderVisible(quiet)).toContain('### Not verified\n\nNothing flagged.')
-    expect(renderVisible(quiet)).not.toContain('<details>')
+    const html = renderHtml(quiet)
+    expect(html).toContain('Nothing flagged.')
+    expect(html).not.toContain('<details>')
   })
 
   it('ignores the old evidenceNotes field', () => {
@@ -488,70 +431,46 @@ describe('not verified', () => {
     })
     expect(data.evidence.some((e) => e.text === 'Read the callers.')).toBe(false)
   })
-})
 
-describe('warnings and the guide block', () => {
   it('shows dropped hot spots under Not verified, not in the folded block', () => {
-    const visible = renderVisible(
-      build({ agent: { risk: 'high', hotSpots: [{ ...spot, line: 99 }] } }),
-    )
-    const [shown, folded] = visible.split('<details>')
-    expect(shown).toContain('- Dropped 1 hot spot(s)')
+    const html = page({ agent: { risk: 'high', hotSpots: [{ ...spot, line: 99 }] } })
+    const [shown, folded] = html.split('<details>')
+    expect(shown).toContain('<li>Dropped 1 hot spot(s)')
     expect(folded).not.toContain('Dropped 1 hot spot(s)')
-  })
-
-  it('finds the guide when the description quotes the start marker earlier', () => {
-    const guide = renderGuide(build())
-    const body = `Quote: <!-- review-guide:start --> and <!-- review-guide:end -->\n\n${guide}\n`
-    expect(parseGuide(body)?.data).toEqual(build())
-    expect(replaceGuide(body, 'NEW')).toBe(
-      'Quote: <!-- review-guide:start --> and <!-- review-guide:end -->\n\nNEW\n',
-    )
-  })
-
-  it('writes plain text when the covered commit is not a full commit ID', () => {
-    const visible = renderVisible(
-      build({ covers: 'main', repoUrl: 'https://github.com/someone/estimate' }),
-    )
-    expect(visible).toContain('   `src/domain/a.ts:7` · domain-math')
-    expect(visible).not.toContain('](')
   })
 })
 
 describe('the reference link', () => {
-  const REPO = 'https://github.com/someone/estimate'
   const linked = (file: string) =>
-    renderVisible(
-      build({
-        repoUrl: REPO,
-        floor: floor('high', ['domain-math'], [file]),
-        agent: { risk: 'high', hotSpots: [{ ...spot, file }] },
-      }),
-    )
+    page({
+      repoUrl: REPO,
+      floor: floor('high', ['domain-math'], [file]),
+      agent: { risk: 'high', hotSpots: [{ ...spot, file }] },
+    })
 
   it('links to the file at the covered commit and the line', () => {
     expect(linked('src/domain/a.ts')).toContain(
-      `[\`src/domain/a.ts:7\`](${REPO}/blob/${'a'.repeat(40)}/src/domain/a.ts#L7) · domain-math`,
+      `<a href="${REPO}/blob/${'a'.repeat(40)}/src/domain/a.ts#L7"><code>src/domain/a.ts:7</code></a> · domain-math`,
     )
   })
 
-  it('encodes spaces and parentheses so the link cannot end early', () => {
-    expect(linked('src/my file (1).ts')).toContain(
-      `/blob/${'a'.repeat(40)}/src/my%20file%20%281%29.ts#L7)`,
+  it('encodes spaces, quotes and parentheses so the link cannot end early', () => {
+    const html = linked('src/my file (1) "x".ts')
+    expect(html).toContain(
+      `/blob/${'a'.repeat(40)}/src/my%20file%20%281%29%20%22x%22.ts#L7"`,
     )
   })
 
   it('writes plain text when there is no GitHub address', () => {
-    const visible = renderVisible(build())
-    expect(visible).toContain('   `src/domain/a.ts:7` · domain-math')
-    expect(visible).not.toContain('](')
+    const html = page()
+    expect(html).toContain('<p><code>src/domain/a.ts:7</code> · domain-math</p>')
+    expect(html).not.toContain('<a ')
   })
 
-  it('keeps the address in the data and refuses one that is not a GitHub repository', () => {
-    const guide = renderGuide(build({ repoUrl: REPO }))
-    expect(parseGuide(guide)?.data.repoUrl).toBe(REPO)
-    expect(parseGuide(guide.replaceAll(REPO, 'https://evil.example/x/y'))).toBeUndefined()
-    expect(parseGuide(guide.replaceAll(REPO, 'https://github.com/a/b)'))).toBeUndefined()
+  it('writes plain text when the covered commit is not a full commit ID', () => {
+    const html = page({ covers: 'main', repoUrl: REPO })
+    expect(html).toContain('<p><code>src/domain/a.ts:7</code> · domain-math</p>')
+    expect(html).not.toContain('<a ')
   })
 })
 

@@ -77,9 +77,8 @@ pnpm test:e2e:real-world  # same specs against production signaling (public Nost
 pnpm test:e2e:ui          # Playwright UI mode, for local debugging
 pnpm deadcode             # knip — unused exports/files/dependencies
 pnpm metrics              # advisory complexity/size hotspots in the diff (`pnpm metrics all` for src/); never gates
-pnpm review:check-guide   # check the Review guide in a PR body (`--body <file>` or `--pr <n>`): structure, floor, hand edits, or a deliberate skip line; exits 1 on a problem
 pnpm review:floor         # minimum review risk of the branch plus working tree from docs/review-risk.md (`pnpm review:floor <commit>` for changes since a commit); prints JSON
-pnpm review:guide         # render the Review guide block from the floor, signals and risk-review answer files (`--floor`, `--signals`, `--agent`; optional `--body`, `--covers`); prints Markdown
+pnpm review:guide         # render the Review guide page from the floor, signals and risk-review answer files (`--floor`, `--signals`, `--agent`; optional `--covers`, `--title`); prints HTML
 pnpm review:signals       # evidence for the risk review of the branch plus working tree: file history, metrics, changed-line coverage (runs the unit tests), dependency diff and audit; each section may say "not available"; prints JSON
 ```
 
@@ -97,12 +96,12 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   Checks docs for accuracy against shipped code, cross-reference integrity, and
   conformance to this file's conventions. Defaults to the current diff; `/doc-review all`
   for a full audit, or pass a path. Reports severity-ranked findings and applies nothing.
-- **`/risk-review`** — read-only risk rating of the branch, run in the `risk-review`
-  subagent. Starts from the deterministic floor (`pnpm review:floor`, see
-  `docs/review-risk.md`), may raise the risk and name hot spots but never lower the floor, and
-  replies with one JSON answer (risk, categories, hot spots, skim-only files, what could not be verified).
-  Applies nothing. The `open-pr` skill runs it before a pull request opens; run it on demand
-  otherwise.
+- **`/risk-review`** — builds the Review guide of the branch on request, for a reader who
+  wants to know where to look. The `risk-review` subagent starts from the deterministic floor
+  (`pnpm review:floor`, see `docs/review-risk.md`), may raise the risk and name hot spots but
+  never lower the floor, and replies with one JSON answer (risk, categories, hot spots,
+  skim-only files, what could not be verified). `pnpm review:guide` turns that into a page,
+  which is published as a private artifact. Changes no code.
 - **`/architecture-review`** — read-only architecture audit run in the
   `architecture-review` subagent. Covers judgment calls Steiger/oxlint can't make: layer
   placement (domain / application / adapters / UI, store action vs use case; see
@@ -115,8 +114,8 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   focus-order sanity, live-region needs, contrast judgment calls outside the e2e scan's
   scope (see ADR-008). Defaults to the current diff; `/accessibility-review all` for a
   full audit, or pass a path.
-- **`open-pr` skill** — opens or updates a pull request: description from the template plus
-  the Review guide at the end of the body (see `docs/review-risk.md`); invoked whenever a PR
+- **`open-pr` skill** — opens or updates a pull request: description from the template, and
+  the review floor in the final report (see `docs/review-risk.md`); invoked whenever a PR
   is created or its body changes.
 - **`code-placement` skill** — loaded automatically before creating a new file under
   `src/` or moving code between layers or slices; the "which layer, then which slice does this
@@ -161,7 +160,7 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 - **All changes** — from a one-line typo fix to a full issue — go through a branch + PR. `main`'s branch protection requires the `ci-passed` and PR-title-lint status checks with `enforce_admins` on, so direct pushes are rejected outright. A trivial/no-issue change can use any descriptive branch name and skip `Closes #n`.
 - **Issue-sized work**: one branch per issue (`issue-<n>-<slug>`), PR opened with `Closes #n` in the description, squash-merge into `main`.
 - **PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/)** (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, etc.) — squash-merging makes the PR title the commit message on `main`, and [release-please](docs/runbook.md#versioning--releases) parses that history to cut releases. Enforced as a required status check ([PR title lint](docs/runbook.md#how-releases-are-cut)); `pnpm install` also wires up a local `commit-msg` hook that warns (non-blocking) on individual commits.
-- **Opening a PR**: use the `open-pr` skill. It writes the description, runs the risk review (floor and signals scripts, then the `risk-review` agent) and puts the resulting **Review guide** at the end of the PR body, checks it with `pnpm review:check-guide`, and only then runs `gh pr create`. The user can ask for a deliberate skip for a trivial PR (`Review guide: skipped (reason)`). The guide is written once, when the PR opens; it is updated only when the user asks (run the skill again). Keep one PR of yours open at a time (release-please's excepted).
+- **Opening a PR**: use the `open-pr` skill. It writes the description from the template, runs `gh pr create`, and reports the review floor of the branch (`pnpm review:floor`: minimum risk and categories). The PR body carries no review guide. When the user asks for one while reviewing, run `/risk-review`: it builds the **Review guide** as a private artifact for the branch as it is now; run it again for a newer commit. Keep one PR of yours open at a time (release-please's excepted).
 - **Review**: after opening the PR, run the `code-review` skill with the arguments `medium origin/main...HEAD` (effort level, then explicit target; see *Code review skill*) as an independent pass over the diff. Also run `/architecture-review` (read-only, covers FSD slice placement and design judgment calls — see ADR-004) on any PR touching `src/`. If the PR touches interactive `src/` UI or visual styling/DOM structure (ARIA roles, focus handling, dynamic content, new color-token pairings, or DOM/layout reordering), also run `/accessibility-review` (read-only, covers ARIA pattern appropriateness, focus-order sanity, live-region needs, contrast judgment calls — see ADR-008). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
 - **Code review skill**: medium by default and higher for anything touching `src/domain`, `adapters`, `src/application` (the former `/network` and `/state`); never low, which makes one pass over source hunks and skips tests and docs. Always pass the target: without it the skill picks its own diff command, and on a pushed branch `git diff @{upstream}...HEAD` is empty ([anthropics/claude-code#63048](https://github.com/anthropics/claude-code/issues/63048)). If it answers `(none)` or finds nothing within seconds, check in its transcript that it read a non-empty diff, and rerun with the target if not. The skill is built into Claude Code and is not versioned here.
 - **Automated feedback**: before asking about the merge, read what GitHub itself says about the PR, wait until the checks have finished (CodeQL and the other bots comment only after a push), and treat each item as a review finding: fix it as a follow-up commit, or answer it with the reason. A green `ci-passed` does not mean there is nothing to read.

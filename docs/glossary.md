@@ -36,7 +36,7 @@ The words for judging how closely a change needs to be read ([review-risk.md](re
 | **Diff check** | A fixed, deterministic check on the content of a diff that a path pattern cannot express (for example, a coverage threshold went down). It can set the floor. | "heuristic", "signal" |
 | **Signal** | Evidence gathered for the risk-review agent (git history, changed-line coverage, dependency diff). It may be missing and never sets a category or the floor. | "diff check" |
 | **Hot spot** | A place in a diff, named by file and line, that needs a reader's judgment: a headline, what the change is and what makes it a hot spot, and the facts the signals say about it. | |
-| **Review guide** | The block at the end of a pull request body: the risk and categories, the hot spots, what can be skimmed, and what could not be verified. | "summary" |
+| **Review guide** | A page built on request while reviewing a branch and published as a private artifact: the risk and categories, the hot spots, what can be skimmed, and what could not be verified. | "summary" |
 
 ## Feature-Sliced Design
 

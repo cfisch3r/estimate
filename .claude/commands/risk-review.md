@@ -1,26 +1,35 @@
 ---
-description: Rate the risk of the current branch for its pull request — the deterministic floor from the risk catalogue, then a read-only review that may raise it and names hot spots and skim-only files, and says what it could not verify. Reports one JSON answer, applies nothing.
+description: Build the Review guide of the current branch as a private artifact — the deterministic floor from the risk catalogue, then a read-only review that may raise it and names hot spots and skim-only files and says what it could not verify. Changes no code.
 ---
 
-Run a risk review by delegating to the `risk-review` subagent. This is a read-only audit —
-it reports an answer and does not edit code. The `open-pr` skill runs the same agent before it opens
-a pull request; this command is for running it on demand.
+Build the Review guide for the branch the user is reviewing. The guide describes the branch as
+it is now; run the command again after new commits to get a new one.
 
 ## Scope
 
 The branch against the base branch (`origin/main`, else `main`), plus uncommitted and
 untracked changes. If the branch is `main` with no uncommitted changes, tell the user there is
 nothing to review and stop. The floor and signals scripts always cover the whole branch, so
-there is no path scope.
+there is no path scope. Run every `pnpm` command in the repository root and keep every
+temporary file in the scratchpad directory (`$S` below, an absolute path): a file inside the
+repository would change the floor.
 
-## Delegate
+## Steps
 
-Spawn the `risk-review` subagent (subagent_type: `risk-review`) with:
+1. `pnpm review:floor > $S/floor.json` and `pnpm review:signals > $S/signals.json`. The signals
+   run the unit tests, so allow a minute; a section that cannot run says "not available" and is fine.
+2. Spawn the `risk-review` subagent (subagent_type: `risk-review`) with a reminder that it runs
+   both scripts itself, may raise the risk but never go below the floor, and replies with its
+   single JSON block. Save the reply to `$S/agent.json`. Do not edit the answer.
+3. `pnpm review:guide --floor $S/floor.json --signals $S/signals.json --agent $S/agent.json --title "Review guide PR <n>" > $S/guide.html`
+   (use the number of the branch's open pull request from `gh pr view --json number`; without
+   one, `--title "Review guide <branch>"`). Never write or edit the page by hand.
+4. Publish `$S/guide.html` as an artifact. If an artifact with that title already exists
+   (`Artifact` with `action: "list"`), pass its `url` so the link stays the same; otherwise it is
+   a new private one. Pass a short `description` and the icon `shield`.
 
-- a reminder that it runs `pnpm review:floor` and `pnpm review:signals` itself, may raise the
-  risk but never go below the floor, and replies with its single JSON block.
+## Report
 
-## Relay
-
-Show the subagent's JSON answer to the user as-is, with the floor it started from (run
-`pnpm review:floor` once yourself to state it). Do not apply fixes or change the answer.
+Give the link, then in a few lines: the risk (and the floor if it was raised), the categories,
+and the headline of each hot spot. Say that the page describes the commit it names, and that
+the command can be run again after new commits.

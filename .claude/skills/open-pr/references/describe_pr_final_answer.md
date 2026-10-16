@@ -2,10 +2,10 @@
 
 - PR: [#{number} - {title}]({pr_url})
 
-### Review guide
+### Review floor
 
-- Risk: {risk} (floor {floor}); categories: {categories, or none}
-- Hot spots: {count}; checked with `pnpm review:check-guide`: {ok | skipped (reason)}
+- Minimum risk: {floor}; categories: {categories, or none}
+- Ask for `/risk-review` to get the Review guide as an artifact.
 
 ### Summary
 
