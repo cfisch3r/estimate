@@ -11,8 +11,8 @@ risk above it.
 
 ## How it is used
 
-`/risk-review` runs this flow when the maintainer reviews a branch; the `open-pr` skill runs only
-the floor script. The guide describes the commit it names: run the command again after new commits.
+`/risk-review` runs this flow when the maintainer reviews a branch; only the floor script runs
+when a PR opens. The guide describes the commit it names: run the command again after new commits.
 
 Legend: solid line = data passed on. Scripts are deterministic; the agent is the only model step.
 
@@ -103,8 +103,7 @@ self-contained HTML page. A script writes it, so the rules hold whatever the age
 
 Do not edit the page by hand; run the command again.
 
-When a pull request opens, the `open-pr` skill runs only the floor script and reports the minimum
-risk and categories first in its answer. A `PostToolUse` hook on `gh pr create`
+When a pull request opens, the agent reports the minimum risk and categories first in its answer. A `PostToolUse` hook on `gh pr create`
 (`.claude/hooks/posttooluse-floor.sh`) also shows the floor to the maintainer, so the report does not
 depend on the agent. That costs seconds and no model, and it is the only automatic signal: the
 guide itself exists only when the maintainer asks for it.
