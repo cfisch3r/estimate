@@ -159,11 +159,12 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 - **Review**: after opening the PR, run the `code-review` skill as an independent pass over the diff (medium effort by default, higher for anything touching `src/domain`, `adapters`, `src/application` — the former `/network` and `/state`). Also run `/architecture-review` (read-only, covers FSD slice placement and design judgment calls — see ADR-004) on any PR touching `src/`. If the PR touches interactive `src/` UI or visual styling/DOM structure (ARIA roles, focus handling, dynamic content, new color-token pairings, or DOM/layout reordering), also run `/accessibility-review` (read-only, covers ARIA pattern appropriateness, focus-order sanity, live-region needs, contrast judgment calls — see ADR-008). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
 - **Automated feedback**: before asking about the merge, read what GitHub itself says about the PR, wait until the checks have finished (CodeQL and the other bots comment only after a push), and treat each item as a review finding: fix it as a follow-up commit, or answer it with the reason. A green `ci-passed` does not mean there is nothing to read.
   ```sh
+  gh pr checks <n> --watch                             # block until the checks have finished
   gh api repos/cfisch3r/estimate/pulls/<n>/comments   # inline comments, including bots
   gh pr view <n> --json reviews,comments               # review bodies and conversation
   gh api "repos/cfisch3r/estimate/code-scanning/alerts?pr=<n>&state=open"
   ```
-- **Merge gate**: always ask the user whether they want to personally review the PR before merging — even after the automated review comes back clean. Never auto-merge without asking.
+- **Merge gate**: always ask the user whether they want to personally review the PR before merging — even after the automated review comes back clean and the automated feedback has been read and answered. Never auto-merge without asking.
 - **Tracking**: the `EstiMate Roadmap` GitHub Project board (https://github.com/users/cfisch3r/projects/1), Backlog → In Progress → In Review → Done. Work is a two-level ordered backlog of epics and their sub-issues — see [Picking the next task](#picking-the-next-task). Milestones are retired (closed `M0`–`M3` kept as history).
 
 ## Concept docs & diagrams
