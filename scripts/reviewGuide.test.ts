@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import type { Floor } from './reviewFloor.ts'
 import {
   buildGuide,
-  computeDelta,
   evidenceFromSignals,
   parseAgentAnswer,
   parseGuide,
@@ -257,161 +256,6 @@ describe('evidence from the signals', () => {
   })
 })
 
-describe('the delta', () => {
-  const first = build()
-
-  it('has none for a first guide', () => {
-    expect(first.delta).toBeUndefined()
-    expect(renderVisible(first)).not.toContain('Since last version')
-  })
-
-  it('reports what changed in risk, categories, hot spots and evidence', () => {
-    const next = build({
-      covers: 'b'.repeat(40),
-      floor: floor(
-        'high',
-        ['domain-math', 'wire-contract'],
-        ['src/domain/a.ts', 'src/domain/b.ts'],
-      ),
-      agent: {
-        risk: 'critical',
-        categories: [],
-        hotSpots: [
-          { ...spot, line: 9 },
-          { file: 'src/domain/b.ts', line: 2, reason: 'New.', rule: 'wire-contract' },
-        ],
-      },
-      signals: {
-        ...okSignals,
-        coverage: {
-          status: 'ok',
-          checkedFiles: 1,
-          uncovered: ['src/domain/b.ts:2'],
-          notInReport: [],
-        },
-      },
-      previous: first,
-    })
-    expect(next.delta).toMatchObject({
-      since: first.covers,
-      risk: { from: 'high', to: 'critical' },
-      categoriesAdded: ['wire-contract'],
-      categoriesRemoved: [],
-      hotSpots: { unchanged: 0 },
-    })
-    expect(next.delta?.hotSpots.moved).toEqual([{ ...spot, line: 9, was: 7 }])
-    expect(next.delta?.hotSpots.new.map((s) => s.file)).toEqual(['src/domain/b.ts'])
-    expect(next.delta?.evidenceAdded.map((e) => e.text)).toEqual([
-      'Changed-line coverage: 1 changed line(s) never ran: src/domain/b.ts:2',
-    ])
-    expect(next.delta?.evidenceRemoved.map((e) => e.text)).toEqual([
-      'Changed-line coverage: every changed line ran in 1 source file(s)',
-    ])
-    expect(renderVisible(next)).toContain('- Risk: high → critical')
-    expect(renderVisible(next)).toContain(
-      '- Hot spots: 1 new, 1 moved, 0 resolved, 0 unchanged',
-    )
-  })
-
-  it('reports resolved and unchanged hot spots', () => {
-    const two = build({
-      agent: {
-        risk: 'high',
-        hotSpots: [spot, { ...spot, file: 'docs/x.md', rule: 'general' }],
-      },
-    })
-    const next = build({ covers: 'c'.repeat(40), previous: two })
-    expect(next.delta?.hotSpots).toEqual({
-      new: [],
-      moved: [],
-      resolved: [{ ...spot, file: 'docs/x.md', rule: 'general' }],
-      unchanged: 1,
-    })
-    expect(next.delta?.risk).toBeUndefined()
-  })
-
-  it('does not call a spot changed because the reviewer reworded it', () => {
-    const a = build({ agent: { risk: 'high', hotSpots: [spot] } })
-    const b = build({
-      covers: 'b'.repeat(40),
-      agent: { risk: 'high', hotSpots: [{ ...spot, reason: 'Another way to say it.' }] },
-      previous: a,
-    })
-    expect(b.delta?.hotSpots).toEqual({ new: [], moved: [], resolved: [], unchanged: 1 })
-  })
-
-  it('does not compare the reviewer notes, only what the scripts measured', () => {
-    const a = build({ agent: { risk: 'high', evidenceNotes: ['Read the callers.'] } })
-    const same = build({
-      covers: 'b'.repeat(40),
-      agent: {
-        risk: 'high',
-        evidenceNotes: ['Looked at the callers again.', 'New note.'],
-      },
-      previous: a,
-    })
-    expect(same.delta?.evidenceAdded).toEqual([])
-    expect(same.delta?.evidenceRemoved).toEqual([])
-    const measured = build({
-      covers: 'c'.repeat(40),
-      agent: { risk: 'high', evidenceNotes: ['Read the callers.'] },
-      signals: {},
-      previous: a,
-    })
-    expect(measured.delta?.evidenceAdded.map((e) => e.kind)).toEqual([
-      'not-checked',
-      'not-checked',
-    ])
-    expect(measured.delta?.evidenceRemoved.length).toBeGreaterThan(0)
-  })
-
-  it('pairs spots with the same file and rule by the nearest line, whatever the order', () => {
-    const a = build({
-      agent: { risk: 'high', hotSpots: [spot, { ...spot, line: 20, reason: 'Second.' }] },
-    })
-    const b = build({
-      covers: 'b'.repeat(40),
-      agent: {
-        risk: 'high',
-        hotSpots: [
-          { ...spot, line: 21, reason: 'Second.' },
-          { ...spot, line: 8 },
-        ],
-      },
-      previous: a,
-    })
-    expect(b.delta?.hotSpots.new).toEqual([])
-    expect(b.delta?.hotSpots.resolved).toEqual([])
-    expect(b.delta?.hotSpots.moved.map((s) => [s.was, s.line])).toEqual([
-      [20, 21],
-      [7, 8],
-    ])
-    expect(renderVisible(b)).toContain('  - moved from line 20: `src/domain/a.ts:21`')
-  })
-
-  it('renders a reviewer note with its own label', () => {
-    expect(
-      renderVisible(build({ agent: { risk: 'high', evidenceNotes: ['Read it.'] } })),
-    ).toContain('- Reviewer note: Read it.')
-  })
-
-  it('matches several spots with the same file and rule one by one', () => {
-    const a = build({ agent: { risk: 'high', hotSpots: [spot, { ...spot, line: 20 }] } })
-    const b = build({ agent: { risk: 'high', hotSpots: [spot] } })
-    expect(computeDelta(a, b).hotSpots).toMatchObject({
-      unchanged: 1,
-      resolved: [{ line: 20 }],
-    })
-  })
-
-  it('keeps only the latest delta, not the one inside the previous guide', () => {
-    const second = build({ covers: 'b'.repeat(40), previous: first })
-    const third = build({ covers: 'c'.repeat(40), previous: second })
-    expect(third.delta?.since).toBe(second.covers)
-    expect(JSON.stringify(third)).not.toContain(first.covers)
-  })
-})
-
 describe('rendering and reading the body', () => {
   it('renders the four parts and the marker', () => {
     const visible = renderVisible(
@@ -487,17 +331,6 @@ describe('rendering and reading the body', () => {
     )
   })
 
-  it('does not read a guide whose stored delta has the older shape', () => {
-    const first = build()
-    const rerun = build({ covers: 'b'.repeat(40), previous: first })
-    const guide = renderGuide(rerun)
-    expect(parseGuide(guide)?.data).toEqual(rerun)
-    const old = guide.replace('"moved":', '"changed":')
-    expect(old).not.toBe(guide)
-    expect(parseGuide(old)).toBeUndefined()
-    expect(parseGuide(guide.replace('"since":"', '"since":3,"x":"'))).toBeUndefined()
-  })
-
   it.each([
     ['an evidence item that is not an object', '"evidence":[', '"evidence":[null,'],
     ['an unknown evidence kind', '"kind":"checked"', '"kind":"mystery"'],
@@ -508,25 +341,6 @@ describe('rendering and reading the body', () => {
     const guide = renderGuide(data)
     expect(guide).toContain(from)
     expect(parseGuide(guide.replace(from, to))).toBeUndefined()
-  })
-
-  it('does not read a delta with entries of the wrong shape', () => {
-    const rerun = build({ covers: 'b'.repeat(40), previous: build() })
-    const guide = renderGuide(rerun)
-    expect(
-      parseGuide(guide.replace('"evidenceAdded":[', '"evidenceAdded":[null,')),
-    ).toBeUndefined()
-    expect(
-      parseGuide(
-        guide.replace(
-          '"moved":[',
-          '"moved":[{"file":"a","line":1,"reason":"r","rule":"x"},',
-        ),
-      ),
-    ).toBeUndefined()
-    expect(
-      parseGuide(guide.replace('"since":"', '"since":"1","x":"'))?.data.delta?.since,
-    ).toBe('1')
   })
 
   it('returns undefined when there is no guide or its data is damaged', () => {

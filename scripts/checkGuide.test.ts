@@ -4,8 +4,8 @@ import { checkGuide, type CheckInput } from './checkGuide.ts'
 import type { Floor } from './reviewFloor.ts'
 import { buildGuide, renderGuide, renderVisible, type GuideData } from './reviewGuide.ts'
 
-// The check script catches what a reader cannot see: a guide below the floor, a guide for
-// code that has moved on, a guide edited by hand. Each case plants one defect in an
+// The check script catches what a reader cannot see: a guide below the floor or a guide
+// edited by hand. Each case plants one defect in an
 // otherwise valid body and checks that exactly that problem is reported.
 const COVERS = 'a'.repeat(40)
 const FILES = ['src/domain/a.ts']
@@ -23,7 +23,6 @@ const floorOf = (risk: Floor['floor'], names: string[]): Floor => ({
 })
 
 const FLOOR = floorOf('high', ['domain-math'])
-const NONE = floorOf('low', [])
 
 function guideData(overrides: Partial<GuideData> = {}): GuideData {
   const data = buildGuide({
@@ -53,8 +52,6 @@ function check(overrides: Partial<CheckInput> = {}) {
   return checkGuide({
     body: bodyOf(),
     floor: FLOOR,
-    isAncestor: () => true,
-    floorSince: () => NONE,
     ...overrides,
   })
 }
@@ -70,10 +67,6 @@ describe('a valid guide', () => {
 
   it('passes when a guide is above the floor', () => {
     expect(check({ body: bodyOf(guideData({ risk: 'critical' })) }).status).toBe('ok')
-  })
-
-  it('passes when only mechanical changes came after the marker', () => {
-    expect(check({ floorSince: () => floorOf('low', ['mechanical']) }).status).toBe('ok')
   })
 })
 
@@ -131,22 +124,6 @@ describe('structure and hand edits', () => {
     expect(result.problems[0]).toMatch(/edited by hand/)
   })
 
-  it('reports a guide with an older delta shape as damaged instead of throwing', () => {
-    const rerun = guideData({ delta: undefined })
-    const withDelta = buildGuide({
-      covers: 'b'.repeat(40),
-      floor: FLOOR,
-      signals: {},
-      agent: { risk: 'high' },
-      catalogueNames: ['domain-math'],
-      previous: rerun,
-    })
-    const body = bodyOf(withDelta).replace('"moved":', '"changed":')
-    const result = check({ body })
-    expect(result.status).toBe('failed')
-    expect(result.problems[0]).toMatch(/data is missing or damaged/)
-  })
-
   it('fails when the data comment is damaged', () => {
     const result = check({ body: bodyOf().replace('{"version":1', '{"version":') })
     expect(result.problems[0]).toMatch(/data is missing or damaged/)
@@ -170,8 +147,8 @@ describe('structure and hand edits', () => {
     const data = guideData({ risk: 'low', floor: 'low' })
     // The data and the text agree, so only the floor comparison can catch it.
     expect(renderVisible(data)).toContain('**low**')
-    expect(check({ body: bodyOf(data) }).problems).toContain(
-      'The guide says low, below the floor high.',
+    expect(check({ body: bodyOf(data) }).problems[0]).toMatch(
+      /^The guide says low, below the floor high\. /,
     )
   })
 })
@@ -179,7 +156,9 @@ describe('structure and hand edits', () => {
 describe('floor', () => {
   it('fails when the risk is below the floor', () => {
     const result = check({ floor: floorOf('critical', ['domain-math']) })
-    expect(result.problems).toContain('The guide says high, below the floor critical.')
+    expect(result.problems[0]).toMatch(
+      /^The guide says high, below the floor critical\. /,
+    )
   })
 
   it('fails when a matched category is missing', () => {
@@ -188,45 +167,9 @@ describe('floor', () => {
       'The guide leaves out matched categories: wire-contract.',
     )
   })
-})
-
-describe('freshness', () => {
-  it('fails when the marker commit is not in the history, for example after a rebase', () => {
-    const result = check({ isAncestor: () => false })
-    expect(result.problems[0]).toMatch(/not in this branch's history \(rebased\?\)/)
-  })
-
-  it('fails when later changes touch a category other than mechanical', () => {
-    const seen: string[] = []
-    const result = check({
-      floorSince: (commit) => {
-        seen.push(commit)
-        return floorOf('high', ['wire-contract', 'mechanical'])
-      },
-    })
-    expect(seen).toEqual([COVERS])
-    expect(result.problems[0]).toMatch(/out of date: .* touch wire-contract\./)
-  })
-
-  it('does not hand a marker that is not a commit ID to git', () => {
-    let asked = false
-    const data = guideData({ covers: '--upload-pack=x' })
-    const result = check({
-      body: bodyOf(data),
-      isAncestor: () => {
-        asked = true
-        return true
-      },
-    })
-    expect(asked).toBe(false)
-    expect(result.problems).toContain('The guide marker is not a full commit ID.')
-  })
 
   it('reports every problem at once', () => {
-    const result = check({
-      floor: floorOf('critical', ['domain-math', 'wire-contract']),
-      isAncestor: () => false,
-    })
-    expect(result.problems).toHaveLength(3)
+    const result = check({ floor: floorOf('critical', ['domain-math', 'wire-contract']) })
+    expect(result.problems).toHaveLength(2)
   })
 })
