@@ -520,6 +520,22 @@ export function githubUrl(remote: string): string | undefined {
   return match ? `https://github.com/${match[1]}/${match[2]}` : undefined
 }
 
+/** The GitHub address of the `origin` remote, or undefined when there is none or it is elsewhere. */
+export function originUrl(cwd: string): string | undefined {
+  try {
+    return githubUrl(
+      execFileSync('git', ['remote', 'get-url', 'origin'], {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }),
+    )
+  } catch {
+    // No origin remote: the references stay plain text.
+    return undefined
+  }
+}
+
 // --- run ------------------------------------------------------------------------------
 
 function option(name: string): string | undefined {
@@ -548,16 +564,7 @@ function main() {
     (c) => c.name,
   )
 
-  let remote = ''
-  try {
-    remote = execFileSync('git', ['remote', 'get-url', 'origin'], {
-      cwd,
-      encoding: 'utf8',
-    })
-  } catch {
-    // No origin remote: the references stay plain text.
-  }
-  const repoUrl = githubUrl(remote)
+  const repoUrl = originUrl(cwd)
   const guide = renderGuide(
     buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl }),
   )

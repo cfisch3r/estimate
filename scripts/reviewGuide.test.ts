@@ -1,10 +1,15 @@
 // @vitest-environment node
-import { describe, expect, it } from 'vitest'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { afterEach, describe, expect, it } from 'vitest'
 import type { Floor } from './reviewFloor.ts'
 import {
   buildGuide,
   evidenceFromSignals,
   githubUrl,
+  originUrl,
   parseAgentAnswer,
   parseGuide,
   renderGuide,
@@ -586,5 +591,34 @@ describe('parseAgentAnswer', () => {
 
   it.each(['not json', '[1]', 'null'])('rejects %s', (reply) => {
     expect(() => parseAgentAnswer(reply)).toThrow(/agent answer/)
+  })
+})
+
+describe('originUrl', () => {
+  const sandboxes: string[] = []
+  afterEach(() => {
+    for (const dir of sandboxes.splice(0)) rmSync(dir, { recursive: true, force: true })
+  })
+
+  function repo(origin?: string): string {
+    const dir = mkdtempSync(join(tmpdir(), 'review-origin-'))
+    sandboxes.push(dir)
+    execFileSync('git', ['init', '-q'], { cwd: dir })
+    if (origin) execFileSync('git', ['remote', 'add', 'origin', origin], { cwd: dir })
+    return dir
+  }
+
+  it('gives nothing, and does not throw, in a repository without an origin remote', () => {
+    expect(originUrl(repo())).toBeUndefined()
+  })
+
+  it('gives the GitHub address of the origin remote', () => {
+    expect(originUrl(repo('git@github.com:someone/estimate.git'))).toBe(
+      'https://github.com/someone/estimate',
+    )
+  })
+
+  it('gives nothing for an origin that is not on GitHub', () => {
+    expect(originUrl(repo('https://gitlab.com/someone/estimate.git'))).toBeUndefined()
   })
 })
