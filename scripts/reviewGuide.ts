@@ -4,7 +4,7 @@ import { baseRef, repoRoot, showAt } from './changedDiff.ts'
 import { parseCatalogue, RISK_LEVELS, type Floor, type RiskLevel } from './reviewFloor.ts'
 import type { Section } from './reviewSignals.ts'
 
-// The Review guide at the top of a pull request body. A script writes it, not the model:
+// The Review guide at the end of a pull request body. A script writes it, not the model:
 // the script takes the higher of the floor and the agent's risk, drops hot spots that are
 // not part of the change, and renders the same data twice, as Markdown for the reader and
 // as JSON in a hidden comment for the check script.
@@ -12,15 +12,20 @@ import type { Section } from './reviewSignals.ts'
 //   pnpm review:guide --floor floor.json --signals signals.json --agent agent.json \
 //     [--body body.md] [--covers <commit>]
 //
-// Prints the guide block, or the whole body with the guide block put at its top when
+// Prints the guide block, or the whole body with the guide block put at its end when
 // --body is given. The inputs are the outputs of `pnpm review:floor`,
 // `pnpm review:signals` and the `risk-review` agent.
 
 export interface HotSpot {
   file: string
   line: number
-  reason: string
+  /** What the change at the spot is, in a few words. */
+  title: string
+  /** What the change is and what makes it a hot spot. */
+  body: string
   rule: string
+  /** What the signals say about the spot; the script writes these, never the agent. */
+  facts: string[]
 }
 
 export interface SkimItem {
@@ -29,14 +34,20 @@ export interface SkimItem {
 }
 
 export interface EvidenceItem {
-  /** `reviewer` is the agent's own wording; the others are the script's facts. */
-  kind: 'checked' | 'not-checked' | 'note' | 'reviewer'
+  /**
+   * `reviewer` is what the agent could not verify; the others are the script's facts.
+   * `warning` is the script saying the guide lacks content it was given (dropped hot spots).
+   * `not-checked`, `reviewer` and `warning` are shown as "Not verified", the rest is folded.
+   */
+  kind: 'checked' | 'not-checked' | 'note' | 'reviewer' | 'warning'
   text: string
 }
 
 export interface GuideData {
-  version: 1
+  version: 2
   covers: string
+  /** `https://github.com/<owner>/<repo>`, to link a hot spot to the file at `covers`. */
+  repoUrl?: string
   risk: RiskLevel
   floor: RiskLevel
   categories: string[]
@@ -50,7 +61,7 @@ export interface AgentAnswer {
   categories?: unknown
   hotSpots?: unknown
   skimOnly?: unknown
-  evidenceNotes?: unknown
+  notVerified?: unknown
 }
 
 export interface GuideInput {
@@ -60,11 +71,12 @@ export interface GuideInput {
   agent: AgentAnswer
   /** The category names of the catalogue, to drop names the agent made up. */
   catalogueNames: string[]
+  repoUrl?: string
 }
 
 /** The parts of the signals output the guide uses; every section may be missing. */
 export interface Signals {
-  history?: Section<Record<string, unknown>>
+  history?: Section<{ since?: string; files?: Array<{ path: string; fixes: number }> }>
   metrics?: Section<{ items: string[] }>
   coverage?: Section<{ checkedFiles: number; uncovered: string[]; notInReport: string[] }>
   dependencies?: Section<{
@@ -78,6 +90,8 @@ export interface Signals {
 
 const MAX_HOT_SPOTS = 8
 const MAX_LISTED = 10
+/** Fix commits that make a file worth a note on its hot spots. */
+const MIN_FIXES = 2
 const START = '<!-- review-guide:start -->'
 const END = '<!-- review-guide:end -->'
 const DATA_PREFIX = '<!-- review-guide-data: '
@@ -200,6 +214,24 @@ export function evidenceFromSignals(signals: Signals): EvidenceItem[] {
   return out
 }
 
+/** What the signals say about one changed line, in the words the guide shows. */
+function factsFor(file: string, line: number, signals: Signals): string[] {
+  const facts: string[] = []
+  const { coverage, history } = signals
+  if (coverage?.status === 'ok' && coverage.uncovered.includes(`${file}:${line}`)) {
+    facts.push('No test runs this line')
+  }
+  if (history?.status === 'ok') {
+    const fixes = history.files?.find((f) => f.path === file)?.fixes ?? 0
+    if (fixes >= MIN_FIXES) {
+      facts.push(
+        `${fixes} fix commits in the last ${oneLine(history.since ?? '6 months')}`,
+      )
+    }
+  }
+  return facts
+}
+
 // --- building the guide ---------------------------------------------------------------
 
 /** The guide data: the script's facts, with the agent's judgment kept inside the rules. */
@@ -207,6 +239,7 @@ export function buildGuide(input: GuideInput): GuideData {
   const { floor, agent } = input
   const evidence = evidenceFromSignals(input.signals)
   const note = (text: string) => evidence.push({ kind: 'note', text })
+  const warn = (text: string) => evidence.push({ kind: 'warning', text })
 
   let agentRisk: RiskLevel = floor.floor
   if (RISK_LEVELS.includes(agent.risk as RiskLevel)) {
@@ -243,27 +276,32 @@ export function buildGuide(input: GuideInput): GuideData {
       string,
       unknown
     >
-    const { file, line, reason, rule } = spot
+    const { file, line, title, body, rule } = spot
     if (
       isText(file) &&
       typeof line === 'number' &&
       Object.hasOwn(changedLines, file) &&
       changedLines[file]?.includes(line) &&
-      isText(reason)
+      isText(title) &&
+      isText(body)
     ) {
       spots.push({
         file,
         line,
-        reason: oneLine(reason),
+        title: oneLine(title),
+        body: oneLine(body),
         rule: isText(rule) ? oneLine(rule) : 'general',
+        facts: factsFor(file, line, input.signals),
       })
     }
   }
   const dropped = rawSpots.length - spots.length
   if (dropped > 0)
-    note(`Dropped ${dropped} hot spot(s) that are not a changed line of the change`)
+    warn(
+      `Dropped ${dropped} hot spot(s) that are not a changed line of the change or have no title or body`,
+    )
   if (spots.length > MAX_HOT_SPOTS) {
-    note(`Showing ${MAX_HOT_SPOTS} of ${spots.length} hot spots`)
+    warn(`Showing ${MAX_HOT_SPOTS} of ${spots.length} hot spots`)
   }
 
   const skim: SkimItem[] = []
@@ -277,16 +315,15 @@ export function buildGuide(input: GuideInput): GuideData {
     }
   }
 
-  const agentNotes = Array.isArray(agent.evidenceNotes)
-    ? (agent.evidenceNotes as unknown[])
-    : []
-  for (const text of agentNotes) {
+  const gaps = Array.isArray(agent.notVerified) ? (agent.notVerified as unknown[]) : []
+  for (const text of gaps) {
     if (isText(text)) evidence.push({ kind: 'reviewer', text: oneLine(text) })
   }
 
   const data: GuideData = {
-    version: 1,
+    version: 2,
     covers: input.covers,
+    ...(input.repoUrl ? { repoUrl: input.repoUrl } : {}),
     risk,
     floor: floor.floor,
     categories,
@@ -300,10 +337,37 @@ export function buildGuide(input: GuideInput): GuideData {
 // --- rendering ------------------------------------------------------------------------
 
 const code = (text: string) => `\`${text.replace(/`/g, "'")}\``
-const spotLine = (s: HotSpot) =>
-  `${code(`${s.file}:${s.line}`)} — ${s.reason} (${s.rule})`
 const evidenceLine = (e: EvidenceItem) =>
   `${{ checked: 'Checked', 'not-checked': 'Not checked', note: 'Note', reviewer: 'Reviewer note' }[e.kind]}: ${e.text}`
+
+/** Percent-encodes a path for a Markdown link, parentheses included. */
+const encodePath = (path: string) =>
+  path
+    .split('/')
+    .map((part) =>
+      encodeURIComponent(part).replace(
+        /[()]/g,
+        (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+      ),
+    )
+    .join('/')
+
+function renderSpot(s: HotSpot, number: number, data: GuideData): string[] {
+  const place = code(`${s.file}:${s.line}`)
+  const reference =
+    data.repoUrl && FULL_SHA.test(data.covers)
+      ? `[${place}](${data.repoUrl}/blob/${data.covers}/${encodePath(s.file)}#L${s.line})`
+      : place
+  const lines = [
+    `${number}. **${s.title}**`,
+    '',
+    `   ${s.body}`,
+    '',
+    `   ${reference} · ${s.rule}`,
+  ]
+  if (s.facts.length > 0) lines.push('', `   Facts: ${s.facts.join(' · ')}`)
+  return lines
+}
 
 /** The data as JSON that is safe inside an HTML comment. */
 function dataComment(data: GuideData): string {
@@ -328,13 +392,25 @@ export function renderVisible(data: GuideData): string {
       : 'no category matched'
   lines.push(`**${data.risk}**${raised} — ${names}`, '', '### Hot spots', '')
   if (data.hotSpots.length === 0) lines.push('None.')
-  data.hotSpots.forEach((s, i) => lines.push(`${i + 1}. ${spotLine(s)}`))
+  data.hotSpots.forEach((s, i) => {
+    if (i > 0) lines.push('')
+    lines.push(...renderSpot(s, i + 1, data))
+  })
   lines.push('', '### Skim only', '')
   if (data.skimOnly.length === 0) lines.push('None.')
   for (const s of data.skimOnly) lines.push(`- ${code(s.file)} — ${s.why}`)
-  lines.push('', '### Evidence', '')
-  if (data.evidence.length === 0) lines.push('None.')
-  for (const e of data.evidence) lines.push(`- ${evidenceLine(e)}`)
+  lines.push('', '### Not verified', '')
+  const gaps = data.evidence.filter(
+    (e) => e.kind === 'not-checked' || e.kind === 'reviewer' || e.kind === 'warning',
+  )
+  if (gaps.length === 0) lines.push('Nothing flagged.')
+  for (const e of gaps) lines.push(`- ${e.text}`)
+  const checked = data.evidence.filter((e) => e.kind === 'checked' || e.kind === 'note')
+  if (checked.length > 0) {
+    lines.push('', '<details>', '<summary>Checked by the scripts</summary>', '')
+    for (const e of checked) lines.push(`- ${evidenceLine(e)}`)
+    lines.push('', '</details>')
+  }
   return lines.join('\n')
 }
 
@@ -345,7 +421,18 @@ export function renderGuide(data: GuideData): string {
 
 // --- reading and replacing the block in a body ----------------------------------------
 
-const BLOCK = new RegExp(`${START}[\\s\\S]*?${END}`)
+const FULL_SHA = /^[0-9a-f]{40}$/
+const REPO_URL = /^https:\/\/github\.com\/[\w.-]+\/[\w.-]+$/
+/**
+ * Where the guide block is: from the last start marker to the first end marker after it,
+ * so a description that quotes the marker earlier in the body does not confuse it.
+ */
+function blockRange(body: string): [number, number] | undefined {
+  const start = body.lastIndexOf(START)
+  if (start < 0) return undefined
+  const end = body.indexOf(END, start)
+  return end < 0 ? undefined : [start, end + END.length]
+}
 
 export interface ParsedGuide {
   data: GuideData
@@ -363,12 +450,14 @@ const isSpot = (v: unknown) =>
   isObject(v) &&
   typeof v.file === 'string' &&
   typeof v.line === 'number' &&
-  typeof v.reason === 'string' &&
-  typeof v.rule === 'string'
+  typeof v.title === 'string' &&
+  typeof v.body === 'string' &&
+  typeof v.rule === 'string' &&
+  isStrings(v.facts)
 
 const isEvidence = (v: unknown) =>
   isObject(v) &&
-  ['checked', 'not-checked', 'note', 'reviewer'].includes(v.kind as string) &&
+  ['checked', 'not-checked', 'note', 'reviewer', 'warning'].includes(v.kind as string) &&
   typeof v.text === 'string'
 
 const isSkim = (v: unknown) =>
@@ -381,8 +470,10 @@ const all = (value: unknown, test: (v: unknown) => boolean) =>
 function isGuideData(value: unknown): value is GuideData {
   if (!isObject(value)) return false
   return (
-    value.version === 1 &&
+    value.version === 2 &&
     typeof value.covers === 'string' &&
+    (value.repoUrl === undefined ||
+      (typeof value.repoUrl === 'string' && REPO_URL.test(value.repoUrl))) &&
     RISK_LEVELS.includes(value.risk as RiskLevel) &&
     RISK_LEVELS.includes(value.floor as RiskLevel) &&
     isStrings(value.categories) &&
@@ -396,8 +487,9 @@ function isGuideData(value: unknown): value is GuideData {
 export function parseGuide(rawBody: string): ParsedGuide | undefined {
   // GitHub returns a body edited in the browser with Windows line endings.
   const body = rawBody.replace(/\r\n/g, '\n')
-  const block = BLOCK.exec(body)?.[0]
-  if (!block) return undefined
+  const range = blockRange(body)
+  if (!range) return undefined
+  const block = body.slice(...range)
   const start = block.indexOf(DATA_PREFIX)
   const end = block.lastIndexOf(' -->\n' + END)
   if (start < 0 || end < start) return undefined
@@ -411,11 +503,37 @@ export function parseGuide(rawBody: string): ParsedGuide | undefined {
   }
 }
 
-/** Puts the guide at the top of the body, or replaces the one that is there. */
+/** Puts the guide at the end of the body, or replaces the one that is there, wherever it is. */
 export function replaceGuide(body: string, guide: string): string {
-  if (BLOCK.test(body)) return body.replace(BLOCK, () => guide)
+  const range = blockRange(body)
+  if (range) return body.slice(0, range[0]) + guide + body.slice(range[1])
   const rest = body.trim()
-  return rest === '' ? `${guide}\n` : `${guide}\n\n${rest}\n`
+  return rest === '' ? `${guide}\n` : `${rest}\n\n${guide}\n`
+}
+
+/** The GitHub address of a remote (https or ssh form), or undefined for any other host. */
+export function githubUrl(remote: string): string | undefined {
+  const match =
+    /^(?:https:\/\/(?:[^@/]+@)?github\.com\/|git@github\.com:|ssh:\/\/git@github\.com\/)([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/.exec(
+      remote.trim(),
+    )
+  return match ? `https://github.com/${match[1]}/${match[2]}` : undefined
+}
+
+/** The GitHub address of the `origin` remote, or undefined when there is none or it is elsewhere. */
+export function originUrl(cwd: string): string | undefined {
+  try {
+    return githubUrl(
+      execFileSync('git', ['remote', 'get-url', 'origin'], {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+      }),
+    )
+  } catch {
+    // No origin remote: the references stay plain text.
+    return undefined
+  }
 }
 
 // --- run ------------------------------------------------------------------------------
@@ -446,7 +564,10 @@ function main() {
     (c) => c.name,
   )
 
-  const guide = renderGuide(buildGuide({ covers, floor, signals, agent, catalogueNames }))
+  const repoUrl = originUrl(cwd)
+  const guide = renderGuide(
+    buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl }),
+  )
   process.stdout.write((body === undefined ? guide : replaceGuide(body, guide)) + '\n')
 }
 

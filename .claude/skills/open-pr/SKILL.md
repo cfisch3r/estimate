@@ -1,11 +1,11 @@
 ---
 name: open-pr
-description: Open the pull request for the current branch with a Review guide at the top of its body (risk, hot spots, skim-only files, evidence) and a short description below. Use whenever you are about to run `gh pr create`, when the user asks to update the Review guide of an open PR, or when a PR body changes.
+description: Open the pull request for the current branch with a Review guide at the end of its body (risk, hot spots, skim-only files, what could not be verified) below a short description. Use whenever you are about to run `gh pr create`, when the user asks to update the Review guide of an open PR, or when a PR body changes.
 ---
 
 # Open a Pull Request
 
-Create the pull request for the current branch, or update its body. The body has two parts: the **Review guide** at the top, written by scripts from the risk catalogue (`docs/review-risk.md`), so a reader sees where to spend attention, and a concise description below, so a reader understands why the change exists and the shape of the implementation. The view conventions (diff blocks, trees, Mermaid) come from `../show-me/SKILL.md`.
+Create the pull request for the current branch, or update its body. The body has two parts: a concise description first, so a reader understands why the change exists and the shape of the implementation, and the **Review guide** at the end, written by scripts from the risk catalogue (`docs/review-risk.md`), so a reader sees where to spend attention. The view conventions (diff blocks, trees, Mermaid) come from `../show-me/SKILL.md`.
 
 ## Where things run
 
@@ -27,7 +27,7 @@ Run every `pnpm` command in the repository root. Keep every temporary file in th
 
 3. **Write the guide into the body.**
    - New PR: `pnpm review:guide --floor $S/floor.json --signals $S/signals.json --agent $S/agent.json --body $S/desc.md > $S/final.md`.
-   - Existing PR (an update the user asked for): `gh pr view <n> --json body --jq .body > $S/prev.md`, then the same command with `--body $S/prev.md`, so the script replaces the old guide. If the description changed, replace the text below the `<!-- review-guide:end -->` line in `final.md` with `$S/desc.md`. If the title no longer fits, use `gh pr edit <n> --title`.
+   - Existing PR (an update the user asked for): `gh pr view <n> --json body --jq .body > $S/prev.md`, then the same command with `--body $S/prev.md`, so the script replaces the old guide. If the description changed, replace everything outside the guide block in `final.md` with `$S/desc.md` and keep the block where it is (an older PR has it at the top, a newer one at the end). If the title no longer fits, use `gh pr edit <n> --title`.
    - Never write or edit the guide by hand.
 
 4. **Check it.** `pnpm review:check-guide --body $S/final.md` must pass. If it fails, run steps 2 and 3 again and never edit the guide to satisfy the check.
@@ -40,7 +40,7 @@ Run every `pnpm` command in the repository root. Keep every temporary file in th
 
 ## Skipping the guide
 
-Only when the user asks for it, for a trivial pull request. Put this line at the top of the body, with their reason in their words, and skip steps 2 to 4 (the check accepts it):
+Only when the user asks for it, for a trivial pull request. Put this line at the end of the body, with their reason in their words, and skip steps 2 to 4 (the check accepts it):
 
 ```text
 Review guide: skipped (typo fix in one doc)

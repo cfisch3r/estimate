@@ -28,7 +28,7 @@ export interface CheckInput {
 }
 
 const SKIP = /^Review guide: skipped \((.*)\)[ \t]*$/m
-const PARTS = ['### Risk', '### Hot spots', '### Skim only', '### Evidence']
+const PARTS = ['### Risk', '### Hot spots', '### Skim only', '### Not verified']
 
 const level = (risk: string) => RISK_LEVELS.indexOf(risk as (typeof RISK_LEVELS)[number])
 
@@ -39,7 +39,7 @@ export function checkGuide(input: CheckInput): Check {
   if (!parsed) {
     if (body.includes('<!-- review-guide:start -->')) {
       return failed(
-        'The guide is there, but its data is missing or damaged. Run `pnpm review:guide` again.',
+        'The guide is there, but its data is missing or damaged, or was written by an older version of the script. Run `pnpm review:guide` again.',
       )
     }
     // A deliberate skip is only valid when there is no guide to check.
@@ -50,7 +50,7 @@ export function checkGuide(input: CheckInput): Check {
         ? { status: 'skipped', reason, problems: [] }
         : failed('The skip line has no reason: write `Review guide: skipped (reason)`.')
     }
-    return failed('There is no Review guide at the top of the body.')
+    return failed('There is no Review guide in the body.')
   }
 
   const { data, visible } = parsed
