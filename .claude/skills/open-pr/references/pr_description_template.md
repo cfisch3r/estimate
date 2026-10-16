@@ -1,4 +1,4 @@
-{`Closes #{n}` for issue-sized work. Omit this line otherwise; never leave a placeholder or guess an issue number.}
+{The Review guide is added above this line by `pnpm review:guide`; never write it by hand. `Closes #{n}` for issue-sized work. Omit this line otherwise; never leave a placeholder or guess an issue number.}
 
 ## Why the change
 

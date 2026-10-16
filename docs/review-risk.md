@@ -9,13 +9,10 @@ attention. A model can judge a diff, but its worst mistake is calling a dangerou
 risk. So the rules below set a **floor** by path patterns and diff checks, and the model may only raise the
 risk above it.
 
-Status: the floor script (`pnpm review:floor`), the signals script (`pnpm review:signals`) and
-the `risk-review` agent (`/risk-review`) exist, and so does the guide script
-(`pnpm review:guide`) and the check script (`pnpm review:check-guide`). The `open-pr` skill that
-runs the agent and puts the guide into a pull request before it opens is planned and not in the
-repository yet. Until it lands, the flow below is run by hand. Remove this note when it lands.
-
 ## How it is used
+
+The `open-pr` skill runs this flow before it opens a pull request, and again when a push makes
+the guide stale.
 
 Legend: solid line = data passed on. Scripts are deterministic; the agent is the only model step.
 
