@@ -470,6 +470,26 @@ export interface ParsedGuide {
 const isStrings = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((v) => typeof v === 'string')
 
+/** Whether a stored delta has the shape the renderer reads (an older one had `changed`). */
+function isDelta(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null) return false
+  const d = value as Record<string, unknown>
+  const spots = d.hotSpots as Record<string, unknown> | undefined
+  return (
+    typeof d.since === 'string' &&
+    isStrings(d.categoriesAdded) &&
+    isStrings(d.categoriesRemoved) &&
+    typeof spots === 'object' &&
+    spots !== null &&
+    Array.isArray(spots.new) &&
+    Array.isArray(spots.moved) &&
+    Array.isArray(spots.resolved) &&
+    typeof spots.unchanged === 'number' &&
+    Array.isArray(d.evidenceAdded) &&
+    Array.isArray(d.evidenceRemoved)
+  )
+}
+
 /** Whether parsed JSON has the shape the check and the delta rely on. */
 function isGuideData(value: unknown): value is GuideData {
   if (typeof value !== 'object' || value === null) return false
@@ -482,7 +502,8 @@ function isGuideData(value: unknown): value is GuideData {
     isStrings(d.categories) &&
     Array.isArray(d.hotSpots) &&
     Array.isArray(d.skimOnly) &&
-    Array.isArray(d.evidence)
+    Array.isArray(d.evidence) &&
+    (d.delta === undefined || isDelta(d.delta))
   )
 }
 

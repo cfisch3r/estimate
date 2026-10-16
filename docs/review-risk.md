@@ -82,7 +82,9 @@ a pull request body. A script writes it, so the rules hold whatever the agent sa
 - On a re-run, "Since last version" pairs hot spots by file and rule, nearest line first. A spot is
   *moved* only when its line differs, and a reworded reason is not a change. The reviewer's notes
   are not compared either: the agent words them differently on every run, so only what the
-  scripts measured counts as a change in the evidence.
+  scripts measured counts as a change in the evidence. The price: a new problem that the agent
+  reports under the same file, rule and line as an old one looks unchanged. A guide stored in an
+  older shape is reported as damaged; run the script again.
 
 | Part | Content |
 |---|---|

@@ -487,6 +487,17 @@ describe('rendering and reading the body', () => {
     )
   })
 
+  it('does not read a guide whose stored delta has the older shape', () => {
+    const first = build()
+    const rerun = build({ covers: 'b'.repeat(40), previous: first })
+    const guide = renderGuide(rerun)
+    expect(parseGuide(guide)?.data).toEqual(rerun)
+    const old = guide.replace('"moved":', '"changed":')
+    expect(old).not.toBe(guide)
+    expect(parseGuide(old)).toBeUndefined()
+    expect(parseGuide(guide.replace('"since":"', '"since":3,"x":"'))).toBeUndefined()
+  })
+
   it('returns undefined when there is no guide or its data is damaged', () => {
     expect(parseGuide('just text')).toBeUndefined()
     const guide = renderGuide(build())

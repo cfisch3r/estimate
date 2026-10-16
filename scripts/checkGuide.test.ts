@@ -131,6 +131,22 @@ describe('structure and hand edits', () => {
     expect(result.problems[0]).toMatch(/edited by hand/)
   })
 
+  it('reports a guide with an older delta shape as damaged instead of throwing', () => {
+    const rerun = guideData({ delta: undefined })
+    const withDelta = buildGuide({
+      covers: 'b'.repeat(40),
+      floor: FLOOR,
+      signals: {},
+      agent: { risk: 'high' },
+      catalogueNames: ['domain-math'],
+      previous: rerun,
+    })
+    const body = bodyOf(withDelta).replace('"moved":', '"changed":')
+    const result = check({ body })
+    expect(result.status).toBe('failed')
+    expect(result.problems[0]).toMatch(/data is missing or damaged/)
+  })
+
   it('fails when the data comment is damaged', () => {
     const result = check({ body: bodyOf().replace('{"version":1', '{"version":') })
     expect(result.problems[0]).toMatch(/data is missing or damaged/)
