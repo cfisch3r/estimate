@@ -122,7 +122,8 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   belong in" reference.
 - **Hooks** (`.claude/settings.json` + `.claude/hooks/`) — a `PreToolUse` hard block on
   writes outside the repo (apart from `~/.claude`, the Obsidian inbox and the Claude scratchpad), paths containing `..`, edits under `.git`, `node_modules` and `.env` files, and edits to `nocturne.css`; a `PostToolUse` per-file
-  `oxlint` check (surfaces output, never blocks); a `Stop` hook running `pnpm lint`
+  `oxlint` check (surfaces output, never blocks); a `PostToolUse` hook on `gh pr create` that shows the
+  review floor of the new PR to the user (`pnpm review:floor`, never blocks); a `Stop` hook running `pnpm lint`
   (including the `jsx-a11y` plugin)/typecheck/`pnpm arch`/`pnpm deadcode`/
   `pnpm test:coverage` once per turn.
 

@@ -1,11 +1,11 @@
-### Status
-
-- PR: [#{number} - {title}]({pr_url})
-
 ### Review floor
 
 - Minimum risk: {floor}; categories: {categories, or none}
 - Ask for `/risk-review` to get the Review guide as an artifact.
+
+### Status
+
+- PR: [#{number} - {title}]({pr_url})
 
 ### Summary
 
