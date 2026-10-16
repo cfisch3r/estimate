@@ -439,6 +439,25 @@ export interface ParsedGuide {
   visible: string
 }
 
+const isStrings = (value: unknown): value is string[] =>
+  Array.isArray(value) && value.every((v) => typeof v === 'string')
+
+/** Whether parsed JSON has the shape the check and the delta rely on. */
+function isGuideData(value: unknown): value is GuideData {
+  if (typeof value !== 'object' || value === null) return false
+  const d = value as Record<string, unknown>
+  return (
+    d.version === 1 &&
+    typeof d.covers === 'string' &&
+    RISK_LEVELS.includes(d.risk as RiskLevel) &&
+    RISK_LEVELS.includes(d.floor as RiskLevel) &&
+    isStrings(d.categories) &&
+    Array.isArray(d.hotSpots) &&
+    Array.isArray(d.skimOnly) &&
+    Array.isArray(d.evidence)
+  )
+}
+
 /** Reads the guide in a body, or undefined when there is none or its data is unreadable. */
 export function parseGuide(rawBody: string): ParsedGuide | undefined {
   // GitHub returns a body edited in the browser with Windows line endings.
@@ -449,8 +468,8 @@ export function parseGuide(rawBody: string): ParsedGuide | undefined {
   const end = block.lastIndexOf(' -->\n' + END)
   if (start < 0 || end < start) return undefined
   try {
-    const data = JSON.parse(block.slice(start + DATA_PREFIX.length, end)) as GuideData
-    if (data.version !== 1) return undefined
+    const data: unknown = JSON.parse(block.slice(start + DATA_PREFIX.length, end))
+    if (!isGuideData(data)) return undefined
     const visible = block.slice(START.length + 1, start).trimEnd()
     return { data, visible }
   } catch {
