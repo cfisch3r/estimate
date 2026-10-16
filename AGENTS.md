@@ -101,8 +101,8 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   subagent. Starts from the deterministic floor (`pnpm review:floor`, see
   `docs/review-risk.md`), may raise the risk and name hot spots but never lower the floor, and
   replies with one JSON answer (risk, categories, hot spots, skim-only files, evidence notes).
-  Applies nothing. Run it on demand until the planned `open-pr` skill runs it before a pull
-  request opens.
+  Applies nothing. The `open-pr` skill runs it before a pull request opens; run it on demand
+  otherwise.
 - **`/architecture-review`** — read-only architecture audit run in the
   `architecture-review` subagent. Covers judgment calls Steiger/oxlint can't make: layer
   placement (domain / application / adapters / UI, store action vs use case; see
