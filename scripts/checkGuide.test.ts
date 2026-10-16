@@ -35,7 +35,8 @@ function guideData(overrides: Partial<GuideData> = {}): GuideData {
         {
           file: 'src/domain/a.ts',
           line: 7,
-          reason: 'Rounds the wrong way.',
+          title: 'Rounds the wrong way',
+          body: 'The value is rounded down where it should round up.',
           rule: 'domain-math',
         },
       ],
@@ -74,7 +75,7 @@ describe('missing or skipped guide', () => {
   it('fails when there is no guide', () => {
     expect(check({ body: '## Why the change\n\nBecause.\n' })).toEqual({
       status: 'failed',
-      problems: ['There is no Review guide at the top of the body.'],
+      problems: ['There is no Review guide in the body.'],
     })
   })
 
@@ -105,7 +106,7 @@ describe('structure and hand edits', () => {
     ['Risk', '### Risk'],
     ['Hot spots', '### Hot spots'],
     ['Skim only', '### Skim only'],
-    ['Evidence', '### Evidence'],
+    ['Not verified', '### Not verified'],
   ])('fails when the %s part is removed', (name, heading) => {
     const result = check({ body: bodyOf().replace(`\n${heading}\n`, '\n### Other\n') })
     expect(result.problems).toContain(`The part "${name}" is missing.`)
@@ -118,14 +119,14 @@ describe('structure and hand edits', () => {
 
   it('fails when the visible text was edited by hand', () => {
     const result = check({
-      body: bodyOf().replace('Rounds the wrong way.', 'Looks fine.'),
+      body: bodyOf().replace('rounded down where it should round up', 'fine'),
     })
     expect(result.status).toBe('failed')
     expect(result.problems[0]).toMatch(/edited by hand/)
   })
 
   it('fails when the data comment is damaged', () => {
-    const result = check({ body: bodyOf().replace('{"version":1', '{"version":') })
+    const result = check({ body: bodyOf().replace('{"version":2', '{"version":') })
     expect(result.problems[0]).toMatch(/data is missing or damaged/)
   })
 

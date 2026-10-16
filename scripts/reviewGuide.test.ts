@@ -4,6 +4,7 @@ import type { Floor } from './reviewFloor.ts'
 import {
   buildGuide,
   evidenceFromSignals,
+  githubUrl,
   parseAgentAnswer,
   parseGuide,
   renderGuide,
@@ -44,7 +45,8 @@ const okSignals: Signals = {
 const spot = {
   file: 'src/domain/a.ts',
   line: 7,
-  reason: 'Rounds the wrong way.',
+  title: 'Rounds the wrong way',
+  body: 'The value is rounded down where it should round up.',
   rule: 'domain-math',
 }
 
@@ -109,7 +111,7 @@ describe('hot spots', () => {
 
   it('keeps a valid spot and defaults a missing rule to general', () => {
     const data = dropped([{ ...spot, rule: '' }])
-    expect(data.hotSpots).toEqual([{ ...spot, rule: 'general' }])
+    expect(data.hotSpots).toEqual([{ ...spot, rule: 'general', facts: [] }])
   })
 
   it.each([
@@ -119,14 +121,16 @@ describe('hot spots', () => {
     ['a file the change did not touch', { ...spot, file: 'constructor' }],
     ['a fractional line', { ...spot, line: 1.5 }],
     ['a line given as text', { ...spot, line: '7' }],
-    ['an empty reason', { ...spot, reason: '  ' }],
+    ['an empty title', { ...spot, title: '  ' }],
+    ['an empty body', { ...spot, body: '' }],
+    ['no title', { ...spot, title: undefined }],
     ['something that is not an object', 'src/domain/a.ts:7'],
   ])('drops a spot with %s and notes it', (_label, bad) => {
     const data = dropped([bad])
     expect(data.hotSpots).toEqual([])
     expect(data.evidence).toContainEqual({
       kind: 'note',
-      text: 'Dropped 1 hot spot(s) that are not a changed line of the change',
+      text: 'Dropped 1 hot spot(s) that are not a changed line of the change or have no title or body',
     })
   })
 
@@ -140,8 +144,8 @@ describe('hot spots', () => {
     })
   })
 
-  it('puts a multi-line reason on one line', () => {
-    expect(dropped([{ ...spot, reason: 'a\n\nb   c' }]).hotSpots[0]?.reason).toBe('a b c')
+  it('puts a multi-line body on one line', () => {
+    expect(dropped([{ ...spot, body: 'a\n\nb   c' }]).hotSpots[0]?.body).toBe('a b c')
   })
 })
 
@@ -151,7 +155,7 @@ describe('skim only and agent notes', () => {
       agent: {
         risk: 'high',
         skimOnly: [{ file: 'docs/x.md', why: 'Text follows the code.' }, { file: 'x' }],
-        evidenceNotes: ['Read the callers.', '', 7],
+        notVerified: ['Read the callers.', '', 7],
       },
     })
     expect(data.skimOnly).toEqual([{ file: 'docs/x.md', why: 'Text follows the code.' }])
@@ -270,10 +274,13 @@ describe('rendering and reading the body', () => {
     expect(visible).toContain('Covers: `aaaaaaa`')
     expect(visible).toContain('### Risk\n\n**high** — `domain-math`')
     expect(visible).toContain(
-      '1. `src/domain/a.ts:7` — Rounds the wrong way. (domain-math)',
+      '1. **Rounds the wrong way**\n\n   The value is rounded down where it should round up.\n\n   `src/domain/a.ts:7` · domain-math',
     )
     expect(visible).toContain('### Skim only\n\n- `docs/x.md` — Text.')
-    expect(visible).toContain('### Evidence\n\n- Checked:')
+    expect(visible).toContain('### Not verified\n\nNothing flagged.')
+    expect(visible).toContain(
+      '<details>\n<summary>Checked by the scripts</summary>\n\n- Checked:',
+    )
   })
 
   it('says None for empty parts', () => {
@@ -285,7 +292,7 @@ describe('rendering and reading the body', () => {
   it('reads back exactly what it rendered, including text that looks like markup', () => {
     const nasty = {
       ...spot,
-      reason: 'Ends the comment --> and opens <script> & "quotes" $& \\',
+      body: 'Ends the comment --> and opens <script> & "quotes" $& \\',
     }
     const data = build({ agent: { risk: 'high', hotSpots: [nasty] } })
     const parsed = parseGuide(`${renderGuide(data)}\n\nrest of the body`)
@@ -309,7 +316,7 @@ describe('rendering and reading the body', () => {
     const evil = {
       ...spot,
       file: 'src/domain/a.ts',
-      reason: 'Ends it <!-- review-guide:end --> here',
+      body: 'Ends it <!-- review-guide:end --> here',
       rule: 'a`b',
     }
     const data = build({
@@ -317,12 +324,16 @@ describe('rendering and reading the body', () => {
         risk: 'high',
         hotSpots: [evil],
         skimOnly: [{ file: 'docs/`x`.md', why: '--> done' }],
-        evidenceNotes: ['<!-- note --!> <b>bold</b>'],
+        notVerified: ['<!-- note --!> <b>bold</b>'],
       },
     })
     const guide = renderGuide(data)
     expect(guide.split('<!-- review-guide:end -->')).toHaveLength(2)
-    expect(renderVisible(data)).not.toMatch(/[<>]/)
+    const withoutDetails = renderVisible(data).replace(
+      /<\/?details>|<summary>.*<\/summary>/g,
+      '',
+    )
+    expect(withoutDetails).not.toMatch(/[<>]/)
     expect(renderVisible(data)).toContain('&lt;b&gt;bold&lt;/b&gt;')
     expect(parseGuide(guide)?.data).toEqual(data)
     expect(renderVisible(data)).toContain("`docs/'x'.md`")
@@ -335,6 +346,8 @@ describe('rendering and reading the body', () => {
     ['an evidence item that is not an object', '"evidence":[', '"evidence":[null,'],
     ['an unknown evidence kind', '"kind":"checked"', '"kind":"mystery"'],
     ['a hot spot without a line', '"line":7', '"lin":7'],
+    ['a hot spot without a title', '"title":"Rounds', '"titl":"Rounds'],
+    ['a hot spot without facts', '"facts":[]', '"fact":[]'],
     ['a risk that is not a level', '"risk":"high"', '"risk":"x"'],
   ])('does not read data with %s', (_label, from, to) => {
     const data = build({ signals: okSignals })
@@ -346,15 +359,15 @@ describe('rendering and reading the body', () => {
   it('returns undefined when there is no guide or its data is damaged', () => {
     expect(parseGuide('just text')).toBeUndefined()
     const guide = renderGuide(build())
-    expect(parseGuide(guide.replace('"version":1', '"version":2'))).toBeUndefined()
+    expect(parseGuide(guide.replace('"version":2', '"version":1'))).toBeUndefined()
     expect(parseGuide(guide.replace('{"version"', '{"versio'))).toBeUndefined()
     expect(parseGuide(guide.replace('<!-- review-guide-data: ', ''))).toBeUndefined()
   })
 
-  it('puts the guide at the top of a body that has none', () => {
+  it('puts the guide at the end of a body that has none', () => {
     const guide = renderGuide(build())
     expect(replaceGuide('## Why the change\n\nBecause.', guide)).toBe(
-      `${guide}\n\n## Why the change\n\nBecause.\n`,
+      `## Why the change\n\nBecause.\n\n${guide}\n`,
     )
     expect(replaceGuide('', guide)).toBe(`${guide}\n`)
   })
@@ -362,11 +375,178 @@ describe('rendering and reading the body', () => {
   it('replaces the guide that is there and leaves the rest alone', () => {
     const old = renderGuide(build())
     const next = renderGuide(build({ covers: 'b'.repeat(40) }))
-    const body = `${old}\n\n## Why the change\n\nBecause $& it.\n`
+    const body = `## Why the change\n\nBecause $& it.\n\n${old}\n`
     expect(replaceGuide(body, next)).toBe(
-      `${next}\n\n## Why the change\n\nBecause $& it.\n`,
+      `## Why the change\n\nBecause $& it.\n\n${next}\n`,
     )
     expect(replaceGuide(body, `${next} $&`)).toContain(`${next} $&`)
+  })
+
+  it('replaces a guide that sits at the top, where older bodies have it', () => {
+    const old = renderGuide(build())
+    const next = renderGuide(build({ covers: 'b'.repeat(40) }))
+    expect(replaceGuide(`${old}\n\n## Why the change\n`, next)).toBe(
+      `${next}\n\n## Why the change\n`,
+    )
+  })
+})
+
+describe('facts on hot spots', () => {
+  const withSignals = (signals: Signals) => build({ signals }).hotSpots[0]?.facts
+
+  it('says when no test runs the line', () => {
+    expect(
+      withSignals({
+        ...okSignals,
+        coverage: {
+          status: 'ok',
+          checkedFiles: 1,
+          uncovered: ['src/domain/a.ts:7'],
+          notInReport: [],
+        },
+      }),
+    ).toEqual(['No test runs this line'])
+  })
+
+  it('says nothing about a line the coverage signal does not list', () => {
+    expect(withSignals(okSignals)).toEqual([])
+    expect(withSignals({})).toEqual([])
+  })
+
+  it('reports fix commits from two up', () => {
+    const history = (fixes: number): Signals => ({
+      history: {
+        status: 'ok',
+        since: '6 months',
+        files: [{ path: 'src/domain/a.ts', fixes }],
+      },
+    })
+    expect(withSignals(history(2))).toEqual(['2 fix commits in the last 6 months'])
+    expect(withSignals(history(1))).toEqual([])
+  })
+
+  it('shows the facts under the reference, joined with a dot', () => {
+    const visible = renderVisible(
+      build({
+        signals: {
+          coverage: {
+            status: 'ok',
+            checkedFiles: 1,
+            uncovered: ['src/domain/a.ts:7'],
+            notInReport: [],
+          },
+          history: { status: 'ok', files: [{ path: 'src/domain/a.ts', fixes: 3 }] },
+        },
+      }),
+    )
+    expect(visible).toContain(
+      '`src/domain/a.ts:7` · domain-math\n\n   Facts: No test runs this line · 3 fix commits in the last 6 months',
+    )
+  })
+})
+
+describe('not verified', () => {
+  it('lists the script gaps and the agent gaps, and folds the checked facts', () => {
+    const visible = renderVisible(
+      build({
+        signals: {
+          ...okSignals,
+          coverage: { status: 'not available', reason: 'timed out' },
+        },
+        agent: {
+          risk: 'high',
+          notVerified: ['Behaviour with an older peer is untested.'],
+        },
+      }),
+    )
+    expect(visible).toContain(
+      '### Not verified\n\n- Changed-line coverage: timed out\n- Behaviour with an older peer is untested.\n\n<details>',
+    )
+    expect(visible).toContain('- Note: Dependencies: none changed')
+    expect(visible).not.toContain('Reviewer note')
+  })
+
+  it('says nothing is flagged and adds no folded block when there is nothing to show', () => {
+    const visible = renderVisible(
+      build({ signals: { dependencies: undefined }, agent: { risk: 'high' } }),
+    )
+    expect(visible).not.toContain('<details>')
+    const quiet = build({ agent: { risk: 'high' } })
+    quiet.evidence = []
+    expect(renderVisible(quiet)).toContain('### Not verified\n\nNothing flagged.')
+    expect(renderVisible(quiet)).not.toContain('<details>')
+  })
+
+  it('ignores the old evidenceNotes field', () => {
+    const data = build({
+      agent: { risk: 'high', evidenceNotes: ['Read the callers.'] } as AgentAnswer,
+    })
+    expect(data.evidence.some((e) => e.text === 'Read the callers.')).toBe(false)
+  })
+})
+
+describe('the reference link', () => {
+  const REPO = 'https://github.com/someone/estimate'
+  const linked = (file: string) =>
+    renderVisible(
+      build({
+        repoUrl: REPO,
+        floor: floor('high', ['domain-math'], [file]),
+        agent: { risk: 'high', hotSpots: [{ ...spot, file }] },
+      }),
+    )
+
+  it('links to the file at the covered commit and the line', () => {
+    expect(linked('src/domain/a.ts')).toContain(
+      `[\`src/domain/a.ts:7\`](${REPO}/blob/${'a'.repeat(40)}/src/domain/a.ts#L7) · domain-math`,
+    )
+  })
+
+  it('encodes spaces and parentheses so the link cannot end early', () => {
+    expect(linked('src/my file (1).ts')).toContain(
+      `/blob/${'a'.repeat(40)}/src/my%20file%20%281%29.ts#L7)`,
+    )
+  })
+
+  it('writes plain text when there is no GitHub address', () => {
+    const visible = renderVisible(build())
+    expect(visible).toContain('   `src/domain/a.ts:7` · domain-math')
+    expect(visible).not.toContain('](')
+  })
+
+  it('keeps the address in the data and refuses one that is not a GitHub repository', () => {
+    const guide = renderGuide(build({ repoUrl: REPO }))
+    expect(parseGuide(guide)?.data.repoUrl).toBe(REPO)
+    expect(parseGuide(guide.replaceAll(REPO, 'https://evil.example/x/y'))).toBeUndefined()
+    expect(parseGuide(guide.replaceAll(REPO, 'https://github.com/a/b)'))).toBeUndefined()
+  })
+})
+
+describe('githubUrl', () => {
+  it.each([
+    ['https://github.com/cfisch3r/estimate.git', 'https://github.com/cfisch3r/estimate'],
+    ['https://github.com/cfisch3r/estimate', 'https://github.com/cfisch3r/estimate'],
+    [
+      'https://user@github.com/cfisch3r/estimate.git\n',
+      'https://github.com/cfisch3r/estimate',
+    ],
+    ['git@github.com:cfisch3r/estimate.git', 'https://github.com/cfisch3r/estimate'],
+    [
+      'ssh://git@github.com/cfisch3r/estimate.git',
+      'https://github.com/cfisch3r/estimate',
+    ],
+    ['https://github.com/cfisch3r/estimate/', 'https://github.com/cfisch3r/estimate'],
+  ])('reads %j', (remote, url) => {
+    expect(githubUrl(remote)).toBe(url)
+  })
+
+  it.each([
+    'https://gitlab.com/a/b.git',
+    'git@github.com.evil.example:a/b.git',
+    'https://github.com/a',
+    '',
+  ])('gives nothing for %j', (remote) => {
+    expect(githubUrl(remote)).toBeUndefined()
   })
 })
 

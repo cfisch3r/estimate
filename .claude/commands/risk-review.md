@@ -1,5 +1,5 @@
 ---
-description: Rate the risk of the current branch for its pull request — the deterministic floor from the risk catalogue, then a read-only review that may raise it and names hot spots, skim-only files and evidence. Reports one JSON answer, applies nothing.
+description: Rate the risk of the current branch for its pull request — the deterministic floor from the risk catalogue, then a read-only review that may raise it and names hot spots and skim-only files, and says what it could not verify. Reports one JSON answer, applies nothing.
 ---
 
 Run a risk review by delegating to the `risk-review` subagent. This is a read-only audit —

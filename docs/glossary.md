@@ -35,8 +35,8 @@ The words for judging how closely a change needs to be read ([review-risk.md](re
 | **Floor** | The minimum risk a change gets from the catalogue's path patterns and diff checks. A reviewer or an agent may raise the risk above it and never lower it. | "baseline" |
 | **Diff check** | A fixed, deterministic check on the content of a diff that a path pattern cannot express (for example, a coverage threshold went down). It can set the floor. | "heuristic", "signal" |
 | **Signal** | Evidence gathered for the risk-review agent (git history, changed-line coverage, dependency diff). It may be missing and never sets a category or the floor. | "diff check" |
-| **Hot spot** | A place in a diff, named by file and line, that needs a reader's judgment, with the reason. | |
-| **Review guide** | The block at the top of a pull request body: the risk and categories, the hot spots, what can be skimmed, and what is and is not verified. | "summary" |
+| **Hot spot** | A place in a diff, named by file and line, that needs a reader's judgment: a headline, what the change is and what makes it a hot spot, and the facts the signals say about it. | |
+| **Review guide** | The block at the end of a pull request body: the risk and categories, the hot spots, what can be skimmed, and what could not be verified. | "summary" |
 
 ## Feature-Sliced Design
 

@@ -51,7 +51,7 @@ flowchart TD
 | **Floor script** | Reads the YAML block below from the base branch (`origin/main`, else `main`; never from the pull request being checked, also when given a commit to start from), matches the changed files against it and reports the matched categories and the highest minimum risk. |
 | **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
 | **`risk-review` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
-| **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, turns the signals into the Evidence section and renders the guide. |
+| **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide. |
 
 ## The agent's answer
 
@@ -62,33 +62,40 @@ runs both scripts itself, and a signal never makes a category or a hot spot on i
 |---|---|
 | `risk` | A [risk level](#risk-levels), at least the floor |
 | `categories` | Names from the catalogue, including every category the floor found |
-| `hotSpots` | Up to eight places to read closely, most important first: `file` and `line` (a line the change added or changed), a one-sentence `reason` and a `rule` (architecture rule, ADR number or catalogue category) |
+| `hotSpots` | Up to eight places to read closely, most important first: a `title` (a headline of about ten words), a `body` (what the change is and what makes it a hot spot), `file` and `line` (a line the change added or changed) and a `rule` (architecture rule, ADR number or catalogue category) |
 | `skimOnly` | Files that can be skimmed, each with a `why` |
-| `evidenceNotes` | Short notes on what was and was not verified |
+| `notVerified` | What a reader has to check by hand because the agent could not or did not: concrete, short, possibly empty |
 
 ## The review guide
 
-`pnpm review:guide` turns the floor, the signals and the agent's answer into the block at the top of
-a pull request body. A script writes it, so the rules hold whatever the agent says:
+`pnpm review:guide` turns the floor, the signals and the agent's answer into the block at the end of
+a pull request body, below the description. A script writes it, so the rules hold whatever the agent says:
 
 - The risk is the higher of the floor and the agent's risk. A lower answer is ignored and noted
-  in the evidence.
+  in the folded block.
 - Categories are the floor's plus the catalogue names the agent added. Other names are dropped.
 - A hot spot must be a line the change added or changed, up to eight. Others are dropped and
   noted. The floor script supplies the changed lines. Agent text cannot end the block: `<` and `>` in
   it are escaped.
-- The evidence lists what the scripts measured and what they could not (coverage, dependencies
-  and audit, history, metrics), what the script itself dropped or overrode, then the agent's
-  notes, labelled "Reviewer note".
+- Each hot spot carries facts that the script adds from the signals, never the agent: "No test
+  runs this line" when the changed-line coverage lists the line, and the number of `fix:` commits
+  of the file in the last six months when it is two or more. A line that coverage does not list
+  may be covered or have no statement, so nothing is said about it.
+- "Not verified" lists what a reader has to check by hand: the signals that could not run or have
+  no data for a file, then the agent's `notVerified` entries. What the scripts did measure, and
+  what the script itself dropped or overrode, sits in a collapsed "Checked by the scripts" block
+  below it.
+- A hot spot links to its file and line at the commit the guide covers when the repository has a
+  GitHub address (read from the `origin` remote); otherwise the reference is plain text.
 - An update on request writes a new guide over the old one; nothing compares the two.
 
 | Part | Content |
 |---|---|
 | Marker | `Covers: <commit>`, the commit the guide was written for, so a reader can see what it describes (the full commit ID is in the data) |
 | Risk | The level and the category names |
-| Hot spots | `file:line`, the reason and the rule or ADR |
+| Hot spots | A headline, what the change is and what makes it a hot spot, the reference (`file:line`, linked to the covered commit) with the rule or ADR, and facts from the signals |
 | Skim only | Files a reader can skim, each with a reason |
-| Evidence | Checked, not checked and notes |
+| Not verified | What a reader has to check by hand; the scripts' own findings are folded below it |
 
 The same data is stored as JSON in a hidden HTML comment inside the block, so nothing has to
 parse the Markdown. Do not edit the block by hand;
