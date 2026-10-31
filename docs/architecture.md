@@ -327,7 +327,7 @@ Product and design decisions that have no ADR:
 | Privacy | A participant never sees another's values before the reveal | Targeted sends to the facilitator, a values-free roster |
 | Zero operations | No server to run or pay for | Static hosting, public relays and STUN |
 | Accessibility | Keyboard and screen-reader use of the estimate flow | ADR-008 |
-| Maintainability | A new feature has an obvious home, a boundary violation fails CI | [Architecture rules](architecture-rules.md), the placement skill, the review agent |
+| Maintainability | A new feature has an obvious home, a boundary violation fails CI | [Architecture rules](architecture-rules.md), the `react-webapp-architecture` plugin's placement skill and reviewer |
 
 ## 11. Risks and technical debt
 
