@@ -207,6 +207,25 @@ describe('diff checks', () => {
     expect(floor.categories[0]?.diffChecks).toEqual(['testsRemovedOrSkipped'])
   })
 
+  it.each([
+    '// architecture-exception: store-vs-usecase — the round store writes through patchItem',
+    '/* architecture-exception: default-layout — verbatim stylesheet */',
+    '      {/* architecture-exception: ui-reads-views — a JSX comment */}',
+    ' * architecture-exception: store-vs-usecase — inside a block comment',
+  ])('flags an added architecture exception: %s', (line) => {
+    const floor = floorOf({ path: 'src/shared/lib/format.ts', added: [line] })
+    expect(namesOf(floor)).toEqual(['guardrail-weakened'])
+    expect(floor.categories[0]?.diffChecks).toEqual(['architectureExceptionAdded'])
+  })
+
+  it('does not flag a string that only mentions an architecture exception', () => {
+    const floor = floorOf({
+      path: 'src/shared/lib/format.ts',
+      added: ["  const hint = '// architecture-exception: x — y'"],
+    })
+    expect(floor.categories).toEqual([])
+  })
+
   it('does not flag a string that only mentions a skipped test', () => {
     const floor = floorOf({
       path: 'src/shared/lib/format.test.ts',

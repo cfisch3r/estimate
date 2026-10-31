@@ -218,7 +218,7 @@ flowchart LR
 | Application | `src/application`: `stores/` (session, connection, round, plus the narrowed `publicStores`), `useCases/` (the use cases, the live-session controller and its `LiveSessionApi` context and hook), `ports/` and `ports/outbound/` (the peer transport and the identity port), `composition.ts` and `testing.ts` (entries for `src/app` and tests only), `index.ts` (the barrel the UI imports) |
 | Adapters | `src/adapters/network` (Trystero transport, wire actions and parsing, signaling), `src/adapters/storage` (participant id) |
 | Composition | `src/app`: `App.tsx` provides the identity port, `LiveSessionProvider.tsx` is the thin React shell that wires the network adapter into the live-session controller and provides its `LiveSessionApi` |
-| UI | `src/pages`, `src/widgets`, `src/features`, `src/entities` (`item`, `estimate`), `src/shared`. The slice mapping is in ADR-004 and the placement helper is `.claude/skills/code-placement` |
+| UI | `src/pages`, `src/widgets`, `src/features`, `src/entities` (`item`, `estimate`), `src/shared`. The slice mapping is in ADR-004 and the placement helper is the `react-webapp-architecture` plugin's code-placement skill |
 | Styling | `src/design` holds the verbatim Nocturne port and generic composed patterns, component CSS sits beside its component |
 
 ### Rules
@@ -327,7 +327,7 @@ Product and design decisions that have no ADR:
 | Privacy | A participant never sees another's values before the reveal | Targeted sends to the facilitator, a values-free roster |
 | Zero operations | No server to run or pay for | Static hosting, public relays and STUN |
 | Accessibility | Keyboard and screen-reader use of the estimate flow | ADR-008 |
-| Maintainability | A new feature has an obvious home, a boundary violation fails CI | [Architecture rules](architecture-rules.md), the placement skill, the review agent |
+| Maintainability | A new feature has an obvious home, a boundary violation fails CI | [Architecture rules](architecture-rules.md), the `react-webapp-architecture` plugin's placement skill and reviewer |
 
 ## 11. Risks and technical debt
 

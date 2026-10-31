@@ -4,7 +4,7 @@
 |---|---|
 | [prd.md](prd.md) | Product requirements — problem, goals, session modes, calculations, bias guards, screens, data model, phased roadmap. |
 | [architecture.md](architecture.md) | Technical architecture in arc42 form — goals and constraints, the context view, the layer and component building-block views, runtime and deployment pointers, crosscutting concepts, quality goals, risks and debt. |
-| [architecture-rules.md](architecture-rules.md) | The architecture rules and what enforces each; the skill, the review agent and reviews cite them by name. |
+| [architecture-rules.md](architecture-rules.md) | The architecture rules and what enforces each; reviews and the architecture plugin's standard use the same names. |
 | [review-risk.md](review-risk.md) | The review risk catalogue: named categories of change (domain math, live-session state, wire contract, weakened guardrails, and so on), the minimum risk each carries, and the fixed diff checks; one YAML block is read by `pnpm review:floor`. |
 | [adr/001-live-collaboration-architecture.md](adr/001-live-collaboration-architecture.md) | Accepted decision: peer-to-peer WebRTC for Live mode, with Manual mode as a first-class fallback. |
 | [adr/002-testing-strategy.md](adr/002-testing-strategy.md) | Accepted decision: layered tests — unit + component, plus a thin Playwright e2e layer since #26 (see ADR-007) — see the doc's 2026-09-07 and 2026-09-30 updates. |

@@ -6,6 +6,7 @@ import {
   recordOwnSubmission,
   retryRoundPatch,
 } from '../../domain/round'
+// architecture-exception: store-vs-usecase — the round store reads the session's items and active item and writes items through patchItem, the one sanctioned cross-store access (ADR-005)
 import { patchItem, useSessionStore } from './session'
 import type { LiveRound, SessionSnapshot } from '../../domain/types'
 
@@ -38,8 +39,8 @@ export interface RoundStore {
   /** Drop the participant-side round view. Composed alongside `connection.ts`'s
    *  `leaveLiveSession`/`joinLiveSession` by the `useLeaveLiveSession` /
    *  `useJoinLiveSession` composer use cases (`application/useCases`), not
-   *  called from those actions directly: the stores stay independent of each
-   *  other (see ADR-005). */
+   *  called from those actions directly: the round and connection stores stay
+   *  independent of each other (see ADR-005). */
   clearRound: () => void
 }
 

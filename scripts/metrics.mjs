@@ -1,4 +1,4 @@
-// Advisory code-metrics hotspots for the architecture-review agent. Never gates anything
+// Advisory code-metrics hotspots for the risk review's signals (`scripts/reviewSignals.ts`). Never gates anything
 // (not wired into CI; needs a local `main` ref in diff mode), prints at most MAX_ITEMS one-line items, and prints nothing when nothing
 // is notable. A number here is a prompt to inspect cohesion, not a finding.
 //
