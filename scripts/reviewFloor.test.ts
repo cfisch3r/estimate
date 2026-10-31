@@ -210,6 +210,8 @@ describe('diff checks', () => {
   it.each([
     '// architecture-exception: store-vs-usecase — the round store writes through patchItem',
     '/* architecture-exception: default-layout — verbatim stylesheet */',
+    '      {/* architecture-exception: ui-reads-views — a JSX comment */}',
+    ' * architecture-exception: store-vs-usecase — inside a block comment',
   ])('flags an added architecture exception: %s', (line) => {
     const floor = floorOf({ path: 'src/shared/lib/format.ts', added: [line] })
     expect(namesOf(floor)).toEqual(['guardrail-weakened'])

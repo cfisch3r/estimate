@@ -184,6 +184,7 @@ a duplicate `name`, more than one `fallback`, and so on.
     - 'scripts/changedDiff.ts'
     - 'docs/architecture-rules.md'
     - 'docs/review-risk.md'
+    - '.worktreeinclude'
   diff-checks: [coverageThresholdLowered, testsRemovedOrSkipped, strictnessLoosened, architectureExceptionAdded]
 
 - name: release-and-deploy
@@ -233,7 +234,7 @@ evidence for the agent that may be missing and never sets a category.
 | `coverageThresholdLowered` | A coverage threshold number in `vite.config.ts` went down or was removed |
 | `testsRemovedOrSkipped` | A test file was deleted, or `.skip`, `.only`, `xit` or `xdescribe` was added to a test |
 | `strictnessLoosened` | A strict flag in a `tsconfig` file was turned off or removed |
-| `architectureExceptionAdded` | A line starting with an `// architecture-exception:` or `/* architecture-exception:` comment was added: it excuses an architecture rule at the code |
+| `architectureExceptionAdded` | A line starting with an `architecture-exception:` comment (`//`, `/*`, JSX `{/*`, or a block comment's ` *` line) was added: it excuses an architecture rule at the code |
 | `dependencyFieldsChanged` | The `dependencies`, `devDependencies`, `peerDependencies`, `optionalDependencies` or `overrides` of `package.json` changed |
 | `pureRename` | Git reports a file as renamed with 100% similarity |
 

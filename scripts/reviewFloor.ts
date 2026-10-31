@@ -182,9 +182,10 @@ function testsRemovedOrSkipped(diff: Diff): string[] {
     .map((f) => f.path)
 }
 
-// An exception comment at the start of a line, so a string that merely mentions one is not
+// An exception comment at the start of a line (`//`, `/*`, JSX `{/*` or a block
+// comment's ` *` line), so a string that merely mentions one is not
 // taken for an exception. Each one excuses an architecture rule at the code.
-const EXCEPTION_COMMENT = /^\s*(\/\/|\/\*)\s*architecture-exception:/
+const EXCEPTION_COMMENT = /^\s*(\/\/|\{?\/\*|\*)\s*architecture-exception:/
 
 function architectureExceptionAdded(diff: Diff): string[] {
   return diff.files

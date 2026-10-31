@@ -132,6 +132,10 @@ table, rules) and reads nothing of this repo but the code:
   `// architecture-exception: <rule-name> — <reason>` comments (for example the round store's
   `patchItem` access), not in a doc.
 
+Where the plugin isn't installed (a fresh clone, a cloud session, another agent), say so
+in the PR instead of skipping the architecture review silently, and ask the Developer to
+run it.
+
 ## Code conventions
 
 - **TypeScript strict mode** (`strict: true`, `noUncheckedIndexedAccess: true`) — don't loosen these.
