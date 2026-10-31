@@ -21,7 +21,9 @@ repository would change the floor.
 
 1. `pnpm review:floor > $S/floor.json` and `pnpm review:signals > $S/signals.json`. The signals
    run the unit tests, so allow a minute; a section that cannot run says "not available" and is fine.
-2. Spawn the risk reviewer (subagent_type: `risk-review:reviewer`) with a reminder that it runs
+2. Spawn the risk reviewer (subagent_type: `risk-review:reviewer`). If that agent type does not
+   exist, the `risk-review` plugin is not loaded (an untrusted folder, a session started before
+   the checkout): stop and say so instead of building a guide without it. Remind the agent that it runs
    both scripts itself, may raise the risk but never go below the floor, and replies with its
    single JSON block. Save the reply to `$S/agent.json`. Do not edit the answer.
 3. `pnpm review:guide --floor $S/floor.json --signals $S/signals.json --agent $S/agent.json --title "Review guide PR <n>" > $S/guide.html`

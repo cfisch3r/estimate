@@ -10,7 +10,7 @@ import {
   type Diff,
 } from './changedDiff.ts'
 
-// Evidence for the `risk-review` agent: git history, advisory hotspots, changed-line
+// Evidence for the `risk-review:reviewer` agent: git history, advisory hotspots, changed-line
 // coverage and the dependency diff. A signal only shapes where the agent looks; it never
 // sets a category or the floor. Every section reports `ok` or `not available` (with the
 // reason) and nothing here can fail the run, so a missing tool never blocks a pull request.
