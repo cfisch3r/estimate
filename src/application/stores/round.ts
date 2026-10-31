@@ -6,7 +6,7 @@ import {
   recordOwnSubmission,
   retryRoundPatch,
 } from '../../domain/round'
-// architecture-exception: store-vs-usecase — the round store writes the session's items through patchItem, the one sanctioned cross-store write (ADR-005)
+// architecture-exception: store-vs-usecase — the round store reads the session's items and writes them through patchItem, the one sanctioned cross-store access (ADR-005)
 import { patchItem, useSessionStore } from './session'
 import type { LiveRound, SessionSnapshot } from '../../domain/types'
 
