@@ -18,7 +18,7 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/concepts/estimation-engine.md` — the estimation engine's detailed design (aggregation, the `Estimate` value type, bias guards)
 - `docs/concepts/e2e-testing.md` — E2E testing technical concept: the Playwright/fixture/signaling component wiring, the dual-mode (local relay / real-world) build-and-run flows, and the spec-to-wire-action coverage map
 - `docs/runbook.md` — deployment & release runbook: the IONOS Deploy Now CD pipeline, secrets, troubleshooting, and versioning/release process
-- `docs/adr/004-feature-sliced-design-architecture.md` — accepted decision on Feature-Sliced Design (FSD) as the enforced architecture: the adopted layer set (`app/pages/widgets/features/entities/shared`), the slice mapping, and the completed follow-ups (store decomposition, see ADR-005; advisory `pnpm metrics` hotspots instead of a metrics ratchet). `.claude/skills/code-placement/fsd-ui.md` has the day-to-day "which slice does new code belong in" guidance; `steiger.config.ts` is the enforcement source of truth for layer/slice/public-API boundaries
+- `docs/adr/004-feature-sliced-design-architecture.md` — accepted decision on Feature-Sliced Design (FSD) as the enforced architecture: the adopted layer set (`app/pages/widgets/features/entities/shared`), the slice mapping, and the completed follow-ups (store decomposition, see ADR-005; advisory `pnpm metrics` hotspots instead of a metrics ratchet). the `react-webapp-architecture` plugin's code-placement skill has the day-to-day "which layer, then which slice does new code belong in" guidance; `steiger.config.ts` is the enforcement source of truth for layer/slice/public-API boundaries
 - `docs/adr/005-session-store-decomposition.md` — accepted decision on splitting the monolithic session store into three per-concern stores (`session.ts`, `connection.ts`, `round.ts`, now in `src/application/stores`; navigation is out of scope — see ADR-006). Implemented in issue #111.
 - `docs/adr/006-router-adoption.md` — accepted decision on replacing the hand-rolled `currentScreen`/`goToScreen` navigation state with `react-router`, resolving an FSD layer-direction conflict ADR-005 hit
 - `docs/adr/008-accessibility-testing-strategy.md` — accepted decision on the three-layer automated accessibility stack (oxlint `jsx-a11y`, `jest-axe` component scans, real-browser `@axe-core/playwright` e2e scans) and the deliberate, tracked `color-contrast` exclusion (issue #123)
@@ -102,27 +102,35 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   never lower the floor, and replies with one JSON answer (risk, categories, hot spots,
   skim-only files, what could not be verified). `pnpm review:guide` turns that into a page,
   which is published as a private artifact. Changes no code.
-- **`/architecture-review`** — read-only architecture audit run in the
-  `architecture-review` subagent. Covers judgment calls Steiger/oxlint can't make: layer
-  placement (domain / application / adapters / UI, store action vs use case; see
-  ADR-009), FSD slice placement, public-API quality, slice cohesion, component/hook
-  design smells, cross-cutting composition placement (see ADR-004). Defaults to the current diff;
-  `/architecture-review all` for a full audit, or pass a path.
 - **`/accessibility-review`** — read-only accessibility audit run in the
   `accessibility-review` subagent. Covers judgment calls oxlint's `jsx-a11y` plugin and
   the `jest-axe`/`@axe-core/playwright` scans can't make: ARIA pattern appropriateness,
   focus-order sanity, live-region needs, contrast judgment calls outside the e2e scan's
   scope (see ADR-008). Defaults to the current diff; `/accessibility-review all` for a
   full audit, or pass a path.
-- **`code-placement` skill** — loaded automatically before creating a new file under
-  `src/` or moving code between layers or slices; the "which layer, then which slice does this
-  belong in" reference.
 - **Hooks** (`.claude/settings.json` + `.claude/hooks/`) — a `PreToolUse` hard block on
   writes outside the repo (apart from `~/.claude`, the Obsidian inbox and the Claude scratchpad), paths containing `..`, edits under `.git`, `node_modules` and `.env` files, and edits to `nocturne.css`; a `PostToolUse` per-file
   `oxlint` check (surfaces output, never blocks); a `PostToolUse` hook on `gh pr create` that shows the
   review floor of the new PR to the user (`pnpm review:floor`, never blocks); a `Stop` hook running `pnpm lint`
   (including the `jsx-a11y` plugin)/typecheck/`pnpm arch`/`pnpm deadcode`/
   `pnpm test:coverage` once per turn.
+
+Architecture review and code placement come from the **`react-webapp-architecture` plugin**
+(personal marketplace `agiledojo-plugins`, installed with `--scope local`; `.worktreeinclude`
+carries that setting into new worktrees). It brings its own standard (default layout, layer
+table, rules) and reads nothing of this repo but the code:
+
+- **`/react-webapp-architecture:review`** — read-only architecture audit run in the
+  plugin's `reviewer` agent. Covers judgment calls Steiger/dependency-cruiser can't make: layer
+  placement (domain / application / adapters / UI, store action vs use case), FSD slice
+  placement, public-API quality, slice cohesion, component/hook design smells,
+  cross-cutting composition placement. Defaults to the current diff; `all` for a full
+  audit, or pass a path.
+- **code-placement skill** — loaded automatically before creating a new file under `src/`
+  or moving code between layers or slices.
+- **Exceptions** to the plugin's standard live at the code as
+  `// architecture-exception: <rule-name> — <reason>` comments (for example the round store's
+  `patchItem` access), not in a doc.
 
 ## Code conventions
 
@@ -159,7 +167,7 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 - **Issue-sized work**: one branch per issue (`issue-<n>-<slug>`), PR opened with `Closes #n` in the description, squash-merge into `main`.
 - **PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/)** (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, etc.) — squash-merging makes the PR title the commit message on `main`, and [release-please](docs/runbook.md#versioning--releases) parses that history to cut releases. Enforced as a required status check ([PR title lint](docs/runbook.md#how-releases-are-cut)); `pnpm install` also wires up a local `commit-msg` hook that warns (non-blocking) on individual commits.
 - **Opening a PR**: fill in `.github/pull_request_template.md` (a one-sentence why, special things to note, a change outline; see `.claude/skills/show-me/SKILL.md` for the view conventions) and pass it to `gh pr create --body-file`; the title is a Conventional Commit. Push first, never commit to `main`, and open the PR only when none of yours is open (release-please's excepted). A hook then shows the review floor of the PR (`pnpm review:floor`: minimum risk and categories); name it in your answer, first. The PR body carries no review guide. When the user asks for one while reviewing, run `/risk-review`: it builds the **Review guide** as a private artifact for the pushed branch as it is now; run it again for a newer commit.
-- **Review**: after opening the PR, run the `code-review` skill with the arguments `medium origin/main...HEAD` (effort level, then explicit target; see *Code review skill*) as an independent pass over the diff. Also run `/architecture-review` (read-only, covers FSD slice placement and design judgment calls — see ADR-004) on any PR touching `src/`. If the PR touches interactive `src/` UI or visual styling/DOM structure (ARIA roles, focus handling, dynamic content, new color-token pairings, or DOM/layout reordering), also run `/accessibility-review` (read-only, covers ARIA pattern appropriateness, focus-order sanity, live-region needs, contrast judgment calls — see ADR-008). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
+- **Review**: after opening the PR, run the `code-review` skill with the arguments `medium origin/main...HEAD` (effort level, then explicit target; see *Code review skill*) as an independent pass over the diff. Also run `/react-webapp-architecture:review` (read-only, covers layer and FSD slice placement and design judgment calls) on any PR touching `src/`. If the PR touches interactive `src/` UI or visual styling/DOM structure (ARIA roles, focus handling, dynamic content, new color-token pairings, or DOM/layout reordering), also run `/accessibility-review` (read-only, covers ARIA pattern appropriateness, focus-order sanity, live-region needs, contrast judgment calls — see ADR-008). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
 - **Code review skill**: medium by default and higher for anything touching `src/domain`, `adapters`, `src/application` (the former `/network` and `/state`); never low, which makes one pass over source hunks and skips tests and docs. Always pass the target: without it the skill picks its own diff command, and on a pushed branch `git diff @{upstream}...HEAD` is empty ([anthropics/claude-code#63048](https://github.com/anthropics/claude-code/issues/63048)). If it answers `(none)` or finds nothing within seconds, check in its transcript that it read a non-empty diff, and rerun with the target if not. The skill is built into Claude Code and is not versioned here.
 - **Automated feedback**: before asking about the merge, read what GitHub itself says about the PR, wait until the checks have finished (CodeQL and the other bots comment only after a push), and treat each item as a review finding: fix it as a follow-up commit, or answer it with the reason. A green `ci-passed` does not mean there is nothing to read.
   ```sh
