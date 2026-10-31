@@ -11,6 +11,7 @@ adapter.
 
 | Name | Rule | Enforced by |
 |---|---|---|
+| `default-layout` | Source code lives in the default layout's folders (`src/domain`, `src/application`, `src/adapters`, `src/app` and the FSD layers). `src/design` is marked as an exception in `src/app/main.tsx` | the plugin's architecture reviewer |
 | `pure-domain` | The domain imports nothing outside itself, uses no I/O globals, and only test files import `vitest`. It keeps 100% test coverage | dependency-cruiser for the imports, oxlint override on `src/domain/**` for the I/O globals, coverage threshold in `vite.config.ts` |
 | `app-layer-core` | The application layer imports the domain and itself. It may use React and Zustand, but no UI layer, router, transport library or adapter | dependency-cruiser |
 | `adapters-inward` | Adapters import the domain, other adapters and packages other than React, Zustand and the router. From the application they import only `application/ports/outbound/**` | dependency-cruiser |

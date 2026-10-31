@@ -29,6 +29,11 @@
 > **Update 2026-10-06:** the slice mapping was revised after architecture reviews. The
 > "Confirmed slice mapping" section below records the original migration; where it and
 > the "Current slice mapping" section differ, the latter wins.
+>
+> **Update 2026-10-31:** the `architecture-review` subagent and the code-placement skill
+> moved into the `react-webapp-architecture` plugin, whose reviewer now reads the metrics
+> hotspots and makes the judgment calls named in this ADR. `pnpm metrics` stays for the
+> risk review's signals.
 
 ## Current slice mapping
 
