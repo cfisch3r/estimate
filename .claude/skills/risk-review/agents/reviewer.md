@@ -1,6 +1,6 @@
 ---
-name: risk-review
-description: Read-only reviewer that rates the risk of a branch for its Review guide. Starts from the deterministic floor (docs/review-risk.md), may raise the risk and add categories but never lower the floor, names the hot spots with file:line, and lists what can be skimmed and what could not be verified. Reports one JSON answer; never edits files. Invoked by the /risk-review command.
+name: reviewer
+description: Read-only reviewer that rates the risk of a branch for its Review guide. Starts from the deterministic floor (docs/review-risk.md), may raise the risk and add categories but never lower the floor, names the hot spots with file:line, and lists what can be skimmed and what could not be verified. Reports one JSON answer; never edits files. Started by the /risk-review skill.
 tools: Read, Grep, Glob, Bash
 model: claude-opus-5-5
 ---

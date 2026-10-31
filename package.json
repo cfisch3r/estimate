@@ -23,9 +23,9 @@
     "format:check": "prettier --check .",
     "deadcode": "knip",
     "metrics": "node scripts/metrics.mjs",
-    "review:floor": "node scripts/reviewFloor.ts",
-    "review:signals": "node scripts/reviewSignals.ts",
-    "review:guide": "node scripts/reviewGuide.ts"
+    "review:floor": "node .claude/skills/risk-review/scripts/reviewFloor.ts",
+    "review:signals": "node .claude/skills/risk-review/scripts/reviewSignals.ts",
+    "review:guide": "node .claude/skills/risk-review/scripts/reviewGuide.ts"
   },
   "dependencies": {
     "@phosphor-icons/react": "^2.1.10",

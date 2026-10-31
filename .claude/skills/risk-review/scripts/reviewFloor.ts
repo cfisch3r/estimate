@@ -10,7 +10,7 @@ import {
 } from './changedDiff.ts'
 
 // The review floor: the minimum risk of a change, set by the catalogue in
-// docs/review-risk.md. No model, no coverage run, no network. The `risk-review` agent may
+// docs/review-risk.md. No model, no coverage run, no network. The `risk-review:reviewer` agent may
 // raise the result and never lower it.
 //
 //   pnpm review:floor              the branch against main

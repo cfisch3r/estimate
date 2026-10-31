@@ -13,7 +13,7 @@ import type { Section } from './reviewSignals.ts'
 //     [--covers <commit>] [--title <page title>]
 //
 // Prints the HTML page. The inputs are the outputs of `pnpm review:floor`,
-// `pnpm review:signals` and the `risk-review` agent.
+// `pnpm review:signals` and the `risk-review:reviewer` agent.
 
 export interface HotSpot {
   file: string

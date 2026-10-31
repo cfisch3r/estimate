@@ -16,9 +16,11 @@ printf '%s' "$command" | grep -qE '(^|[;&|(])[[:space:]]*gh pr create([[:space:]
 printf '%s' "$input" | jq -r '.tool_response | if type == "object" then (.stdout // "") else tostring end' |
   grep -q '/pull/[0-9]' || { echo '{}'; exit 0; }
 
+# -P: the real path, which the script's own `import.meta.filename` check compares against.
+scripts=$(cd "$(dirname "$0")/../scripts" && pwd -P) || { echo '{}'; exit 0; }
 root="${CLAUDE_PROJECT_DIR:-$PWD}"
 cd "$root"
-floor=$(node scripts/reviewFloor.ts 2>/dev/null) || { echo '{}'; exit 0; }
+floor=$(node "$scripts/reviewFloor.ts" 2>/dev/null) || { echo '{}'; exit 0; }
 
 message=$(printf '%s' "$floor" | jq -r '
   "Review floor of this pull request: \(.floor) — " +

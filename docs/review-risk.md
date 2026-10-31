@@ -12,7 +12,7 @@ risk above it.
 ## How it is used
 
 `/risk-review` runs this flow when the maintainer reviews a branch; only the floor script runs
-when a PR opens. The guide describes the commit it names: run the command again after new commits.
+when a PR opens, through the risk-review plugin's hook (without the plugin, run `pnpm review:floor`). The guide describes the commit it names: run the command again after new commits.
 
 Legend: solid line = data passed on. Scripts are deterministic; the agent is the only model step.
 
@@ -21,7 +21,7 @@ flowchart TD
   Diff["Changed files and diff<br/>[Git diff]"]
   Floor["Floor script<br/>[script]"]
   Sig["Signals script<br/>[script]"]
-  Agent["risk-review agent<br/>[model, read-only]"]
+  Agent["risk-review:reviewer agent<br/>[model, read-only]"]
   Guide["Guide script<br/>[script]"]
   Page["Review guide<br/>[HTML page, artifact]"]
 
@@ -49,12 +49,12 @@ flowchart TD
 |---|---|
 | **Floor script** | Reads the YAML block below from the base branch (`origin/main`, else `main`; never from the pull request being checked, also when given a commit to start from), matches the changed files against it and reports the matched categories and the highest minimum risk. |
 | **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
-| **`risk-review` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
+| **`risk-review:reviewer` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
 | **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide page. |
 
 ## The agent's answer
 
-The `risk-review` agent replies with one JSON object, which the guide script reads. The agent
+The `risk-review:reviewer` agent replies with one JSON object, which the guide script reads. The agent
 runs both scripts itself, and a signal never makes a category or a hot spot on its own.
 
 | Field | Content |
@@ -104,7 +104,7 @@ self-contained HTML page. A script writes it, so the rules hold whatever the age
 Do not edit the page by hand; run the command again.
 
 When a pull request opens, the agent reports the minimum risk and categories first in its answer. A `PostToolUse` hook on `gh pr create`
-(`.claude/hooks/posttooluse-floor.sh`) also shows the floor to the maintainer, so the report does not
+(`.claude/skills/risk-review/hooks/posttooluse-floor.sh`) also shows the floor to the maintainer, so the report does not
 depend on the agent. That costs seconds and no model, and it is the only automatic signal: the
 guide itself exists only when the maintainer asks for it.
 
@@ -180,8 +180,6 @@ a duplicate `name`, more than one `fallback`, and so on.
     - '.claude/skills/**'
     - '.claude/commands/**'
     - '.githooks/**'
-    - 'scripts/review*.ts'
-    - 'scripts/changedDiff.ts'
     - 'docs/architecture-rules.md'
     - 'docs/review-risk.md'
     - '.worktreeinclude'

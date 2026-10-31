@@ -97,21 +97,26 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   conformance to this file's conventions. Defaults to the current diff; `/doc-review all`
   for a full audit, or pass a path. Reports severity-ranked findings and applies nothing.
 - **`/risk-review`** — builds the Review guide of the branch on request, for a reader who
-  wants to know where to look. The `risk-review` subagent starts from the deterministic floor
+  wants to know where to look. The `risk-review:reviewer` subagent starts from the deterministic floor
   (`pnpm review:floor`, see `docs/review-risk.md`), may raise the risk and name hot spots but
   never lower the floor, and replies with one JSON answer (risk, categories, hot spots,
   skim-only files, what could not be verified). `pnpm review:guide` turns that into a page,
-  which is published as a private artifact. Changes no code.
+  which is published as a private artifact. Changes no code. All of it (skill, agent, the floor
+  hook after `gh pr create`, and the `pnpm review:*` scripts) is one skills-directory plugin in
+  `.claude/skills/risk-review/`, which Claude Code loads as `risk-review@skills-dir` without an
+  install once the folder is trusted. In a desktop worktree session the plugin (skill, agent, floor
+  hook) comes from the main checkout, so script changes on the branch reach `pnpm review:*` but not
+  the hook.
 - **`/accessibility-review`** — read-only accessibility audit run in the
   `accessibility-review` subagent. Covers judgment calls oxlint's `jsx-a11y` plugin and
   the `jest-axe`/`@axe-core/playwright` scans can't make: ARIA pattern appropriateness,
   focus-order sanity, live-region needs, contrast judgment calls outside the e2e scan's
   scope (see ADR-008). Defaults to the current diff; `/accessibility-review all` for a
   full audit, or pass a path.
-- **Hooks** (`.claude/settings.json` + `.claude/hooks/`) — a `PreToolUse` hard block on
+- **Hooks** (`.claude/settings.json` + `.claude/hooks/`) — a `PreToolUse` Bash block on Claude/Anthropic
+  attribution trailers in commit messages and PR bodies; a `PreToolUse` hard block on
   writes outside the repo (apart from `~/.claude`, the Obsidian inbox and the Claude scratchpad), paths containing `..`, edits under `.git`, `node_modules` and `.env` files, and edits to `nocturne.css`; a `PostToolUse` per-file
-  `oxlint` check (surfaces output, never blocks); a `PostToolUse` hook on `gh pr create` that shows the
-  review floor of the new PR to the user (`pnpm review:floor`, never blocks); a `Stop` hook running `pnpm lint`
+  `oxlint` check (surfaces output, never blocks); a `Stop` hook running `pnpm lint`
   (including the `jsx-a11y` plugin)/typecheck/`pnpm arch`/`pnpm deadcode`/
   `pnpm test:coverage` once per turn.
 
@@ -170,7 +175,7 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 - **All changes** — from a one-line typo fix to a full issue — go through a branch + PR. `main`'s branch protection requires the `ci-passed` and PR-title-lint status checks with `enforce_admins` on, so direct pushes are rejected outright. A trivial/no-issue change can use any descriptive branch name and skip `Closes #n`.
 - **Issue-sized work**: one branch per issue (`issue-<n>-<slug>`), PR opened with `Closes #n` in the description, squash-merge into `main`.
 - **PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/)** (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, etc.) — squash-merging makes the PR title the commit message on `main`, and [release-please](docs/runbook.md#versioning--releases) parses that history to cut releases. Enforced as a required status check ([PR title lint](docs/runbook.md#how-releases-are-cut)); `pnpm install` also wires up a local `commit-msg` hook that warns (non-blocking) on individual commits.
-- **Opening a PR**: fill in `.github/pull_request_template.md` (a one-sentence why, special things to note, a change outline; see `.claude/skills/show-me/SKILL.md` for the view conventions) and pass it to `gh pr create --body-file`; the title is a Conventional Commit. Push first, never commit to `main`, and open the PR only when none of yours is open (release-please's excepted). A hook then shows the review floor of the PR (`pnpm review:floor`: minimum risk and categories); name it in your answer, first. The PR body carries no review guide. When the user asks for one while reviewing, run `/risk-review`: it builds the **Review guide** as a private artifact for the pushed branch as it is now; run it again for a newer commit.
+- **Opening a PR**: fill in `.github/pull_request_template.md` (a one-sentence why, special things to note, a change outline; see `.claude/skills/show-me/SKILL.md` for the view conventions) and pass it to `gh pr create --body-file`; the title is a Conventional Commit. Push first, never commit to `main`, and open the PR only when none of yours is open (release-please's excepted). The risk-review plugin's hook then shows the review floor of the PR (`pnpm review:floor`: minimum risk and categories); name it in your answer, first. Where the plugin isn't loaded and no floor appears, run `pnpm review:floor` yourself. The PR body carries no review guide. When the user asks for one while reviewing, run `/risk-review`: it builds the **Review guide** as a private artifact for the pushed branch as it is now; run it again for a newer commit.
 - **Review**: after opening the PR, run the `code-review` skill with the arguments `medium origin/main...HEAD` (effort level, then explicit target; see *Code review skill*) as an independent pass over the diff. Also run `/react-webapp-architecture:review` (read-only, covers layer and FSD slice placement and design judgment calls) on any PR touching `src/`. If the PR touches interactive `src/` UI or visual styling/DOM structure (ARIA roles, focus handling, dynamic content, new color-token pairings, or DOM/layout reordering), also run `/accessibility-review` (read-only, covers ARIA pattern appropriateness, focus-order sanity, live-region needs, contrast judgment calls — see ADR-008). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
 - **Code review skill**: medium by default and higher for anything touching `src/domain`, `adapters`, `src/application` (the former `/network` and `/state`); never low, which makes one pass over source hunks and skips tests and docs. Always pass the target: without it the skill picks its own diff command, and on a pushed branch `git diff @{upstream}...HEAD` is empty ([anthropics/claude-code#63048](https://github.com/anthropics/claude-code/issues/63048)). If it answers `(none)` or finds nothing within seconds, check in its transcript that it read a non-empty diff, and rerun with the target if not. The skill is built into Claude Code and is not versioned here.
 - **Automated feedback**: before asking about the merge, read what GitHub itself says about the PR, wait until the checks have finished (CodeQL and the other bots comment only after a push), and treat each item as a review finding: fix it as a follow-up commit, or answer it with the reason. A green `ci-passed` does not mean there is nothing to read.
