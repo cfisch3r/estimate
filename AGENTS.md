@@ -104,14 +104,17 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   which is published as a private artifact. Changes no code. All of it (skill, agent, the floor
   hook after `gh pr create`, and the `pnpm review:*` scripts) is one skills-directory plugin in
   `.claude/skills/risk-review/`, which Claude Code loads as `risk-review@skills-dir` without an
-  install once the folder is trusted. A desktop worktree session runs the main checkout's copy.
+  install once the folder is trusted. In a desktop worktree session the plugin (skill, agent, floor
+  hook) comes from the main checkout, so script changes on the branch reach `pnpm review:*` but not
+  the hook.
 - **`/accessibility-review`** — read-only accessibility audit run in the
   `accessibility-review` subagent. Covers judgment calls oxlint's `jsx-a11y` plugin and
   the `jest-axe`/`@axe-core/playwright` scans can't make: ARIA pattern appropriateness,
   focus-order sanity, live-region needs, contrast judgment calls outside the e2e scan's
   scope (see ADR-008). Defaults to the current diff; `/accessibility-review all` for a
   full audit, or pass a path.
-- **Hooks** (`.claude/settings.json` + `.claude/hooks/`) — a `PreToolUse` hard block on
+- **Hooks** (`.claude/settings.json` + `.claude/hooks/`) — a `PreToolUse` Bash block on Claude/Anthropic
+  attribution trailers in commit messages and PR bodies; a `PreToolUse` hard block on
   writes outside the repo (apart from `~/.claude`, the Obsidian inbox and the Claude scratchpad), paths containing `..`, edits under `.git`, `node_modules` and `.env` files, and edits to `nocturne.css`; a `PostToolUse` per-file
   `oxlint` check (surfaces output, never blocks); a `Stop` hook running `pnpm lint`
   (including the `jsx-a11y` plugin)/typecheck/`pnpm arch`/`pnpm deadcode`/

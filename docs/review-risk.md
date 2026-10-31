@@ -12,7 +12,7 @@ risk above it.
 ## How it is used
 
 `/risk-review` runs this flow when the maintainer reviews a branch; only the floor script runs
-when a PR opens. The guide describes the commit it names: run the command again after new commits.
+when a PR opens, through the risk-review plugin's hook (without the plugin, run `pnpm review:floor`). The guide describes the commit it names: run the command again after new commits.
 
 Legend: solid line = data passed on. Scripts are deterministic; the agent is the only model step.
 

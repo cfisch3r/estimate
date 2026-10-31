@@ -4,7 +4,7 @@ description: Build the Review guide of the current branch as a private artifact 
 ---
 
 Build the Review guide for the branch the user is reviewing. The guide describes the branch as
-it is now; run the command again after new commits to get a new one.
+it is now; run `/risk-review` again after new commits to get a new one.
 
 ## Scope
 
@@ -38,4 +38,4 @@ repository would change the floor.
 
 Give the link, then in a few lines: the risk (and the floor if it was raised), the categories,
 and the headline of each hot spot. Say that the page describes the commit it names, and that
-the command can be run again after new commits.
+`/risk-review` can be run again after new commits.
