@@ -22,6 +22,6 @@
   "include": [
     "vite.config.ts",
     "scripts/layerRules.test.ts",
-    "scripts/reviewFloor.test.ts"
+    ".claude/skills/risk-review/scripts/reviewFloor.test.ts"
   ]
 }

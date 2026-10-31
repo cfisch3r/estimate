@@ -1,6 +1,11 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "project": ["src/**/*.{ts,tsx}", "e2e/**/*.ts", "scripts/**/*.test.ts"],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "e2e/**/*.ts",
+    "scripts/**/*.test.ts",
+    ".claude/skills/*/scripts/**/*.test.ts"
+  ],
   "entry": ["steiger.config.ts", "e2e/relay-server.mjs"],
   "ignoreDependencies": ["fta-cli"]
 }

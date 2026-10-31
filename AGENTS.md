@@ -97,11 +97,14 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   conformance to this file's conventions. Defaults to the current diff; `/doc-review all`
   for a full audit, or pass a path. Reports severity-ranked findings and applies nothing.
 - **`/risk-review`** — builds the Review guide of the branch on request, for a reader who
-  wants to know where to look. The `risk-review` subagent starts from the deterministic floor
+  wants to know where to look. The `risk-review:reviewer` subagent starts from the deterministic floor
   (`pnpm review:floor`, see `docs/review-risk.md`), may raise the risk and name hot spots but
   never lower the floor, and replies with one JSON answer (risk, categories, hot spots,
   skim-only files, what could not be verified). `pnpm review:guide` turns that into a page,
-  which is published as a private artifact. Changes no code.
+  which is published as a private artifact. Changes no code. All of it (skill, agent, the floor
+  hook after `gh pr create`, and the `pnpm review:*` scripts) is one skills-directory plugin in
+  `.claude/skills/risk-review/`, which Claude Code loads as `risk-review@skills-dir` without an
+  install once the folder is trusted. A desktop worktree session runs the main checkout's copy.
 - **`/accessibility-review`** — read-only accessibility audit run in the
   `accessibility-review` subagent. Covers judgment calls oxlint's `jsx-a11y` plugin and
   the `jest-axe`/`@axe-core/playwright` scans can't make: ARIA pattern appropriateness,
@@ -110,8 +113,7 @@ Project-owned Claude Code tooling lives in `.claude/` (versioned):
   full audit, or pass a path.
 - **Hooks** (`.claude/settings.json` + `.claude/hooks/`) — a `PreToolUse` hard block on
   writes outside the repo (apart from `~/.claude`, the Obsidian inbox and the Claude scratchpad), paths containing `..`, edits under `.git`, `node_modules` and `.env` files, and edits to `nocturne.css`; a `PostToolUse` per-file
-  `oxlint` check (surfaces output, never blocks); a `PostToolUse` hook on `gh pr create` that shows the
-  review floor of the new PR to the user (`pnpm review:floor`, never blocks); a `Stop` hook running `pnpm lint`
+  `oxlint` check (surfaces output, never blocks); a `Stop` hook running `pnpm lint`
   (including the `jsx-a11y` plugin)/typecheck/`pnpm arch`/`pnpm deadcode`/
   `pnpm test:coverage` once per turn.
 

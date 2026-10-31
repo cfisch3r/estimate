@@ -13,7 +13,7 @@ import { evaluateFloor, parseCatalogue, type Floor } from './reviewFloor.ts'
 // catalogue path or a diff check that stops working fails here instead of silently
 // lowering the floor. The real catalogue is parsed too, so an edit that breaks the YAML
 // block fails in CI.
-const root = join(import.meta.dirname, '..')
+const root = join(import.meta.dirname, '../../../..')
 const catalogue = parseCatalogue(readFileSync(join(root, 'docs/review-risk.md'), 'utf8'))
 
 interface Change {
@@ -78,6 +78,14 @@ describe('paths', () => {
     expect(namesOf(floorOf({ path: 'docs/review-risk.md' }))).toEqual([
       'guardrail-weakened',
     ])
+  })
+
+  it.each([
+    '.claude/skills/risk-review/scripts/reviewFloor.ts',
+    '.claude/skills/risk-review/hooks/hooks.json',
+    '.claude/skills/risk-review/agents/reviewer.md',
+  ])('treats a change to the risk review plugin (%s) as guardrail-weakened', (path) => {
+    expect(namesOf(floorOf({ path }))).toEqual(['guardrail-weakened'])
   })
 
   it('matches the old path of a rename too', () => {

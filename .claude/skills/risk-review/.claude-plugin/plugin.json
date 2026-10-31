@@ -1,0 +1,5 @@
+{
+  "name": "risk-review",
+  "version": "0.1.0",
+  "description": "The Review guide of a branch on request: the deterministic floor from docs/review-risk.md, the signals, a read-only risk reviewer, and the page built from them. Shows the floor after gh pr create."
+}

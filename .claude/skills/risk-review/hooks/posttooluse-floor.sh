@@ -16,9 +16,10 @@ printf '%s' "$command" | grep -qE '(^|[;&|(])[[:space:]]*gh pr create([[:space:]
 printf '%s' "$input" | jq -r '.tool_response | if type == "object" then (.stdout // "") else tostring end' |
   grep -q '/pull/[0-9]' || { echo '{}'; exit 0; }
 
+scripts=$(cd "$(dirname "$0")/../scripts" && pwd)
 root="${CLAUDE_PROJECT_DIR:-$PWD}"
 cd "$root"
-floor=$(node scripts/reviewFloor.ts 2>/dev/null) || { echo '{}'; exit 0; }
+floor=$(node "$scripts/reviewFloor.ts" 2>/dev/null) || { echo '{}'; exit 0; }
 
 message=$(printf '%s' "$floor" | jq -r '
   "Review floor of this pull request: \(.floor) — " +
