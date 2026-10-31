@@ -31,6 +31,7 @@ const DIFF_CHECKS = {
   strictnessLoosened,
   dependencyFieldsChanged,
   pureRename,
+  architectureExceptionAdded,
 }
 export type DiffCheckName = keyof typeof DIFF_CHECKS
 
@@ -178,6 +179,17 @@ function testsRemovedOrSkipped(diff: Diff): string[] {
       if (!isTestFile(f.path)) return false
       return diff.addedLines(f).some((line) => SKIP_CALL.test(line))
     })
+    .map((f) => f.path)
+}
+
+// An exception comment at the start of a line, so a string that merely mentions one is not
+// taken for an exception. Each one excuses an architecture rule at the code.
+const EXCEPTION_COMMENT = /^\s*(\/\/|\/\*)\s*architecture-exception:/
+
+function architectureExceptionAdded(diff: Diff): string[] {
+  return diff.files
+    .filter((f) => f.status !== 'deleted')
+    .filter((f) => diff.addedLines(f).some((line) => EXCEPTION_COMMENT.test(line)))
     .map((f) => f.path)
 }
 
