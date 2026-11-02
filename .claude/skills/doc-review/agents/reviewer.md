@@ -1,6 +1,6 @@
 ---
-name: doc-quality
-description: Read-only reviewer that audits the repo's documentation for accuracy against shipped code, cross-reference integrity, and conformance to the repo's own doc conventions. Reports severity-ranked findings; never edits files. Invoked by the /doc-review command.
+name: reviewer
+description: Read-only reviewer that audits the repo's documentation for accuracy against shipped code, cross-reference integrity, and conformance to the repo's own doc conventions. Reports severity-ranked findings; never edits files. Started by the /doc-review skill.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
@@ -19,7 +19,7 @@ If AGENTS.md and a doc disagree about a convention, AGENTS.md wins.
 
 ## Scope
 
-The command passes you one of:
+The skill passes you one of:
 
 - **diff** (default) — you are given the current working-tree/branch diff. Review:
   1. **Changed doc files** — every doc touched by the diff, for the checks below.

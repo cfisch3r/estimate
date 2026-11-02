@@ -84,7 +84,9 @@ describe('paths', () => {
     '.claude/skills/risk-review/scripts/reviewFloor.ts',
     '.claude/skills/risk-review/hooks/hooks.json',
     '.claude/skills/risk-review/agents/reviewer.md',
-  ])('treats a change to the risk review plugin (%s) as guardrail-weakened', (path) => {
+    '.claude/skills/doc-review/agents/reviewer.md',
+    '.claude/skills/accessibility-review/.claude-plugin/plugin.json',
+  ])('treats a change to a review plugin (%s) as guardrail-weakened', (path) => {
     expect(namesOf(floorOf({ path }))).toEqual(['guardrail-weakened'])
   })
 

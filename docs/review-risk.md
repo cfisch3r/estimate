@@ -124,6 +124,8 @@ The one fenced `yaml` block in this file is the data the floor script reads. Eve
 - `name`: the category name, unique, kebab-case.
 - `min-risk`: one of the levels above.
 - `paths`: glob patterns, relative to the repository root. A file matches if any pattern matches.
+  A `*` or `**` never matches a folder whose name starts with a dot, so such a folder is named
+  in the pattern (`.claude/skills/*/.claude-plugin/**`).
 - `diff-checks`: names from the fixed set in [Diff checks](#diff-checks). May be empty.
 - `fallback`: optional, `true` for the category that applies only when nothing else matched.
 
@@ -178,6 +180,7 @@ a duplicate `name`, more than one `fallback`, and so on.
     - '.claude/settings.json'
     - '.claude/agents/**'
     - '.claude/skills/**'
+    - '.claude/skills/*/.claude-plugin/**'
     - '.claude/commands/**'
     - '.githooks/**'
     - 'docs/architecture-rules.md'

@@ -1,0 +1,5 @@
+{
+  "name": "doc-review",
+  "version": "0.1.0",
+  "description": "A read-only documentation audit: accuracy against shipped code, cross-reference integrity and the repo's own doc conventions, run in its own reviewer agent."
+}

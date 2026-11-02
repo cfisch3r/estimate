@@ -1,0 +1,5 @@
+{
+  "name": "accessibility-review",
+  "version": "0.1.0",
+  "description": "A read-only accessibility audit of the judgment calls the lint rules and axe scans can't make: ARIA pattern choice, focus order, live regions and contrast outside the e2e scan, run in its own reviewer agent."
+}

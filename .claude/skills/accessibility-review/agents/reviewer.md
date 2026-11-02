@@ -1,6 +1,6 @@
 ---
-name: accessibility-review
-description: Read-only reviewer for accessibility judgment calls that oxlint's jsx-a11y plugin and the jest-axe/axe-core scans can't make — ARIA pattern appropriateness, focus-order sanity, live-region needs, and contrast judgment calls outside the e2e scan's scope. Reports severity-ranked findings; never edits files. Invoked by the /accessibility-review command.
+name: reviewer
+description: Read-only reviewer for accessibility judgment calls that oxlint's jsx-a11y plugin and the jest-axe/axe-core scans can't make — ARIA pattern appropriateness, focus-order sanity, live-region needs, and contrast judgment calls outside the e2e scan's scope. Reports severity-ranked findings; never edits files. Started by the /accessibility-review skill.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
@@ -26,7 +26,7 @@ report** — you never edit files.
 
 ## Scope
 
-The command passes you a diff (default) or a path. Run `pnpm lint` yourself
+The skill passes you a diff (default) or a path. Run `pnpm lint` yourself
 first and read its output — **never restate a `jsx-a11y` finding oxlint
 already reported.** Your job is exactly the judgment calls oxlint's static
 rules and an axe-core scan structurally cannot make:
