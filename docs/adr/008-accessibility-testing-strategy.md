@@ -4,6 +4,12 @@
 **Date:** 2026-10-01
 **Related:** [002-testing-strategy.md](002-testing-strategy.md), issue #123
 
+> **Update 2026-11-02:** the fourth layer landed on 2026-10-01 as the `accessibility-review`
+> subagent. It is now the `/accessibility-review` skill, run by the
+> `accessibility-review:reviewer` agent in the `.claude/skills/accessibility-review/`
+> skills-directory plugin. The `architecture-review` subagent it mirrored now comes from the
+> `react-webapp-architecture` plugin (see ADR-004's 2026-10-31 update).
+
 ## Context
 
 An accessibility audit found the app had no automated accessibility checking
@@ -115,9 +121,9 @@ that landed with them:
 - Once #123 (Nocturne's `.text-muted` contrast) is fixed upstream, remove
   the `color-contrast` exclusion from `e2e/helpers.ts`'s
   `expectNoA11yViolations` and confirm the suite passes clean.
-- Add the `accessibility-review` subagent (mirroring `architecture-review`)
+- ~~Add the `accessibility-review` subagent (mirroring `architecture-review`)
   and wire it into AGENTS.md's PR-workflow paragraph, scoped to PRs touching
-  interactive `src/` UI.
+  interactive `src/` UI.~~ Done on 2026-10-01; the 2026-11-02 update says how it is packaged now.
 - If the e2e accessibility spec's screen coverage falls behind as new
   screens ship, extend it rather than relying on the component-level
   jest-axe scans alone — those can't catch layout-dependent rules.
