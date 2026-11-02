@@ -90,6 +90,13 @@ describe('paths', () => {
     expect(namesOf(floorOf({ path }))).toEqual(['guardrail-weakened'])
   })
 
+  it.each([
+    '.claude/hooks/.guard-config',
+    '.claude/skills/risk-review/scripts/.fixtures/floor.json',
+  ])('matches a dot file or dot folder below a folder/** pattern (%s)', (path) => {
+    expect(namesOf(floorOf({ path }))).toEqual(['guardrail-weakened'])
+  })
+
   it('matches the old path of a rename too', () => {
     const floor = floorOf({
       path: 'src/shared/estimate.ts',
