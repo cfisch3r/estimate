@@ -90,8 +90,8 @@ also run as required checks in CI (`.github/workflows/ci.yml`) on every PR and p
 `main` — running them locally first is a courtesy that catches failures before you push,
 not the only gate.
 
-Project-owned Claude Code tooling lives in `.claude/` (versioned). The three reviews are
-skills-directory plugins, one folder each in `.claude/skills/<name>/` holding the skill, its
+Project-owned Claude Code tooling lives in `.claude/` (versioned). The doc, risk and
+accessibility reviews below are skills-directory plugins, one folder each in `.claude/skills/<name>/` holding the skill, its
 `reviewer` agent and any hooks or scripts. Claude Code loads each as `<name>@skills-dir` without
 an install once the folder is trusted; the agent is named `<name>:reviewer`. In a desktop
 worktree session the plugins come from the main checkout, so a change to one on the branch takes
