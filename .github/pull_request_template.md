@@ -24,4 +24,38 @@ named and ordered by the change: key type changes, pseudocode for changed behavi
 file tree, a component tree, call or data flow. Prefer `diff` blocks for changes to existing
 shapes; show the complete shape when most of it is new. Keep only the types, calls and files
 the reviewer needs. Mermaid must render on GitHub: explicit text colours, short edge labels.
+
+A file-layout change:
+
+```diff
+ src/
+ ├── commands/
++│   └── expand.ts        # expands the slash command
+ ├── sessions/
+-└── transport.ts
++└── transport/
++    ├── client.ts
++    └── stream.ts
+```
+
+A call-tree change:
+
+```diff
+ submitForm
+   createSession
+     persistPrompt
++    expandSkillMention
+     launchAgent
+   navigateToSession
++    subscribeToEvents
+```
+
+A component change:
+
+```diff
+ <SessionPage>
+   useSessionEvents()
+   <SessionToolbar>
++    <RunSkillButton />
+```
 -->
