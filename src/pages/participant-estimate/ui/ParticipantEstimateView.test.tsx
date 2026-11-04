@@ -688,6 +688,14 @@ describe('ParticipantEstimateView — no-session redirect', () => {
     expect(navigateMock).not.toHaveBeenCalled()
   })
 
+  it('redirects a facilitator to their own Workspace instead of showing them this screen', () => {
+    useConnectionStore.setState({ role: 'facilitator' })
+    renderView()
+
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith(ROUTES.workspace, { replace: true })
+  })
+
   it('does not redirect a joined session still waiting to connect', () => {
     useRoundStore.setState({ liveRound: null })
     renderView()
