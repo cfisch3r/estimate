@@ -4,6 +4,7 @@ import { useReconnect } from '../../../application'
 import { useLeaveLiveSession } from '../../../features/session-lifecycle'
 import { useFocusHeadingOnChange } from '../model/useFocusHeadingOnChange'
 import { useParticipantRound } from '../model/useParticipantRound'
+import { useParticipantSessionGuard } from '../model/useParticipantSessionGuard'
 import { useRoundAnnouncement } from '../model/useRoundAnnouncement'
 import { ConnectionNotices } from './ConnectionNotices'
 import { EstimatingPanel } from './EstimatingPanel'
@@ -12,6 +13,7 @@ import { RevealedPanel } from './RevealedPanel'
 import { WaitingPanel } from './WaitingPanel'
 
 export function ParticipantEstimateView() {
+  useParticipantSessionGuard()
   const round = useParticipantRound()
   const { kicker, unit, connectionPhase } = round
   const { submit, deliveryState } = useSubmitEstimate()

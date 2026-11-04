@@ -5,6 +5,7 @@ import { MemoryRouter } from 'react-router'
 import { Workspace } from './Workspace'
 import { createEstimate, type Estimate } from '../../../domain/estimate'
 import { useSessionStore, useConnectionStore } from '../../../application/testing'
+import { ROUTES } from '../../../shared/lib/routes'
 import type { Item } from '../../../domain/types'
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
@@ -409,5 +410,36 @@ describe('Workspace — live facilitator reveal flow', () => {
 
     expect(screen.getByLabelText(/Best case/)).toBeInTheDocument()
     expect(screen.queryByText('Participants')).not.toBeInTheDocument()
+  })
+})
+
+describe('Workspace — live participant redirect', () => {
+  it('redirects a live participant to /estimate', () => {
+    useConnectionStore.setState({
+      mode: 'live',
+      role: 'participant',
+      sessionId: 'K7F9Q2',
+    })
+    renderWorkspace()
+
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith(ROUTES.estimate, { replace: true })
+  })
+
+  it('does not redirect a live facilitator', () => {
+    useConnectionStore.setState({
+      mode: 'live',
+      role: 'facilitator',
+      sessionId: 'K7F9Q2',
+    })
+    renderWorkspace()
+
+    expect(navigateMock).not.toHaveBeenCalled()
+  })
+
+  it('does not redirect a manual-mode user', () => {
+    renderWorkspace()
+
+    expect(navigateMock).not.toHaveBeenCalled()
   })
 })

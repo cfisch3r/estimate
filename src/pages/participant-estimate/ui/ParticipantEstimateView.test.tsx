@@ -11,6 +11,7 @@ import {
   useConnectionStore,
   useRoundStore,
 } from '../../../application/testing'
+import { ROUTES } from '../../../shared/lib/routes'
 
 function mine(best: number, likely: number, worst: number): Estimate {
   const result = createEstimate({ participantId: 'me-123', best, likely, worst })
@@ -669,5 +670,29 @@ describe('ParticipantEstimateView', () => {
         screen.getByText(/Connected\. Waiting for the facilitator/),
       ).toBeInTheDocument()
     })
+  })
+})
+
+describe('ParticipantEstimateView — no-session redirect', () => {
+  it('redirects to mode-select when there is no joined session', () => {
+    useConnectionStore.setState({ sessionId: null })
+    renderView()
+
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith(ROUTES.modeSelect, { replace: true })
+  })
+
+  it('does not redirect while a session is joined', () => {
+    renderView()
+
+    expect(navigateMock).not.toHaveBeenCalled()
+  })
+
+  it('does not redirect a joined session still waiting to connect', () => {
+    useRoundStore.setState({ liveRound: null })
+    renderView()
+
+    expect(screen.getByText(/Waiting for the facilitator to start/)).toBeInTheDocument()
+    expect(navigateMock).not.toHaveBeenCalled()
   })
 })
