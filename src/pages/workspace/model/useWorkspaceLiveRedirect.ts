@@ -1,6 +1,7 @@
 import { useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router'
 import { useConnectionStore } from '../../../application'
+import { screenAccessFor } from '../../../domain/connection'
 import { ROUTES } from '../../../shared/lib/routes'
 
 /** Bounces a live participant off the single-user Workspace to the participant
@@ -14,13 +15,14 @@ import { ROUTES } from '../../../shared/lib/routes'
 export function useWorkspaceLiveRedirect() {
   const mode = useConnectionStore((s) => s.mode)
   const role = useConnectionStore((s) => s.role)
+  const sessionId = useConnectionStore((s) => s.sessionId)
   const navigate = useNavigate()
 
-  const isLiveParticipant = mode === 'live' && role === 'participant'
+  const access = screenAccessFor({ mode, role, sessionId }, 'workspace')
 
   useLayoutEffect(() => {
-    if (isLiveParticipant) {
-      navigate(ROUTES.estimate, { replace: true })
+    if (access !== 'allow') {
+      navigate(ROUTES[access], { replace: true })
     }
-  }, [isLiveParticipant, navigate])
+  }, [access, navigate])
 }
