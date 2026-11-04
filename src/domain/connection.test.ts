@@ -7,6 +7,7 @@ import {
   shouldBroadcastSnapshot,
   normalizeSessionCode,
   participantJoin,
+  screenAccessFor,
   withConnectionStatus,
 } from './connection'
 import type { ConnectionStatus, SessionRole } from './types'
@@ -127,6 +128,55 @@ describe('shouldBroadcastSnapshot', () => {
     ['live', 'facilitator', ''],
   ] as const)('is false for mode %s, role %s, code %j', (mode, role, sessionId) => {
     expect(shouldBroadcastSnapshot(mode, role, sessionId)).toBe(false)
+  })
+})
+
+describe('screenAccessFor', () => {
+  it('sends a live participant off Workspace, to their own estimate screen', () => {
+    expect(
+      screenAccessFor(
+        { mode: 'live', role: 'participant', sessionId: 'K7F9Q2' },
+        'workspace',
+      ),
+    ).toBe('estimate')
+  })
+
+  it.each([
+    ['live', 'facilitator', 'K7F9Q2'],
+    ['manual', 'facilitator', null],
+    ['manual', 'participant', null],
+  ] as const)(
+    'allows Workspace for mode %s, role %s, session %j',
+    (mode, role, sessionId) => {
+      expect(screenAccessFor({ mode, role, sessionId }, 'workspace')).toBe('allow')
+    },
+  )
+
+  it('sends a visitor with no joined session off the estimate screen, to mode-select', () => {
+    expect(
+      screenAccessFor(
+        { mode: 'manual', role: 'facilitator', sessionId: null },
+        'estimate',
+      ),
+    ).toBe('modeSelect')
+  })
+
+  it('sends a facilitator with a session off the estimate screen, to their own Workspace', () => {
+    expect(
+      screenAccessFor(
+        { mode: 'live', role: 'facilitator', sessionId: 'K7F9Q2' },
+        'estimate',
+      ),
+    ).toBe('workspace')
+  })
+
+  it('allows the estimate screen for a participant with a joined session', () => {
+    expect(
+      screenAccessFor(
+        { mode: 'live', role: 'participant', sessionId: 'K7F9Q2' },
+        'estimate',
+      ),
+    ).toBe('allow')
   })
 })
 

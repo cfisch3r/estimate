@@ -6,6 +6,7 @@ import { finalizeEstimate } from '../../../application'
 import { LiveFacilitatorPanel } from '../../../features/reveal-results'
 import { useReconnect } from '../../../application'
 import { useItemNavigation } from '../model/useItemNavigation'
+import { useWorkspaceLiveRedirect } from '../model/useWorkspaceLiveRedirect'
 import { ActiveItemPanel } from './ActiveItemPanel'
 import { LiveSessionStrip } from './LiveSessionStrip'
 import { WorkspaceEmptyState } from './WorkspaceEmptyState'
@@ -22,6 +23,7 @@ export function Workspace() {
   const { reconnect } = useReconnect()
   const { itemCount, activeItem, isFirst, isLast, allFinalized, goPrev, advance } =
     useItemNavigation()
+  useWorkspaceLiveRedirect()
 
   const isLiveFacilitator = mode === 'live' && role === 'facilitator'
 

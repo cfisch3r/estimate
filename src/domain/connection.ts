@@ -109,6 +109,28 @@ export function shouldBroadcastSnapshot(
   return mode === 'live' && role === 'facilitator' && Boolean(sessionId)
 }
 
+/** Where a connection state belongs, for a screen gated to one role: the
+ *  single-user/facilitator Workspace, or the live participant's estimate
+ *  screen. `'allow'` means the given screen already matches that state;
+ *  otherwise the screen the caller should redirect to instead. Centralizes
+ *  the access rule so the two gated screens can't disagree about where a
+ *  given state belongs. */
+export function screenAccessFor(
+  connection: { mode: SessionMode; role: SessionRole; sessionId: string | null },
+  screen: 'workspace' | 'estimate',
+): 'allow' | 'workspace' | 'estimate' | 'modeSelect' {
+  const { mode, role, sessionId } = connection
+  const isLiveParticipant = mode === 'live' && role === 'participant'
+
+  if (screen === 'workspace') {
+    return isLiveParticipant ? 'estimate' : 'allow'
+  }
+
+  if (sessionId === null) return 'modeSelect'
+  if (role === 'facilitator') return 'workspace'
+  return 'allow'
+}
+
 /** Which `participantId -> display name` a client announces to its peers, or
  *  `null` when it has nothing to announce (not live, no name yet, or no id yet).
  *  The facilitator announces under the reserved facilitator id. */
