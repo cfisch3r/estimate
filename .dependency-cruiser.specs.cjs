@@ -3,6 +3,8 @@
 // drive the app through Playwright, but must never reach into `src/` directly
 // — that would make the spec depend on implementation internals instead of
 // observable behavior. See AGENTS.md's "Picking the next task" spike brief.
+const sharedOptions = require('./.dependency-cruiser.shared.cjs')
+
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
   forbidden: [
@@ -14,12 +16,7 @@ module.exports = {
     },
   ],
   options: {
+    ...sharedOptions,
     tsConfig: { fileName: 'tsconfig.playwright.json' },
-    tsPreCompilationDeps: true,
-    enhancedResolveOptions: {
-      exportsFields: ['exports'],
-      conditionNames: ['import', 'require', 'node', 'default', 'types'],
-    },
-    doNotFollow: { path: 'node_modules' },
   },
 }

@@ -35,7 +35,8 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 The Developer names the next issue directly — there is no automated backlog-walking. The
 **EstiMate Roadmap** GitHub Project board is being retired, and whether `epic`-labeled
 issues keep being used at all is undecided; don't assume either one when reasoning about
-priority.
+priority. If asked to start "the next issue" or "the next task" without a number, ask the
+Developer which one — never guess from issue order, labels, or the board.
 
 When told to start an issue, **fetch it and stop**: summarise the issue body, flag
 ambiguities, superseding design handoffs, and scope questions, then wait for an explicit
@@ -69,7 +70,7 @@ pnpm typecheck            # type-check only (tsc -b), no bundling
 pnpm preview              # serve the production build locally
 pnpm lint                 # oxlint
 pnpm arch                 # steiger (FSD inside the UI) and dependency-cruiser (layer rules, `pnpm arch:layers`)
-pnpm arch:specs           # dependency-cruiser on specs/ (Test Level driver code may not import src/, ADR-010); not run by `pnpm arch`
+pnpm arch:specs           # dependency-cruiser on specs/ (Test Level driver code may not import src/, ADR-010); separate from `pnpm arch`, but runs in CI and the Stop hook
 pnpm format               # prettier --write
 pnpm format:check         # prettier --check
 pnpm test                 # vitest run, summary output
@@ -86,9 +87,9 @@ pnpm review:guide         # render the Review guide page from the floor, signals
 pnpm review:signals       # evidence for the risk review of the branch plus working tree: file history, metrics, changed-line coverage (runs the unit tests), dependency diff and audit; each section may say "not available"; prints JSON
 ```
 
-Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm format:check`, `pnpm test`,
-`pnpm test:coverage`, `pnpm deadcode`, and `pnpm test:e2e` before considering any change
-complete. (`pnpm test:e2e:real-world` is not part of that list — it runs nightly and on
+Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm arch:specs`, `pnpm format:check`,
+`pnpm test`, `pnpm test:coverage`, `pnpm deadcode`, and `pnpm test:e2e` before considering
+any change complete. (`pnpm test:e2e:real-world` is not part of that list — it runs nightly and on
 manual dispatch only, never gates a PR.) These
 also run as required checks in CI (`.github/workflows/ci.yml`) on every PR and push to
 `main` — running them locally first is a courtesy that catches failures before you push,

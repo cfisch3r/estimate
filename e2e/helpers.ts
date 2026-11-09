@@ -1,6 +1,18 @@
-import type { Page } from '@playwright/test'
+import type { Browser, BrowserContext, Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+
+/** Opens a page in its own browser context (isolated storage), not just a new
+ *  tab/page — JoinSession's identity warning ("joining from another tab in
+ *  this browser will be treated as the same person") means same-context
+ *  pages would collide on participantId; separate contexts don't. Caller
+ *  closes the returned context when done with the page. */
+export async function newIsolatedPage(
+  browser: Browser,
+): Promise<{ page: Page; context: BrowserContext }> {
+  const context = await browser.newContext()
+  return { page: await context.newPage(), context }
+}
 
 /** Fails the test with axe-core's own violation report (rule, impact, and
  *  every matching node) if the current page has any accessibility

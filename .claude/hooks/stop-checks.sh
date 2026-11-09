@@ -1,6 +1,7 @@
 #!/bin/sh
 # Stop hook: once per turn, project-wide. Runs lint (oxlint, including the
-# jsx-a11y plugin), typecheck, the architecture scan (Steiger for the UI, dependency-cruiser for the layers), dead-code
+# jsx-a11y plugin), typecheck, the architecture scan (Steiger for the UI, dependency-cruiser for the layers),
+# the specs/ decoupling rule (dependency-cruiser, ADR-010), dead-code
 # detection (knip), and the full test suite with the `src/domain`
 # coverage threshold — in parallel, since none depends on another's output.
 # Blocks the Stop (forcing another turn) on failure so Claude fixes issues
@@ -37,12 +38,13 @@ run_check() {
 run_check "lint (oxlint)" lint pnpm lint &
 run_check "typecheck (tsc -b)" typecheck pnpm typecheck &
 run_check "architecture boundaries (steiger, dependency-cruiser)" arch pnpm arch &
+run_check "specs/ decoupling (dependency-cruiser, ADR-010)" arch-specs pnpm arch:specs &
 run_check "dead code (knip)" deadcode pnpm deadcode &
 run_check "tests + coverage" test pnpm test:coverage &
 wait
 
 fail=""
-for slug in lint typecheck arch deadcode test; do
+for slug in lint typecheck arch arch-specs deadcode test; do
   if [ -f "$tmpdir/$slug.failed" ]; then
     fail="${fail}## $(cat "$tmpdir/$slug.failed") failed
 $(tail -c 4000 "$tmpdir/$slug.log")
