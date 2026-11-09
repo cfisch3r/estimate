@@ -167,3 +167,15 @@ function readText(cwd: string, path: string): string {
 export function showAt(ref: string, path: string, cwd = process.cwd()): string {
   return git(cwd, ['show', `${ref}:${path}`])
 }
+
+/** The path `path` had at `base`, if git detects it as a rename between `base` and the
+ * working tree — independent of any `since` window a caller is otherwise using, so a
+ * rename that predates `since` is still found. `undefined` if `path` wasn't renamed. */
+export function renameSourceAt(
+  base: string,
+  path: string,
+  cwd = process.cwd(),
+): string | undefined {
+  const files = parseNameStatus(git(cwd, ['diff', '--name-status', '-z', '-M', base]))
+  return files.find((f) => f.path === path)?.oldPath
+}

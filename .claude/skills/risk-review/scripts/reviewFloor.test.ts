@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import type { ChangedFile, Diff } from './changedDiff.ts'
-import { readGitDiff, repoRoot } from './changedDiff.ts'
+import { readGitDiff, renameSourceAt, repoRoot } from './changedDiff.ts'
 import { evaluateFloor, parseCatalogue, type Floor } from './reviewFloor.ts'
 
 // The floor decides the minimum risk of a pull request, and the agent may never go below
@@ -446,5 +446,42 @@ describe('readGitDiff', () => {
     git('commit', '-q', '-m', 'later')
     const diff = readGitDiff({ cwd: sandbox, from: since })
     expect(diff.files.map((f) => f.path).sort()).toEqual(['later.ts', 'untracked.ts'])
+  })
+})
+
+describe('renameSourceAt', () => {
+  const sandbox = mkdtempSync(join(tmpdir(), 'review-floor-rename-'))
+  afterAll(() => rmSync(sandbox, { recursive: true, force: true }))
+
+  const git = (...args: string[]) =>
+    execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {
+      cwd: sandbox,
+      encoding: 'utf8',
+    })
+  const write = (path: string, text: string) => {
+    mkdirSync(dirname(join(sandbox, path)), { recursive: true })
+    writeFileSync(join(sandbox, path), text)
+  }
+
+  it("finds a rename's source at `base` even when `since` is a later commit", () => {
+    git('init', '-q', '-b', 'main')
+    write('old-name.ts', 'a long enough file\nwith several lines\nthat stay the same\n')
+    git('add', '.')
+    git('commit', '-q', '-m', 'base')
+    const base = git('rev-parse', 'HEAD').trim()
+
+    git('mv', 'old-name.ts', 'new-name.ts')
+    git('commit', '-q', '-am', 'rename')
+
+    // A commit after the rename — `since` could point here, well past `base`, with the
+    // rename invisible in a `since`-scoped diff. renameSourceAt must still find it
+    // because it diffs against `base` directly, not whatever `since` window a caller
+    // elsewhere is using for the floor evaluation.
+    write('later.ts', 'later\n')
+    git('add', '.')
+    git('commit', '-q', '-m', 'later')
+
+    expect(renameSourceAt(base, 'new-name.ts', sandbox)).toBe('old-name.ts')
+    expect(renameSourceAt(base, 'later.ts', sandbox)).toBeUndefined()
   })
 })

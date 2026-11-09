@@ -3,6 +3,7 @@ import { parse } from 'yaml'
 import {
   baseRef,
   readGitDiff,
+  renameSourceAt,
   repoRoot,
   showAt,
   type ChangedFile,
@@ -311,8 +312,8 @@ export function readFloor(options: { cwd?: string; since?: string } = {}) {
   const { since } = options
   if (since?.startsWith('-')) throw new Error(`Expected a commit, got "${since}"`)
   const base = baseRef(cwd)
+  const catalogue = parseCatalogue(catalogueAt(base, cwd))
   const diff = readGitDiff(since ? { cwd, from: since } : { cwd })
-  const catalogue = parseCatalogue(catalogueAt(base, diff, cwd))
   return { base, since: since ?? null, ...evaluateFloor(catalogue, diff) }
 }
 
@@ -320,21 +321,21 @@ export function readFloor(options: { cwd?: string; since?: string } = {}) {
  * does. For `reviewGuide.ts`'s category-name lookup, which has no `Diff` of its own. */
 export function currentCatalogueNames(cwd: string): string[] {
   const base = baseRef(cwd)
-  const diff = readGitDiff({ cwd })
-  return parseCatalogue(catalogueAt(base, diff, cwd)).map((c) => c.name)
+  return parseCatalogue(catalogueAt(base, cwd)).map((c) => c.name)
 }
 
 /** The catalogue's content at `base`. A branch that renames
  * docs/technical/review-risk.md has no blob at the new path on `base` yet — fall back to
- * the rename's old path, so moving the file can't be mistaken for deleting the floor it
- * defends. */
-function catalogueAt(base: string, diff: Diff, cwd: string): string {
+ * the rename's source path between `base` and the working tree, resolved independently of
+ * any `since` window, so moving the file can't be mistaken for deleting the floor it
+ * defends regardless of which commit range the floor itself is evaluated over. */
+function catalogueAt(base: string, cwd: string): string {
   try {
     return showAt(base, CATALOGUE_PATH, cwd)
   } catch (error) {
-    const renamed = diff.files.find((f) => f.path === CATALOGUE_PATH && f.oldPath)
-    if (!renamed?.oldPath) throw error
-    return showAt(base, renamed.oldPath, cwd)
+    const oldPath = renameSourceAt(base, CATALOGUE_PATH, cwd)
+    if (!oldPath) throw error
+    return showAt(base, oldPath, cwd)
   }
 }
 
