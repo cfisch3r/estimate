@@ -3,9 +3,10 @@
   "project": [
     "src/**/*.{ts,tsx}",
     "e2e/**/*.ts",
+    "specs/**/*.ts",
     "scripts/**/*.test.ts",
     ".claude/skills/*/scripts/**/*.test.ts"
   ],
-  "entry": ["steiger.config.ts", "e2e/relay-server.mjs"],
+  "entry": ["steiger.config.ts", "e2e/relay-server.mjs", "specs/**/{steps,world}.ts"],
   "ignoreDependencies": ["fta-cli"]
 }

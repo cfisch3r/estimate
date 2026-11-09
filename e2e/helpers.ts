@@ -64,6 +64,24 @@ export async function selectItem(page: Page, title: string): Promise<void> {
   await page.getByRole('complementary').getByText(title, { exact: true }).click()
 }
 
+/** Asserts the current item title is visible, regardless of viewer role. */
+export async function expectItemVisible(page: Page, title: string): Promise<void> {
+  await expect(page.getByText(title)).toBeVisible()
+}
+
+/** Asserts the roster's submission progress text, shown to a joining peer
+ *  (`JoinSession`/Workspace roster copy, e.g. "1 of 2 teammates has
+ *  submitted so far."). */
+export async function expectSubmittedCount(
+  page: Page,
+  submitted: number,
+  total: number,
+): Promise<void> {
+  await expect(
+    page.getByText(`${submitted} of ${total} teammates has submitted so far.`),
+  ).toBeVisible()
+}
+
 /** Participant: fills and submits the three-point estimate form
  *  (`ThreePointEstimateFields`). Labels carry the active unit
  *  ("Best case (days)" etc.), so match by prefix only. */

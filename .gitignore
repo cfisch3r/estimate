@@ -35,5 +35,8 @@ coverage
 playwright-report/
 test-results/
 
+# Spike (spike/bdd-specs): playwright-bdd generated test files.
+.features-gen/
+
 # Throwaway project created by scripts/layerRules.test.ts
 .layer-canary-*

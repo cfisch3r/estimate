@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { defineBddConfig } from 'playwright-bdd'
 
 /** ADR-007: dual-mode signaling. Default mode connects real browser contexts
  *  through a locally self-hosted relay (no public dependency);
@@ -44,6 +45,15 @@ const relayWebServer = {
   env: { TRYSTERO_RELAY_PORT: String(RELAY_PORT) },
 }
 
+// Spike (spike/bdd-specs): generates Playwright tests from
+// specs/live-session/e2e/*.feature via playwright-bdd. Run `pnpm exec bddgen`
+// before `playwright test` to (re)generate — see docs/concepts/e2e-testing.md.
+const liveSessionBddDir = defineBddConfig({
+  features: 'specs/live-session/e2e/*.feature',
+  steps: ['specs/live-session/e2e/steps.ts', 'specs/live-session/e2e/world.ts'],
+  outputDir: '.features-gen/live-session',
+})
+
 export default defineConfig({
   testDir: './e2e/specs',
   // Real ICE/DTLS handshakes between real browser contexts are slower and
@@ -62,5 +72,12 @@ export default defineConfig({
     trace: 'retain-on-failure',
   },
   webServer: REAL_WORLD ? [appWebServer] : [relayWebServer, appWebServer],
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    {
+      name: 'live-session-bdd',
+      testDir: liveSessionBddDir,
+      use: { ...devices['Desktop Chrome'] },
+    },
+  ],
 })
