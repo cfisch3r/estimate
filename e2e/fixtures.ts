@@ -1,5 +1,6 @@
 import { test as base } from '@playwright/test'
 import type { Browser, Page } from '@playwright/test'
+import { newIsolatedPage } from './helpers'
 
 interface Roles {
   /** Creates the collaborative session and holds the workspace/reveal view. */
@@ -11,16 +12,12 @@ interface Roles {
   lateJoiner: Page
 }
 
-/** Each role gets its own browser context (isolated storage), not just a new
- *  tab/page — JoinSession's identity warning ("joining from another tab in
- *  this browser will be treated as the same person") means same-context
- *  pages would collide on participantId; separate contexts don't. */
 const roleFixture = async (
   { browser }: { browser: Browser },
   use: (page: Page) => Promise<void>,
 ) => {
-  const context = await browser.newContext()
-  await use(await context.newPage())
+  const { page, context } = await newIsolatedPage(browser)
+  await use(page)
   await context.close()
 }
 

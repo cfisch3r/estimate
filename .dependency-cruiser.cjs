@@ -9,6 +9,7 @@ const DOMAIN_TEST_SUPPORT = [
   '^src/domain/testFixtures\\.ts$',
   '^src/domain/estimate/testHelpers\\.ts$',
 ]
+const sharedOptions = require('./.dependency-cruiser.shared.cjs')
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -109,15 +110,7 @@ module.exports = {
     },
   ],
   options: {
+    ...sharedOptions,
     tsConfig: { fileName: 'tsconfig.app.json' },
-    // Without this, type-only imports (`import type`) disappear from the graph.
-    tsPreCompilationDeps: true,
-    // react-router v8 is ESM-only behind an exports map. Without these conditions it
-    // cannot be resolved, and the no-unresolvable-imports rule reports it.
-    enhancedResolveOptions: {
-      exportsFields: ['exports'],
-      conditionNames: ['import', 'require', 'node', 'default', 'types'],
-    },
-    doNotFollow: { path: 'node_modules' },
   },
 }

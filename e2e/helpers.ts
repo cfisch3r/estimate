@@ -1,6 +1,18 @@
-import type { Page } from '@playwright/test'
+import type { Browser, BrowserContext, Page } from '@playwright/test'
 import { expect } from '@playwright/test'
 import AxeBuilder from '@axe-core/playwright'
+
+/** Opens a page in its own browser context (isolated storage), not just a new
+ *  tab/page — JoinSession's identity warning ("joining from another tab in
+ *  this browser will be treated as the same person") means same-context
+ *  pages would collide on participantId; separate contexts don't. Caller
+ *  closes the returned context when done with the page. */
+export async function newIsolatedPage(
+  browser: Browser,
+): Promise<{ page: Page; context: BrowserContext }> {
+  const context = await browser.newContext()
+  return { page: await context.newPage(), context }
+}
 
 /** Fails the test with axe-core's own violation report (rule, impact, and
  *  every matching node) if the current page has any accessibility
@@ -62,6 +74,24 @@ export async function addItem(page: Page, title: string): Promise<void> {
  *  items sidebar (an `<aside>`, i.e. the `complementary` landmark). */
 export async function selectItem(page: Page, title: string): Promise<void> {
   await page.getByRole('complementary').getByText(title, { exact: true }).click()
+}
+
+/** Asserts the current item title is visible, regardless of viewer role. */
+export async function expectItemVisible(page: Page, title: string): Promise<void> {
+  await expect(page.getByText(title)).toBeVisible()
+}
+
+/** Asserts the roster's submission progress text, shown to a joining peer
+ *  (`JoinSession`/Workspace roster copy, e.g. "1 of 2 teammates has
+ *  submitted so far."). */
+export async function expectSubmittedCount(
+  page: Page,
+  submitted: number,
+  total: number,
+): Promise<void> {
+  await expect(
+    page.getByText(`${submitted} of ${total} teammates has submitted so far.`),
+  ).toBeVisible()
 }
 
 /** Participant: fills and submits the three-point estimate form

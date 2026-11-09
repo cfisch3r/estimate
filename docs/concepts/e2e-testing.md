@@ -15,6 +15,11 @@ is the decision record — why dual-mode, why this relay, why blocking CI. This 
 scoped to the e2e/Playwright layer specifically; the broader QA/guardrails system
 (oxlint, Steiger, knip, hooks, CI layering) is tracked separately (#114).
 
+A second kind of `e2e` Test Level test, generated from Gherkin `.feature` files rather than
+written as `.spec.ts` directly, lives under `specs/live-session/e2e/` — see
+["Spec-first scenarios"](#spec-first-scenarios-specs) below and
+[ADR-010](../adr/010-spec-first-gherkin-specs.md) for why.
+
 ## Component view
 
 Structural only — no mode-specific behavior here (see the two flow diagrams below for
@@ -140,6 +145,23 @@ same-context pages would collide on `participantId`; contexts have isolated stor
 
 `accessibility.spec.ts` isn't in this table — it scans screens for WCAG violations
 (ADR-008), not wire actions, so it's out of scope for this coverage map.
+
+## Spec-first scenarios (`specs/`)
+
+[ADR-010](../adr/010-spec-first-gherkin-specs.md) adds an executable-Gherkin `e2e` Test
+Level alongside the plain `.spec.ts` files above: `specs/live-session/e2e/` holds
+`.feature` files, `steps.ts` (step text → actor actions) and `world.ts` (a named-actors
+fixture — one browser context per actor name, lazily created, closed at teardown).
+`playwright-bdd` generates native Playwright tests from them into gitignored
+`.features-gen/`, run as a second `chromium`-based project (`live-session-bdd`) in
+`playwright.config.ts`, sharing the same relay/app `webServer` entries as the table above.
+`pnpm test:e2e` runs `bddgen` first so generation is never a manual step.
+
+`specs/live-session/e2e/late-joiner.feature` is the first scenario — a direct port of
+`late-joiner-snapshot.spec.ts` below, kept side by side as the baseline comparison rather
+than a replacement. Step code calls only into `e2e/helpers.ts`, never raw selectors; a
+dependency-cruiser rule (`specs-e2e-no-src-import`, `pnpm arch:specs`) forbids
+`specs/*/e2e/**` from importing `src/` directly.
 
 ## CI
 
