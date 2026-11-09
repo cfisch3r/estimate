@@ -9,7 +9,7 @@ doc, add it here instead of guessing.
 
 | Term | Meaning in this repo | Avoid |
 |---|---|---|
-| **Layer** | A horizontal level of the code in which dependencies point only one way. In the target architecture ([ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)): UI, application, domain, adapters. Say **FSD layer** when you mean one of Feature-Sliced Design's (`app`, `pages`, `widgets`, `features`, `entities`, `shared`; [ADR-004](adr/004-feature-sliced-design-architecture.md)). | "lane" (except for a Mermaid subgraph, see below) |
+| **Layer** | A horizontal level of the code in which dependencies point only one way. In the target architecture ([ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)): UI, application, domain, adapters. Say **FSD layer** when you mean one of Feature-Sliced Design's (`app`, `pages`, `widgets`, `features`, `entities`, `shared`; [ADR-004](adr/004-feature-sliced-design-architecture.md)). | "lane" (except for a Mermaid subgraph, see below); "layer" for a Test Level (see Testing) |
 | **Domain** | The innermost layer: pure rules and types, with no React, no I/O and no packages. Lives in `src/domain/` (ADR-009 stage 1); since stage 3b-1 it also holds the state-transition rules the stores call; the rule that it imports nothing outside itself is enforced by dependency-cruiser (the I/O globals ban by oxlint). | |
 | **Application layer** | The use cases and the state stores. Lives in `src/application/` (ADR-009 stage 3a); dependency-cruiser lets it import only the domain and itself. It owns the ports. Not stateless, unlike textbook hexagonal architecture (ADR-009, "Where state lives"). | |
 | **Adapter** | Code that connects the application to something outside it. Lives in `src/adapters/` (`network/`, `storage/`; ADR-009 stage 2); dependency-cruiser keeps it free of React, Zustand and the UI layers. | |
@@ -37,6 +37,15 @@ The words for judging how closely a change needs to be read ([review-risk.md](re
 | **Signal** | Evidence gathered for the risk reviewer (`risk-review:reviewer`) (git history, changed-line coverage, dependency diff). It may be missing and never sets a category or the floor. | "diff check" |
 | **Hot spot** | A place in a diff, named by file and line, that needs a reader's judgment: a headline, what the change is and what makes it a hot spot, and the facts the signals say about it. | |
 | **Review guide** | A page built on request while reviewing a branch and published as a private artifact: the risk and categories, the hot spots, what can be skimmed, and what could not be verified. | "summary" |
+
+## Testing
+
+The words for executable specs ([ADR-010](adr/010-spec-first-gherkin-specs.md)).
+
+| Term | Meaning in this repo | Avoid |
+|---|---|---|
+| **Test Level** | What kind of thing a Gherkin scenario drives — `e2e` (real UI, real browsers), and the deferred `protocol`/`domain`. The second folder under `specs/<concept>/`. Each Test Level owns its own runner; there is no shared DSL across them. | "layer" (collides with the architecture/FSD layer above) |
+| **Concept folder** | The first folder under `specs/`, one per feature area (for example `live-session`), parallel to `docs/concepts/`. | |
 
 ## Feature-Sliced Design
 

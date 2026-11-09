@@ -13,7 +13,7 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/adr/001-live-collaboration-architecture.md` — accepted decision on the peer-to-peer live-collaboration architecture
 - `docs/adr/002-testing-strategy.md` — accepted decision on the layered test strategy: unit/component, plus a thin Playwright e2e layer since #26 landed the real browser-connection behaviour that was this ADR's own trigger — see that ADR's 2026-09-07 and 2026-09-30 updates, and ADR-007 for the e2e layer's own design
 - `docs/adr/007-e2e-dual-mode-signaling.md` — accepted decision on dual-mode signaling for the Playwright e2e suite: a locally self-hosted relay by default (blocking CI), production Nostr relays in a separate nightly/manual job
-- `docs/adr/003-session-reliability-model.md` — accepted decision on who owns live-session state and what reconnect restores: facilitator-authoritative rounds, a values-free submission roster in the snapshot, acknowledged submissions with a kind-driven retry policy, stable client identity, and role-asymmetric link state. **Read before working #9, #60, #61, #62, or #63** — it is the design anchor for all of them; the ADR's own status line tracks which elements have landed, rather than duplicating that list here. Current sequencing lives on the Epic-0010 sub-issue list (see [Picking the next task](#picking-the-next-task)), not in the ADR.
+- `docs/adr/003-session-reliability-model.md` — accepted decision on who owns live-session state and what reconnect restores: facilitator-authoritative rounds, a values-free submission roster in the snapshot, acknowledged submissions with a kind-driven retry policy, stable client identity, and role-asymmetric link state. **Read before working #9, #60, #61, #62, or #63** — it is the design anchor for all of them; the ADR's own status line tracks which elements have landed, rather than duplicating that list here.
 - `docs/concepts/collaboration-mode.md` — Live mode (Mode A) technical concept: the Trystero P2P network layer, join flow, participant estimate round, facilitator reveal / retry-round flow, and screen/store wiring delivered so far
 - `docs/concepts/estimation-engine.md` — the estimation engine's detailed design (aggregation, the `Estimate` value type, bias guards)
 - `docs/concepts/e2e-testing.md` — E2E testing technical concept: the Playwright/fixture/signaling component wiring, the dual-mode (local relay / real-world) build-and-run flows, and the spec-to-wire-action coverage map
@@ -23,6 +23,7 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 - `docs/adr/006-router-adoption.md` — accepted decision on replacing the hand-rolled `currentScreen`/`goToScreen` navigation state with `react-router`, resolving an FSD layer-direction conflict ADR-005 hit
 - `docs/adr/008-accessibility-testing-strategy.md` — accepted decision on the three-layer automated accessibility stack (oxlint `jsx-a11y`, `jest-axe` component scans, real-browser `@axe-core/playwright` e2e scans) and the deliberate, tracked `color-contrast` exclusion (issue #123)
 - `docs/adr/009-architecture-style-fsd-vs-hexagonal-core.md` — accepted decision to replace FSD-everywhere with a hexagonal core plus an FSD UI, staged in three steps, all done (stages 1 and 2 were the `src/domain/` and `src/adapters/` extractions; stage 3 was the `src/application/` extraction, 3a-3d; 3d split the UI-only `entities/session` slice into `entities/item` and `entities/estimate`; 3b-1 moved the store rules into `src/domain`, 3c split the provider (then `NetworkProvider`, now `LiveSessionProvider`) into a framework-free live-session controller plus a thin shell in `src/app`). It governs where non-UI code goes; ADR-004 and ADR-005 describe the pre-extraction layout (stores and use cases are now in `src/application`). Read it before proposing structural moves of non-UI code
+- `docs/adr/010-spec-first-gherkin-specs.md` — accepted decision on spec-first development: a `specs/<concept>/<test level>/` tree of executable Gherkin specs (`playwright-bdd` for the `e2e` Test Level), a dependency-cruiser rule keeping each Test Level's driver code out of `src/`, and the two asked-not-assumed workflow steps in [Picking the next task](#picking-the-next-task)
 - `docs/glossary.md` — the architecture vocabulary (layer, type, aggregate, entity, value object, inbound/outbound adapter, port, FSD slice/segment) and which words to avoid; use these terms and add new ones there
 - `design_handoff_estimate_app/` — the original design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
 - `design_handoffs/epic-0010-screen-design-review/` — the Epic-0010 redesign handoff; **supersedes the entry flow** of the original handoff (mode-selection screen + unified Workspace) and is the source of truth for the participant estimating and facilitator reveal flows.
@@ -31,29 +32,31 @@ EstiMate is a live three-point estimation tool for dev teams. Before making non-
 
 ## Picking the next task
 
-Work is tracked on the **EstiMate Roadmap** GitHub Project (https://github.com/users/cfisch3r/projects/1) as a **two-level ordered backlog**:
+The Developer names the next issue directly — there is no automated backlog-walking. The
+**EstiMate Roadmap** GitHub Project board is being retired, and whether `epic`-labeled
+issues keep being used at all is undecided; don't assume either one when reasoning about
+priority.
 
-- **Epics** — issues carrying the `epic` label, titled `Epic-NNNN: …` (4-digit ordinal). Their priority order is the **ascending alphanumeric sort of the title** — `Epic-0010` outranks `Epic-0020`. The `NNNN` prefix is the only source of truth for epic order. Re-prioritise by renaming (renumber with gaps — 0010, 0020, 0030 — so an epic can be slotted between two others). Epic cards are hidden from the `Kanban` view (filter `-label:epic`); the `Epics` view lists them, sorted by title.
-- **Stories** — each epic's **sub-issues**, drag-ordered within that epic's sub-issue list. That list is the *only* source of truth for story order; a story's own card position on the board is cosmetic.
+When told to start an issue, **fetch it and stop**: summarise the issue body, flag
+ambiguities, superseding design handoffs, and scope questions, then wait for an explicit
+go-ahead. Do not move to a design artifact, a spec, a plan, a todo list, a branch, or edits
+until then.
 
-**Next task = the first open sub-issue of the first open epic (by title sort).**
+Once the go-ahead is given, two further steps are each **offered — asked explicitly every
+time, never assumed, both optional** — before planning and implementation start
+([ADR-010](docs/adr/010-spec-first-gherkin-specs.md)):
 
-When asked to start the next sub-issue, **fetch it and stop**: summarise the issue body,
-flag ambiguities, superseding design handoffs, and scope questions, then wait for an
-explicit go-ahead. Do not move to a plan, todo list, branch, or edits until then. Once
-planning starts, the [Collaboration workflow](#collaboration-workflow-github) applies
+1. **A design artifact**, published with the Artifact tool, before any branch exists. It's
+   ephemeral — scoped to this one story, never committed as a file. Fold anything worth
+   keeping into the permanent docs once the story ships, then let the artifact go.
+2. **A failing executable spec**, after the branch is created, before planning or
+   implementation. Write the scenario as a `.feature` file plus driver code at the
+   appropriate **Test Level** (`docs/glossary.md`) under `specs/<concept>/<test level>/`,
+   generate it, and confirm it fails for the right reason before any implementation code is
+   written.
+
+Once planning starts, the [Collaboration workflow](#collaboration-workflow-github) applies
 (branch per issue, PR with `Closes #n`, review passes, ask before merge).
-
-```sh
-# first open epic, by title order
-gh api graphql -f query='
-{ repository(owner:"cfisch3r",name:"estimate"){
-    issues(first:50, labels:["epic"], states:OPEN){ nodes{ number title } } } }' --jq '
-  [ .data.repository.issues.nodes[] ] | sort_by(.title) | first | .number'
-
-# that epic's stories, in priority order (replace 30)
-gh api graphql -f query='{repository(owner:"cfisch3r",name:"estimate"){issue(number:30){subIssues(first:50){nodes{number state title}}}}}'
-```
 
 Milestones are retired: the closed `M0`–`M3` remain only as historical record.
 
@@ -66,13 +69,14 @@ pnpm typecheck            # type-check only (tsc -b), no bundling
 pnpm preview              # serve the production build locally
 pnpm lint                 # oxlint
 pnpm arch                 # steiger (FSD inside the UI) and dependency-cruiser (layer rules, `pnpm arch:layers`)
+pnpm arch:specs           # dependency-cruiser on specs/ (Test Level driver code may not import src/, ADR-010); not run by `pnpm arch`
 pnpm format               # prettier --write
 pnpm format:check         # prettier --check
 pnpm test                 # vitest run, summary output
 pnpm test:watch           # vitest in watch mode
 pnpm test:verbose         # vitest run, every individual test name and result
 pnpm test:coverage        # vitest run --coverage; also enforces the `src/domain` 100% threshold below
-pnpm test:e2e             # Playwright, real WebRTC via a local self-hosted relay (ADR-007)
+pnpm test:e2e             # bddgen (ADR-010), then Playwright, real WebRTC via a local self-hosted relay (ADR-007)
 pnpm test:e2e:real-world  # same specs against production signaling (public Nostr relays)
 pnpm test:e2e:ui          # Playwright UI mode, for local debugging
 pnpm deadcode             # knip — unused exports/files/dependencies
@@ -188,7 +192,7 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
   gh api "repos/cfisch3r/estimate/code-scanning/alerts?pr=<n>&state=open"
   ```
 - **Merge gate**: always ask the user whether they want to personally review the PR before merging — even after the automated review comes back clean (a review that read no diff is not a clean review) and the automated feedback has been read and answered. Never auto-merge without asking.
-- **Tracking**: the `EstiMate Roadmap` GitHub Project board (https://github.com/users/cfisch3r/projects/1), Backlog → In Progress → In Review → Done. Work is a two-level ordered backlog of epics and their sub-issues — see [Picking the next task](#picking-the-next-task). Milestones are retired (closed `M0`–`M3` kept as history).
+- **Tracking**: plain GitHub issues — the Developer names the one to work on next; see [Picking the next task](#picking-the-next-task). The `EstiMate Roadmap` GitHub Project board is being retired. Milestones are retired (closed `M0`–`M3` kept as history).
 
 ## Concept docs & diagrams
 

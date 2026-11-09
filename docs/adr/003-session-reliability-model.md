@@ -33,8 +33,9 @@ gets the facilitator to the correct reveal-without-them outcome).
 > policy itself stays in `entities/session/api/retryPolicy.ts`.
 >
 > For the current implementation plan and sequencing — which issues carry which element of
-> this decision, in what order, and what's blocked on what — see the Epic-0010 sub-issue list
-> on the project board, not this document. That ordering changes as work happens; this
+> this decision, in what order, and what's blocked on what — ask the Developer, not this
+> document; the GitHub Project board this used to point to is retired
+> ([ADR-010](010-spec-first-gherkin-specs.md)). That ordering changes as work happens; this
 > decision shouldn't need editing when it does.
 
 ## Context

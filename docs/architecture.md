@@ -290,7 +290,7 @@ releases are in the [runbook](runbook.md).
 | Navigation | `react-router`. Use cases contain no navigation, `features/session-lifecycle` wraps them with it | ADR-006 |
 | Persistence | Local-first and file-based. A session (name, unit, items) is saved as a JSON file and restored from one, live-round fields are excluded. Save is a read-only export available to the facilitator in either mode. Load is allowed only before a live session starts, because importing mid-session would silently replace the facilitator's items and desync participants, so a facilitator resumes an adjourned session from the mode-select screen. A participant never has a local item list. A session survives only if the user saves the file, and the UI must say so plainly. No accounts, no cross-device sync in the MVP. Not built yet | PRD §8 |
 | Estimation unit | The facilitator picks hours, days or weeks per session. The false-precision guard's rounding granularity derives from the unit through a lookup, and the unit travels on `SessionSnapshot`, which is how the participant view receives it | [estimation-engine](concepts/estimation-engine.md) |
-| Testing | Unit and component tests, a thin Playwright layer for real WebRTC, type tests for the store views, 100% coverage on the domain | ADR-002, ADR-007, [e2e-testing](concepts/e2e-testing.md) |
+| Testing | Unit and component tests, a thin Playwright layer for real WebRTC, type tests for the store views, 100% coverage on the domain. Spec-first: executable Gherkin specs under `specs/<concept>/<test level>/`, one Test Level implemented so far (`e2e`, via `playwright-bdd`) | ADR-002, ADR-007, ADR-010, [e2e-testing](concepts/e2e-testing.md) |
 | Accessibility | oxlint `jsx-a11y`, `jest-axe` scans, `@axe-core/playwright` scans, a tracked `color-contrast` exclusion | ADR-008 |
 | Styling and shared UI | Nocturne is the single source of tokens and components. `shared/ui` holds thin wrappers over Nocturne classes (Button, Card, Field, Markdown and MarkdownEditor, LiveRegion, and so on). `Header` lives in `app/` because it carries screen and mode-aware logic. `RadioTile` is unused but kept as a design-system primitive. Composed patterns sit in their own files in `src/design`, and component CSS sits beside its component | Section 9, product and design decisions |
 
@@ -307,6 +307,7 @@ releases are in the [runbook](runbook.md).
 | [007](adr/007-e2e-dual-mode-signaling.md) | Local relay for e2e by default, public relays nightly |
 | [008](adr/008-accessibility-testing-strategy.md) | Three-layer automated accessibility checks |
 | [009](adr/009-architecture-style-fsd-vs-hexagonal-core.md) | Hexagonal core with an FSD UI, extracted in stages 1 to 3d (done) |
+| [010](adr/010-spec-first-gherkin-specs.md) | Spec-first development with executable Gherkin specs (`specs/`), replacing the retired board-walking task-picking algorithm |
 
 Product and design decisions that have no ADR:
 
@@ -331,7 +332,7 @@ Product and design decisions that have no ADR:
 
 ## 11. Risks and technical debt
 
-Work items are tracked on the EstiMate Roadmap board.
+Work items are tracked as plain GitHub issues — see AGENTS.md's [Picking the next task](../AGENTS.md#picking-the-next-task).
 
 | Item | Note |
 |---|---|
