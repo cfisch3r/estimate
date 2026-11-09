@@ -13,7 +13,7 @@ Your standards come from the repo, not from this file. Before reviewing, read:
 
 - `AGENTS.md` — especially "Concept docs & diagrams" (Mermaid C4-box / lane / legend rules), "Commands" (the canonical `pnpm` scripts), "Picking the next task", and the list of docs under "Project context".
 - `docs/README.md` — the documentation index. It is a contract: every file in `docs/` should appear in its table, and every table entry should resolve.
-- The existing ADRs (`docs/adr/00*.md`) and `docs/concepts/collaboration-mode.md` — these are the reference examples for ADR and concept-doc structure. Judge other docs of the same kind against them.
+- The existing ADRs (`docs/technical/adr/00*.md`) and `docs/technical/concepts/collaboration-mode.md` — these are the reference examples for ADR and concept-doc structure. Judge other docs of the same kind against them.
 
 If AGENTS.md and a doc disagree about a convention, AGENTS.md wins.
 
@@ -50,7 +50,7 @@ Use `git diff` / `git diff main...HEAD` as appropriate to see changes. Do **not*
 - Concept docs that are prose-heavy instead of diagram-driven (Medium if egregious, Low otherwise).
 - Mermaid diagrams missing the required legend, lanes, C4-style two-line box labels, or edge labels (per AGENTS.md).
 - Responsibilities placed inside diagram boxes instead of a table below.
-- ADRs not following the structure of `docs/adr/001`/`002`.
+- ADRs not following the structure of `docs/technical/adr/001`/`002`.
 - New doc format introduced where an existing one would serve.
 
 **Internal consistency (Medium)**:

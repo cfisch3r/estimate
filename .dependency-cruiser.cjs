@@ -1,4 +1,4 @@
-// The import half of `pure-domain`, and `app-layer-core`, `adapters-inward` and `ui-no-adapters` from docs/architecture-rules.md as
+// The import half of `pure-domain`, and `app-layer-core`, `adapters-inward` and `ui-no-adapters` from docs/technical/architecture-rules.md as
 // dependency-cruiser rules. `fsd-downward` stays with Steiger, the I/O globals ban and coverage of `pure-domain` with
 // oxlint and vitest.
 const UI = '^src/(pages|widgets|features|entities|shared)/'

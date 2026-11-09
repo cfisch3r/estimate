@@ -5,7 +5,7 @@ import {
   type JoinSignalingRoomOptions,
 } from './signalingContract'
 
-/** Production signaling strategy: Nostr relays, per ADR-001/docs/architecture.md.
+/** Production signaling strategy: Nostr relays, per ADR-001/docs/technical/architecture.md.
  *  `session.ts` picks between this and `signaling.wsRelay.ts` (test-only) by
  *  `import.meta.env.MODE` — see ADR-007. */
 export function joinSignalingRoom(

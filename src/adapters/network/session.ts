@@ -22,7 +22,7 @@ export interface JoinSessionOptions {
 
 /** Joins the Trystero room for a session. roomId = sessionId, the 6-char code from
  *  `generateSessionCode()` that the facilitator shares out of band (no deep link).
- *  Uses the Nostr signaling strategy per docs/architecture.md (a test build swaps
+ *  Uses the Nostr signaling strategy per docs/technical/architecture.md (a test build swaps
  *  in a self-hosted relay instead — see ADR-007). */
 export function joinSession(
   sessionId: string,

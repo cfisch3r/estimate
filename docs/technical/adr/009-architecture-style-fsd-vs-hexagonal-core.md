@@ -354,7 +354,7 @@ update).
    files `ports/networkSessionContext.ts` and `ports/useNetworkSession.ts` no longer exist.
    They are a handle the application hands between its own parts, not a port, and the name
    no longer points at the network adapter (see the Handle entry in the
-   [glossary](../glossary.md)). Where the text above calls `NetworkSessionApi` a port or
+   [glossary](../../glossary.md)). Where the text above calls `NetworkSessionApi` a port or
    places it with the ports, read it with this correction.
 
 Each stage ends with all CI checks green and can be the last one.

@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-11-09
-**Related:** [002-testing-strategy.md](002-testing-strategy.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md), [glossary.md](../glossary.md), AGENTS.md
+**Related:** [002-testing-strategy.md](002-testing-strategy.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md), [glossary.md](../../glossary.md), AGENTS.md
 
 ## Context
 
@@ -48,13 +48,14 @@ A time-boxed spike (`spike/bdd-specs`) tested feasibility by porting the existin
 
 ## Decision
 
-**Adopt a `specs/<concept>/<test level>/` tree**, parallel to `docs/concepts/`: one concept
-folder per feature area (here `live-session`), one subfolder per **Test Level** — what we
-call the kind of thing a scenario drives (`e2e`: real UI in real browsers, real WebRTC
-through the local relay per ADR-007). `protocol` and `domain` Test Levels are deferred until
-a scenario actually needs one; we call this a "Test Level" rather than a "layer" to avoid
-colliding with the architecture layer and FSD layer vocabulary already defined in
-[glossary.md](../glossary.md).
+**Adopt a `specs/<concept>/<test level>/` tree**, parallel to the concept name shared by
+`docs/domain/concepts/` and `docs/technical/concepts/`: one concept folder per feature area
+(here `live-session`), one subfolder per **Test Level** — what we call the kind of thing a
+scenario drives (`e2e`: real UI in real browsers, real WebRTC through the local relay per
+ADR-007). `protocol` and `domain` Test Levels are deferred until a scenario actually needs
+one; we call this a "Test Level" rather than a "layer" to avoid colliding with the
+architecture layer and FSD layer vocabulary already defined in
+[glossary.md](../../glossary.md).
 
 **One scenario, one Test Level.** No scenario runs on more than one Test Level, and there is
 no shared DSL/interface across Test Levels yet — each Test Level owns its own runner. The
@@ -99,8 +100,9 @@ never assumed, both optional**:
   there's zero forced overhead on a small, unambiguous story, while the option stays
   available for one that needs it.
 - An ephemeral Artifact for the design step avoids inventing a new "one doc per story"
-  convention that nobody would ever prune — `docs/concepts/` and the ADRs stay the only
-  durable home for design knowledge, matching this repo's existing docs-hygiene practice.
+  convention that nobody would ever prune — the domain and technical concept docs and the
+  ADRs stay the only durable home for design knowledge, matching this repo's existing
+  docs-hygiene practice.
 - One Test Level per scenario, no shared DSL yet, is deliberately conservative: a shared
   interface across Test Levels would be speculative generality with no second Test Level
   yet to validate it against.

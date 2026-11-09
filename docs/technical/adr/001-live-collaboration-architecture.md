@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-08-10
-**Related:** [../prd.md](../prd.md) §4 (Session modes), §9 (Non-functional requirements)
+**Related:** [../../domain/prd.md](../../domain/prd.md) §4 (Session modes), §9 (Non-functional requirements)
 
 ## Context
 

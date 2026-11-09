@@ -1,7 +1,12 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
-import { baseRef, repoRoot, showAt } from './changedDiff.ts'
-import { parseCatalogue, RISK_LEVELS, type Floor, type RiskLevel } from './reviewFloor.ts'
+import { repoRoot } from './changedDiff.ts'
+import {
+  currentCatalogueNames,
+  RISK_LEVELS,
+  type Floor,
+  type RiskLevel,
+} from './reviewFloor.ts'
 import type { Section } from './reviewSignals.ts'
 
 // The Review guide, built on request while reviewing a branch. A script writes it, not the
@@ -493,16 +498,13 @@ function readJson(name: string): unknown {
 
 function main() {
   const cwd = repoRoot()
-  const base = baseRef(cwd)
   const floor = readJson('floor') as Floor
   const signals = readJson('signals') as Signals
   const agent = parseAgentAnswer(readFileSync(required('agent'), 'utf8'))
   const covers =
     option('covers') ??
     execFileSync('git', ['rev-parse', 'HEAD'], { cwd, encoding: 'utf8' }).trim()
-  const catalogueNames = parseCatalogue(showAt(base, 'docs/review-risk.md', cwd)).map(
-    (c) => c.name,
-  )
+  const catalogueNames = currentCatalogueNames(cwd)
 
   const repoUrl = originUrl(cwd)
   const data = buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl })

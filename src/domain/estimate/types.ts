@@ -43,7 +43,7 @@ export function isEstimationUnit(value: unknown): value is EstimationUnit {
 }
 
 /** Rounding granularity the false-precision guard expects per unit. Tunable — see
- *  docs/architecture.md's "Estimation unit" decision. */
+ *  docs/technical/architecture.md's "Estimation unit" decision. */
 export const UNIT_GRANULARITY: Record<EstimationUnit, number> = {
   hours: 1,
   days: 0.5,

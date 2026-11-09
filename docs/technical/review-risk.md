@@ -2,7 +2,7 @@
 
 The named categories of change that deserve a closer look when reviewing a branch, and the minimum risk
 each one carries. Each category has a short name so that a review guide, a review or a discussion
-can cite it ("this is `wire-contract`"). The words follow the [glossary](glossary.md).
+can cite it ("this is `wire-contract`"). The words follow the [glossary](../glossary.md).
 
 The catalogue exists because a reader of an agent's pull request should know where to spend
 attention. A model can judge a diff, but its worst mistake is calling a dangerous change low
@@ -180,8 +180,8 @@ a duplicate `name`, more than one `fallback`, and so on.
     - '.claude/settings.json'
     - '.claude/skills/**'
     - '.githooks/**'
-    - 'docs/architecture-rules.md'
-    - 'docs/review-risk.md'
+    - 'docs/technical/architecture-rules.md'
+    - 'docs/technical/review-risk.md'
     - '.worktreeinclude'
   diff-checks: [coverageThresholdLowered, testsRemovedOrSkipped, strictnessLoosened, architectureExceptionAdded]
 
@@ -192,7 +192,7 @@ a duplicate `name`, more than one `fallback`, and so on.
     - '.github/actions/**'
     - 'release-please-config.json'
     - '.release-please-manifest.json'
-    - 'docs/runbook.md'
+    - 'docs/technical/runbook.md'
   diff-checks: []
 
 - name: dependencies

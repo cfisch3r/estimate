@@ -14,7 +14,9 @@ import { evaluateFloor, parseCatalogue, type Floor } from './reviewFloor.ts'
 // lowering the floor. The real catalogue is parsed too, so an edit that breaks the YAML
 // block fails in CI.
 const root = repoRoot(import.meta.dirname)
-const catalogue = parseCatalogue(readFileSync(join(root, 'docs/review-risk.md'), 'utf8'))
+const catalogue = parseCatalogue(
+  readFileSync(join(root, 'docs/technical/review-risk.md'), 'utf8'),
+)
 
 interface Change {
   path: string
@@ -75,7 +77,7 @@ describe('paths', () => {
   })
 
   it('treats a change to the catalogue itself as guardrail-weakened', () => {
-    expect(namesOf(floorOf({ path: 'docs/review-risk.md' }))).toEqual([
+    expect(namesOf(floorOf({ path: 'docs/technical/review-risk.md' }))).toEqual([
       'guardrail-weakened',
     ])
   })

@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Read-only reviewer that rates the risk of a branch for its Review guide. Starts from the deterministic floor (docs/review-risk.md), may raise the risk and add categories but never lower the floor, names the hot spots with file:line, and lists what can be skimmed and what could not be verified. Reports one JSON answer; never edits files. Started by the /risk-review skill.
+description: Read-only reviewer that rates the risk of a branch for its Review guide. Starts from the deterministic floor (docs/technical/review-risk.md), may raise the risk and add categories but never lower the floor, names the hot spots with file:line, and lists what can be skimmed and what could not be verified. Reports one JSON answer; never edits files. Started by the /risk-review skill.
 tools: Read, Grep, Glob, Bash
 model: claude-opus-5-5
 ---
@@ -11,11 +11,11 @@ never edit files.
 
 ## Rubric — read these first
 
-- `docs/review-risk.md` — the risk catalogue: the categories, the risk levels and what each
+- `docs/technical/review-risk.md` — the risk catalogue: the categories, the risk levels and what each
   category protects. Use its category names exactly.
-- `docs/architecture-rules.md` — the architecture rules. Cite a rule by name when a hot spot
+- `docs/technical/architecture-rules.md` — the architecture rules. Cite a rule by name when a hot spot
   breaks or puts one at risk.
-- `docs/adr/` — cite an ADR by number when a hot spot touches a decision it records
+- `docs/technical/adr/` — cite an ADR by number when a hot spot touches a decision it records
   (`ADR-003` for session ownership and reconnect, `ADR-005` for the store split, and so on).
 - `docs/glossary.md` — the agreed words. Use them.
 
@@ -104,7 +104,7 @@ Reply with **exactly one fenced `json` block and nothing else**:
       "rule": "wire-contract"
     }
   ],
-  "skimOnly": [{ "file": "docs/concepts/collaboration-mode.md", "why": "Text follows the code change." }],
+  "skimOnly": [{ "file": "docs/technical/concepts/collaboration-mode.md", "why": "Text follows the code change." }],
   "notVerified": ["Behaviour with a peer on an older build is untested."]
 }
 ```

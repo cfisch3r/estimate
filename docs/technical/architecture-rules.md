@@ -4,7 +4,7 @@ The rules that keep the code in the layers described in [architecture.md](archit
 section 5. Each rule has a short name so that scanners and reviews can cite it ("violates
 `ui-no-adapters`"). The architecture reviewer and the placement skill come from the
 `react-webapp-architecture` plugin, whose own standard uses the same names; where estimate
-departs from that standard, an `// architecture-exception:` comment at the code says so. The words follow the [glossary](glossary.md).
+departs from that standard, an `// architecture-exception:` comment at the code says so. The words follow the [glossary](../glossary.md).
 
 In short: dependencies point inward, and only `src/app` (the composition root) touches an
 adapter.

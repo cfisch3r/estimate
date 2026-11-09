@@ -10,7 +10,7 @@ import {
 } from './changedDiff.ts'
 
 // The review floor: the minimum risk of a change, set by the catalogue in
-// docs/review-risk.md. No model, no coverage run, no network. The `risk-review:reviewer` agent may
+// docs/technical/review-risk.md. No model, no coverage run, no network. The `risk-review:reviewer` agent may
 // raise the result and never lower it.
 //
 //   pnpm review:floor              the branch against main
@@ -22,7 +22,7 @@ import {
 export const RISK_LEVELS = ['low', 'medium', 'high', 'critical'] as const
 export type RiskLevel = (typeof RISK_LEVELS)[number]
 
-const CATALOGUE_PATH = 'docs/review-risk.md'
+const CATALOGUE_PATH = 'docs/technical/review-risk.md'
 
 /** Each diff check returns the changed files that make it true. */
 const DIFF_CHECKS = {
@@ -311,9 +311,31 @@ export function readFloor(options: { cwd?: string; since?: string } = {}) {
   const { since } = options
   if (since?.startsWith('-')) throw new Error(`Expected a commit, got "${since}"`)
   const base = baseRef(cwd)
-  const catalogue = parseCatalogue(showAt(base, CATALOGUE_PATH, cwd))
   const diff = readGitDiff(since ? { cwd, from: since } : { cwd })
+  const catalogue = parseCatalogue(catalogueAt(base, diff, cwd))
   return { base, since: since ?? null, ...evaluateFloor(catalogue, diff) }
+}
+
+/** The catalogue's content at `base`, resolved the same rename-tolerant way `readFloor`
+ * does. For `reviewGuide.ts`'s category-name lookup, which has no `Diff` of its own. */
+export function currentCatalogueNames(cwd: string): string[] {
+  const base = baseRef(cwd)
+  const diff = readGitDiff({ cwd })
+  return parseCatalogue(catalogueAt(base, diff, cwd)).map((c) => c.name)
+}
+
+/** The catalogue's content at `base`. A branch that renames
+ * docs/technical/review-risk.md has no blob at the new path on `base` yet — fall back to
+ * the rename's old path, so moving the file can't be mistaken for deleting the floor it
+ * defends. */
+function catalogueAt(base: string, diff: Diff, cwd: string): string {
+  try {
+    return showAt(base, CATALOGUE_PATH, cwd)
+  } catch (error) {
+    const renamed = diff.files.find((f) => f.path === CATALOGUE_PATH && f.oldPath)
+    if (!renamed?.oldPath) throw error
+    return showAt(base, renamed.oldPath, cwd)
+  }
 }
 
 function main() {

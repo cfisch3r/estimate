@@ -169,7 +169,7 @@ and `.release-please-manifest.json`:
 
 1. **PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/)**
    (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, etc.) — because PRs are
-   squash-merged (see [collaboration workflow](../AGENTS.md#collaboration-workflow-github)),
+   squash-merged (see [collaboration workflow](../../AGENTS.md#collaboration-workflow-github)),
    the PR title becomes the commit message on `main`, and that's what release-please
    parses. Only `feat` and `fix` (and a `!` suffix or `BREAKING CHANGE:` footer) trigger
    a version bump; `chore`/`docs`/`refactor`/`test`/`build`/`ci`/`style` do not. This is

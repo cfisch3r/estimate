@@ -2,7 +2,7 @@
 
 **Status:** Accepted
 **Date:** 2026-09-29
-**Related:** `.oxlintrc.json`, `steiger.config.ts`, `docs/concepts/` (diagram conventions), issues #111, #112
+**Related:** `.oxlintrc.json`, `steiger.config.ts`, `docs/technical/concepts/` (diagram conventions), issues #111, #112
 
 > **Update 2026-10-09:** ADR-009 stage 3d split the remaining UI-only `entities/session` slice into
 > `entities/item` and `entities/estimate`; the `entities/session/...` paths below are the original record.

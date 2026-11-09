@@ -6,7 +6,7 @@ Based on the three-point estimation method described in the *Developer's Guide t
 
 ## Session modes
 
-- **Live mode** (Mode A) — the team estimates together in real time, each participant submitting their own numbers from their own device, connected peer-to-peer (no backend operated by the app — see [ADR-001](docs/adr/001-live-collaboration-architecture.md)).
+- **Live mode** (Mode A) — the team estimates together in real time, each participant submitting their own numbers from their own device, connected peer-to-peer (no backend operated by the app — see [ADR-001](docs/technical/adr/001-live-collaboration-architecture.md)).
 - **Manual mode** (Mode B) — a facilitator who ran the discussion out-of-band (in person, on a call) types in the team's agreed numbers directly, and gets the same calculated ranges, bias guards, and report.
 
 Both modes share the same calculation engine, bias guards (symmetric-range warning, false-precision guard, outlier flag), and report/history format.
@@ -17,7 +17,7 @@ MVP in progress. Single-user mode — mode selection, the unified Workspace (ite
 
 ## Stack
 
-React 19 + TypeScript + Vite, Zustand for state, Nocturne design system (ported as-is), Vitest + Testing Library for tests. See [docs/architecture.md](docs/architecture.md) for the full technical design.
+React 19 + TypeScript + Vite, Zustand for state, Nocturne design system (ported as-is), Vitest + Testing Library for tests. See [docs/technical/architecture.md](docs/technical/architecture.md) for the full technical design.
 
 ## Development
 
@@ -51,19 +51,7 @@ too (needs `pnpm exec playwright install --with-deps chromium` once beforehand).
 
 ## Docs
 
-- [docs/prd.md](docs/prd.md) — product requirements
-- [docs/architecture.md](docs/architecture.md) — technical architecture (arc42): context, building blocks, risks
-- [docs/architecture-rules.md](docs/architecture-rules.md) — the architecture rules and what enforces each
-- [docs/adr/001-live-collaboration-architecture.md](docs/adr/001-live-collaboration-architecture.md) — peer-to-peer live-collaboration architecture decision
-- [docs/adr/002-testing-strategy.md](docs/adr/002-testing-strategy.md) — layered test strategy: unit/component, plus a thin Playwright e2e layer since #26 (see ADR-007)
-- [docs/adr/003-session-reliability-model.md](docs/adr/003-session-reliability-model.md) — facilitator-authoritative round state, versioned rounds, stable client identity, and related live-session reliability decisions
-- [docs/adr/004-feature-sliced-design-architecture.md](docs/adr/004-feature-sliced-design-architecture.md) — Feature-Sliced Design (FSD) as the enforced architecture: layer set, slice mapping, staged follow-ups
-- [docs/adr/005-session-store-decomposition.md](docs/adr/005-session-store-decomposition.md) — accepted decision on the session store's split into three per-concern stores (`src/application/stores/{session,connection,round}.ts`)
-- [docs/adr/006-router-adoption.md](docs/adr/006-router-adoption.md) — accepted decision on replacing faked `currentScreen` navigation with react-router
-- [docs/adr/007-e2e-dual-mode-signaling.md](docs/adr/007-e2e-dual-mode-signaling.md) — Playwright e2e tests for the P2P layer: a locally self-hosted signaling relay by default, production Nostr relays in a separate nightly job
-- [docs/concepts/collaboration-mode.md](docs/concepts/collaboration-mode.md) — Live mode technical concept: P2P network layer, join flow, screen wiring
-- [docs/concepts/e2e-testing.md](docs/concepts/e2e-testing.md) — E2E testing technical concept: Playwright/fixture/signaling component wiring, dual-mode build-and-run flows, spec-to-wire-action coverage map
-- [docs/runbook.md](docs/runbook.md) — deployment & release runbook: CD pipeline, secrets, troubleshooting, versioning/releases
+- [docs/README.md](docs/README.md) — the documentation index: domain docs (what EstiMate does), technical docs (how it's built), and shared vocabulary
 - [AGENTS.md](AGENTS.md) — conventions for AI coding agents working in this repo
 
 ## License

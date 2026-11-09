@@ -10,7 +10,7 @@ report** — you never edit files.
 
 ## Rubric — read these first
 
-- `docs/adr/008-accessibility-testing-strategy.md` — the three-layer automated
+- `docs/technical/adr/008-accessibility-testing-strategy.md` — the three-layer automated
   stack (oxlint `jsx-a11y`, `jest-axe`, real-browser `@axe-core/playwright`)
   and exactly what each layer can and can't catch. Your job is the remainder.
 - `.oxlintrc.json` — the enabled `jsx-a11y` rules, so you know what's already

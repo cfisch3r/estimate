@@ -1,19 +1,24 @@
 # EstiMate — Technical Architecture
 
 **Status:** Accepted. Structured after [arc42](https://arc42.org); this is the living description of the current architecture.
-**Based on:** [prd.md](prd.md), the design handoffs in `design_handoff_estimate_app/` and `design_handoffs/`, [ADR-001](adr/001-live-collaboration-architecture.md), [ADR-003](adr/003-session-reliability-model.md), [ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)
+**Based on:** [prd.md](../domain/prd.md) and its domain concepts
+([live-collaboration](../domain/concepts/live-collaboration.md),
+[estimation-method](../domain/concepts/estimation-method.md)), the design handoffs in
+`design_handoff_estimate_app/` and `design_handoffs/`, [ADR-001](adr/001-live-collaboration-architecture.md), [ADR-003](adr/003-session-reliability-model.md), [ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)
 
-Decisions and their history live in the [ADRs](adr/); implementation detail of single
-topics lives in [concepts/](concepts/). This document is the map: it states how the system
-is built today, holds the context view and the building-block views, and links out for the
-rest. The words it uses are defined in the [glossary](glossary.md).
+This document, and everything else under `docs/technical/`, describes how the domain model
+in `docs/domain/` is realized in code — the technical model depends on the domain model,
+never the reverse. Decisions and their history live in the [ADRs](adr/); implementation
+detail of single topics lives in [concepts/](concepts/). This document is the map: it states
+how the system is built today, holds the context view and the building-block views, and
+links out for the rest. The words it uses are defined in the [glossary](../glossary.md).
 
 ## 1. Introduction and goals
 
 EstiMate is a live three-point estimation tool for dev teams. A team estimates a backlog
 item by item, each member gives a best, most likely and worst case, and the app turns the
 submissions into a range with a confidence interval and counters known estimation biases
-([PRD](prd.md) §2).
+([PRD](../domain/prd.md) §2).
 
 | Goal | Meaning for the architecture |
 |---|---|
@@ -285,7 +290,7 @@ releases are in the [runbook](runbook.md).
 | Live sync | Room id is the 6-character session code (Crockford base32, no deep link) under the fixed `appId` `estimate-app-v1`. Trystero's [Nostr](https://nostr.com) strategy is the default (the library's own robustness ranking is Nostr, MQTT, BitTorrent, IPFS, and the Supabase and Firebase strategies need your own project). A self-hosted WebSocket relay is the escape hatch. An optional room password AES-GCM-encrypts the signaling handshake, without it the room id is visible as metadata on the relay. The facilitator's items are the single source of truth: participants send estimates only to the facilitator, and everyone else receives `syncState` snapshots. A peer that connects or reconnects pulls the snapshot itself (`requestSnapshot`) | ADR-001, ADR-003, [collaboration-mode](concepts/collaboration-mode.md) |
 | Reliability | Versioned rounds, a values-free roster, acknowledged submissions with a kind-driven retry policy, a stable per-browser participant id, role-asymmetric link state | ADR-003 |
 | Trust boundary | Every inbound peer message is validated into domain values at the adapter edge, so the UI only sees valid `Estimate`s | [collaboration-mode](concepts/collaboration-mode.md): trust boundary |
-| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (the peer transport in `ports/outbound`, participant identity). The use-case hooks reach the live-session controller, and the identity port, through React contexts, because a hook cannot import an object created at runtime. The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (`ui-no-adapters`, `composition-root`) | [glossary](glossary.md): port and handle, ADR-009 |
+| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (the peer transport in `ports/outbound`, participant identity). The use-case hooks reach the live-session controller, and the identity port, through React contexts, because a hook cannot import an object created at runtime. The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (`ui-no-adapters`, `composition-root`) | [glossary](../glossary.md): port and handle, ADR-009 |
 | State and UI access | Three stores in the application layer, read-only narrowed views for the UI, use cases for rule-bearing writes (`ui-reads-views`, `store-vs-usecase`) | ADR-005, ADR-009 |
 | Navigation | `react-router`. Use cases contain no navigation, `features/session-lifecycle` wraps them with it | ADR-006 |
 | Persistence | Local-first and file-based. A session (name, unit, items) is saved as a JSON file and restored from one, live-round fields are excluded. Save is a read-only export available to the facilitator in either mode. Load is allowed only before a live session starts, because importing mid-session would silently replace the facilitator's items and desync participants, so a facilitator resumes an adjourned session from the mode-select screen. A participant never has a local item list. A session survives only if the user saves the file, and the UI must say so plainly. No accounts, no cross-device sync in the MVP. Not built yet | PRD §8 |
@@ -332,7 +337,7 @@ Product and design decisions that have no ADR:
 
 ## 11. Risks and technical debt
 
-Work items are tracked as plain GitHub issues — see AGENTS.md's [Picking the next task](../AGENTS.md#picking-the-next-task).
+Work items are tracked as plain GitHub issues — see AGENTS.md's [Picking the next task](../../AGENTS.md#picking-the-next-task).
 
 | Item | Note |
 |---|---|
@@ -350,5 +355,5 @@ Work items are tracked as plain GitHub issues — see AGENTS.md's [Picking the n
 
 ## 12. Glossary
 
-The architecture vocabulary is defined in [glossary.md](glossary.md). Use those terms, and avoid the
+The architecture vocabulary is defined in [glossary.md](../glossary.md). Use those terms, and avoid the
 words in its "Avoid" column.

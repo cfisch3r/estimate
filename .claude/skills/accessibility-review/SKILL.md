@@ -26,7 +26,7 @@ Spawn the accessibility reviewer (subagent_type: `accessibility-review:reviewer`
 - for diff mode, the diff text (or instruct it which `git diff` to run),
 - a reminder to run `pnpm lint` itself first and never restate a `jsx-a11y` finding
   it already reported — its report is judgment calls only (see
-  docs/adr/008-accessibility-testing-strategy.md for what each automated layer
+  docs/technical/adr/008-accessibility-testing-strategy.md for what each automated layer
   already covers).
 
 ## Relay

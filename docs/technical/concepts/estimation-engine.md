@@ -1,6 +1,9 @@
 # Estimation Engine — Technical Concept
 
-> Moved from `docs/architecture.md` when that document became the arc42 architecture index.
+Implements the process and rules described in
+[estimation-method](../../domain/concepts/estimation-method.md) (domain concept).
+
+> Moved from `docs/technical/architecture.md` when that document became the arc42 architecture index.
 > The engine is the pure part of the domain layer (`src/domain/estimate`, formerly `/calc`);
 > its place in the architecture is described in [architecture.md](../architecture.md), section 5.
 
