@@ -1,5 +1,5 @@
 /* Phase Picker ("Cone Slider") — lets a participant place themselves along the
-   classic cone-of-uncertainty curve for an item (PRD §6.1). The curve shape itself
+   classic cone-of-uncertainty curve for an item (PRD §5). The curve shape itself
    is fixed; only the diamond marker, ratio callout, and active label move. Ported
    from design_handoffs/design_handoff_uncertainty_range/Cone Slider - Interactive
    Prototype.dc.html — positional/numeric values stay inline in the component,

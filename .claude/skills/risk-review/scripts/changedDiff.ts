@@ -163,9 +163,17 @@ function readText(cwd: string, path: string): string {
   }
 }
 
-/** The text of a file at a commit-ish, for reading the catalogue from the base. */
+/** The text of a file at a commit-ish, for reading the catalogue from the base. Falls back
+ * to `path`'s pre-rename location at `ref` when `path` has no blob there directly, so every
+ * caller is rename-tolerant by construction rather than having to wire that in itself. */
 export function showAt(ref: string, path: string, cwd = process.cwd()): string {
-  return git(cwd, ['show', `${ref}:${path}`])
+  try {
+    return git(cwd, ['show', `${ref}:${path}`])
+  } catch (error) {
+    const oldPath = renameSourceAt(ref, path, cwd)
+    if (oldPath === undefined) throw error
+    return git(cwd, ['show', `${ref}:${oldPath}`])
+  }
 }
 
 /** The path `path` had at `base`, if git detects it as a rename between `base` and the
@@ -176,6 +184,10 @@ export function renameSourceAt(
   path: string,
   cwd = process.cwd(),
 ): string | undefined {
+  // No trailing pathspec: git can only pair a rename when both the old and new path are in
+  // the diffed set, and the old path (by definition) doesn't match a pathspec built from
+  // the new one — so this stays a full-repo diff, just once per cache-miss rather than per
+  // path.
   const files = parseNameStatus(git(cwd, ['diff', '--name-status', '-z', '-M', base]))
   return files.find((f) => f.path === path)?.oldPath
 }

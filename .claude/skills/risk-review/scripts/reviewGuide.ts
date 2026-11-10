@@ -504,7 +504,7 @@ function main() {
   const covers =
     option('covers') ??
     execFileSync('git', ['rev-parse', 'HEAD'], { cwd, encoding: 'utf8' }).trim()
-  const catalogueNames = currentCatalogueNames(cwd)
+  const catalogueNames = currentCatalogueNames(floor.base, cwd)
 
   const repoUrl = originUrl(cwd)
   const data = buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl })

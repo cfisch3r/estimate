@@ -3,7 +3,6 @@ import { parse } from 'yaml'
 import {
   baseRef,
   readGitDiff,
-  renameSourceAt,
   repoRoot,
   showAt,
   type ChangedFile,
@@ -52,6 +51,7 @@ export interface MatchedCategory {
 }
 
 export interface Floor {
+  base: string
   floor: RiskLevel
   categories: MatchedCategory[]
   /** Every changed file, so a later step can tell whether a path is part of the change. */
@@ -249,7 +249,7 @@ const higher = (a: RiskLevel, b: RiskLevel) =>
   RISK_LEVELS.indexOf(a) >= RISK_LEVELS.indexOf(b) ? a : b
 
 /** Matches the changed files against the catalogue and returns the floor. */
-export function evaluateFloor(catalogue: Category[], diff: Diff): Floor {
+export function evaluateFloor(catalogue: Category[], diff: Diff): Omit<Floor, 'base'> {
   const checkHits = new Map<DiffCheckName, string[]>(
     (Object.keys(DIFF_CHECKS) as DiffCheckName[]).map((name) => [
       name,
@@ -312,31 +312,16 @@ export function readFloor(options: { cwd?: string; since?: string } = {}) {
   const { since } = options
   if (since?.startsWith('-')) throw new Error(`Expected a commit, got "${since}"`)
   const base = baseRef(cwd)
-  const catalogue = parseCatalogue(catalogueAt(base, cwd))
+  const catalogue = parseCatalogue(showAt(base, CATALOGUE_PATH, cwd))
   const diff = readGitDiff(since ? { cwd, from: since } : { cwd })
   return { base, since: since ?? null, ...evaluateFloor(catalogue, diff) }
 }
 
-/** The catalogue's content at `base`, resolved the same rename-tolerant way `readFloor`
- * does. For `reviewGuide.ts`'s category-name lookup, which has no `Diff` of its own. */
-export function currentCatalogueNames(cwd: string): string[] {
-  const base = baseRef(cwd)
-  return parseCatalogue(catalogueAt(base, cwd)).map((c) => c.name)
-}
-
-/** The catalogue's content at `base`. A branch that renames
- * docs/technical/review-risk.md has no blob at the new path on `base` yet — fall back to
- * the rename's source path between `base` and the working tree, resolved independently of
- * any `since` window, so moving the file can't be mistaken for deleting the floor it
- * defends regardless of which commit range the floor itself is evaluated over. */
-function catalogueAt(base: string, cwd: string): string {
-  try {
-    return showAt(base, CATALOGUE_PATH, cwd)
-  } catch (error) {
-    const oldPath = renameSourceAt(base, CATALOGUE_PATH, cwd)
-    if (!oldPath) throw error
-    return showAt(base, oldPath, cwd)
-  }
+/** The catalogue's content at `base`, for `reviewGuide.ts`'s category-name lookup, which
+ * has no `Diff` of its own. Takes `base` rather than re-deriving it, so a caller that
+ * already has it (e.g. from a prior `readFloor()` result) doesn't re-shell to git for it. */
+export function currentCatalogueNames(base: string, cwd: string): string[] {
+  return parseCatalogue(showAt(base, CATALOGUE_PATH, cwd)).map((c) => c.name)
 }
 
 function main() {

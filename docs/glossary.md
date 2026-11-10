@@ -75,7 +75,7 @@ and use "lane" and "slice" in their own sense. They are not rewritten.
 | **Snapshot** | A derived, read-only copy of the facilitator's round state that participants hold (applied via `applyRoundSnapshot` to a `LiveRound`). The facilitator stays the authority. |
 | **Connection state** | The status of the peer link. It describes the link, not the estimate, so it is outside the aggregate. |
 | **Participant identity** | A participant's stable client id. Also outside the aggregate. |
-| **AggregateResult** | The group range three-point estimation produces for an item: min, expected, ci90, max ([estimation-method](domain/concepts/estimation-method.md)). |
+| **AggregateResult** | Unrelated to the **Aggregate** entry above despite the shared prefix — matches the actual `AggregateResult` type in `src/domain/estimate/types.ts`. The group range three-point estimation produces for an item: min, expected, ci90, max ([estimation-method](domain/concepts/estimation-method.md)). |
 | **Uncertainty level** | One of 5 Cone-of-Uncertainty phases a participant selects per item, per view, used only for guidance, never synced ([estimation-method](domain/concepts/estimation-method.md)). |
 
 ## Working rule

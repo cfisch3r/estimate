@@ -121,7 +121,7 @@
   color: var(--color-neutral-400);
 }
 
-/* Guidance-aware states (PRD §6.1) — the below-track label row used whenever a
+/* Guidance-aware states (PRD §5) — the below-track label row used whenever a
    guidance ceiling is shown, plus the compressed "ghost tail" and full-width tick
    treatments for the ceiling itself. */
 

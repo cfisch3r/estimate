@@ -224,17 +224,45 @@ short and diagram-driven — several complementary views (component, sequence, s
 machine, screen flow), not long prose. Prefer tables and diagrams over paragraphs.
 
 Domain concept docs (`docs/domain/concepts/`) and the PRD (`docs/domain/prd.md`) follow a
-different convention — process (numbered steps per mode/flow), information model (an
-entity/value-object table), and rules (a table of guards/invariants) — since there are no
-components or source directories to draw lanes from. `docs/domain/concepts/live-collaboration.md`
-and `docs/domain/concepts/estimation-method.md` are the reference examples. A plain Mermaid
-`flowchart` of the process itself (no C4 box labels, no lanes) may sit alongside the
-numbered steps when it helps readability — see PRD §4 for the combined Live/Manual flow —
-but it never replaces the prose steps, and role/responsibility detail stays in a table
-below it, not in the diagram. Where a concept is pure navigation/structure rather than a
-decision process (no branching per mode, nothing a numbered list would add) — a screen
-flow, for instance — the flowchart plus a content table may stand on their own without
-numbered steps; `docs/domain/concepts/screen-flow.md` is that reference example.
+different convention — process (numbered steps per mode/flow, or a diagram + table per the
+two carve-outs below), information model (an entity/value-object table, or a commented YAML
+block when per-field types/constraints are worth stating — see "YAML information models"
+below), and rules (a table of guards/invariants) — since there are no components or source
+directories to draw lanes from. `docs/domain/concepts/live-collaboration.md` and
+`docs/domain/concepts/estimation-method.md` are the reference examples. A plain Mermaid
+diagram of the process itself (flowchart or state diagram, no C4 box labels, no lanes) may
+sit alongside the numbered steps when it helps readability — see PRD §4 for the combined
+Live/Manual flow — but it never replaces the prose steps, and role/responsibility detail
+stays in a table below it, not in the diagram. Two carve-outs stand the diagram + table up
+on its own, without numbered prose steps:
+- **Pure navigation/structure**, no decision logic (no branching per mode, nothing a
+  numbered list would add) — a screen flow, for instance.
+  `docs/domain/concepts/screen-flow.md` is that reference example; it uses a UML state
+  diagram (screens as states, `«Screen»`/`«Screen State»` stereotypes) since screens-as-states
+  is the more precise notation for pure navigation, not a flowchart.
+- **A linear, non-branching process with several named steps**, where seeing the step order
+  at a glance earns the diagram even without any branching to justify it — gate on "does
+  seeing the steps in order help," not on "does it branch."
+  `docs/domain/concepts/estimation-method.md`'s Process section is that reference example
+  (aggregate → compute CI → guard → finalize).
+
+Prose lists of several short, independent points (goals, non-goals, NFRs, open questions,
+future phases) use a bold 2-4 word headline per item followed by `<br>` (not two trailing
+spaces — those are invisible in a diff) and the detail sentence indented below it, instead
+of a bare bullet of full sentences; this lets a reader scan for the headline that matters to
+them. `docs/domain/prd.md` §§2-3, 6-8 are the reference examples. The same bolding — of the
+few nouns that matter, not the whole cell — applies inside a long table cell.
+
+### YAML information models
+
+An entity/field table may instead be a commented YAML block — each entity a top-level key,
+each field its own key with its type as the value (`likely: number`), validation constraints
+and notes as `#` comments — when the entity has per-field types/constraints worth stating;
+see `docs/domain/concepts/estimation-method.md`'s Information model. A flat enumeration of
+data rows with several numeric columns to compare side-by-side (e.g. the five
+cone-of-uncertainty levels in that same doc) still reads better as a table — don't convert
+that too. Field names here must match the actual source identifiers (the real
+type/const in `src/`), not an independently-invented label.
 
 Diagram conventions below are for technical concept docs only (all Mermaid):
 
