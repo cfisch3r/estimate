@@ -47,6 +47,6 @@ vocabulary used on both sides.
 
 Executable Gherkin specs under `../specs/<concept>/<test level>/` are the acceptance
 criteria for domain behaviour (ADR-010) — each domain concept doc above links to the specs
-that cover it.
+that cover it, where any exist yet.
 
 Design references (dated snapshots, not living docs) live in `../design_handoff_estimate_app/` and `../design_handoffs/`.

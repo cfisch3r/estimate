@@ -62,17 +62,15 @@ A **round** is the lifecycle of one Item through estimate → reveal → (retry 
 Retrying an item clears its submissions and starts the round again; finalizing freezes its
 `finalResult` and moves the facilitator on to the next item.
 
+`Team`/`Workspace` (a lightweight grouping for session history, PRD §3) is not included
+above — it has no process, rule, or implemented behavior of its own yet, only a mention as
+a future grouping concept. It belongs here once a process or rule for it exists.
+
 ## Rules
 
-- **Privacy before reveal.** A participant never sees another's values before the
-  facilitator reveals the round — targeted submission, a values-free roster in the
-  meantime.
-- **No mid-session mode switch.** If live connection fails, the facilitator starts a fresh
-  Manual-mode session rather than switching the running one.
-- **Late join and reconnect land on the correct view.** A participant who joins mid-round,
-  or reconnects, sees the item currently active and how many teammates have submitted —
-  regardless of what they missed while away. Pinned down as an executable acceptance
-  criterion in
-  [`specs/live-session/e2e/late-joiner.feature`](../../../specs/live-session/e2e/late-joiner.feature).
-- **Both modes are interchangeable at the report.** Saving, exporting, and the session
-  summary look the same regardless of which mode produced the values.
+| Rule | Condition | Behavior |
+|---|---|---|
+| **Privacy before reveal** | Before the facilitator reveals the round | A participant never sees another's values — targeted submission, a values-free roster in the meantime |
+| **No mid-session mode switch** | Live connection fails | The facilitator starts a fresh Manual-mode session rather than switching the running one |
+| **Late join and reconnect land on the correct view** | A participant joins mid-round, or reconnects | They see the item currently active and how many teammates have submitted, regardless of what they missed while away. Pinned down as an executable acceptance criterion in [`specs/live-session/e2e/late-joiner.feature`](../../../specs/live-session/e2e/late-joiner.feature) |
+| **Both modes are interchangeable at the report** | Always | Saving, exporting, and the session summary look the same regardless of which mode produced the values |
