@@ -11,24 +11,44 @@ Developer's Guide to Software Estimation (agiledojo.de, Episodes I–III). See
 For each item, once best/likely/worst are set (individual submissions, or a
 facilitator-reconciled value):
 
-1. **Aggregate** — individual submissions become one group range: **Best** = minimum of all
-   Best Cases, **Worst** = maximum of all Worst Cases, **Likely** = median of all Likely
-   values. Don't average away the outliers — the worst case in particular tends to get
-   optimistically averaged down. (A single-entry group, as in Manual mode, degenerates to
-   that one estimate's own values.)
-2. **Compute the confidence interval** — 90% Confidence Interval =
-   `Likely + 1.28 × ((Worst − Best) / 3)` (McConnell's formula, Episode III)
-3. **Guard** — as values are entered, and again at reveal, the bias guards below run and
-   surface nudges; none of them block submission or finalize
-4. **Finalize** — the four values (min, expected, CI90, max) are locked for the item
+```mermaid
+flowchart TD
+    Start(["Best / Likely / Worst set<br/>(submissions, or reconciled value)"]) --> Aggregate["Aggregate"]
+    Aggregate --> CI["Compute confidence interval"]
+    CI --> Guard["Guard"]
+    Guard --> Finalize(["Finalize"])
+```
+
+| Step | What happens | Notes |
+|---|---|---|
+| **Aggregate** | Individual submissions become one group range: **Best** = minimum of all Best Cases, **Worst** = maximum of all Worst Cases, **Likely** = median of all Likely values | Don't average away the outliers — the worst case in particular tends to get optimistically averaged down. A single-entry group, as in Manual mode, degenerates to that one estimate's own values |
+| **Compute confidence interval** | 90% Confidence Interval = `Likely + 1.28 × ((Worst − Best) / 3)` | McConnell's formula, Episode III |
+| **Guard** | The bias guards below run and surface nudges, as values are entered and again at reveal | None of them block submission or finalize |
+| **Finalize** | The four values (min, expected, CI90, max) are locked for the item | |
 
 ## Information model
 
-| Entity / value object | Fields | Notes |
-|---|---|---|
-| **Estimate** | best, likely, worst | Self-validating: only constructible with `best ≤ likely ≤ worst` — illegal ranges can't be represented |
-| **AggregateResult** | min, expected, ci90, max | The group range produced by the Process above |
-| **Uncertainty level** | name, Agile equivalent, low/high multiplier | One of 5 phases of the classic Cone of Uncertainty (see below); selected per item, per participant |
+```yaml
+Estimate:
+  # Self-validating: only constructible with best ≤ likely ≤ worst — illegal ranges can't be represented
+  best: number     # > 0
+  likely: number   # ≥ best
+  worst: number    # ≥ likely
+
+AggregateResult:
+  # The group range produced by the Process above
+  min: number
+  expected: number
+  ci90: number
+  max: number
+
+UncertaintyLevel:
+  # One of 5 phases of the classic Cone of Uncertainty (see below); selected per item, per participant
+  label: string
+  agileEquivalent: string
+  lowMult: number    # multiplier anchored to Best Case
+  highMult: number   # multiplier anchored to Best Case
+```
 
 ### Cone-of-uncertainty guidance levels
 
@@ -58,10 +78,10 @@ These are nudges, not hard blocks — they never prevent submission or finalize.
 
 | Guard | Trigger | Behavior |
 |---|---|---|
-| **Symmetric range warning** | `(Likely − Best) ≈ (Worst − Likely)` within a tolerance | Nudge: the range looks symmetric, worst case in software usually has more room than best case |
-| **False precision guard** | Non-round input where rounding is expected (e.g. "3.7 days") | Soft suggestion to round to the unit's expected granularity |
-| **Outlier flag at reveal** | A participant's value is far from the group median | Highlight (not hide) the outlier, to prompt discussion rather than silently average it out |
-| **Uncertainty-range guard** | The entered range (worst/best ratio) is narrower than the selected uncertainty level's guidance ratio | Nudge: the range looks narrow for that phase, teams at this stage typically see a wider spread. If the ratio already meets or exceeds guidance, show a calm confirmation instead |
+| **Symmetric range warning** | `(Likely − Best) ≈ (Worst − Likely)` within a tolerance | **Nudge:** the range looks symmetric, worst case in software usually has more room than best case |
+| **False precision guard** | Non-round input where rounding is expected (e.g. "3.7 days") | **Soft suggestion** to round to the unit's expected granularity |
+| **Outlier flag at reveal** | A participant's value is far from the group median | **Highlight** (not hide) the outlier, to prompt discussion rather than silently average it out |
+| **Uncertainty-range guard** | The entered range (worst/best ratio) is narrower than the selected uncertainty level's guidance ratio | **Nudge:** the range looks narrow for that phase, teams at this stage typically see a wider spread. If the ratio already meets or exceeds guidance, show a **calm confirmation** instead |
 
 No executable spec exists yet for this concept's behavior (only the live-session join flow
 is covered so far — see [live-collaboration](live-collaboration.md)).

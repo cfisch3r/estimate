@@ -16,7 +16,7 @@ EstiMate applies **three-point estimation** — the method recommended in Episod
 
 - **Live, together, in real time**<br>
   A dev team estimates a backlog live, with no central server the app operator has to run
-- **Out-of-band entry**<br>
+- **Manual entry**<br>
   A solo facilitator who ran the discussion elsewhere (in person, on a call) just types in the team's agreed numbers
 - **Range over guess**<br>
   For each item, produce a defensible range + confidence interval instead of a single number

@@ -8,21 +8,41 @@ participant core flow this screen flow sits inside.
 ## Screen flow
 
 ```mermaid
-flowchart TD
-    Mode(["Mode selection"]) -->|single-user, or start collaborative| Workspace["Workspace<br/>(facilitator view)"]
-    Mode -->|join via code or link| Join["Join Session"]
-    Join -->|connected| Participant["Participant<br/>Estimate View"]
-    Join -->|connection failed| Mode
+stateDiagram-v2
+    [*] --> ModeSelection
 
-    Workspace -->|all items finalized| Summary(["Session Summary / Report"])
+    state "Mode Selection<br/>«Screen»" as ModeSelection
+    state "Workspace<br/>«Screen»" as Workspace
+    state "Join Session<br/>«Screen»" as JoinSession
+    state "Participant Estimate View<br/>«Screen»" as ParticipantEstimateView
+    state "Session Summary<br/>«Screen»" as SessionSummary
+
+    ModeSelection --> Workspace : single-user, or start collaborative
+    ModeSelection --> JoinSession : join via code or link
+
+    JoinSession --> ParticipantEstimateView : connected
+    JoinSession --> ModeSelection : connection failed
+
+    state ParticipantEstimateView {
+        state "Submitting<br/>«Screen State»" as Submitting
+        state "Waiting<br/>«Screen State»" as Waiting
+        state "Revealed<br/>«Screen State»" as Revealed
+
+        [*] --> Submitting
+        Submitting --> Waiting : submit
+        Waiting --> Revealed : facilitator reveals round
+    }
+
+    Workspace --> SessionSummary : all items finalized
+    SessionSummary --> [*]
 ```
 
 ## Screens
 
-| Screen | Scope | Key content & actions |
-|---|---|---|
-| **Mode selection** | Both | Entry screen: start single-user, start collaborative (generates a session code), or join a collaborative session. No session setup happens here. |
-| **Workspace** | Both — facilitator view in collaborative | The single working screen for both modes. Left: editable session name, estimation unit, and the item list (add / remove / reorder at any time, including mid-session; inline rename from the detail panel). Right: the active item's estimation widget, or an "add an item" prompt when nothing is selected. In collaborative mode a session-code strip (code, copy, participant count) sits above it, the facilitator sees participant submission status and a reveal control instead of direct inputs, and reveal shows the aggregated range plus each participant's values with **Finalize** / **Retry round**. |
-| **Join Session** | Collaborative only | Enter name, join via code/link, connecting indicator while the peer connection establishes; a connection-failed state points to single-user mode as a fallback. |
-| **Participant Estimate View** | Collaborative only | Read-only item detail, three number inputs (Best/Likely/Worst), submit; then a waiting state, then a revealed state mirroring the facilitator's aggregated range (no finalize/retry controls). |
-| **Session Summary / Report** | Both | All finalized items with four values, export (CSV/PDF/link), saveable to a file — same layout regardless of mode. |
+| Screen | Single-user | Collaborative | Layout & content | Key actions |
+|---|---|---|---|---|
+| **Mode selection** | ✓ | ✓ | Entry screen. No session setup happens here. | Start single-user · Start collaborative (generates a session code) · Join via code |
+| **Workspace** | ✓ | ✓ *(facilitator view)* | **Left:** editable session name, estimation unit, item list. **Right:** the active item's **estimation widget**, or an "add an item" prompt when nothing is selected. **Collaborative adds:** a session-code strip above; the facilitator sees **participant submission status** and a **reveal control** instead of direct inputs; reveal shows the **aggregated range** plus each participant's values. | Add / remove / reorder items (any time) · Rename item inline · Reveal round · Finalize item · Retry round |
+| **Join Session** | – | ✓ | **Name field**, connecting indicator while the peer connection establishes. | Enter name · Join via code/link |
+| **Participant Estimate View** | – | ✓ | **Read-only item detail**; three number inputs (**Best/Likely/Worst**). Submitted → waiting → revealed states shown in the diagram above; revealed mirrors the facilitator's aggregated range (no finalize/retry controls). | Submit |
+| **Session Summary / Report** | ✓ | ✓ | All finalized items with **four values** — same layout regardless of mode. | Export (CSV/PDF/link) · Save |
