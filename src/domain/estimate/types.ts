@@ -58,7 +58,7 @@ export const UNIT_SUFFIX: Record<EstimationUnit, string> = {
 }
 
 /** The 5 phases of the "cone of uncertainty" a participant can optionally select
- *  per item, for their own view only (PRD §6.1). Order matches the Phase Picker's
+ *  per item, for their own view only (PRD §5). Order matches the Phase Picker's
  *  axis, index 0 = earliest/least certain. */
 export const UNCERTAINTY_LEVELS = [
   'initial-concept',
@@ -70,7 +70,7 @@ export const UNCERTAINTY_LEVELS = [
 
 export type UncertaintyLevel = (typeof UNCERTAINTY_LEVELS)[number]
 
-/** Cone-of-uncertainty guidance table (PRD §6.1). `lowMult`/`highMult` are both
+/** Cone-of-uncertainty guidance table (PRD §5). `lowMult`/`highMult` are both
  *  anchored to Best Case, not Most Likely: `guidanceHigh = bestCase * (highMult /
  *  lowMult)`. The ratio itself is deliberately not a stored field here — always
  *  derive it as highMult/lowMult so a rounded display value can't drift from the

@@ -12,14 +12,17 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 
 **Domain**
 
-- `docs/domain/prd.md` — product requirements: problem, goals, non-goals, screens,
-  non-functional requirements, success metrics, open questions, future phases
+- `docs/domain/prd.md` — product requirements: problem, goals, non-goals, primary user &
+  core flow, non-functional requirements, open questions, future phases
 - `docs/domain/concepts/live-collaboration.md` — domain concept: the Live and Manual mode
   processes, the Session/Item/Estimate/Participant/Roster information model, and the rules
   (privacy before reveal, no mid-session mode switch, late-join catch-up)
 - `docs/domain/concepts/estimation-method.md` — domain concept: the three-point estimation
   process, the Estimate/AggregateResult/uncertainty-level information model, and the
   bias-guard rules
+- `docs/domain/concepts/screen-flow.md` — domain concept: the screen-flow diagram and
+  per-screen content table for Mode selection, Workspace, Join Session, Participant
+  Estimate View, and Session Summary
 
 **Technical**
 
@@ -46,7 +49,7 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 - `docs/glossary.md` — the architecture vocabulary (layer, type, aggregate, entity, value object, inbound/outbound adapter, port, FSD slice/segment) and which words to avoid; use these terms and add new ones there
 - `design_handoff_estimate_app/` — the original design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
 - `design_handoffs/epic-0010-screen-design-review/` — the Epic-0010 redesign handoff; **supersedes the entry flow** of the original handoff (mode-selection screen + unified Workspace) and is the source of truth for the participant estimating and facilitator reveal flows.
-- `design_handoffs/design_handoff_uncertainty_range/` — the Phase Picker + guidance-aware Range Bar handoff for PRD §6.1's cone-of-uncertainty guard; high-fidelity design reference, not literal production code (see its README for known implementation deviations).
+- `design_handoffs/design_handoff_uncertainty_range/` — the Phase Picker + guidance-aware Range Bar handoff for PRD §5's cone-of-uncertainty guard; high-fidelity design reference, not literal production code (see its README for known implementation deviations).
 - `design_handoffs/design_handoff_workspace_redesign/` — the merged-card/grouped-fields/adjacent-nav Workspace redesign handoff (single-user Workspace, facilitator live mode, participant estimate view); low-fidelity wireframe reference, not literal production code (see its README for the app's real Nocturne components and screen-by-screen spec).
 
 ## Picking the next task
@@ -220,11 +223,18 @@ Technical concept / architecture write-ups live in `docs/technical/concepts/`. K
 short and diagram-driven — several complementary views (component, sequence, state
 machine, screen flow), not long prose. Prefer tables and diagrams over paragraphs.
 
-Domain concept docs (`docs/domain/concepts/`) follow a different convention — process
-(numbered steps per mode/flow), information model (an entity/value-object table), and
-rules (a table of guards/invariants) — since there are no components or source directories
-to draw lanes from. `docs/domain/concepts/live-collaboration.md` and
-`docs/domain/concepts/estimation-method.md` are the reference examples.
+Domain concept docs (`docs/domain/concepts/`) and the PRD (`docs/domain/prd.md`) follow a
+different convention — process (numbered steps per mode/flow), information model (an
+entity/value-object table), and rules (a table of guards/invariants) — since there are no
+components or source directories to draw lanes from. `docs/domain/concepts/live-collaboration.md`
+and `docs/domain/concepts/estimation-method.md` are the reference examples. A plain Mermaid
+`flowchart` of the process itself (no C4 box labels, no lanes) may sit alongside the
+numbered steps when it helps readability — see PRD §4 for the combined Live/Manual flow —
+but it never replaces the prose steps, and role/responsibility detail stays in a table
+below it, not in the diagram. Where a concept is pure navigation/structure rather than a
+decision process (no branching per mode, nothing a numbered list would add) — a screen
+flow, for instance — the flowchart plus a content table may stand on their own without
+numbered steps; `docs/domain/concepts/screen-flow.md` is that reference example.
 
 Diagram conventions below are for technical concept docs only (all Mermaid):
 

@@ -9,7 +9,7 @@ interface UncertaintyGuidanceNotesProps {
   unitSuffix: string
 }
 
-/** The two notes that accompany a guidance-aware RangeBar (PRD §6.1) — a calm
+/** The two notes that accompany a guidance-aware RangeBar (PRD §5) — a calm
  *  confirmation when the entered range already covers the phase's guidance
  *  ceiling, or a soft nudge when it's narrower than guidance. Shared by
  *  Workspace's ActiveItemPanel and ParticipantEstimateView's EstimateForm. */

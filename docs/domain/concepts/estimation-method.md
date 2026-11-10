@@ -4,7 +4,7 @@ Three-point estimation: for each item, best/most likely/worst case become a defe
 range and a 90% confidence interval, and a set of bias guards actively counters the known
 estimation traps (symmetric ranges, underestimated worst case, false precision). Source:
 Developer's Guide to Software Estimation (agiledojo.de, Episodes I–III). See
-[PRD](../prd.md) §5/§6/§6.1 for the short product-facing summary.
+[PRD](../prd.md) §5 (Estimation Model) for the short product-facing summary.
 
 ## Process
 
