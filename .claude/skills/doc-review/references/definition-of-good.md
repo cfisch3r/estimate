@@ -20,9 +20,18 @@ section headings below relevant to its angle rather than restating their content
   word to find the one that matters to them. The same bolding trick applies inside a dense
   table cell — bold the few nouns that matter, capped at roughly 20% of the cell, or
   nothing stands out anymore.
-- **A diagram never replaces the prose it illustrates — it sits alongside it.** Removing
-  the diagram should only cost an easier way to see something, never the information
-  itself.
+- **A diagram showing relationships or structure should replace the prose that would
+  otherwise explain them — that's the point of using one.** A component diagram, an
+  architecture diagram, a state machine's transitions: don't also narrate those
+  relationships in prose, since the diagram already shows them more compactly and at a
+  glance. Component/state **details** (responsibilities, fields, constraints) still go in
+  a table below the diagram — the diagram carries the relationships, the table carries
+  the detail, neither duplicates the other.
+- **A diagram narrating a numbered sequence of process steps is the one exception: it
+  accompanies the steps, it doesn't replace them.** Domain docs describing a process as
+  numbered steps may add a diagram alongside those steps when it helps readability, but
+  removing that diagram should only cost an easier way to see the order — not any
+  information the numbered steps themselves give.
 - **Match the diagram type to what's actually being shown:**
   - A **branching decision process** → a flowchart or state machine with real branches.
   - **Pure navigation/structure**, no decision logic → a state diagram (screens/states as

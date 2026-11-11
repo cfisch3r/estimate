@@ -37,10 +37,11 @@ Use `git diff` / `git diff main...HEAD` as appropriate. Do **not** use `gh`.
 ## Checks, mapped to the rubric's sections
 
 - **Scannable form** (rubric §1) — prose-heavy lists that should be bold-headline lists;
-  diagrams missing where they'd help, or diagrams that replace prose rather than
-  accompany it; the wrong diagram type for the shape being shown; ASCII `<<stereotype>>`
-  instead of real guillemets; a table column doing more than one job; a table that should
-  be a commented YAML info model (or vice versa — a flat numeric enumeration forced into
+  relationship/structure diagrams missing where they'd help, or (the one exception) a
+  numbered-process diagram that replaces its own numbered steps instead of accompanying
+  them; the wrong diagram type for the shape being shown; ASCII `<<stereotype>>` instead
+  of real guillemets; a table column doing more than one job; a table that should be a
+  commented YAML info model (or vice versa — a flat numeric enumeration forced into
   YAML).
 - **Structural-edit conformance** (rubric §2) — when the diff shows a section being
   merged, shortened, or removed, check whether a clause-by-clause inventory was shown
