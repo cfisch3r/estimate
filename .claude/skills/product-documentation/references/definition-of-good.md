@@ -1,12 +1,13 @@
 # Definition of Good — documentation
 
-This file is the doc-review/doc-authoring plugin's own standard for a doc's *form* —
+This file is the `product-documentation` plugin's own standard for a doc's *form* —
 never sourced from, or supplemented by, the calling repo. The repo's `AGENTS.md`/
 `docs/README.md` are read only for where a doc belongs; that's a location question, not a
 quality one.
 
-Every reviewer agent and `doc-authoring` read this file literally as their shared rubric,
-rather than restating it — each prompt just names the section relevant to its angle.
+Every reviewer agent and the `authoring` skill read this file literally as their shared
+rubric, rather than restating it — each prompt just names the section relevant to its
+angle.
 
 ## 1. Scannable form
 
@@ -161,4 +162,4 @@ that's repo-specific, and belongs only in that repo's own `AGENTS.md`, never her
 ## 8. How agents use this file
 
 Shared literally across the Consistency, Quality, and Completeness reviewers and
-`doc-authoring` — none restate its content; each prompt just names the relevant section.
+`authoring` — none restate its content; each prompt just names the relevant section.

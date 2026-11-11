@@ -24,9 +24,9 @@ findings and does not edit docs.
 
 | Angle | Diff | All | Path |
 |---|---|---|---|
-| `doc-review:consistency-reviewer` | ✓ | ✓ | ✓ |
-| `doc-review:quality-reviewer` | ✓ | ✓ | ✓ |
-| `doc-review:completeness-reviewer` | ✓ | — | — |
+| `product-documentation:consistency-reviewer` | ✓ | ✓ | ✓ |
+| `product-documentation:quality-reviewer` | ✓ | ✓ | ✓ |
+| `product-documentation:completeness-reviewer` | ✓ | — | — |
 
 The Completeness angle only runs in diff mode — there's no old-vs-new baseline to
 inventory against in a full audit or a bare path, so don't spawn it for those scopes.
@@ -34,7 +34,7 @@ inventory against in a full audit or a bare path, so don't spawn it for those sc
 ## Delegate
 
 Spawn the applicable agents from the table above, **in parallel** (one message, multiple
-Agent calls). If any expected agent type does not exist, the `doc-review` plugin is not
+Agent calls). If any expected agent type does not exist, the `product-documentation` plugin is not
 loaded (an untrusted folder, a session started before the checkout): stop and say so
 instead of reviewing without it — don't silently fall back to fewer agents.
 
@@ -43,7 +43,7 @@ Give each agent:
 - the resolved scope (diff / all / path),
 - for diff mode, the diff text (or instruct it which `git diff` to run),
 - a reminder that its rubric for *what makes a doc good* is this plugin's own
-  `.claude/skills/doc-review/references/definition-of-good.md` (the Quality and
+  `.claude/skills/product-documentation/references/definition-of-good.md` (the Quality and
   Completeness angles' concern), while `AGENTS.md`/`docs/README.md` are read only for
   where a doc belongs, never as a quality standard (the Consistency angle's concern, which
   does read repo docs, but as ground truth about this repo's own code/doc state — not as

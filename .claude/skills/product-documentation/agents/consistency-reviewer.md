@@ -1,6 +1,6 @@
 ---
 name: consistency-reviewer
-description: Read-only reviewer that audits the repo's documentation for accuracy against shipped code and for cross-reference/internal-consistency gaps. Reports severity-ranked findings; never edits files. Started by the /doc-review:review skill as one of three parallel angles.
+description: Read-only reviewer that audits the repo's documentation for accuracy against shipped code and for cross-reference/internal-consistency gaps. Reports severity-ranked findings; never edits files. Started by the /product-documentation:review skill as one of three parallel angles.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
@@ -25,7 +25,7 @@ code and its own docs. Read, as ground truth:
 
 If `AGENTS.md` and a doc disagree about a convention, `AGENTS.md` wins.
 
-(You do **not** read `.claude/skills/doc-review/references/definition-of-good.md` for this
+(You do **not** read `.claude/skills/product-documentation/references/definition-of-good.md` for this
 angle's subject matter — that file is the Quality angle's rubric, not yours. Your job is
 accuracy and cross-reference integrity, which has nothing to do with the plugin's
 portable "Definition of Good.")

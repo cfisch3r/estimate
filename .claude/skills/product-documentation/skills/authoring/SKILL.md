@@ -1,14 +1,14 @@
 ---
-name: doc-authoring
-description: Applies the doc-review plugin's Definition of Good while creating or substantially restructuring a file under docs/, README.md, or AGENTS.md — scannable form, right diagram type, table structure, terminology, proven-element choice. For a structural edit to existing content (merge, shorten, or remove a section), runs a clause inventory before the edit and waits for a go-ahead. Use before writing or substantially editing a doc file.
+name: authoring
+description: Applies the product-documentation plugin's Definition of Good while creating or substantially restructuring a file under docs/, README.md, or AGENTS.md — scannable form, right diagram type, table structure, terminology, proven-element choice. For a structural edit to existing content (merge, shorten, or remove a section), runs a clause inventory before the edit and waits for a go-ahead. Use before writing or substantially editing a doc file.
 user-invocable: false
 ---
 
 # Writing docs well
 
-1. Read `.claude/skills/doc-review/references/definition-of-good.md` in full — the same
-   file the three doc-review reviewer agents use, not a copy. It's the plugin's own
-   standard; apply it as given, don't restate it here.
+1. Read `.claude/skills/product-documentation/references/definition-of-good.md` in full —
+   the same file the three review agents use, not a copy. It's the plugin's own standard;
+   apply it as given, don't restate it here.
 
 2. **Drafting new content**: pick the form the content's shape calls for *before*
    defaulting to prose — the rubric's §1 (scannable form), §4 (diagram conventions), §6

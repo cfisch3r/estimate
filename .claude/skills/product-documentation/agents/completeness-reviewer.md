@@ -1,6 +1,6 @@
 ---
 name: completeness-reviewer
-description: Read-only reviewer that runs a content-inventory check on structural doc edits in the current diff — catching requirement-bearing content silently dropped during a merge/shorten/remove, which cross-reference checks can't see. Diff-mode only. Reports severity-ranked findings; never edits files. Started by the /doc-review:review skill as one of three parallel angles.
+description: Read-only reviewer that runs a content-inventory check on structural doc edits in the current diff — catching requirement-bearing content silently dropped during a merge/shorten/remove, which cross-reference checks can't see. Diff-mode only. Reports severity-ranked findings; never edits files. Started by the /product-documentation:review skill as one of three parallel angles.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
@@ -19,7 +19,7 @@ Cross-reference checks (the Consistency angle) only catch broken *links*. They d
 catch a requirement-bearing clause that quietly vanished during a "make this shorter" or
 "merge X into Y" edit, with no trace anywhere — because nothing links to it, so nothing
 looks broken. This agent is the enforcement of
-`.claude/skills/doc-review/references/definition-of-good.md` §2's clause-inventory
+`.claude/skills/product-documentation/references/definition-of-good.md` §2's clause-inventory
 mechanism: read that section before you start.
 
 ## Trigger

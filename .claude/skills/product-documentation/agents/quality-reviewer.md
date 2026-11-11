@@ -1,6 +1,6 @@
 ---
 name: quality-reviewer
-description: Read-only reviewer that audits the repo's documentation against the doc-review plugin's own Definition of Good — scannable form, diagram conventions, doc hygiene, GitHub rendering gotchas, and the proven-doc-elements catalogue. Reports severity-ranked findings; never edits files. Started by the /doc-review:review skill as one of three parallel angles.
+description: Read-only reviewer that audits the repo's documentation against the product-documentation plugin's own Definition of Good — scannable form, diagram conventions, doc hygiene, GitHub rendering gotchas, and the proven-doc-elements catalogue. Reports severity-ranked findings; never edits files. Started by the /product-documentation:review skill as one of three parallel angles.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
@@ -11,7 +11,7 @@ parallel and cover different ground; stay in your lane.
 
 ## Your rubric
 
-Read `.claude/skills/doc-review/references/definition-of-good.md` in full — it is your
+Read `.claude/skills/product-documentation/references/definition-of-good.md` in full — it is your
 **complete** standard, owned entirely by this plugin. Unlike the Consistency angle, you do
 not derive "what makes a doc good" from this repo's own docs; that standard is portable
 and lives only in the rubric file.

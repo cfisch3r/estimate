@@ -122,31 +122,33 @@ accessibility reviews below are skills-directory plugins, one folder each in
 `.claude/skills/<name>/` holding the skill(s), reviewer agent(s), and any hooks, scripts,
 or shared reference files. Claude Code loads each as `<name>@skills-dir` without an install
 once the folder is trusted; a plugin's agent is named `<name>:<agent>`, and a nested skill
-is invoked as `<name>:<skill>` (the `doc-review` plugin below is the one with more than one
-skill — `skills/review/` and `skills/doc-authoring/` — the rest have exactly one, loaded
-straight from the plugin root). In a desktop worktree session the plugins come from the
-main checkout, so a change to one on the branch takes effect only after the merge (apart
-from scripts run through `pnpm`).
+is invoked as `<name>:<skill>` (the `product-documentation` plugin below is the one with
+more than one skill — `skills/review/` and `skills/authoring/` — the rest have exactly
+one, loaded straight from the plugin root). In a desktop worktree session the plugins
+come from the main checkout, so a change to one on the branch takes effect only after the
+merge (apart from scripts run through `pnpm`).
 
-- **`doc-review` plugin** — two skills sharing one Definition of Good
+- **`product-documentation` plugin** — two skills sharing one Definition of Good
   (`references/definition-of-good.md`, owned entirely by this plugin, never in this file):
-  - **`/doc-review:review`** — read-only documentation audit fanned out across three
-    parallel agents — `doc-review:consistency-reviewer` (accuracy against shipped code,
-    cross-reference integrity, internal consistency — this is the one angle that reads
-    this repo's own docs/code as ground truth), `doc-review:quality-reviewer`
-    (conformance to the plugin's own Definition of Good), and
-    `doc-review:completeness-reviewer` (a diff-mode-only content-inventory check catching
-    requirement-bearing content silently dropped during a merge/shorten/remove edit,
-    since a broken-link check alone can't see that). The skill merges and dedupes their
-    findings before relay. Diff mode runs all three; `/doc-review:review all` and a path
-    run consistency + quality only (no old-vs-new baseline exists outside a diff). This
-    file's own "Concept docs" section below is read only for where a doc belongs (the
-    domain/technical split), never as a source of what makes a doc good. Reports
-    severity-ranked findings and applies nothing.
-  - **`doc-authoring`** — not user-invocable; auto-loads before creating or substantially
-    restructuring a file under `docs/`, `README.md`, or `AGENTS.md`. Applies the
-    Definition of Good while drafting, and for a structural edit to existing content runs
-    the same clause-inventory check the completeness reviewer runs, showing
+  - **`/product-documentation:review`** — read-only documentation audit fanned out
+    across three parallel agents — `product-documentation:consistency-reviewer`
+    (accuracy against shipped code, cross-reference integrity, internal consistency —
+    this is the one angle that reads this repo's own docs/code as ground truth),
+    `product-documentation:quality-reviewer` (conformance to the plugin's own Definition
+    of Good), and `product-documentation:completeness-reviewer` (a diff-mode-only
+    content-inventory check catching requirement-bearing content silently dropped during
+    a merge/shorten/remove edit, since a broken-link check alone can't see that). The
+    skill merges and dedupes their findings before relay. Diff mode runs all three;
+    `/product-documentation:review all` and a path run consistency + quality only (no
+    old-vs-new baseline exists outside a diff). This file's own "Concept docs" section
+    below is read only for where a doc belongs (the domain/technical split), never as a
+    source of what makes a doc good. Reports severity-ranked findings and applies
+    nothing.
+  - **`product-documentation:authoring`** — not user-invocable; auto-loads before
+    creating or substantially restructuring a file under `docs/`, `README.md`, or
+    `AGENTS.md`. Applies the Definition of Good while drafting, and for a structural edit
+    to existing content runs the same clause-inventory check the completeness reviewer
+    runs, showing
     kept/paraphrased/dropped and waiting for an explicit go-ahead before applying the
     edit — the same ask-don't-assume pattern ADR-010 already established for specs.
 - **`/risk-review`** — builds the Review guide of the branch on request, for a reader who
@@ -225,7 +227,7 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 - **Issue-sized work**: one branch per issue (`issue-<n>-<slug>`), PR opened with `Closes #n` in the description, squash-merge into `main`.
 - **PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/)** (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, etc.) — squash-merging makes the PR title the commit message on `main`, and [release-please](docs/technical/runbook.md#versioning--releases) parses that history to cut releases. Enforced as a required status check ([PR title lint](docs/technical/runbook.md#how-releases-are-cut)); `pnpm install` also wires up a local `commit-msg` hook that warns (non-blocking) on individual commits.
 - **Opening a PR**: fill in `.github/pull_request_template.md` (a one-sentence why, special things to note, a change outline) and pass it to `gh pr create --body-file`; the title is a Conventional Commit. Push first, never commit to `main`, and open the PR only when none of yours is open (release-please's excepted). The risk-review plugin's hook then shows the review floor of the PR (`pnpm review:floor`: minimum risk and categories); name it in your answer, first. Where the plugin isn't loaded and no floor appears, run `pnpm review:floor` yourself. The PR body carries no review guide. When the user asks for one while reviewing, run `/risk-review`: it builds the **Review guide** as a private artifact for the pushed branch as it is now; run it again for a newer commit.
-- **Review**: after opening the PR, run the `code-review` skill with the arguments `medium origin/main...HEAD` (effort level, then explicit target; see *Code review skill*) as an independent pass over the diff. Also run `/react-webapp-architecture:review` (read-only, covers layer and FSD slice placement and design judgment calls) on any PR touching `src/`. If the PR touches interactive `src/` UI or visual styling/DOM structure (ARIA roles, focus handling, dynamic content, new color-token pairings, or DOM/layout reordering), also run `/accessibility-review` (read-only, covers ARIA pattern appropriateness, focus-order sanity, live-region needs, contrast judgment calls — see ADR-008). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review:review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
+- **Review**: after opening the PR, run the `code-review` skill with the arguments `medium origin/main...HEAD` (effort level, then explicit target; see *Code review skill*) as an independent pass over the diff. Also run `/react-webapp-architecture:review` (read-only, covers layer and FSD slice placement and design judgment calls) on any PR touching `src/`. If the PR touches interactive `src/` UI or visual styling/DOM structure (ARIA roles, focus handling, dynamic content, new color-token pairings, or DOM/layout reordering), also run `/accessibility-review` (read-only, covers ARIA pattern appropriateness, focus-order sanity, live-region needs, contrast judgment calls — see ADR-008). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/product-documentation:review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
 - **Code review skill**: medium by default and higher for anything touching `src/domain`, `adapters`, `src/application` (the former `/network` and `/state`); never low, which makes one pass over source hunks and skips tests and docs. Always pass the target: without it the skill picks its own diff command, and on a pushed branch `git diff @{upstream}...HEAD` is empty ([anthropics/claude-code#63048](https://github.com/anthropics/claude-code/issues/63048)). If it answers `(none)` or finds nothing within seconds, check in its transcript that it read a non-empty diff, and rerun with the target if not. The skill is built into Claude Code and is not versioned here.
 - **Automated feedback**: before asking about the merge, read what GitHub itself says about the PR, wait until the checks have finished (CodeQL and the other bots comment only after a push), and treat each item as a review finding: fix it as a follow-up commit, or answer it with the reason. A green `ci-passed` does not mean there is nothing to read.
   ```sh
@@ -241,8 +243,8 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 
 Where a new doc goes, not what makes it good — the Definition of Good (scannable form,
 diagram conventions, table/YAML structure, terminology, the proven-doc-elements
-catalogue) lives entirely in the `doc-review`/`doc-authoring` plugin's
-`.claude/skills/doc-review/references/definition-of-good.md`, not here.
+catalogue) lives entirely in the `product-documentation` plugin's
+`.claude/skills/product-documentation/references/definition-of-good.md`, not here.
 
 - **Domain concept docs** (`docs/domain/concepts/`) and the PRD (`docs/domain/prd.md`)
   describe what EstiMate does — process, information model, rules — independent of how

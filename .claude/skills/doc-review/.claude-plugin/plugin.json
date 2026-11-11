@@ -1,5 +1,0 @@
-{
-  "name": "doc-review",
-  "version": "0.3.0",
-  "description": "Two skills sharing one Definition of Good (references/definition-of-good.md, owned entirely by this plugin, never sourced from the calling repo): review (/doc-review:review) — a read-only documentation audit fanned out across three parallel angles (consistency, quality, completeness) and merged before relay; doc-authoring (not user-invocable) — auto-loads before doc writes to apply the same rubric and run a pre-edit clause inventory on structural changes."
-}
