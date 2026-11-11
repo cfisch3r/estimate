@@ -3,8 +3,8 @@
 # outside the repo, and any edit to nocturne.css — a verbatim,
 # unmodified port of the Nocturne design system (see AGENTS.md). Everything else
 # (lint, size/complexity rules, architecture boundaries) is enforced by scanners,
-# not here — see docs/adr/004-feature-sliced-design-architecture.md and
-# docs/adr/009-architecture-style-fsd-vs-hexagonal-core.md.
+# not here — see docs/technical/adr/004-feature-sliced-design-architecture.md and
+# docs/technical/adr/009-architecture-style-fsd-vs-hexagonal-core.md.
 set -eu
 
 input=$(cat)

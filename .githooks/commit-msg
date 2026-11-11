@@ -2,7 +2,7 @@
 # Warn (don't block) when a commit message doesn't look like a Conventional
 # Commit. Only enforced at merge time by the "PR title lint" GitHub Action,
 # since squash-merge makes the PR title the commit message on main, not any
-# individual commit here — see docs/runbook.md#versioning--releases.
+# individual commit here — see docs/technical/runbook.md#versioning--releases.
 
 msg_file="$1"
 first_line=$(head -n1 "$msg_file")

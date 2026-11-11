@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import type { ChangedFile, Diff } from './changedDiff.ts'
-import { readGitDiff, repoRoot } from './changedDiff.ts'
+import { readGitDiff, renameSourceAt, repoRoot } from './changedDiff.ts'
 import { evaluateFloor, parseCatalogue, type Floor } from './reviewFloor.ts'
 
 // The floor decides the minimum risk of a pull request, and the agent may never go below
@@ -14,7 +14,9 @@ import { evaluateFloor, parseCatalogue, type Floor } from './reviewFloor.ts'
 // lowering the floor. The real catalogue is parsed too, so an edit that breaks the YAML
 // block fails in CI.
 const root = repoRoot(import.meta.dirname)
-const catalogue = parseCatalogue(readFileSync(join(root, 'docs/review-risk.md'), 'utf8'))
+const catalogue = parseCatalogue(
+  readFileSync(join(root, 'docs/technical/review-risk.md'), 'utf8'),
+)
 
 interface Change {
   path: string
@@ -44,9 +46,9 @@ function diffOf(...changes: Change[]): Diff {
   }
 }
 
-const floorOf = (...changes: Change[]): Floor =>
+const floorOf = (...changes: Change[]): Omit<Floor, 'base'> =>
   evaluateFloor(catalogue, diffOf(...changes))
-const namesOf = (floor: Floor) => floor.categories.map((c) => c.name)
+const namesOf = (floor: Omit<Floor, 'base'>) => floor.categories.map((c) => c.name)
 
 describe('paths', () => {
   it.each([
@@ -75,7 +77,7 @@ describe('paths', () => {
   })
 
   it('treats a change to the catalogue itself as guardrail-weakened', () => {
-    expect(namesOf(floorOf({ path: 'docs/review-risk.md' }))).toEqual([
+    expect(namesOf(floorOf({ path: 'docs/technical/review-risk.md' }))).toEqual([
       'guardrail-weakened',
     ])
   })
@@ -374,19 +376,27 @@ describe('parseCatalogue', () => {
   })
 })
 
-describe('readGitDiff', () => {
-  const sandbox = mkdtempSync(join(tmpdir(), 'review-floor-'))
-  afterAll(() => rmSync(sandbox, { recursive: true, force: true }))
-
+/** A throwaway git repo for diff-mechanics tests, with `git`/`write` helpers bound to it.
+ * The caller must register `afterAll(() => rmSync(sandbox.dir, { recursive: true, force:
+ * true }))` itself, since vitest's `afterAll` must be called from within a `describe`. */
+function gitSandbox(prefix: string) {
+  const dir = mkdtempSync(join(tmpdir(), prefix))
   const git = (...args: string[]) =>
     execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {
-      cwd: sandbox,
+      cwd: dir,
       encoding: 'utf8',
     })
   const write = (path: string, text: string) => {
-    mkdirSync(dirname(join(sandbox, path)), { recursive: true })
-    writeFileSync(join(sandbox, path), text)
+    mkdirSync(dirname(join(dir, path)), { recursive: true })
+    writeFileSync(join(dir, path), text)
   }
+  return { dir, git, write }
+}
+
+describe('readGitDiff', () => {
+  const sandbox = gitSandbox('review-floor-')
+  afterAll(() => rmSync(sandbox.dir, { recursive: true, force: true }))
+  const { git, write } = sandbox
 
   it('lists added, modified, deleted, renamed and untracked files with their text', () => {
     git('init', '-q', '-b', 'main')
@@ -406,7 +416,7 @@ describe('readGitDiff', () => {
     git('commit', '-q', '-m', 'change')
     write('untracked.ts', 'u1\nu2\n')
 
-    const diff = readGitDiff({ cwd: sandbox, from: base })
+    const diff = readGitDiff({ cwd: sandbox.dir, from: base })
     const byPath = Object.fromEntries(diff.files.map((f) => [f.path, f]))
 
     expect(byPath['keep.ts']?.status).toBe('modified')
@@ -442,7 +452,35 @@ describe('readGitDiff', () => {
     write('later.ts', 'later\n')
     git('add', '.')
     git('commit', '-q', '-m', 'later')
-    const diff = readGitDiff({ cwd: sandbox, from: since })
+    const diff = readGitDiff({ cwd: sandbox.dir, from: since })
     expect(diff.files.map((f) => f.path).sort()).toEqual(['later.ts', 'untracked.ts'])
+  })
+})
+
+describe('renameSourceAt', () => {
+  const sandbox = gitSandbox('review-floor-rename-')
+  afterAll(() => rmSync(sandbox.dir, { recursive: true, force: true }))
+  const { git, write } = sandbox
+
+  it("finds a rename's source at `base` even when `since` is a later commit", () => {
+    git('init', '-q', '-b', 'main')
+    write('old-name.ts', 'a long enough file\nwith several lines\nthat stay the same\n')
+    git('add', '.')
+    git('commit', '-q', '-m', 'base')
+    const base = git('rev-parse', 'HEAD').trim()
+
+    git('mv', 'old-name.ts', 'new-name.ts')
+    git('commit', '-q', '-am', 'rename')
+
+    // A commit after the rename — `since` could point here, well past `base`, with the
+    // rename invisible in a `since`-scoped diff. renameSourceAt must still find it
+    // because it diffs against `base` directly, not whatever `since` window a caller
+    // elsewhere is using for the floor evaluation.
+    write('later.ts', 'later\n')
+    git('add', '.')
+    git('commit', '-q', '-m', 'later')
+
+    expect(renameSourceAt(base, 'new-name.ts', sandbox.dir)).toBe('old-name.ts')
+    expect(renameSourceAt(base, 'later.ts', sandbox.dir)).toBeUndefined()
   })
 })

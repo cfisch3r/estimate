@@ -9,7 +9,7 @@ doc, add it here instead of guessing.
 
 | Term | Meaning in this repo | Avoid |
 |---|---|---|
-| **Layer** | A horizontal level of the code in which dependencies point only one way. In the target architecture ([ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)): UI, application, domain, adapters. Say **FSD layer** when you mean one of Feature-Sliced Design's (`app`, `pages`, `widgets`, `features`, `entities`, `shared`; [ADR-004](adr/004-feature-sliced-design-architecture.md)). | "lane" (except for a Mermaid subgraph, see below); "layer" for a Test Level (see Testing) |
+| **Layer** | A horizontal level of the code in which dependencies point only one way. In the target architecture ([ADR-009](technical/adr/009-architecture-style-fsd-vs-hexagonal-core.md)): UI, application, domain, adapters. Say **FSD layer** when you mean one of Feature-Sliced Design's (`app`, `pages`, `widgets`, `features`, `entities`, `shared`; [ADR-004](technical/adr/004-feature-sliced-design-architecture.md)). | "lane" (except for a Mermaid subgraph, see below); "layer" for a Test Level (see Testing) |
 | **Domain** | The innermost layer: pure rules and types, with no React, no I/O and no packages. Lives in `src/domain/` (ADR-009 stage 1); since stage 3b-1 it also holds the state-transition rules the stores call; the rule that it imports nothing outside itself is enforced by dependency-cruiser (the I/O globals ban by oxlint). | |
 | **Application layer** | The use cases and the state stores. Lives in `src/application/` (ADR-009 stage 3a); dependency-cruiser lets it import only the domain and itself. It owns the ports. Not stateless, unlike textbook hexagonal architecture (ADR-009, "Where state lives"). | |
 | **Adapter** | Code that connects the application to something outside it. Lives in `src/adapters/` (`network/`, `storage/`; ADR-009 stage 2); dependency-cruiser keeps it free of React, Zustand and the UI layers. | |
@@ -27,7 +27,7 @@ doc, add it here instead of guessing.
 
 ## Review
 
-The words for judging how closely a change needs to be read ([review-risk.md](review-risk.md)).
+The words for judging how closely a change needs to be read ([review-risk.md](technical/review-risk.md)).
 
 | Term | Meaning in this repo | Avoid |
 |---|---|---|
@@ -40,12 +40,12 @@ The words for judging how closely a change needs to be read ([review-risk.md](re
 
 ## Testing
 
-The words for executable specs ([ADR-010](adr/010-spec-first-gherkin-specs.md)).
+The words for executable specs ([ADR-010](technical/adr/010-spec-first-gherkin-specs.md)).
 
 | Term | Meaning in this repo | Avoid |
 |---|---|---|
 | **Test Level** | What kind of thing a Gherkin scenario drives — `e2e` (real UI, real browsers), and the deferred `protocol`/`domain`. The second folder under `specs/<concept>/`. Each Test Level owns its own runner; there is no shared DSL across them. | "layer" (collides with the architecture/FSD layer above) |
-| **Concept folder** | The first folder under `specs/`, one per feature area (for example `live-session`), parallel to `docs/concepts/`. | |
+| **Concept folder** | The first folder under `specs/`, one per feature area (for example `live-session`), parallel to the concept name shared by `docs/domain/concepts/` and `docs/technical/concepts/`. | |
 
 ## Feature-Sliced Design
 
@@ -57,7 +57,7 @@ These words belong to FSD only. They do not describe the target layers above.
 | **Segment** | A purpose-named folder inside a slice: `model`, `api`, `lib`, `ui`. Note that FSD's `model` segment is not "the domain model" in the DDD sense. |
 | **Public API** | The barrel file (`index.ts`) of a slice; the only thing other slices may import. |
 
-[ADR-004](adr/004-feature-sliced-design-architecture.md) and ADR-005 are accepted history
+[ADR-004](technical/adr/004-feature-sliced-design-architecture.md) and ADR-005 are accepted history
 and use "lane" and "slice" in their own sense. They are not rewritten.
 
 ## Domain concepts
@@ -71,10 +71,12 @@ and use "lane" and "slice" in their own sense. They are not rewritten.
 | **Session** | One estimation meeting. Live (peer to peer) or manual. |
 | **Round** | One pass of everyone estimating one item; the facilitator can retry it. |
 | **Submission** | One participant's estimate for the current round. |
-| **Roster** | The values-free list of who has submitted, sent in the snapshot ([ADR-003](adr/003-session-reliability-model.md)). |
+| **Roster** | The values-free list of who has submitted, sent in the snapshot ([ADR-003](technical/adr/003-session-reliability-model.md)). |
 | **Snapshot** | A derived, read-only copy of the facilitator's round state that participants hold (applied via `applyRoundSnapshot` to a `LiveRound`). The facilitator stays the authority. |
 | **Connection state** | The status of the peer link. It describes the link, not the estimate, so it is outside the aggregate. |
 | **Participant identity** | A participant's stable client id. Also outside the aggregate. |
+| **AggregateResult** | Unrelated to the **Aggregate** entry above despite the shared prefix — matches the actual `AggregateResult` type in `src/domain/estimate/types.ts`. The group range three-point estimation produces for an item: min, expected, ci90, max ([estimation-method](domain/concepts/estimation-method.md)). |
+| **Uncertainty level** | One of 5 Cone-of-Uncertainty phases a participant selects per item, per view, used only for guidance, never synced ([estimation-method](domain/concepts/estimation-method.md)). |
 
 ## Working rule
 

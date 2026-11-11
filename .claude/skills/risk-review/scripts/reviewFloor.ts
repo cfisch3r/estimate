@@ -10,7 +10,7 @@ import {
 } from './changedDiff.ts'
 
 // The review floor: the minimum risk of a change, set by the catalogue in
-// docs/review-risk.md. No model, no coverage run, no network. The `risk-review:reviewer` agent may
+// docs/technical/review-risk.md. No model, no coverage run, no network. The `risk-review:reviewer` agent may
 // raise the result and never lower it.
 //
 //   pnpm review:floor              the branch against main
@@ -22,7 +22,7 @@ import {
 export const RISK_LEVELS = ['low', 'medium', 'high', 'critical'] as const
 export type RiskLevel = (typeof RISK_LEVELS)[number]
 
-const CATALOGUE_PATH = 'docs/review-risk.md'
+const CATALOGUE_PATH = 'docs/technical/review-risk.md'
 
 /** Each diff check returns the changed files that make it true. */
 const DIFF_CHECKS = {
@@ -51,6 +51,7 @@ export interface MatchedCategory {
 }
 
 export interface Floor {
+  base: string
   floor: RiskLevel
   categories: MatchedCategory[]
   /** Every changed file, so a later step can tell whether a path is part of the change. */
@@ -248,7 +249,7 @@ const higher = (a: RiskLevel, b: RiskLevel) =>
   RISK_LEVELS.indexOf(a) >= RISK_LEVELS.indexOf(b) ? a : b
 
 /** Matches the changed files against the catalogue and returns the floor. */
-export function evaluateFloor(catalogue: Category[], diff: Diff): Floor {
+export function evaluateFloor(catalogue: Category[], diff: Diff): Omit<Floor, 'base'> {
   const checkHits = new Map<DiffCheckName, string[]>(
     (Object.keys(DIFF_CHECKS) as DiffCheckName[]).map((name) => [
       name,
@@ -314,6 +315,13 @@ export function readFloor(options: { cwd?: string; since?: string } = {}) {
   const catalogue = parseCatalogue(showAt(base, CATALOGUE_PATH, cwd))
   const diff = readGitDiff(since ? { cwd, from: since } : { cwd })
   return { base, since: since ?? null, ...evaluateFloor(catalogue, diff) }
+}
+
+/** The catalogue's content at `base`, for `reviewGuide.ts`'s category-name lookup, which
+ * has no `Diff` of its own. Takes `base` rather than re-deriving it, so a caller that
+ * already has it (e.g. from a prior `readFloor()` result) doesn't re-shell to git for it. */
+export function currentCatalogueNames(base: string, cwd: string): string[] {
+  return parseCatalogue(showAt(base, CATALOGUE_PATH, cwd)).map((c) => c.name)
 }
 
 function main() {

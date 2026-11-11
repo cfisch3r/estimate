@@ -1,0 +1,42 @@
+<svg width="760" height="310" viewBox="0 0 760 310" xmlns="http://www.w3.org/2000/svg" role="img" font-family="Helvetica, Arial, sans-serif">
+  <title>Three-point estimation vs. a single point</title>
+  <desc>Planning poker gives one number with no sense of range. Three-point estimation gives Best, Likely and Worst case on one axis, with the derived Min, Expected, 90% confidence interval and Max marked on the same axis; the 90% interval runs from Min.</desc>
+
+  <rect x="1" y="1" width="758" height="308" rx="12" fill="#ffffff" stroke="#d0d7de" stroke-width="1.5"/>
+
+  <text x="28" y="34" font-size="15" font-weight="600" fill="#1f2328">Planning poker — a single point</text>
+  <line x1="180" y1="78" x2="716" y2="78" stroke="#8c959f" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="448" cy="78" r="7" fill="#0969da" stroke="#ffffff" stroke-width="2"/>
+  <text x="448" y="58" font-size="13" fill="#1f2328" text-anchor="middle">5 points</text>
+  <text x="448" y="100" font-size="12" fill="#57606a" text-anchor="middle">One number — no sense of range</text>
+
+  <line x1="28" y1="122" x2="732" y2="122" stroke="#eaeef2" stroke-width="1"/>
+
+  <text x="28" y="150" font-size="15" font-weight="600" fill="#1f2328">Three-point estimation — a range</text>
+
+  <line x1="180" y1="205" x2="716" y2="205" stroke="#8c959f" stroke-width="2" stroke-linecap="round"/>
+  <line x1="255" y1="205" x2="630" y2="205" stroke="#d0d7de" stroke-width="10" stroke-linecap="round"/>
+  <line x1="255" y1="205" x2="480" y2="205" stroke="#2da44e" stroke-opacity="0.55" stroke-width="10" stroke-linecap="round"/>
+
+  <circle cx="255" cy="205" r="7" fill="#0969da" stroke="#ffffff" stroke-width="2"/>
+  <circle cx="345" cy="205" r="7" fill="#0969da" stroke="#ffffff" stroke-width="2"/>
+  <circle cx="630" cy="205" r="7" fill="#0969da" stroke="#ffffff" stroke-width="2"/>
+  <rect x="474" y="199" width="12" height="12" rx="3" fill="#1a7f37" stroke="#ffffff" stroke-width="2" transform="rotate(45 480 205)"/>
+
+  <text x="255" y="182" font-size="12" fill="#1f2328" text-anchor="middle">Best (3d)</text>
+  <text x="345" y="182" font-size="12" fill="#1f2328" text-anchor="middle">Likely (5d)</text>
+  <text x="630" y="182" font-size="12" fill="#1f2328" text-anchor="middle">Worst (12d)</text>
+
+  <text x="255" y="256" font-size="12" fill="#1f2328" text-anchor="middle">Min</text>
+  <text x="345" y="256" font-size="12" fill="#1a7f37" font-weight="600" text-anchor="middle">Expected</text>
+  <text x="480" y="256" font-size="12" fill="#1a7f37" font-weight="600" text-anchor="middle">90% CI (8.8d)</text>
+  <text x="630" y="256" font-size="12" fill="#1f2328" text-anchor="middle">Max</text>
+
+  <circle cx="40" cy="284" r="5" fill="#0969da"/>
+  <text x="52" y="288" font-size="11" fill="#57606a">Submission (best / likely / worst)</text>
+  <rect x="330" y="279" width="14" height="10" rx="3" fill="#d0d7de"/>
+  <text x="350" y="288" font-size="11" fill="#57606a">Min–max range</text>
+  <rect x="470" y="279" width="24" height="10" rx="3" fill="#2da44e" fill-opacity="0.55"/>
+  <rect x="488" y="279" width="10" height="10" rx="3" fill="#1a7f37" stroke="#ffffff" stroke-width="2" transform="rotate(45 493 284)"/>
+  <text x="510" y="288" font-size="11" fill="#57606a">90% CI, from Min</text>
+</svg>

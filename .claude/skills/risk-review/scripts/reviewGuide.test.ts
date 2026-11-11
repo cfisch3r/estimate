@@ -24,6 +24,7 @@ import {
 const NAMES = ['domain-math', 'wire-contract', 'guardrail-weakened', 'mechanical']
 
 const floor = (risk: Floor['floor'], categories: string[], files: string[]): Floor => ({
+  base: 'origin/main',
   floor: risk,
   categories: categories.map((name) => ({ name, minRisk: risk, files, diffChecks: [] })),
   changedFiles: files,

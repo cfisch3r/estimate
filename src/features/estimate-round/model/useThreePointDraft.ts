@@ -89,7 +89,7 @@ export function useThreePointDraft(
     : null
 
   // The cone-of-uncertainty phase this person selected for their own view (PRD
-  // §6.1). Only the selection lives here; what the phase means for an entered
+  // §5). Only the selection lives here; what the phase means for an entered
   // range is `uncertaintyGuidance`. An out-of-range index yields no guidance.
   const [phaseIndex, setPhaseIndex] = useState(DEFAULT_UNCERTAINTY_INDEX)
   const level = UNCERTAINTY_LEVELS[phaseIndex]

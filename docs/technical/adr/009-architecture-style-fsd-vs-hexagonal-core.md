@@ -49,10 +49,10 @@ The PRD describes a product whose weight is not in its UI composition:
 | Requirement (PRD) | Implication |
 |---|---|
 | Two session modes on one domain: live (P2P) and manual (§4.1) | One domain core with two entry points |
-| Serverless P2P with graceful degradation (§9, ADR-001, ADR-003) | The transport is infrastructure with real logic, and is already swapped in tests (ADR-007) |
-| Persistence, CSV export, shareable link (§2, §9; not built) | More adapters around the same core |
-| Bias guards and three-point calculations (§5, §6) | The pure, heavily tested part is the product's value |
-| Future phases: story points, T-shirt sizing, backlog import (§12) | Several estimation methods over shared session/item machinery, plus import adapters |
+| Serverless P2P with graceful degradation (§6, ADR-001, ADR-003) | The transport is infrastructure with real logic, and is already swapped in tests (ADR-007) |
+| Persistence, CSV export, shareable link (§2, §6; not built) | More adapters around the same core |
+| Bias guards and three-point calculations (§5) | The pure, heavily tested part is the product's value |
+| Future phases: story points, T-shirt sizing, backlog import (§8) | Several estimation methods over shared session/item machinery, plus import adapters |
 
 FSD is designed for the UI-composition problem (pages made of widgets made of
 features made of entities). This app has a small pure domain, a substantial
@@ -354,7 +354,7 @@ update).
    files `ports/networkSessionContext.ts` and `ports/useNetworkSession.ts` no longer exist.
    They are a handle the application hands between its own parts, not a port, and the name
    no longer points at the network adapter (see the Handle entry in the
-   [glossary](../glossary.md)). Where the text above calls `NetworkSessionApi` a port or
+   [glossary](../../glossary.md)). Where the text above calls `NetworkSessionApi` a port or
    places it with the ports, read it with this correction.
 
 Each stage ends with all CI checks green and can be the last one.

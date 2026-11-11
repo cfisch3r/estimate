@@ -47,7 +47,7 @@ const relayWebServer = {
 
 // Spike (spike/bdd-specs): generates Playwright tests from
 // specs/live-session/e2e/*.feature via playwright-bdd. Run `pnpm exec bddgen`
-// before `playwright test` to (re)generate — see docs/concepts/e2e-testing.md.
+// before `playwright test` to (re)generate — see docs/technical/concepts/e2e-testing.md.
 const liveSessionBddDir = defineBddConfig({
   features: 'specs/live-session/e2e/*.feature',
   steps: ['specs/live-session/e2e/steps.ts', 'specs/live-session/e2e/world.ts'],

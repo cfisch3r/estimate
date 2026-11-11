@@ -3,7 +3,7 @@ import type { Estimate } from './estimate'
 import { median } from './aggregate'
 import { UNCERTAINTY_GUIDANCE } from './types'
 
-/** PRD §6 "symmetric range" nudge: fires when (Likely-Best) and (Worst-Likely) are
+/** PRD §5 "symmetric range" nudge: fires when (Likely-Best) and (Worst-Likely) are
  *  close to equal, which usually means the worst case hasn't been given the extra
  *  room software estimates need. A gentle nudge, not a block. */
 export function checkSymmetricRange(
@@ -22,7 +22,7 @@ export function checkSymmetricRange(
   return { fired: deviationPct <= tolerance, deviationPct }
 }
 
-/** PRD §6 "false precision" nudge: fires when a value isn't a multiple of the
+/** PRD §5 "false precision" nudge: fires when a value isn't a multiple of the
  *  unit's expected rounding granularity (see UNIT_GRANULARITY in types.ts). */
 export function checkFalsePrecision(value: number, granularity: number): GuardResult {
   if (granularity <= 0) {
@@ -35,7 +35,7 @@ export function checkFalsePrecision(value: number, granularity: number): GuardRe
   return { fired: deviationPct > epsilon, deviationPct }
 }
 
-/** PRD §6 "outlier flag": compares one estimate against the rest of the group
+/** PRD §5 "outlier flag": compares one estimate against the rest of the group
  *  (deliberately excludes itself, so a participant is never compared to a range
  *  that already includes their own submission). Fires if the estimate's range
  *  doesn't overlap the others' range at all, or its Likely value sits far from
@@ -64,7 +64,7 @@ export function checkOutlier(
   return { fired: noOverlap || deviationPct > thresholdPct, deviationPct }
 }
 
-/** PRD §6.1 "uncertainty range" nudge: fires when the entered range (worst/best) is
+/** PRD §5 "uncertainty range" nudge: fires when the entered range (worst/best) is
  *  narrower than the guidance ratio (highMult/lowMult) for the selected cone-of-
  *  uncertainty phase — i.e. the declared range is suspiciously tight for how early/
  *  uncertain the item is. Anchored to Best Case, matching the guidance ceiling shown
@@ -90,7 +90,7 @@ export function checkUncertaintyRange(
   }
 }
 
-/** The cone-of-uncertainty guidance for an entered range (PRD §6.1), in one
+/** The cone-of-uncertainty guidance for an entered range (PRD §5), in one
  *  place so every consumer applies the same rule: the guidance ceiling
  *  (`guidanceHigh = best * highMult/lowMult`), whether the entered worst case
  *  already `covered`s it, and the `guard` nudge from `checkUncertaintyRange`.

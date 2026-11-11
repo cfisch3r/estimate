@@ -1,5 +1,8 @@
 # Live Collaboration Mode — Technical Concept
 
+Implements the process and rules described in
+[live-collaboration](../../domain/concepts/live-collaboration.md) (domain concept).
+
 ## Overview
 
 EstiMate has two session modes. **Manual mode (Mode B)** is single-user, in-memory, and

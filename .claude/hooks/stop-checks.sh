@@ -6,8 +6,8 @@
 # coverage threshold — in parallel, since none depends on another's output.
 # Blocks the Stop (forcing another turn) on failure so Claude fixes issues
 # before handing back to the user, rather than only finding out at PR/CI
-# time. See docs/adr/004-feature-sliced-design-architecture.md, docs/adr/009-architecture-style-fsd-vs-hexagonal-core.md and
-# docs/adr/008-accessibility-testing-strategy.md.
+# time. See docs/technical/adr/004-feature-sliced-design-architecture.md, docs/technical/adr/009-architecture-style-fsd-vs-hexagonal-core.md and
+# docs/technical/adr/008-accessibility-testing-strategy.md.
 set -u
 
 root="${CLAUDE_PROJECT_DIR:-$PWD}"

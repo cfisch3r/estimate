@@ -9,7 +9,7 @@ import {
 // Real-browser axe scans of the app's main screens — this is what actually
 // covers color-contrast and other layout-dependent WCAG rules: the jest-axe
 // scans on individual components (jsdom) explicitly disable those rules
-// because jsdom doesn't do real layout. See docs/adr/002-testing-strategy.md.
+// because jsdom doesn't do real layout. See docs/technical/adr/002-testing-strategy.md.
 test.describe('accessibility', () => {
   test('mode-select screen has no violations', async ({ facilitator: page }) => {
     await page.goto('/')
