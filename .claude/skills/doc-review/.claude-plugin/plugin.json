@@ -1,5 +1,5 @@
 {
   "name": "doc-review",
-  "version": "0.1.0",
-  "description": "A read-only documentation audit: accuracy against shipped code, cross-reference integrity and the repo's own doc conventions, run in its own reviewer agent."
+  "version": "0.2.0",
+  "description": "A read-only documentation audit fanned out across three parallel angles (consistency, quality, completeness) and merged by the orchestrating skill before relay. Quality's Definition of Good lives entirely in this plugin's references/definition-of-good.md, never sourced from the calling repo."
 }
