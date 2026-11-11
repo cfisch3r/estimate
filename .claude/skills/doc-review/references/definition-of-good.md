@@ -26,10 +26,13 @@ section headings below relevant to its angle rather than restating their content
   **details** (responsibilities, fields, constraints) still go in a table below the
   diagram — the diagram carries the relationships, the table carries the detail, neither
   duplicates the other.
-- **One exception: a process diagram accompanies its steps.** Domain docs describing a
-  process as numbered steps may add a diagram alongside those steps when it helps
-  readability, but removing that diagram should only cost an easier way to see the order
-  — not any information the numbered steps themselves give.
+- **One exception: a process diagram accompanies its steps.** The test above is really
+  "does the diagram already contain everything the prose says" — for a numbered process,
+  it doesn't: the diagram only shows *order* (step 1 → step 2 → step 3), while the actual
+  substance of each step ("Facilitator starts session, shares code") lives in the prose,
+  which a diagram can't carry without becoming a cluttered restatement of it. So the two
+  are complementary, not duplicates — removing the diagram should only cost an easier way
+  to see the order, never any information the numbered steps themselves give.
 - **Match the diagram type to what's actually being shown:**
   - A **branching decision process** → a flowchart or state machine with real branches.
   - **Pure navigation/structure**, no decision logic → a state diagram (screens/states as
