@@ -1,6 +1,6 @@
 ---
 name: quality-reviewer
-description: Read-only reviewer that audits the repo's documentation against the doc-review plugin's own Definition of Good — scannable form, diagram conventions, doc hygiene, GitHub rendering gotchas, and the proven-doc-elements catalogue. Reports severity-ranked findings; never edits files. Started by the /doc-review skill as one of three parallel angles.
+description: Read-only reviewer that audits the repo's documentation against the doc-review plugin's own Definition of Good — scannable form, diagram conventions, doc hygiene, GitHub rendering gotchas, and the proven-doc-elements catalogue. Reports severity-ranked findings; never edits files. Started by the /doc-review:review skill as one of three parallel angles.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---

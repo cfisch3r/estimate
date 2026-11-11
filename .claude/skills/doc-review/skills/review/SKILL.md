@@ -1,5 +1,5 @@
 ---
-name: doc-review
+name: review
 description: Audit the repo's documentation across three angles — consistency (accuracy/cross-reference), quality (the plugin's own Definition of Good), and completeness (dropped content on structural edits, diff mode only) — fanned out to parallel agents and merged before relay. Reviews docs implicated by the current diff by default; `all` for a full audit, or pass a path. Read-only — reports severity-ranked findings, applies nothing.
 argument-hint: "[all | <path>]"
 ---

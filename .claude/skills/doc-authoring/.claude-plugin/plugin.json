@@ -1,5 +1,0 @@
-{
-  "name": "doc-authoring",
-  "version": "0.1.0",
-  "description": "Auto-loads before creating or substantially restructuring a doc file. Applies the doc-review plugin's Definition of Good while drafting, and runs a clause-inventory check before a structural edit to existing content, waiting for a go-ahead before applying it."
-}

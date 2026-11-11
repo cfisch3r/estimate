@@ -1,6 +1,6 @@
 ---
 name: consistency-reviewer
-description: Read-only reviewer that audits the repo's documentation for accuracy against shipped code and for cross-reference/internal-consistency gaps. Reports severity-ranked findings; never edits files. Started by the /doc-review skill as one of three parallel angles.
+description: Read-only reviewer that audits the repo's documentation for accuracy against shipped code and for cross-reference/internal-consistency gaps. Reports severity-ranked findings; never edits files. Started by the /doc-review:review skill as one of three parallel angles.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---

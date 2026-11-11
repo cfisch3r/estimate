@@ -1,6 +1,6 @@
 ---
 name: completeness-reviewer
-description: Read-only reviewer that runs a content-inventory check on structural doc edits in the current diff — catching requirement-bearing content silently dropped during a merge/shorten/remove, which cross-reference checks can't see. Diff-mode only. Reports severity-ranked findings; never edits files. Started by the /doc-review skill as one of three parallel angles.
+description: Read-only reviewer that runs a content-inventory check on structural doc edits in the current diff — catching requirement-bearing content silently dropped during a merge/shorten/remove, which cross-reference checks can't see. Diff-mode only. Reports severity-ranked findings; never edits files. Started by the /doc-review:review skill as one of three parallel angles.
 tools: Read, Grep, Glob, Bash
 model: inherit
 ---
