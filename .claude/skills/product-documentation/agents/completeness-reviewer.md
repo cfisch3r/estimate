@@ -59,15 +59,12 @@ later. Don't invent a precise number yourself.
    it's "an engineering default for now, not a facilitator-facing setting" — the keyword
    survived, the requirement did not. Treat this as "dropped/narrowed," not "kept
    verbatim," even though a naive grep for the keyword would report a hit.
-4. Classify each one:
-   - **Kept verbatim** — no finding.
-   - **Paraphrased into doc Z** — no finding, *unless* the paraphrase measurably narrows
-     or drops part of the original claim (not just its wording). Example of this pattern:
-     a requirement that "X should be configurable" gets merged into a shorter section that
-     keeps the computation details but drops the configurability framing — the destination
-     exists, but the actual requirement didn't survive.
-   - **Dropped, no destination found** — a finding. Severity **High** if it reads as a
-     requirement or decision (not just stylistic framing); **Medium** if ambiguous.
+4. Classify each one per rubric §2's three categories (kept verbatim / paraphrased /
+   explicitly dropped) — don't re-derive them, read §2 if you need the exact wording.
+   Only "dropped, no destination found" and a paraphrase that measurably narrows or drops
+   part of the original claim (not just its wording — the configurability example in §2
+   is exactly this pattern) produce a finding here; severity **High** if it reads as a
+   requirement or decision, **Medium** if ambiguous.
 5. Report only the findings (dropped / narrowed) — not a wall of "kept verbatim" noise for
    every unchanged sentence.
 

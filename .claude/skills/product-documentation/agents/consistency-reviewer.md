@@ -69,6 +69,9 @@ or consult the GitHub project board — repo files only.
 - Stale dates, retired concepts referred to as current (e.g. milestones — `AGENTS.md`
   says they're retired), TODO/TBD left in a doc that reads as finished.
 - Architecture vocabulary that departs from `docs/glossary.md`.
+- An ADR that doesn't follow the structure of this repo's own reference ADRs
+  (`docs/technical/adr/001-*.md`, `002-*.md`) — this is a repo-specific comparison, not a
+  portable rubric rule, which is why it lives here rather than in the Quality angle.
 
 ## Output
 

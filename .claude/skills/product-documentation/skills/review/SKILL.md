@@ -38,10 +38,12 @@ Agent calls). If any expected agent type does not exist, the `product-documentat
 loaded (an untrusted folder, a session started before the checkout): stop and say so
 instead of reviewing without it — don't silently fall back to fewer agents.
 
-Give each agent:
+Give each agent the same inputs, computed once here and passed to all three — never
+re-delegate a `git diff` choice to an individual agent, since independent invocations
+could silently see different diffs if the working tree changes between them:
 
 - the resolved scope (diff / all / path),
-- for diff mode, the diff text (or instruct it which `git diff` to run),
+- for diff mode, the diff text itself (already gathered above),
 - a reminder that its rubric for *what makes a doc good* is this plugin's own
   `.claude/skills/product-documentation/references/definition-of-good.md` (the Quality and
   Completeness angles' concern), while `AGENTS.md`/`docs/README.md` are read only for

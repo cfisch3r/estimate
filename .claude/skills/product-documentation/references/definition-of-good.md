@@ -110,6 +110,9 @@ angle.
   URLs/hosting IDs unless the author confirms they belong.
 - **Consolidate overlapping sections** instead of letting a new fact fragment into a
   separate nearby home.
+- **Don't introduce a new form/format where an existing one already serves** — check §7's
+  catalogue and this doc set's existing patterns before inventing a bespoke structure for
+  something a proven element already covers.
 - **Precise routine vs. edge-case wording** — don't phrase a resolved one-time issue as
   expected recurring behavior.
 - **A new doc wired into every existing index/cross-reference, not just created.**

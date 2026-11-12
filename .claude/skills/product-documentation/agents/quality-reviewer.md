@@ -36,32 +36,22 @@ Use `git diff` / `git diff main...HEAD` as appropriate. Do **not** use `gh`.
 
 ## Checks, mapped to the rubric's sections
 
-- **Scannable form** (rubric §1) — prose-heavy lists that should be bold-headline lists;
-  relationship/structure diagrams missing where they'd help, or (the one exception) a
-  numbered-process diagram that replaces its own numbered steps instead of accompanying
-  them; the wrong diagram type for the shape being shown; ASCII `<<stereotype>>` instead
-  of real guillemets; a table column doing more than one job; a table that should be a
-  commented YAML info model (or vice versa — a flat numeric enumeration forced into
-  YAML).
+Check the diff against each rubric section below. Don't restate a section's rules here —
+read it from `definition-of-good.md` directly and cite the specific bullet you're
+applying in each finding.
+
+- **Scannable form** (rubric §1)
 - **Structural-edit conformance** (rubric §2) — when the diff shows a section being
   merged, shortened, or removed, check whether a clause-by-clause inventory was shown
-  (kept/paraphrased/dropped) before the edit landed. Flag a structural change with no
-  visible inventory as a finding in its own right, separate from whatever the
-  Completeness angle finds about the content itself.
-- **Diagram conventions** (rubric §4) — missing legend, missing lanes/C4-style box
-  labels, responsibilities placed inside diagram boxes instead of a table below, emoji in
-  a diagram, native `C4Component` used instead of a `flowchart`.
-- **Doc hygiene** (rubric §5) — issue/ticket numbers in a doc body, operational specifics
-  that read as sensitive, a new section that overlaps an existing one instead of being
-  folded in, a new doc not wired into every index.
-- **GitHub rendering gotchas** (rubric §6) — Mermaid without explicit text colors, long
-  unsplit edge labels, an edge relied on between two adjacent lanes, a semicolon inside a
-  sequence-diagram message/note.
+  before the edit landed; flag its absence as a finding in its own right, separate from
+  whatever the Completeness angle finds about the content itself.
+- **Terminology and fidelity to source** (rubric §3)
+- **Diagram conventions** (rubric §4)
+- **Doc hygiene** (rubric §5)
+- **GitHub rendering gotchas** (rubric §6)
 - **Proven doc elements** (rubric §7) — a prose wall of content that clearly matches one
-  of the four rows' "use it for" column (several short independent points; items compared
-  across several attributes; an entity with per-field types/constraints; a branching
-  process, navigation, or repeating state sequence) is itself a finding, even if no other
-  rule is violated.
+  of the rows' "use it for" column is itself a finding, even if no other rule is
+  violated.
 
 ## Output
 
