@@ -119,16 +119,38 @@ not the only gate.
 
 Project-owned Claude Code tooling lives in `.claude/` (versioned). The doc, risk and
 accessibility reviews below are skills-directory plugins, one folder each in
-`.claude/skills/<name>/` holding the skill, its `reviewer` agent and any hooks or scripts.
-Claude Code loads each as `<name>@skills-dir` without an install once the folder is trusted;
-the agent is named `<name>:reviewer`. In a desktop worktree session the plugins come from the
-main checkout, so a change to one on the branch takes effect only after the merge (apart from
-scripts run through `pnpm`).
+`.claude/skills/<name>/` holding the skill(s), reviewer agent(s), and any hooks, scripts,
+or shared reference files. Claude Code loads each as `<name>@skills-dir` without an install
+once the folder is trusted; a plugin's agent is named `<name>:<agent>`, and a nested skill
+is invoked as `<name>:<skill>` (the `product-documentation` plugin below is the one with
+more than one skill — `skills/review/` and `skills/authoring/` — the rest have exactly
+one, loaded straight from the plugin root). In a desktop worktree session the plugins
+come from the main checkout, so a change to one on the branch takes effect only after the
+merge (apart from scripts run through `pnpm`).
 
-- **`/doc-review`** — read-only documentation audit run in the `doc-review:reviewer` agent.
-  Checks docs for accuracy against shipped code, cross-reference integrity, and
-  conformance to this file's conventions. Defaults to the current diff; `/doc-review all`
-  for a full audit, or pass a path. Reports severity-ranked findings and applies nothing.
+- **`product-documentation` plugin** — two skills sharing one Definition of Good
+  (`references/definition-of-good.md`, owned entirely by this plugin, never in this file):
+  - **`/product-documentation:review`** — read-only documentation audit fanned out
+    across three parallel agents — `product-documentation:consistency-reviewer`
+    (accuracy against shipped code, cross-reference integrity, internal consistency —
+    this is the one angle that reads this repo's own docs/code as ground truth),
+    `product-documentation:quality-reviewer` (conformance to the plugin's own Definition
+    of Good), and `product-documentation:completeness-reviewer` (a diff-mode-only
+    content-inventory check catching requirement-bearing content silently dropped during
+    a merge/shorten/remove edit, since a broken-link check alone can't see that). The
+    skill merges and dedupes their findings before relay. Diff mode runs all three;
+    `/product-documentation:review all` and a path run consistency + quality only (no
+    old-vs-new baseline exists outside a diff). This file's own "Concept docs" section
+    below is read only for where a doc belongs (the domain/technical split), never as a
+    source of what makes a doc good. Reports severity-ranked findings and applies
+    nothing.
+  - **`product-documentation:authoring`** — not user-invocable; auto-loads before
+    creating or substantially restructuring a file under `docs/`, `README.md`, or
+    `AGENTS.md`. Applies the Definition of Good while drafting, and for a structural edit
+    to existing content runs the same clause-inventory check the completeness reviewer
+    runs, showing
+    kept/paraphrased/dropped and waiting for an explicit go-ahead before applying the
+    edit — the same ask-don't-assume pattern ADR-010 already established for specs.
 - **`/risk-review`** — builds the Review guide of the branch on request, for a reader who
   wants to know where to look. The `risk-review:reviewer` agent starts from the deterministic floor
   (`pnpm review:floor`, see `docs/technical/review-risk.md`), may raise the risk and name hot spots but
@@ -205,7 +227,7 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 - **Issue-sized work**: one branch per issue (`issue-<n>-<slug>`), PR opened with `Closes #n` in the description, squash-merge into `main`.
 - **PR titles must follow [Conventional Commits](https://www.conventionalcommits.org/)** (`feat: ...`, `fix: ...`, `chore: ...`, `docs: ...`, etc.) — squash-merging makes the PR title the commit message on `main`, and [release-please](docs/technical/runbook.md#versioning--releases) parses that history to cut releases. Enforced as a required status check ([PR title lint](docs/technical/runbook.md#how-releases-are-cut)); `pnpm install` also wires up a local `commit-msg` hook that warns (non-blocking) on individual commits.
 - **Opening a PR**: fill in `.github/pull_request_template.md` (a one-sentence why, special things to note, a change outline) and pass it to `gh pr create --body-file`; the title is a Conventional Commit. Push first, never commit to `main`, and open the PR only when none of yours is open (release-please's excepted). The risk-review plugin's hook then shows the review floor of the PR (`pnpm review:floor`: minimum risk and categories); name it in your answer, first. Where the plugin isn't loaded and no floor appears, run `pnpm review:floor` yourself. The PR body carries no review guide. When the user asks for one while reviewing, run `/risk-review`: it builds the **Review guide** as a private artifact for the pushed branch as it is now; run it again for a newer commit.
-- **Review**: after opening the PR, run the `code-review` skill with the arguments `medium origin/main...HEAD` (effort level, then explicit target; see *Code review skill*) as an independent pass over the diff. Also run `/react-webapp-architecture:review` (read-only, covers layer and FSD slice placement and design judgment calls) on any PR touching `src/`. If the PR touches interactive `src/` UI or visual styling/DOM structure (ARIA roles, focus handling, dynamic content, new color-token pairings, or DOM/layout reordering), also run `/accessibility-review` (read-only, covers ARIA pattern appropriateness, focus-order sanity, live-region needs, contrast judgment calls — see ADR-008). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/doc-review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
+- **Review**: after opening the PR, run the `code-review` skill with the arguments `medium origin/main...HEAD` (effort level, then explicit target; see *Code review skill*) as an independent pass over the diff. Also run `/react-webapp-architecture:review` (read-only, covers layer and FSD slice placement and design judgment calls) on any PR touching `src/`. If the PR touches interactive `src/` UI or visual styling/DOM structure (ARIA roles, focus handling, dynamic content, new color-token pairings, or DOM/layout reordering), also run `/accessibility-review` (read-only, covers ARIA pattern appropriateness, focus-order sanity, live-region needs, contrast judgment calls — see ADR-008). Apply confirmed fixes as follow-up commits on the same branch. If the PR touches `docs/`, `README.md`, `AGENTS.md`, or changes module structure / `package.json` scripts, also run `/product-documentation:review` (defaults to the diff) as a read-only pass and apply any confirmed doc fixes on the same branch.
 - **Code review skill**: medium by default and higher for anything touching `src/domain`, `adapters`, `src/application` (the former `/network` and `/state`); never low, which makes one pass over source hunks and skips tests and docs. Always pass the target: without it the skill picks its own diff command, and on a pushed branch `git diff @{upstream}...HEAD` is empty ([anthropics/claude-code#63048](https://github.com/anthropics/claude-code/issues/63048)). If it answers `(none)` or finds nothing within seconds, check in its transcript that it read a non-empty diff, and rerun with the target if not. The skill is built into Claude Code and is not versioned here.
 - **Automated feedback**: before asking about the merge, read what GitHub itself says about the PR, wait until the checks have finished (CodeQL and the other bots comment only after a push), and treat each item as a review finding: fix it as a follow-up commit, or answer it with the reason. A green `ci-passed` does not mean there is nothing to read.
   ```sh
@@ -217,69 +239,21 @@ Repo is solo-maintained (Christian + Claude Code, no other human collaborators).
 - **Merge gate**: always ask the user whether they want to personally review the PR before merging — even after the automated review comes back clean (a review that read no diff is not a clean review) and the automated feedback has been read and answered. Never auto-merge without asking.
 - **Tracking**: plain GitHub issues — the Developer names the one to work on next; see [Picking the next task](#picking-the-next-task). The `EstiMate Roadmap` GitHub Project board is being retired. Milestones are retired (closed `M0`–`M3` kept as history).
 
-## Concept docs & diagrams
+## Concept docs: domain vs. technical
 
-Technical concept / architecture write-ups live in `docs/technical/concepts/`. Keep them
-short and diagram-driven — several complementary views (component, sequence, state
-machine, screen flow), not long prose. Prefer tables and diagrams over paragraphs.
+Where a new doc goes, not what makes it good — the Definition of Good (scannable form,
+diagram conventions, table/YAML structure, terminology, the proven-doc-elements
+catalogue) lives entirely in the `product-documentation` plugin's
+`.claude/skills/product-documentation/references/definition-of-good.md`, not here.
 
-Domain concept docs (`docs/domain/concepts/`) and the PRD (`docs/domain/prd.md`) follow a
-different convention — process (numbered steps per mode/flow, or a diagram + table per the
-two carve-outs below), information model (an entity/value-object table, or a commented YAML
-block when per-field types/constraints are worth stating — see "YAML information models"
-below), and rules (a table of guards/invariants) — since there are no components or source
-directories to draw lanes from. `docs/domain/concepts/live-collaboration.md` and
-`docs/domain/concepts/estimation-method.md` are the reference examples. A plain Mermaid
-diagram of the process itself (flowchart or state diagram, no C4 box labels, no lanes) may
-sit alongside the numbered steps when it helps readability — see PRD §4 for the combined
-Live/Manual flow — but it never replaces the prose steps, and role/responsibility detail
-stays in a table below it, not in the diagram. Two carve-outs stand the diagram + table up
-on its own, without numbered prose steps:
-- **Pure navigation/structure**, no decision logic (no branching per mode, nothing a
-  numbered list would add) — a screen flow, for instance.
-  `docs/domain/concepts/screen-flow.md` is that reference example; it uses a UML state
-  diagram (screens as states, `«Screen»`/`«Screen State»` stereotypes) since screens-as-states
-  is the more precise notation for pure navigation, not a flowchart.
-- **A linear, non-branching process with several named steps**, where seeing the step order
-  at a glance earns the diagram even without any branching to justify it — gate on "does
-  seeing the steps in order help," not on "does it branch."
-  `docs/domain/concepts/estimation-method.md`'s Process section is that reference example
-  (aggregate → compute CI → guard → finalize).
+- **Domain concept docs** (`docs/domain/concepts/`) and the PRD (`docs/domain/prd.md`)
+  describe what EstiMate does — process, information model, rules — independent of how
+  it's built.
+- **Technical concept/architecture docs** (`docs/technical/concepts/`) describe how the
+  domain model is realized in code, and depend on it — never the reverse.
 
-Prose lists of several short, independent points (goals, non-goals, NFRs, open questions,
-future phases) use a bold 2-4 word headline per item followed by `<br>` (not two trailing
-spaces — those are invisible in a diff) and the detail sentence indented below it, instead
-of a bare bullet of full sentences; this lets a reader scan for the headline that matters to
-them. `docs/domain/prd.md` §§2-3, 6-8 are the reference examples. The same bolding — of the
-few nouns that matter, not the whole cell — applies inside a long table cell.
-
-### YAML information models
-
-An entity/field table may instead be a commented YAML block — each entity a top-level key,
-each field its own key with its type as the value (`likely: number`), validation constraints
-and notes as `#` comments — when the entity has per-field types/constraints worth stating;
-see `docs/domain/concepts/estimation-method.md`'s Information model. A flat enumeration of
-data rows with several numeric columns to compare side-by-side (e.g. the five
-cone-of-uncertainty levels in that same doc) still reads better as a table — don't convert
-that too. Field names here must match the actual source identifiers (the real
-type/const in `src/`), not an independently-invented label.
-
-Diagram conventions below are for technical concept docs only (all Mermaid):
-
-- **Component views**: use C4-style box labels — `Name` on line 1, `[type]` on line 2 (e.g.
-  `[React Component]`, `[Zustand Store]`, `[Factory Function]`) — but draw them as a
-  `flowchart`, **not** Mermaid's native `C4Component` type (its auto-layout and arrow routing
-  are too messy here).
-- Put each component's **responsibilities in a table below the diagram**, never inside the
-  boxes.
-- Group nodes into subgraph **"lanes"** (usually by source directory; "lane" is the drawing term only,
-  architecture is described in "layers", see `docs/glossary.md`). Each lane gets an
-  UPPERCASE title, a light background tint, and member nodes coloured to match via
-  `classDef` / `class` — no emoji in lane titles or anywhere else in a diagram. Use
-  `direction LR` inside multi-node lanes. External systems stay outside all lanes with a
-  dashed border.
-- **Legend above every diagram**: solid line = synchronous call, dotted = async
-  callback/event/read, `<-->` = bidirectional. Label edges with what crosses them.
-- Collapse many parallel edges (e.g. store → each screen) into one edge pointing at the lane.
-
-`docs/technical/concepts/collaboration-mode.md` is the reference example.
+One project-specific reminder the plugin's rubric can't give on its own: a YAML info
+model's or a table's field names must match the actual source identifiers (the real
+type/const in `src/`), not an independently-invented label — "check before you write" is
+general methodology the rubric already covers, but checking `src/` specifically only
+makes sense inside this repo.
