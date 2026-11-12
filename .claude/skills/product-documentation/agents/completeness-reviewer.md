@@ -24,9 +24,10 @@ mechanism: read that section before you start.
 
 ## Trigger
 
-A changed doc file in the diff, under `docs/domain/` or `docs/technical/`, that is a
-**prose** file (a PRD, a concept doc, an ADR — not a tabular/data file like
-`review-risk.md`), with a **deletion-heavy hunk**.
+A changed doc file in the diff — under `docs/domain/` or `docs/technical/`, or `AGENTS.md`
+or `README.md` at the repo root — that is a **prose** file (a PRD, a concept doc, an ADR,
+or an instructions file like `AGENTS.md` — not a tabular/data file like `review-risk.md`),
+with a **deletion-heavy hunk**.
 
 The exact threshold for "deletion-heavy" is intentionally unset — start conservative: any
 hunk that removes more lines than it adds in a prose doc file qualifies as a trigger.
