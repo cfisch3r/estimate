@@ -1,13 +1,14 @@
 import { useNavigate } from 'react-router'
 import { useCloseWorkspace } from '../../../application'
+import type { LeaveConfirmation } from '../../../application'
 import { ROUTES } from '../../../shared/lib/routes'
 
 /** Leave the workspace and navigate to mode-select (see `useCloseWorkspace`). */
 export function useLeaveWorkspace(): {
   leaveWorkspace: () => void
-  needsConfirm: boolean
+  confirmation: LeaveConfirmation
 } {
-  const { closeWorkspace, needsConfirm } = useCloseWorkspace()
+  const { closeWorkspace, confirmation } = useCloseWorkspace()
   const navigate = useNavigate()
 
   return {
@@ -15,6 +16,6 @@ export function useLeaveWorkspace(): {
       closeWorkspace()
       navigate(ROUTES.modeSelect)
     },
-    needsConfirm,
+    confirmation,
   }
 }

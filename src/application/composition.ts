@@ -11,4 +11,5 @@ export {
   ParticipantIdentityContext,
   type ParticipantIdentityApi,
 } from './ports/participantIdentityContext'
+export { FileDownloadContext, type FileDownloadApi } from './ports/fileDownloadContext'
 export type { ConnectionState, JoinSession } from './ports/outbound/networkTransport'

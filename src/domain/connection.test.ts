@@ -3,7 +3,7 @@ import {
   deriveConnectionStatus,
   facilitatorStart,
   announcementFor,
-  leavingNeedsConfirm,
+  leaveConfirmation,
   shouldBroadcastSnapshot,
   normalizeSessionCode,
   participantJoin,
@@ -104,15 +104,17 @@ describe('withConnectionStatus', () => {
   })
 })
 
-describe('leavingNeedsConfirm', () => {
+describe('leaveConfirmation', () => {
   it.each([
-    ['live', 2, true],
-    ['live', 1, true],
-    ['live', 0, false],
-    ['manual', 0, false],
-    ['manual', 3, false],
-  ] as const)('mode %s with %i peers -> %s', (mode, peers, expected) => {
-    expect(leavingNeedsConfirm(mode, peers)).toBe(expected)
+    ['live', 2, false, 'live-peers'],
+    ['live', 1, false, 'live-peers'],
+    ['live', 0, false, 'none'],
+    ['manual', 0, false, 'none'],
+    ['manual', 3, false, 'none'],
+    ['manual', 0, true, 'unsaved'],
+    ['live', 2, true, 'unsaved'],
+  ] as const)('mode %s, %i peers, unsaved %s -> %s', (mode, peers, unsaved, expected) => {
+    expect(leaveConfirmation(mode, peers, unsaved)).toBe(expected)
   })
 })
 

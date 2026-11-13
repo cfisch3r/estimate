@@ -8,13 +8,19 @@ import { useLeaveWorkspace } from '../features/session-lifecycle'
 import { ROUTES } from '../shared/lib/routes'
 
 const EXIT_PATHS = new Set<string>([ROUTES.workspace, ROUTES.summary, ROUTES.history])
+/** The armed brand's text per reason for a second click. */
+const ARMED_LABEL = {
+  unsaved: 'Unsaved changes, click again to leave',
+  'live-peers': 'Click again to leave session',
+} as const
+
 const FEEDBACK_URL =
   'https://github.com/cfisch3r/estimate/issues/new?template=feedback.yml'
 
 export function Header() {
   const location = useLocation()
   const mode = useConnectionStore((s) => s.mode)
-  const { leaveWorkspace, needsConfirm } = useLeaveWorkspace()
+  const { leaveWorkspace, confirmation } = useLeaveWorkspace()
   const {
     armed,
     handleClick: armAndLeave,
@@ -24,6 +30,7 @@ export function Header() {
   const showModeTag =
     location.pathname !== ROUTES.modeSelect && location.pathname !== ROUTES.join
   const canLeave = EXIT_PATHS.has(location.pathname)
+  const armedLabel = confirmation !== 'none' && armed ? ARMED_LABEL[confirmation] : null
 
   return (
     <header className="app-header">
@@ -33,16 +40,12 @@ export function Header() {
             ref={leaveRef}
             type="button"
             className="app-header-brand app-header-brand-home"
-            aria-label={
-              needsConfirm && armed
-                ? 'Click again to leave session'
-                : 'Back to mode selection'
-            }
-            style={{ color: needsConfirm && armed ? 'var(--color-warning)' : undefined }}
-            onClick={needsConfirm ? armAndLeave : leaveWorkspace}
+            aria-label={armedLabel ?? 'Back to mode selection'}
+            style={{ color: armedLabel ? 'var(--color-warning)' : undefined }}
+            onClick={confirmation === 'none' ? leaveWorkspace : armAndLeave}
           >
             <BrandMark width={30} height={22} />
-            {needsConfirm && armed ? 'Click again to leave session' : 'EstiMate'}
+            {armedLabel ?? 'EstiMate'}
           </button>
         ) : (
           <span className="app-header-brand">

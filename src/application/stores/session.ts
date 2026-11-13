@@ -8,6 +8,8 @@ import {
   renameItem,
   updateItem,
 } from '../../domain/item'
+import { writeSessionFile } from '../../domain/sessionFile'
+import type { SavedSession } from '../../domain/sessionFile'
 import type { Item } from '../../domain/types'
 
 export interface SessionStore {
@@ -15,6 +17,10 @@ export interface SessionStore {
   unit: EstimationUnit
   items: Item[]
   activeItemId: string | null
+  /** The last file this session was saved to or loaded from, as
+   *  `writeSessionFile` wrote it — what "unsaved changes" compares against.
+   *  Null until the first save or load. */
+  lastSavedFile: string | null
 
   setSessionName: (name: string) => void
   setUnit: (unit: EstimationUnit) => void
@@ -37,6 +43,11 @@ export interface SessionStore {
    *  selection. Composed with the other two stores' own leave-resets by
    *  `useLeaveWorkspace` (`features/session-lifecycle`) — see ADR-005. */
   clearSession: () => void
+  /** Replace the whole session with one read from a file. Nothing is selected
+   *  yet: starting a mode selects the first item still needing an estimate. */
+  loadSession: (session: SavedSession) => void
+  /** Record `file` as the session's last saved state. */
+  markSaved: (file: string) => void
 }
 
 const DEFAULT_UNIT: EstimationUnit = 'days'
@@ -46,6 +57,7 @@ export const useSessionStore = create<SessionStore>((set) => ({
   unit: DEFAULT_UNIT,
   items: [],
   activeItemId: null,
+  lastSavedFile: null,
 
   setSessionName: (name) => set({ sessionName: name }),
 
@@ -82,7 +94,19 @@ export const useSessionStore = create<SessionStore>((set) => ({
   setItemDescription: (id, description) =>
     set((state) => ({ items: updateItem(state.items, id, { description }) })),
 
-  clearSession: () => set({ items: [], sessionName: '', activeItemId: null }),
+  clearSession: () =>
+    set({ items: [], sessionName: '', activeItemId: null, lastSavedFile: null }),
+
+  loadSession: (session) =>
+    set({
+      sessionName: session.sessionName,
+      unit: session.unit,
+      items: session.items,
+      activeItemId: null,
+      lastSavedFile: writeSessionFile(session),
+    }),
+
+  markSaved: (file) => set({ lastSavedFile: file }),
 }))
 
 /** Merge a round outcome into item `id`. Module-level (not a store action) and

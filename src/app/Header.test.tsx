@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { Header } from './Header'
 import { useSessionStore, useConnectionStore } from '../application/testing'
+import { writeSessionFile } from '../domain/sessionFile'
+import type { Item } from '../domain/types'
 
 const { disconnectMock, navigateMock } = vi.hoisted(() => ({
   disconnectMock: vi.fn(),
@@ -25,6 +27,7 @@ function resetStore() {
     unit: 'days',
     items: [],
     activeItemId: null,
+    lastSavedFile: null,
   })
   useConnectionStore.setState({
     mode: 'manual',
@@ -117,24 +120,29 @@ describe('Header', () => {
     },
   )
 
-  it('leaves immediately in single-user mode, resetting items and navigating home', async () => {
+  const storyItem: Item = {
+    id: '1',
+    title: 'A',
+    description: '',
+    notes: '',
+    finalResult: null,
+    submissions: [],
+    revealed: false,
+    round: 0,
+  }
+
+  it('leaves a saved single-user session immediately, resetting items and navigating home', async () => {
     const user = userEvent.setup()
     useConnectionStore.setState({ mode: 'manual' })
     useSessionStore.setState({
       sessionName: 'My session',
-      items: [
-        {
-          id: '1',
-          title: 'A',
-          description: '',
-          notes: '',
-          finalResult: null,
-          submissions: [],
-          revealed: false,
-          round: 0,
-        },
-      ],
+      items: [storyItem],
       activeItemId: '1',
+      lastSavedFile: writeSessionFile({
+        sessionName: 'My session',
+        unit: 'days',
+        items: [storyItem],
+      }),
     })
     renderHeader('/workspace')
 
@@ -146,6 +154,22 @@ describe('Header', () => {
       activeItemId: null,
     })
     expect(useConnectionStore.getState()).toMatchObject({ mode: 'manual', peerCount: 0 })
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/')
+  })
+
+  it('requires a second click to leave a session with unsaved changes', async () => {
+    const user = userEvent.setup()
+    useSessionStore.setState({ sessionName: 'My session', items: [storyItem] })
+    renderHeader('/workspace')
+
+    await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))
+    expect(navigateMock).not.toHaveBeenCalled()
+    const armed = screen.getByRole('button', {
+      name: 'Unsaved changes, click again to leave',
+    })
+
+    await user.click(armed)
     expect(navigateMock).toHaveBeenCalledTimes(1)
     expect(navigateMock).toHaveBeenCalledWith('/')
   })
