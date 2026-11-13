@@ -8,6 +8,7 @@ import { getOrCreateParticipantId } from '../adapters/storage/participantIdentit
 import { downloadTextFile } from '../adapters/file/fileDownload'
 import { ROUTES } from '../shared/lib/routes'
 import { Header } from './Header'
+import { useWarnBeforeUnload } from '../features/session-persistence'
 import { ModeSelect } from '../pages/mode-select'
 import { Workspace } from '../pages/workspace'
 import { SessionSummary } from '../pages/session-summary'
@@ -19,6 +20,8 @@ const participantIdentity = { getOrCreateParticipantId }
 const fileDownload = { download: downloadTextFile }
 
 function App() {
+  useWarnBeforeUnload()
+
   return (
     <BrowserRouter>
       <ParticipantIdentityContext.Provider value={participantIdentity}>
