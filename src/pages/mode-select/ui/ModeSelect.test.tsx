@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
@@ -32,8 +32,11 @@ function renderModeSelect() {
 
 function resetStore() {
   useSessionStore.setState({
+    sessionName: '',
+    unit: 'days',
     items: [],
     activeItemId: null,
+    lastSavedFile: null,
   })
   useConnectionStore.setState({
     mode: 'manual',
@@ -61,7 +64,7 @@ describe('ModeSelect', () => {
     ).toHaveNoViolations()
   })
 
-  it('offers the three entry paths', () => {
+  it('offers the four entry paths', () => {
     renderModeSelect()
 
     expect(
@@ -72,6 +75,9 @@ describe('ModeSelect', () => {
     ).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /Join a collaborative session/ }),
+    ).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /Load a saved session/ }),
     ).toBeInTheDocument()
   })
 
@@ -121,5 +127,108 @@ describe('ModeSelect', () => {
 
     expect(navigateMock).toHaveBeenCalledTimes(1)
     expect(navigateMock).toHaveBeenCalledWith('/workspace')
+  })
+
+  describe('loading a saved session', () => {
+    const SAVED = JSON.stringify({
+      version: 1,
+      sessionName: 'Checkout rework',
+      unit: 'days',
+      items: [
+        {
+          id: 'a',
+          title: 'Payment provider switch',
+          description: '',
+          notes: '',
+          finalResult: { min: 3, expected: 5, max: 12, ci90: 9 },
+        },
+        {
+          id: 'b',
+          title: 'Address autocomplete',
+          description: '',
+          notes: '',
+          finalResult: null,
+        },
+      ],
+    })
+
+    async function loadFile(text: string, name = 'checkout-rework.estimate.json') {
+      const user = userEvent.setup()
+      const view = renderModeSelect()
+      const input = view.container.querySelector<HTMLInputElement>('input[type="file"]')
+      if (!input) throw new Error('No file input')
+      await user.upload(input, new File([text], name, { type: 'application/json' }))
+      return { user, view }
+    }
+
+    it('opens the file picker from the Load row', async () => {
+      const user = userEvent.setup()
+      const view = renderModeSelect()
+      const input = view.container.querySelector<HTMLInputElement>('input[type="file"]')
+      const click = vi.spyOn(input as HTMLInputElement, 'click')
+
+      await user.click(screen.getByRole('button', { name: /Load a saved session/ }))
+
+      expect(click).toHaveBeenCalledTimes(1)
+    })
+
+    it('previews a loaded session and offers to continue it', async () => {
+      const { view } = await loadFile(SAVED)
+
+      const preview = await screen.findByRole('region', { name: 'Loaded session' })
+      expect(preview).toHaveTextContent('Checkout rework')
+      expect(preview).toHaveTextContent('2 items')
+      expect(preview).toHaveTextContent('1 finalized')
+      expect(preview).toHaveTextContent('Unit: days')
+      expect(preview).toHaveTextContent('From checkout-rework.estimate.json')
+      expect(
+        screen.getByText('Continue Checkout rework on your own.'),
+      ).toBeInTheDocument()
+      expect(
+        screen.getByText('Continue Checkout rework live with your team.'),
+      ).toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /Join a collaborative session/ }),
+      ).not.toBeInTheDocument()
+      expect(
+        screen.queryByRole('button', { name: /Load a saved session/ }),
+      ).not.toBeInTheDocument()
+      expect(
+        await axe(view.container, { rules: { 'color-contrast': { enabled: false } } }),
+      ).toHaveNoViolations()
+    })
+
+    it('discards a loaded session', async () => {
+      const { user } = await loadFile(SAVED)
+
+      await user.click(await screen.findByRole('button', { name: /Discard/ }))
+
+      expect(
+        screen.queryByRole('region', { name: 'Loaded session' }),
+      ).not.toBeInTheDocument()
+      expect(useSessionStore.getState()).toMatchObject({ sessionName: '', items: [] })
+      expect(
+        screen.getByRole('button', { name: /Load a saved session/ }),
+      ).toBeInTheDocument()
+    })
+
+    it('rejects a damaged file with its reason and loads nothing', async () => {
+      const damaged = SAVED.replace('"min":3', '"min":13')
+      const { view } = await loadFile(damaged, 'damaged.estimate.json')
+
+      const alert = screen.getByRole('alert')
+      expect(await within(alert).findByText(/can’t be loaded/)).toBeInTheDocument()
+      expect(alert).toHaveTextContent(
+        'Item 1, "Payment provider switch", has a range where the minimum is above the maximum.',
+      )
+      expect(alert).toHaveTextContent('damaged.estimate.json · nothing was changed')
+      expect(useSessionStore.getState().items).toEqual([])
+      expect(
+        screen.queryByRole('region', { name: 'Loaded session' }),
+      ).not.toBeInTheDocument()
+      expect(
+        await axe(view.container, { rules: { 'color-contrast': { enabled: false } } }),
+      ).toHaveNoViolations()
+    })
   })
 })
