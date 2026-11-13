@@ -10,7 +10,6 @@ import {
 } from '../../../src/domain/sessionFile'
 import type { SavedSession } from '../../../src/domain/sessionFile'
 import { estimateOf, finalizedItemOf, itemOf } from '../../../src/domain/testFixtures'
-import { aSessionFile, anEstimatedItem } from '../stereotypes'
 import type { Result } from '../../../src/domain/estimate'
 
 /** What one scenario builds up step by step. */
@@ -19,9 +18,6 @@ type Data = {
   fileName?: string
   /** The file a "read" step reads, as text. */
   fileText?: string
-  /** A file built from stereotypes, changed by "its … is …" before it is
-   *  turned into text. */
-  fileJson?: unknown
   /** Each source item's final result by title, so "estimated" can be checked
    *  against what went in rather than just "not null". */
   sourceResults?: Map<string, AggregateResult | null>
@@ -91,15 +87,13 @@ Given('the file contains {}', (world: QuickPickleWorld, text: string) => {
   data(world).fileText = text
 })
 
-Given(
-  'a session file with the estimated item {string}',
-  (world: QuickPickleWorld, title: string) => {
-    data(world).fileJson = aSessionFile([anEstimatedItem(title)])
-  },
-)
-
+/** Changes one field of the file the Background gave, so each rule break
+ *  is one visible change to an otherwise valid file. */
 Given('its {word} is {}', (world: QuickPickleWorld, path: string, value: string) => {
-  setAtPath(required(data(world), 'fileJson'), path, JSON.parse(value))
+  const state = data(world)
+  const json: unknown = JSON.parse(required(state, 'fileText'))
+  setAtPath(json, path, JSON.parse(value))
+  state.fileText = JSON.stringify(json)
 })
 
 Given(
@@ -128,9 +122,6 @@ Given(
 
 When('it is read', (world: QuickPickleWorld) => {
   const state = data(world)
-  if (state.fileText === undefined && state.fileJson !== undefined) {
-    state.fileText = JSON.stringify(state.fileJson)
-  }
   state.read = readSessionFile(required(state, 'fileText'))
 })
 
