@@ -20,6 +20,9 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 - `docs/domain/concepts/estimation-method.md` — domain concept: the three-point estimation
   process, the Estimate/AggregateResult/uncertainty-level information model, and the
   bias-guard rules
+- `docs/domain/concepts/session-persistence.md` — domain concept: saving a session to a
+  file and resuming it, the session-file information model, and the rules (unsaved-changes
+  warning, whole-or-nothing restore, load only before a mode starts)
 - `docs/domain/concepts/screen-flow.md` — domain concept: the screen-flow diagram and
   per-screen content table for Mode selection, Workspace, Join Session, Participant
   Estimate View, and Session Summary
@@ -95,10 +98,10 @@ pnpm arch                 # steiger (FSD inside the UI) and dependency-cruiser (
 pnpm arch:specs           # dependency-cruiser on specs/ (e2e driver code may not import src/, domain driver code only src/domain, ADR-010); separate from `pnpm arch`, but runs in CI and the Stop hook
 pnpm format               # prettier --write
 pnpm format:check         # prettier --check
-pnpm test                 # vitest run, summary output
+pnpm test                 # vitest run, summary output; includes the `domain` Gherkin specs
 pnpm test:watch           # vitest in watch mode
 pnpm test:verbose         # vitest run, every individual test name and result
-pnpm test:coverage        # vitest run --coverage; also enforces the `src/domain` 100% threshold below
+pnpm test:coverage        # vitest run --coverage; also enforces the `src/domain` 100% threshold below; includes the `domain` Gherkin specs
 pnpm test:e2e             # bddgen (ADR-010), then Playwright, real WebRTC via a local self-hosted relay (ADR-007)
 pnpm test:e2e:real-world  # same specs against production signaling (public Nostr relays)
 pnpm test:e2e:ui          # Playwright UI mode, for local debugging
@@ -170,7 +173,9 @@ merge (apart from scripts run through `pnpm`).
   writes outside the repo (apart from `~/.claude`, the Obsidian inbox and the Claude scratchpad), paths containing `..`, edits under `.git`, `node_modules` and `.env` files, and edits to `nocturne.css`; a `PostToolUse` per-file
   `oxlint` check (surfaces output, never blocks); a `Stop` hook running `pnpm lint`
   (including the `jsx-a11y` plugin)/typecheck/`pnpm arch`/`pnpm deadcode`/
-  `pnpm test:coverage` once per turn.
+  `pnpm test:coverage` once per turn. While a spec is deliberately failing (ADR-010's
+  failing-spec step), the gitignored marker `.claude/hooks/stop-checks.paused` skips that
+  hook; delete it once the specs pass.
 
 Architecture review and code placement come from the **`react-webapp-architecture` plugin**
 (personal marketplace `agiledojo-plugins`, installed with `--scope local`; `.worktreeinclude`

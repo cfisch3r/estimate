@@ -13,7 +13,7 @@ Both modes share the same calculation engine, bias guards (symmetric-range warni
 
 ## Status
 
-MVP in progress. Single-user mode — mode selection, the unified Workspace (item list + estimation), and summary — is built, and a session can be saved to a JSON file and loaded again. Live mode (Mode A) is built end to end — the Trystero peer-to-peer network layer, the Join Session screen, the participant estimating flow, and the facilitator reveal / retry-round flow (a Workspace state, not a separate screen). Connection-fallback UX (#9) is still to come. See the repo's [Issues](../../issues) for current status.
+MVP in progress. Single-user mode — mode selection, the unified Workspace (item list + estimation), and summary — is built, and a session can be saved to a JSON file and loaded again. Live mode (Mode A) is built end to end — the Trystero peer-to-peer network layer, the Join Session screen, the participant estimating flow, and the facilitator reveal / retry-round flow (a Workspace state, not a separate screen). Connection-fallback UX is still to come. See the repo's [Issues](../../issues) for current status.
 
 ## Stack
 
@@ -39,6 +39,7 @@ pnpm test:coverage        # vitest run --coverage
 pnpm test:e2e             # Playwright, real WebRTC via a local self-hosted relay (ADR-007)
 pnpm test:e2e:real-world  # same specs against production signaling (public Nostr relays)
 pnpm test:e2e:ui          # Playwright UI mode, for local debugging
+pnpm test:specs           # every executable Gherkin spec (domain, then e2e)
 pnpm deadcode             # knip — unused exports/files/dependencies
 ```
 

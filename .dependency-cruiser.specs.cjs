@@ -15,6 +15,14 @@ module.exports = {
       to: { path: '^src/' },
     },
     {
+      // Concept-level test data (stereotypes) is shared by a concept's Test
+      // Levels, so it may import nothing from src/ either (ADR-010).
+      name: 'specs-concept-no-src-import',
+      severity: 'error',
+      from: { path: '^specs/[^/]+/[^/]+\\.ts$' },
+      to: { path: '^src/' },
+    },
+    {
       // A `domain` Test Level driver calls the pure domain directly, and
       // nothing else in src/ — no stores, adapters or UI (ADR-010).
       name: 'specs-domain-only-domain-import',

@@ -3,7 +3,8 @@
 **Status:** Accepted. Structured after [arc42](https://arc42.org); this is the living description of the current architecture.
 **Based on:** [prd.md](../domain/prd.md) and its domain concepts
 ([live-collaboration](../domain/concepts/live-collaboration.md),
-[estimation-method](../domain/concepts/estimation-method.md)), the design handoffs in
+[estimation-method](../domain/concepts/estimation-method.md),
+[session-persistence](../domain/concepts/session-persistence.md)), the design handoffs in
 `design_handoff_estimate_app/` and `design_handoffs/`, [ADR-001](adr/001-live-collaboration-architecture.md), [ADR-003](adr/003-session-reliability-model.md), [ADR-009](adr/009-architecture-style-fsd-vs-hexagonal-core.md)
 
 This document, and everything else under `docs/technical/`, describes how the domain model
@@ -117,8 +118,8 @@ flowchart LR
   UI["UI (FSD)<br/>[Pages, widgets, features]"]
   APP["APPLICATION<br/>[Use cases, state stores]"]
   DOM["DOMAIN<br/>[Pure rules and value types]"]
-  AD["ADAPTERS<br/>[Network, storage, export]"]
-  Ext["Peers, relays, browser storage<br/>[External systems]"]
+  AD["ADAPTERS<br/>[Network, storage, file download]"]
+  Ext["Peers, relays, browser<br/>storage, downloads<br/>[External systems]"]
   UI -->|calls| APP
   APP -->|uses rules| DOM
   APP <-->|peer messages in,<br/>calls out via ports| AD
@@ -174,7 +175,7 @@ flowchart LR
     direction TB
     Core["Estimate and session rules<br/>[Pure functions and value types]"]
   end
-  Ext["Peers, relays, browser storage,<br/>downloads [External systems]"]
+  Ext["Peers, relays, browser<br/>storage, downloads<br/>[External systems]"]
   Root -->|creates the controller<br/>with the adapter| UseCases
   Root -->|passes joinSession from| Net
   Pages -->|composes| Features
@@ -213,7 +214,7 @@ flowchart LR
 | **State stores** | Application | The Zustand stores holding session, round and connection state. The UI reads them with selectors and may call a few trivial field setters (session name, unit, item selection and text fields). Every other write goes through a use case. |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. It implements the transport port, delivers validated messages to the handlers the controller registered, and never touches the stores. |
 | **Storage** | Adapters | The stable per-browser participant id. |
-| **File download** | Adapters | Hands a saved session file to the browser as a download. It implements the download port. Loading needs no adapter: the user picks the file in the UI, and the load use case reads its text. |
+| **File download** | Adapters | Hands a saved session file to the browser as a download. It implements the download port. Loading needs no adapter: the UI reads the picked file's text, and the load use case parses it. |
 | **Composition root** | UI (`src/app`, FSD's app layer) | `App.tsx` provides the identity and download ports, and the live-session provider creates the controller with the network adapter and provides it to the UI. The one place in the UI that may import an adapter and the application's composition entry (`ui-no-adapters`, `composition-root`). |
 | **Features** | UI | UI-only features and their components. They call use cases and add navigation. |
 | **Pages and widgets** | UI | Screens and widgets composed from features and shared UI, plus routing (ADR-006) and the design system. |
@@ -294,12 +295,12 @@ releases are in the [runbook](runbook.md).
 | Live sync | Room id is the 6-character session code (Crockford base32, no deep link) under the fixed `appId` `estimate-app-v1`. Trystero's [Nostr](https://nostr.com) strategy is the default (the library's own robustness ranking is Nostr, MQTT, BitTorrent, IPFS, and the Supabase and Firebase strategies need your own project). A self-hosted WebSocket relay is the escape hatch. An optional room password AES-GCM-encrypts the signaling handshake, without it the room id is visible as metadata on the relay. The facilitator's items are the single source of truth: participants send estimates only to the facilitator, and everyone else receives `syncState` snapshots. A peer that connects or reconnects pulls the snapshot itself (`requestSnapshot`) | ADR-001, ADR-003, [collaboration-mode](concepts/collaboration-mode.md) |
 | Reliability | Versioned rounds, a values-free roster, acknowledged submissions with a kind-driven retry policy, a stable per-browser participant id, role-asymmetric link state | ADR-003 |
 | Trust boundary | Every inbound peer message is validated into domain values at the adapter edge, so the UI only sees valid `Estimate`s | [collaboration-mode](concepts/collaboration-mode.md): trust boundary |
-| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (the peer transport in `ports/outbound`, participant identity, file download). The use-case hooks reach the live-session controller, and the identity port, through React contexts, because a hook cannot import an object created at runtime. The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (`ui-no-adapters`, `composition-root`) | [glossary](../glossary.md): port and handle, ADR-009 |
+| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (the peer transport in `ports/outbound`, participant identity, file download). The use-case hooks reach the live-session controller, and the identity and download ports, through React contexts, because a hook cannot import an object created at runtime. The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (`ui-no-adapters`, `composition-root`) | [glossary](../glossary.md): port and handle, ADR-009 |
 | State and UI access | Three stores in the application layer, read-only narrowed views for the UI, use cases for rule-bearing writes (`ui-reads-views`, `store-vs-usecase`) | ADR-005, ADR-009 |
 | Navigation | `react-router`. Use cases contain no navigation, `features/session-lifecycle` wraps them with it | ADR-006 |
-| Persistence | Local-first and file-based. A session (name, unit, items) is saved as a JSON file and restored from one, live-round fields are excluded. Save is a read-only export available to the facilitator in either mode. Load is allowed only before a live session starts, because importing mid-session would silently replace the facilitator's items and desync participants, so a facilitator resumes an adjourned session from the mode-select screen. A participant never has a local item list. A session survives only if the user saves the file, and the UI says so plainly: an unsaved-changes dot on Save, a second click to leave, and the browser's leave-page warning. No accounts, no cross-device sync in the MVP | [live-collaboration](../domain/concepts/live-collaboration.md) |
+| Persistence | Local-first and **file-based**. A session (name, unit, items) is saved as a **JSON file** and restored from one, live-round fields are excluded. **Save** is a read-only export available to the facilitator in either mode. **Load** is allowed only before a mode starts, because importing mid-session would silently replace the facilitator's items and desync participants, so a facilitator resumes an adjourned session from the mode-select screen. A participant never has a local item list. A session survives only if the user saves the file, and the UI says so plainly: an **unsaved-changes** dot on Save, a second click to leave, and the browser's leave-page warning. No accounts, no cross-device sync in the MVP | [session-persistence](../domain/concepts/session-persistence.md) |
 | Estimation unit | The facilitator picks hours, days or weeks per session. The false-precision guard's rounding granularity derives from the unit through a lookup, and the unit travels on `SessionSnapshot`, which is how the participant view receives it | [estimation-engine](concepts/estimation-engine.md) |
-| Testing | Unit and component tests, a thin Playwright layer for real WebRTC, type tests for the store views, 100% coverage on the domain. Spec-first: executable Gherkin specs under `specs/<concept>/<test level>/`, one Test Level implemented so far (`e2e`, via `playwright-bdd`) | ADR-002, ADR-007, ADR-010, [e2e-testing](concepts/e2e-testing.md) |
+| Testing | Unit and component tests, a thin Playwright layer for real WebRTC, type tests for the store views, 100% coverage on the domain. Spec-first: executable Gherkin specs under `specs/<concept>/<test level>/`, two Test Levels implemented so far (`e2e` via `playwright-bdd`, `domain` via `quickpickle`) | ADR-002, ADR-007, ADR-010, [e2e-testing](concepts/e2e-testing.md) |
 | Accessibility | oxlint `jsx-a11y`, `jest-axe` scans, `@axe-core/playwright` scans, a tracked `color-contrast` exclusion | ADR-008 |
 | Styling and shared UI | Nocturne is the single source of tokens and components. `shared/ui` holds thin wrappers over Nocturne classes (Button, Card, Field, Markdown and MarkdownEditor, LiveRegion, and so on). `Header` lives in `app/` because it carries screen and mode-aware logic. `RadioTile` is unused but kept as a design-system primitive. Composed patterns sit in their own files in `src/design`, and component CSS sits beside its component | Section 9, product and design decisions |
 
@@ -347,7 +348,7 @@ Work items are tracked as plain GitHub issues — see AGENTS.md's [Picking the n
 |---|---|
 | Facilitator disconnect stalls the session | Accepted MVP gap, no election or reassignment |
 | Mesh topology | Direct peer connections suit small groups, which is the normal estimation session size |
-| CSV export and the shareable link are not built | The Summary offers Save only |
+| CSV export and the shareable link are not built | The Summary offers Save only. Export would be a further adapter behind a port, like the file download |
 | Connection-fallback UX for peers that cannot connect directly | Not built |
 | Outlier flag | `checkOutlier` exists in the domain but nothing in the reveal panel uses it |
 | The Session Summary rows carry no unit suffix | Small gap in unit-aware labels |

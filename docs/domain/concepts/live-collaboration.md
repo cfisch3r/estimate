@@ -3,7 +3,8 @@
 EstiMate has two session modes. Both produce the same four values per item (minimum,
 expected, 90% confidence interval, maximum) and share the same summary, export, and
 save/load behavior — only how the numbers get in differs (**ADR-001** records why both
-modes exist). [PRD](../prd.md) §4.1 is the short product-facing summary of this process,
+modes exist). Saving and loading a session is its own concept,
+[session-persistence](session-persistence.md). [PRD](../prd.md) §4.1 is the short product-facing summary of this process,
 §4.2 its mode-comparison table.
 
 ## Process
@@ -62,7 +63,7 @@ A **round** is the lifecycle of one Item through estimate → reveal → (retry 
 Retrying an item clears its submissions and starts the round again; finalizing freezes its
 `finalResult` and moves the facilitator on to the next item.
 
-`Team`/`Workspace` (a lightweight grouping for session history, PRD §3) is not included
+`Team`/`Workspace` (a lightweight grouping for saved sessions, PRD §3) is not included
 above — it has no process, rule, or implemented behavior of its own yet, only a mention as
 a future grouping concept. It belongs here once a process or rule for it exists.
 
@@ -74,7 +75,3 @@ a future grouping concept. It belongs here once a process or rule for it exists.
 | **No mid-session mode switch** | Live connection fails | The facilitator starts a fresh Manual-mode session rather than switching the running one |
 | **Late join and reconnect land on the correct view** | A participant joins mid-round, or reconnects | They see the item currently active and how many teammates have submitted, regardless of what they missed while away. Pinned down as an executable acceptance criterion in [`specs/live-session/e2e/late-joiner.feature`](../../../specs/live-session/e2e/late-joiner.feature) |
 | **Both modes are interchangeable at the report** | Always | Saving, exporting, and the session summary look the same regardless of which mode produced the values |
-| **A session survives only as a saved file** | The session holds changes that no saved or loaded file has | Leaving it, or closing the tab, asks for confirmation first; right after a save or a load, nothing asks. Pinned down in [`specs/session-persistence/e2e/unsaved-changes.feature`](../../../specs/session-persistence/e2e/unsaved-changes.feature) |
-| **A saved file holds no running round** | Saving in either mode | The file keeps the session name, unit and every item with its final result, never a round's submissions: they belong to participants of a session that won't exist when the file is loaded. Pinned down in [`specs/session-persistence/domain/read-session-file.feature`](../../../specs/session-persistence/domain/read-session-file.feature) |
-| **Load only before a mode starts** | A facilitator resumes a saved session | Loading happens on mode selection; the loaded session then starts in either mode, resuming at the first item still needing an estimate. A running live session is never replaced, since participants would silently fall out of sync. A file that breaks a rule is rejected whole, with the reason. Pinned down in [`specs/session-persistence/e2e/save-and-resume.feature`](../../../specs/session-persistence/e2e/save-and-resume.feature) |
-| **A saved file is named after its session and day** | Saving | The file name is the session name as a filename-safe slug, then the local save date, then `.estimate.json`. Pinned down in [`specs/session-persistence/domain/save-file-name.feature`](../../../specs/session-persistence/domain/save-file-name.feature) |
