@@ -16,7 +16,7 @@ scoped to the e2e/Playwright layer specifically; the broader QA/guardrails syste
 (oxlint, Steiger, knip, hooks, CI layering) is tracked separately (#114).
 
 A second kind of `e2e` Test Level test, generated from Gherkin `.feature` files rather than
-written as `.spec.ts` directly, lives under `specs/live-session/e2e/` — see
+written as `.spec.ts` directly, lives under `specs/<concept>/e2e/` — see
 ["Spec-first scenarios"](#spec-first-scenarios-specs) below and
 [ADR-010](../adr/010-spec-first-gherkin-specs.md) for why.
 
@@ -149,13 +149,23 @@ same-context pages would collide on `participantId`; contexts have isolated stor
 ## Spec-first scenarios (`specs/`)
 
 [ADR-010](../adr/010-spec-first-gherkin-specs.md) adds an executable-Gherkin `e2e` Test
-Level alongside the plain `.spec.ts` files above: `specs/live-session/e2e/` holds
-`.feature` files, `steps.ts` (step text → actor actions) and `world.ts` (a named-actors
-fixture — one browser context per actor name, lazily created, closed at teardown).
+Level alongside the plain `.spec.ts` files above. Each concept's `specs/<concept>/e2e/`
+holds `.feature` files and that concept's `steps.ts` (step text → actor actions).
+`specs/shared/e2e/` holds what every concept uses: `world.ts` (a named-actors fixture —
+one browser context per actor name, lazily created, closed at teardown — plus the
+scenario state and a per-test output folder for files) and `steps.ts` (the join steps).
 `playwright-bdd` generates native Playwright tests from them into gitignored
-`.features-gen/`, run as a second `chromium`-based project (`live-session-bdd`) in
-`playwright.config.ts`, sharing the same relay/app `webServer` entries as the table above.
-`pnpm test:e2e` runs `bddgen` first so generation is never a manual step.
+`.features-gen/`, run as one `chromium`-based project per concept (`live-session-bdd`,
+`session-persistence-bdd`) in `playwright.config.ts`, each loading its own steps plus the
+shared ones, and sharing the same relay/app `webServer` entries as the table above.
+`pnpm test:e2e` runs `bddgen` first so generation is never a manual step;
+`pnpm test:specs` runs only the Gherkin specs (the `domain` Test Level, then every
+`*-bdd` project).
+
+| Concept | Scenarios cover |
+|---|---|
+| `live-session` | A late joiner sees the running round |
+| `session-persistence` | Save and resume in single-user and live mode, a damaged file rejected, the unsaved-changes leave and tab-close warnings. Hand-written session files come from the concept's stereotypes (`specs/session-persistence/stereotypes.ts`); saved files go to the test's own output folder |
 
 `specs/live-session/e2e/late-joiner.feature` is the first scenario — a direct port of
 `late-joiner-snapshot.spec.ts` below, kept side by side as the baseline comparison rather

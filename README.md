@@ -9,11 +9,11 @@ Based on the three-point estimation method described in the *Developer's Guide t
 - **Live mode** (Mode A) — the team estimates together in real time, each participant submitting their own numbers from their own device, connected peer-to-peer (no backend operated by the app — see [ADR-001](docs/technical/adr/001-live-collaboration-architecture.md)).
 - **Manual mode** (Mode B) — a facilitator who ran the discussion out-of-band (in person, on a call) types in the team's agreed numbers directly, and gets the same calculated ranges, bias guards, and report.
 
-Both modes share the same calculation engine, bias guards (symmetric-range warning, false-precision guard, outlier flag), and report/history format.
+Both modes share the same calculation engine, bias guards (symmetric-range warning, false-precision guard, outlier flag), and report and session-file format.
 
 ## Status
 
-MVP in progress. Single-user mode — mode selection, the unified Workspace (item list + estimation), summary, and history — is built. Live mode (Mode A) is built end to end — the Trystero peer-to-peer network layer, the Join Session screen, the participant estimating flow, and the facilitator reveal / retry-round flow (a Workspace state, not a separate screen). Connection-fallback UX (#9) and real persistence (currently in-memory only) are still to come. See the repo's [Issues](../../issues) for current status.
+MVP in progress. Single-user mode — mode selection, the unified Workspace (item list + estimation), and summary — is built, and a session can be saved to a JSON file and loaded again. Live mode (Mode A) is built end to end — the Trystero peer-to-peer network layer, the Join Session screen, the participant estimating flow, and the facilitator reveal / retry-round flow (a Workspace state, not a separate screen). Connection-fallback UX (#9) is still to come. See the repo's [Issues](../../issues) for current status.
 
 ## Stack
 

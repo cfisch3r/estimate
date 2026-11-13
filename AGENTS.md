@@ -42,7 +42,7 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 - `docs/technical/adr/006-router-adoption.md` — accepted decision on replacing the hand-rolled `currentScreen`/`goToScreen` navigation state with `react-router`, resolving an FSD layer-direction conflict ADR-005 hit
 - `docs/technical/adr/008-accessibility-testing-strategy.md` — accepted decision on the three-layer automated accessibility stack (oxlint `jsx-a11y`, `jest-axe` component scans, real-browser `@axe-core/playwright` e2e scans) and the deliberate, tracked `color-contrast` exclusion (issue #123)
 - `docs/technical/adr/009-architecture-style-fsd-vs-hexagonal-core.md` — accepted decision to replace FSD-everywhere with a hexagonal core plus an FSD UI, staged in three steps, all done (stages 1 and 2 were the `src/domain/` and `src/adapters/` extractions; stage 3 was the `src/application/` extraction, 3a-3d; 3d split the UI-only `entities/session` slice into `entities/item` and `entities/estimate`; 3b-1 moved the store rules into `src/domain`, 3c split the provider (then `NetworkProvider`, now `LiveSessionProvider`) into a framework-free live-session controller plus a thin shell in `src/app`). It governs where non-UI code goes; ADR-004 and ADR-005 describe the pre-extraction layout (stores and use cases are now in `src/application`). Read it before proposing structural moves of non-UI code
-- `docs/technical/adr/010-spec-first-gherkin-specs.md` — accepted decision on spec-first development: a `specs/<concept>/<test level>/` tree of executable Gherkin specs (`playwright-bdd` for the `e2e` Test Level), a dependency-cruiser rule keeping each Test Level's driver code out of `src/`, and the two asked-not-assumed workflow steps in [Picking the next task](#picking-the-next-task)
+- `docs/technical/adr/010-spec-first-gherkin-specs.md` — accepted decision on spec-first development: a `specs/<concept>/<test level>/` tree of executable Gherkin specs (`playwright-bdd` for the `e2e` Test Level, `quickpickle` for the `domain` one), dependency-cruiser rules keeping `e2e` driver code out of `src/` and `domain` driver code on `src/domain` only, shared `e2e` driver code in `specs/shared/e2e/`, and the two asked-not-assumed workflow steps in [Picking the next task](#picking-the-next-task)
 
 **Shared**
 
@@ -92,7 +92,7 @@ pnpm typecheck            # type-check only (tsc -b), no bundling
 pnpm preview              # serve the production build locally
 pnpm lint                 # oxlint
 pnpm arch                 # steiger (FSD inside the UI) and dependency-cruiser (layer rules, `pnpm arch:layers`)
-pnpm arch:specs           # dependency-cruiser on specs/ (Test Level driver code may not import src/, ADR-010); separate from `pnpm arch`, but runs in CI and the Stop hook
+pnpm arch:specs           # dependency-cruiser on specs/ (e2e driver code may not import src/, domain driver code only src/domain, ADR-010); separate from `pnpm arch`, but runs in CI and the Stop hook
 pnpm format               # prettier --write
 pnpm format:check         # prettier --check
 pnpm test                 # vitest run, summary output

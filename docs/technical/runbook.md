@@ -118,7 +118,7 @@ configuration changes.
 ### SPA routing
 
 The app uses a real client-side router (`react-router`, ADR-006) with distinct paths
-per screen (`/workspace`, `/join`, `/estimate`, `/summary`, `/history`). A static host
+per screen (`/workspace`, `/join`, `/estimate`, `/summary`). A static host
 has no server-side route table, so anything but a request for exactly `/` needs a
 rewrite to `index.html` before the client router ever runs — otherwise a hard reload or
 a shared link to e.g. `/workspace` 404s at the host, before the app gets a chance to

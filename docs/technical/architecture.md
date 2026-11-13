@@ -80,7 +80,7 @@ flowchart LR
 | Other EstiMate instances | Direct [WebRTC](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API) data channels, typed wire actions (`adapters/network/actions.ts`). Every inbound message is untrusted ([trust boundary](concepts/collaboration-mode.md)) |
 | Signaling relays | [Trystero](https://trystero.dev)'s [Nostr](https://nostr.com) strategy exchanges offers and answers. The e2e suite uses a local WebSocket relay instead (ADR-007) |
 | STUN servers | Public servers for NAT traversal ([STUN](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols), [RFC 8489](https://www.rfc-editor.org/rfc/rfc8489)). No [TURN](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols) server ([RFC 8656](https://www.rfc-editor.org/rfc/rfc8656)) is operated (ADR-001) |
-| Files and browser storage | A stable per-browser participant id today, session files for save and load later |
+| Files and browser storage | A stable per-browser participant id, and session files: a download on save, a file the user picks on load |
 
 ## 4. Solution strategy
 
@@ -168,12 +168,13 @@ flowchart LR
     direction TB
     Net["Network and wire parsing<br/>[Trystero adapter]"]
     Store["Storage<br/>[Browser storage adapter]"]
+    File["File download<br/>[Browser download adapter]"]
   end
   subgraph DOM["DOMAIN"]
     direction TB
     Core["Estimate and session rules<br/>[Pure functions and value types]"]
   end
-  Ext["Peers, relays, browser storage<br/>[External systems]"]
+  Ext["Peers, relays, browser storage,<br/>downloads [External systems]"]
   Root -->|creates the controller<br/>with the adapter| UseCases
   Root -->|passes joinSession from| Net
   Pages -->|composes| Features
@@ -184,8 +185,10 @@ flowchart LR
   UseCases -->|send, join, leave<br/>via transport port| Net
   Net -.->|validated peer messages<br/>to registered handlers| UseCases
   UseCases -->|reads identity<br/>via identity port| Store
+  UseCases -->|hands the saved file<br/>via download port| File
   Net <-->|WebRTC, relays| Ext
   Store <-->|browser storage| Ext
+  File -->|download| Ext
   linkStyle default stroke:#8a93a6,stroke-width:2px
   style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   style APP fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
@@ -199,7 +202,7 @@ flowchart LR
   class Root,Pages,Features ui
   class UseCases,Stores app
   class Core dom
-  class Net,Store ad
+  class Net,Store,File ad
   class Ext ext
 ```
 
@@ -209,20 +212,21 @@ flowchart LR
 | **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, as straight-line code: read state, call a domain decision, write state, trigger an effect. The use-case hooks and the live-session controller (a factory function) belong here. The controller (`createLiveSessionController`) owns one connection: connect, disconnect, send with retry, resend, snapshot pull, roster prune, announce, and the facilitator's snapshot broadcast when the stores change. It owns the ports the adapters implement, such as the peer transport (`ports/outbound/networkTransport.ts`). |
 | **State stores** | Application | The Zustand stores holding session, round and connection state. The UI reads them with selectors and may call a few trivial field setters (session name, unit, item selection and text fields). Every other write goes through a use case. |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. It implements the transport port, delivers validated messages to the handlers the controller registered, and never touches the stores. |
-| **Storage** | Adapters | The stable per-browser participant id today. Save, load and export would be further adapters behind ports. |
-| **Composition root** | UI (`src/app`, FSD's app layer) | `App.tsx` provides the identity port, and the live-session provider creates the controller with the network adapter and provides it to the UI. The one place in the UI that may import an adapter and the application's composition entry (`ui-no-adapters`, `composition-root`). |
+| **Storage** | Adapters | The stable per-browser participant id. |
+| **File download** | Adapters | Hands a saved session file to the browser as a download. It implements the download port. Loading needs no adapter: the user picks the file in the UI, and the load use case reads its text. |
+| **Composition root** | UI (`src/app`, FSD's app layer) | `App.tsx` provides the identity and download ports, and the live-session provider creates the controller with the network adapter and provides it to the UI. The one place in the UI that may import an adapter and the application's composition entry (`ui-no-adapters`, `composition-root`). |
 | **Features** | UI | UI-only features and their components. They call use cases and add navigation. |
 | **Pages and widgets** | UI | Screens and widgets composed from features and shared UI, plus routing (ADR-006) and the design system. |
-| **Peers, relays, browser storage** | External | Not part of the codebase. |
+| **Peers, relays, browser storage, downloads** | External | Not part of the codebase. |
 
 ### Where things live
 
 | Part | Location |
 |---|---|
 | Domain | `src/domain` (rules and types), `src/domain/estimate` (the estimation engine, formerly `/calc`) |
-| Application | `src/application`: `stores/` (session, connection, round, plus the narrowed `publicStores`), `useCases/` (the use cases, the live-session controller and its `LiveSessionApi` context and hook), `ports/` and `ports/outbound/` (the peer transport and the identity port), `composition.ts` and `testing.ts` (entries for `src/app` and tests only), `index.ts` (the barrel the UI imports) |
-| Adapters | `src/adapters/network` (Trystero transport, wire actions and parsing, signaling), `src/adapters/storage` (participant id) |
-| Composition | `src/app`: `App.tsx` provides the identity port, `LiveSessionProvider.tsx` is the thin React shell that wires the network adapter into the live-session controller and provides its `LiveSessionApi` |
+| Application | `src/application`: `stores/` (session, connection, round, plus the narrowed `publicStores`), `useCases/` (the use cases, the live-session controller and its `LiveSessionApi` context and hook), `ports/` and `ports/outbound/` (the peer transport, the identity port and the download port), `composition.ts` and `testing.ts` (entries for `src/app` and tests only), `index.ts` (the barrel the UI imports) |
+| Adapters | `src/adapters/network` (Trystero transport, wire actions and parsing, signaling), `src/adapters/storage` (participant id), `src/adapters/file` (session file download) |
+| Composition | `src/app`: `App.tsx` provides the identity and download ports, `LiveSessionProvider.tsx` is the thin React shell that wires the network adapter into the live-session controller and provides its `LiveSessionApi` |
 | UI | `src/pages`, `src/widgets`, `src/features`, `src/entities` (`item`, `estimate`), `src/shared`. The slice mapping is in ADR-004 and the placement helper is the `react-webapp-architecture` plugin's code-placement skill |
 | Styling | `src/design` holds the verbatim Nocturne port and generic composed patterns, component CSS sits beside its component |
 
@@ -290,10 +294,10 @@ releases are in the [runbook](runbook.md).
 | Live sync | Room id is the 6-character session code (Crockford base32, no deep link) under the fixed `appId` `estimate-app-v1`. Trystero's [Nostr](https://nostr.com) strategy is the default (the library's own robustness ranking is Nostr, MQTT, BitTorrent, IPFS, and the Supabase and Firebase strategies need your own project). A self-hosted WebSocket relay is the escape hatch. An optional room password AES-GCM-encrypts the signaling handshake, without it the room id is visible as metadata on the relay. The facilitator's items are the single source of truth: participants send estimates only to the facilitator, and everyone else receives `syncState` snapshots. A peer that connects or reconnects pulls the snapshot itself (`requestSnapshot`) | ADR-001, ADR-003, [collaboration-mode](concepts/collaboration-mode.md) |
 | Reliability | Versioned rounds, a values-free roster, acknowledged submissions with a kind-driven retry policy, a stable per-browser participant id, role-asymmetric link state | ADR-003 |
 | Trust boundary | Every inbound peer message is validated into domain values at the adapter edge, so the UI only sees valid `Estimate`s | [collaboration-mode](concepts/collaboration-mode.md): trust boundary |
-| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (the peer transport in `ports/outbound`, participant identity). The use-case hooks reach the live-session controller, and the identity port, through React contexts, because a hook cannot import an object created at runtime. The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (`ui-no-adapters`, `composition-root`) | [glossary](../glossary.md): port and handle, ADR-009 |
+| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (the peer transport in `ports/outbound`, participant identity, file download). The use-case hooks reach the live-session controller, and the identity port, through React contexts, because a hook cannot import an object created at runtime. The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (`ui-no-adapters`, `composition-root`) | [glossary](../glossary.md): port and handle, ADR-009 |
 | State and UI access | Three stores in the application layer, read-only narrowed views for the UI, use cases for rule-bearing writes (`ui-reads-views`, `store-vs-usecase`) | ADR-005, ADR-009 |
 | Navigation | `react-router`. Use cases contain no navigation, `features/session-lifecycle` wraps them with it | ADR-006 |
-| Persistence | Local-first and file-based. A session (name, unit, items) is saved as a JSON file and restored from one, live-round fields are excluded. Save is a read-only export available to the facilitator in either mode. Load is allowed only before a live session starts, because importing mid-session would silently replace the facilitator's items and desync participants, so a facilitator resumes an adjourned session from the mode-select screen. A participant never has a local item list. A session survives only if the user saves the file, and the UI must say so plainly. No accounts, no cross-device sync in the MVP. Not built yet | [live-collaboration](../domain/concepts/live-collaboration.md) |
+| Persistence | Local-first and file-based. A session (name, unit, items) is saved as a JSON file and restored from one, live-round fields are excluded. Save is a read-only export available to the facilitator in either mode. Load is allowed only before a live session starts, because importing mid-session would silently replace the facilitator's items and desync participants, so a facilitator resumes an adjourned session from the mode-select screen. A participant never has a local item list. A session survives only if the user saves the file, and the UI says so plainly: an unsaved-changes dot on Save, a second click to leave, and the browser's leave-page warning. No accounts, no cross-device sync in the MVP | [live-collaboration](../domain/concepts/live-collaboration.md) |
 | Estimation unit | The facilitator picks hours, days or weeks per session. The false-precision guard's rounding granularity derives from the unit through a lookup, and the unit travels on `SessionSnapshot`, which is how the participant view receives it | [estimation-engine](concepts/estimation-engine.md) |
 | Testing | Unit and component tests, a thin Playwright layer for real WebRTC, type tests for the store views, 100% coverage on the domain. Spec-first: executable Gherkin specs under `specs/<concept>/<test level>/`, one Test Level implemented so far (`e2e`, via `playwright-bdd`) | ADR-002, ADR-007, ADR-010, [e2e-testing](concepts/e2e-testing.md) |
 | Accessibility | oxlint `jsx-a11y`, `jest-axe` scans, `@axe-core/playwright` scans, a tracked `color-contrast` exclusion | ADR-008 |
@@ -343,7 +347,7 @@ Work items are tracked as plain GitHub issues — see AGENTS.md's [Picking the n
 |---|---|
 | Facilitator disconnect stalls the session | Accepted MVP gap, no election or reassignment |
 | Mesh topology | Direct peer connections suit small groups, which is the normal estimation session size |
-| Session save and load, CSV export and the shareable link are not built | The `session-history` page is slated for removal, not real persistence |
+| CSV export and the shareable link are not built | The Summary offers Save only |
 | Connection-fallback UX for peers that cannot connect directly | Not built |
 | Outlier flag | `checkOutlier` exists in the domain but nothing in the reveal panel uses it |
 | The Session Summary rows carry no unit suffix | Small gap in unit-aware labels |

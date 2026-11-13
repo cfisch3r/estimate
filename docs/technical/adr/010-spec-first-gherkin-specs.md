@@ -4,6 +4,32 @@
 **Date:** 2026-11-09
 **Related:** [002-testing-strategy.md](002-testing-strategy.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md), [glossary.md](../../glossary.md), AGENTS.md
 
+> **Update 2026-11-13:** the session-persistence specs added a second Test Level and
+> changed two `e2e` conventions below. The decision stands; where this update and the text
+> below differ, this update is current.
+>
+> - **`domain` Test Level.** `specs/<concept>/domain/*.feature` runs in Vitest through
+>   `quickpickle` (Vitest project `specs-domain`, with the concept's `steps.ts` as its setup
+>   file). Its driver code calls `src/domain` directly and nothing else in `src/` —
+>   enforced by the `specs-domain-only-domain-import` dependency-cruiser rule, next to
+>   `specs-e2e-no-src-import`. Where several examples break one rule each, a `Rule:` with
+>   its own `Background:` gives them one visible valid base to change.
+> - **Shared `e2e` driver code.** The named-actors fixture and the steps more than one
+>   concept uses moved to `specs/shared/e2e/` (`world.ts`, `steps.ts`). Every `*-bdd`
+>   Playwright project loads them next to its concept's own `steps.ts`, so `world.ts` no
+>   longer sits beside each `.feature` file.
+> - **Concept-level test data.** Stereotypes ([glossary](../../glossary.md)) used by more
+>   than one Test Level of a concept live in its concept folder
+>   (`specs/<concept>/stereotypes.ts`). They build plain data and import nothing from
+>   `src/`, so both Test Levels' rules hold.
+> - **Running them.** `pnpm test:specs` runs every Gherkin spec: the `domain` Test Level,
+>   then every `*-bdd` project.
+>
+> Two follow-ups below are now due: there is a second spec dependency rule, so the canary
+> follow-up applies to both rules; and a second Test Level exists, so "no shared DSL across
+> Test Levels" is up for review — the shared stereotypes are test data, not a step
+> interface, so it still holds today.
+
 ## Context
 
 Work in this repo has been picked from the **EstiMate Roadmap** GitHub Project board: a
