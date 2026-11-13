@@ -14,6 +14,14 @@ module.exports = {
       from: { path: '^specs/[^/]+/e2e/' },
       to: { path: '^src/' },
     },
+    {
+      // A `domain` Test Level driver calls the pure domain directly, and
+      // nothing else in src/ — no stores, adapters or UI (ADR-010).
+      name: 'specs-domain-only-domain-import',
+      severity: 'error',
+      from: { path: '^specs/[^/]+/domain/' },
+      to: { path: '^src/', pathNot: '^src/domain/' },
+    },
   ],
   options: {
     ...sharedOptions,

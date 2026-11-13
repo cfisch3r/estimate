@@ -1,0 +1,64 @@
+/**
+ * Stereotypes for hand-written session files: valid defaults that a step
+ * names by domain state ("an estimated item") and overrides only where the
+ * scenario depends on a value. The e2e driver may not import `src/`
+ * (ADR-010), so these build the plain version-1 JSON a user's file would
+ * hold; the app's own loader is what validates it, which is the behaviour
+ * under test.
+ */
+
+/** A finalized item's result, as the version-1 file stores it. */
+export type FinalResultV1 = { min: number; expected: number; max: number; ci90: number }
+
+export type ItemV1 = {
+  id: string
+  title: string
+  description: string
+  notes: string
+  finalResult: FinalResultV1 | null
+}
+
+export type SessionFileV1 = {
+  version: 1
+  sessionName: string
+  unit: 'days'
+  items: ItemV1[]
+}
+
+let nextItemId = 1
+
+/** An item nobody has estimated yet. */
+export function anUnestimatedItem(
+  title: string,
+  overrides: Partial<ItemV1> = {},
+): ItemV1 {
+  return {
+    id: `item-${nextItemId++}`,
+    title,
+    description: '',
+    notes: '',
+    finalResult: null,
+    ...overrides,
+  }
+}
+
+/** A valid final result: min ≤ expected ≤ max. */
+function aFinalResult(overrides: Partial<FinalResultV1> = {}): FinalResultV1 {
+  return { min: 2, expected: 3, max: 6, ci90: 5.2, ...overrides }
+}
+
+/** An item with a finalized estimate. */
+export function anEstimatedItem(
+  title: string,
+  finalResult: Partial<FinalResultV1> = {},
+): ItemV1 {
+  return anUnestimatedItem(title, { finalResult: aFinalResult(finalResult) })
+}
+
+/** A valid session file holding `items`. */
+export function aSessionFile(
+  items: ItemV1[],
+  overrides: Partial<Omit<SessionFileV1, 'items'>> = {},
+): SessionFileV1 {
+  return { version: 1, sessionName: 'Saved session', unit: 'days', items, ...overrides }
+}

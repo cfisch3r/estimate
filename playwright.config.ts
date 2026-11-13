@@ -54,6 +54,15 @@ const liveSessionBddDir = defineBddConfig({
   outputDir: '.features-gen/live-session',
 })
 
+const sessionPersistenceBddDir = defineBddConfig({
+  features: 'specs/session-persistence/e2e/*.feature',
+  steps: [
+    'specs/session-persistence/e2e/steps.ts',
+    'specs/session-persistence/e2e/world.ts',
+  ],
+  outputDir: '.features-gen/session-persistence',
+})
+
 export default defineConfig({
   testDir: './e2e/specs',
   // Real ICE/DTLS handshakes between real browser contexts are slower and
@@ -77,6 +86,11 @@ export default defineConfig({
     {
       name: 'live-session-bdd',
       testDir: liveSessionBddDir,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'session-persistence-bdd',
+      testDir: sessionPersistenceBddDir,
       use: { ...devices['Desktop Chrome'] },
     },
   ],

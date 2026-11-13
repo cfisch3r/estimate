@@ -102,6 +102,7 @@ pnpm test:coverage        # vitest run --coverage; also enforces the `src/domain
 pnpm test:e2e             # bddgen (ADR-010), then Playwright, real WebRTC via a local self-hosted relay (ADR-007)
 pnpm test:e2e:real-world  # same specs against production signaling (public Nostr relays)
 pnpm test:e2e:ui          # Playwright UI mode, for local debugging
+pnpm test:specs           # every executable Gherkin spec (ADR-010): the domain level in Vitest, then the e2e level (Playwright projects `*-bdd`); runs both even if the first fails
 pnpm deadcode             # knip — unused exports/files/dependencies
 pnpm metrics              # advisory complexity/size hotspots in the diff (`pnpm metrics all` for src/); never gates
 pnpm review:floor         # minimum review risk of the branch plus working tree from docs/technical/review-risk.md (`pnpm review:floor <commit>` for changes since a commit); prints JSON

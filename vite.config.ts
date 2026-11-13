@@ -2,6 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { quickpickle } from 'quickpickle'
 
 const { version } = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf-8'),
@@ -14,17 +15,36 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(version),
   },
   test: {
-    // Scoped to src/ and the tooling scripts' tests so Vitest's default *.spec.ts pickup doesn't also try to
-    // collect e2e/specs/*.spec.ts — those are Playwright tests, and Playwright's
-    // `test()` isn't the same global Vitest provides (see ADR-007).
-    include: [
-      'src/**/*.{test,spec}.{ts,tsx}',
-      'scripts/**/*.test.ts',
-      '.claude/skills/*/scripts/**/*.test.ts',
-    ],
-    environment: 'jsdom',
-    setupFiles: ['./src/setupTests.ts'],
     passWithNoTests: true,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          // Scoped to src/ and the tooling scripts' tests so Vitest's default *.spec.ts pickup doesn't also try to
+          // collect e2e/specs/*.spec.ts — those are Playwright tests, and Playwright's
+          // `test()` isn't the same global Vitest provides (see ADR-007).
+          include: [
+            'src/**/*.{test,spec}.{ts,tsx}',
+            'scripts/**/*.test.ts',
+            '.claude/skills/*/scripts/**/*.test.ts',
+          ],
+          environment: 'jsdom',
+          setupFiles: ['./src/setupTests.ts'],
+        },
+      },
+      {
+        // ADR-010's `domain` Test Level: Gherkin specs under
+        // specs/<concept>/domain/, run by quickpickle against src/domain only.
+        plugins: [quickpickle()],
+        test: {
+          name: 'specs-domain',
+          include: ['specs/*/domain/*.feature'],
+          environment: 'node',
+          setupFiles: ['./specs/session-persistence/domain/steps.ts'],
+        },
+      },
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
