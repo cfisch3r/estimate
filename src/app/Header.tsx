@@ -4,10 +4,11 @@ import './header.css'
 import { BrandMark, Tag } from '../shared/ui'
 import { useConfirmArm } from '../shared/lib/useConfirmArm'
 import { useConnectionStore } from '../application'
+import { SaveSessionButton } from '../features/session-persistence'
 import { useLeaveWorkspace } from '../features/session-lifecycle'
 import { ROUTES } from '../shared/lib/routes'
 
-const EXIT_PATHS = new Set<string>([ROUTES.workspace, ROUTES.summary, ROUTES.history])
+const EXIT_PATHS = new Set<string>([ROUTES.workspace, ROUTES.summary])
 /** The armed brand's text per reason for a second click. */
 const ARMED_LABEL = {
   unsaved: 'Unsaved changes, click again to leave',
@@ -20,6 +21,7 @@ const FEEDBACK_URL =
 export function Header() {
   const location = useLocation()
   const mode = useConnectionStore((s) => s.mode)
+  const role = useConnectionStore((s) => s.role)
   const { leaveWorkspace, confirmation } = useLeaveWorkspace()
   const {
     armed,
@@ -30,6 +32,8 @@ export function Header() {
   const showModeTag =
     location.pathname !== ROUTES.modeSelect && location.pathname !== ROUTES.join
   const canLeave = EXIT_PATHS.has(location.pathname)
+  // Only the facilitator holds an item list; a participant has nothing to save.
+  const canSave = canLeave && role === 'facilitator'
   const armedLabel = confirmation !== 'none' && armed ? ARMED_LABEL[confirmation] : null
 
   return (
@@ -64,12 +68,15 @@ export function Header() {
           <ChatTeardropTextIcon size={18} />
         </a>
       </div>
-      {showModeTag &&
-        (mode === 'live' ? (
-          <Tag variant="accent">Live</Tag>
-        ) : (
-          <Tag variant="neutral">Single-user</Tag>
-        ))}
+      <div className="app-header-end">
+        {canSave && <SaveSessionButton />}
+        {showModeTag &&
+          (mode === 'live' ? (
+            <Tag variant="accent">Live</Tag>
+          ) : (
+            <Tag variant="neutral">Single-user</Tag>
+          ))}
+      </div>
     </header>
   )
 }

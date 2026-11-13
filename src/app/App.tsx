@@ -11,7 +11,6 @@ import { Header } from './Header'
 import { ModeSelect } from '../pages/mode-select'
 import { Workspace } from '../pages/workspace'
 import { SessionSummary } from '../pages/session-summary'
-import { SessionHistory } from '../pages/session-history'
 import { JoinSession } from '../pages/join-session'
 import { ParticipantEstimateView } from '../pages/participant-estimate'
 
@@ -38,7 +37,6 @@ function App() {
                 <Route path={ROUTES.estimate} element={<ParticipantEstimateView />} />
                 <Route path={ROUTES.workspace} element={<Workspace />} />
                 <Route path={ROUTES.summary} element={<SessionSummary />} />
-                <Route path={ROUTES.history} element={<SessionHistory />} />
               </Routes>
             </main>
           </LiveSessionProvider>

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
+import { FileDownloadContext } from '../application/composition'
 import { Header } from './Header'
 import { useSessionStore, useConnectionStore } from '../application/testing'
 import { writeSessionFile } from '../domain/sessionFile'
@@ -11,6 +12,8 @@ const { disconnectMock, navigateMock } = vi.hoisted(() => ({
   disconnectMock: vi.fn(),
   navigateMock: vi.fn(),
 }))
+
+const downloadMock = vi.fn()
 
 vi.mock('../application/useCases/useLiveSession', () => ({
   useLiveSession: () => ({ connect: vi.fn(), disconnect: disconnectMock }),
@@ -39,7 +42,9 @@ function resetStore() {
 function renderHeader(path = '/') {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <Header />
+      <FileDownloadContext.Provider value={{ download: downloadMock }}>
+        <Header />
+      </FileDownloadContext.Provider>
     </MemoryRouter>,
   )
 }
@@ -102,6 +107,33 @@ describe('Header', () => {
     ).not.toBeInTheDocument()
   })
 
+  it.each(['/workspace', '/summary'])(
+    'offers Save session to the facilitator on %s',
+    (path) => {
+      renderHeader(path)
+
+      expect(screen.getByRole('button', { name: /^Save session/ })).toBeInTheDocument()
+    },
+  )
+
+  it('offers no Save session on mode selection or to a participant', () => {
+    renderHeader('/')
+    expect(screen.queryByRole('button', { name: /Save session/ })).not.toBeInTheDocument()
+
+    useConnectionStore.setState({ mode: 'live', role: 'participant' })
+    renderHeader('/workspace')
+    expect(screen.queryByRole('button', { name: /Save session/ })).not.toBeInTheDocument()
+  })
+
+  it('names unsaved changes on the Save button', () => {
+    useSessionStore.setState({ sessionName: 'Named' })
+    renderHeader('/workspace')
+
+    expect(
+      screen.getByRole('button', { name: 'Save session (unsaved changes)' }),
+    ).toBeInTheDocument()
+  })
+
   it('does not make the brand a button on join', () => {
     renderHeader('/join')
     expect(
@@ -109,7 +141,7 @@ describe('Header', () => {
     ).not.toBeInTheDocument()
   })
 
-  it.each(['/workspace', '/summary', '/history'])(
+  it.each(['/workspace', '/summary'])(
     'makes the brand a clickable exit on %s',
     (path) => {
       renderHeader(path)
