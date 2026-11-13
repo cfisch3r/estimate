@@ -34,6 +34,20 @@ Feature: Save a session to a file and resume it later
       | Search |
     And Sam is estimating "Search"
 
+  Scenario: A live session is saved by its facilitator
+    Given Alex is facilitating a collaborative session named "Sprint 42"
+    And Alex has added the items
+      | Login  |
+      | Search |
+    And Sam has joined the session
+    When Alex saves the session
+    And Alex loads the saved file
+    And Alex continues alone
+    Then Alex sees the session named "Sprint 42"
+    And Alex sees the items
+      | Login  |
+      | Search |
+
   Scenario: A damaged session file is rejected
     Given Alex has a saved session file with the estimated item "Login", changed to
       | minimum | 9 |

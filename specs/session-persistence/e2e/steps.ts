@@ -4,6 +4,7 @@ import {
   addItem,
   closeTabAndCheckLeaveWarning,
   continueSingleUser,
+  createCollaborativeSession,
   expectActiveItem,
   expectAtModeSelection,
   expectFinalizedEstimate,
@@ -13,7 +14,6 @@ import {
   expectNoSessionLoaded,
   expectSessionName,
   finalizeItem,
-  joinSessionAsParticipant,
   leaveSession,
   loadSessionFile,
   saveSession,
@@ -22,9 +22,9 @@ import {
   startSingleUserSession,
 } from '../../../e2e/helpers'
 import { DataTable } from 'playwright-bdd'
-import { Given, When, Then, requireState } from './world'
-import { aSessionFile, anEstimatedItem, anUnestimatedItem } from './stereotypes'
-import type { FinalResultV1, ItemV1 } from './stereotypes'
+import { Given, When, Then, requireState } from '../../shared/e2e/world'
+import { aSessionFile, anEstimatedItem, anUnestimatedItem } from '../stereotypes'
+import type { FinalResultV1, ItemV1 } from '../stereotypes'
 
 type ThreePoint = { best: number; likely: number; worst: number }
 
@@ -77,6 +77,15 @@ Given(
   async ({ actor }, name: string, sessionName: string) => {
     const page = await actor(name)
     await startSingleUserSession(page)
+    await setSessionName(page, sessionName)
+  },
+)
+
+Given(
+  '{word} is facilitating a collaborative session named {string}',
+  async ({ actor, state }, name: string, sessionName: string) => {
+    const page = await actor(name)
+    state.sessionCode = await createCollaborativeSession(page)
     await setSessionName(page, sessionName)
   },
 )
@@ -152,14 +161,6 @@ When('{word} continues alone', async ({ actor }, name: string) => {
 
 When('{word} starts a collaborative session', async ({ actor, state }, name: string) => {
   state.sessionCode = await startCollaborativeEstimation(await actor(name))
-})
-
-When('{word} joins the session', async ({ actor, state }, name: string) => {
-  await joinSessionAsParticipant(
-    await actor(name),
-    requireState(state, 'sessionCode'),
-    name,
-  )
 })
 
 When('{word} closes the tab', async ({ actor, state }, name: string) => {

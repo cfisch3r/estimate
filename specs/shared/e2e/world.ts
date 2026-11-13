@@ -3,14 +3,16 @@ import { test as base, createBdd } from 'playwright-bdd'
 import { newIsolatedPage } from '../../../e2e/helpers'
 
 /** Named actors on demand: each distinct name gets its own browser context
- *  (isolated storage), created the first time that name is used — the same
- *  fixture as `specs/live-session/e2e/world.ts`, kept per concept because
- *  ADR-010 gives each concept folder its own driver code. */
+ *  (isolated storage), created the first time that name is used. Separate
+ *  contexts are required because same-context pages collide on
+ *  `participantId` (see `e2e/fixtures.ts`). */
 export type Actor = (name: string) => Promise<Page>
 
-/** Mutable state for one scenario, scoped per test. */
+/** Mutable state for one scenario, scoped per test so scenarios never share
+ *  state across parallel runs. One type for every concept, because the
+ *  shared steps in this folder read it too. */
 export type ScenarioState = {
-  /** Set when an actor starts a collaborative session from a loaded file. */
+  /** Set when an actor starts a collaborative session. */
   sessionCode?: string
   /** Local path of the session file the next load step picks: either the
    *  file a save step downloaded, or one a Given step wrote as test data. */
@@ -38,7 +40,7 @@ type Fixtures = {
   actor: Actor
   state: ScenarioState
   /** Builds a path inside this test's own output folder, for downloaded and
-   *  hand-written session files. */
+   *  hand-written files. */
   filePath: (name: string) => string
 }
 

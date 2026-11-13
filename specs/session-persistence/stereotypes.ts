@@ -1,10 +1,10 @@
 /**
  * Stereotypes for hand-written session files: valid defaults that a step
  * names by domain state ("an estimated item") and overrides only where the
- * scenario depends on a value. The e2e driver may not import `src/`
- * (ADR-010), so these build the plain version-1 JSON a user's file would
- * hold; the app's own loader is what validates it, which is the behaviour
- * under test.
+ * scenario depends on a value. They build the plain version-1 JSON a user's
+ * file would hold, without importing `src/`, so both Test Levels of this
+ * concept can use them: the e2e driver may not import `src/` (ADR-010), and
+ * the domain spec wants a file the code under test didn't write.
  */
 
 /** A finalized item's result, as the version-1 file stores it. */

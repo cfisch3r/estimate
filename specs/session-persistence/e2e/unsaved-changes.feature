@@ -19,6 +19,15 @@ Feature: Warn before unsaved changes are lost
     And Alex leaves the session
     Then Alex is back at mode selection
 
+  Scenario: Leaving right after loading needs no confirmation
+    Given Alex has a saved session file "Checkout rework" with the items
+      | item                    | state     |
+      | Payment provider switch | estimated |
+    When Alex loads the saved file
+    And Alex continues alone
+    And Alex leaves the session
+    Then Alex is back at mode selection
+
   Scenario: Closing the tab with unsaved changes asks for confirmation
     Given Alex is estimating alone in a session named "Checkout rework"
     And Alex has added the items
