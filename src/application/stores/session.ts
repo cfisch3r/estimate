@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { DEFAULT_ESTIMATION_UNIT } from '../../domain/estimate'
 import type { EstimationUnit } from '../../domain/estimate'
 import {
   appendItem,
@@ -21,13 +22,13 @@ export interface SessionStore {
    *  `writeSessionFile` wrote it — what "unsaved changes" compares against.
    *  Null until the first save or load. */
   lastSavedFile: string | null
+  /** The name of the file this session was loaded from, until the session is
+   *  reset — what tells mode selection a loaded session is waiting to start.
+   *  Null for a session that wasn't loaded. */
+  loadedFrom: string | null
 
   setSessionName: (name: string) => void
   setUnit: (unit: EstimationUnit) => void
-  /** Back to the default unit. A participant only ever inherits its unit from
-   *  the facilitator's snapshot (see `useCases/applyFacilitatorSnapshot.ts`), so leaving a
-   *  live session resets it, lest it leak into the next workspace. */
-  resetUnit: () => void
   addItem: (title: string, description?: string) => void
   setItemTitle: (id: string, title: string) => void
   removeItem: (id: string) => void
@@ -39,30 +40,35 @@ export interface SessionStore {
   selectFirstPending: () => void
   setItemNotes: (id: string, notes: string) => void
   setItemDescription: (id: string, description: string) => void
-  /** Reset back to a blank workspace: no items, no session name, no
-   *  selection. Composed with the other two stores' own leave-resets by
-   *  `useLeaveWorkspace` (`features/session-lifecycle`) — see ADR-005. */
-  clearSession: () => void
-  /** Replace the whole session with one read from a file. Nothing is selected
-   *  yet: starting a mode selects the first item still needing an estimate. */
-  loadSession: (session: SavedSession) => void
+  /** Back to a new session: every field as it starts, the default unit
+   *  included — a participant's unit and name come from the facilitator's
+   *  snapshot and must not leak into the next session. The one definition of
+   *  "blank", shared by leaving and by discarding a loaded file. Composed with
+   *  the other two stores' own resets by `useTeardownLiveSession` (ADR-005). */
+  resetSession: () => void
+  /** Replace the whole session with one read from the file `fileName`.
+   *  Nothing is selected yet: starting a mode selects the first item still
+   *  needing an estimate. */
+  loadSession: (session: SavedSession, fileName: string) => void
   /** Record `file` as the session's last saved state. */
   markSaved: (file: string) => void
 }
 
-const DEFAULT_UNIT: EstimationUnit = 'days'
-
-export const useSessionStore = create<SessionStore>((set) => ({
+const NEW_SESSION = {
   sessionName: '',
-  unit: DEFAULT_UNIT,
+  unit: DEFAULT_ESTIMATION_UNIT,
   items: [],
   activeItemId: null,
   lastSavedFile: null,
+  loadedFrom: null,
+} satisfies Partial<SessionStore>
+
+export const useSessionStore = create<SessionStore>((set) => ({
+  ...NEW_SESSION,
 
   setSessionName: (name) => set({ sessionName: name }),
 
   setUnit: (unit) => set({ unit }),
-  resetUnit: () => set({ unit: DEFAULT_UNIT }),
 
   addItem: (title, description = '') =>
     set(
@@ -94,16 +100,16 @@ export const useSessionStore = create<SessionStore>((set) => ({
   setItemDescription: (id, description) =>
     set((state) => ({ items: updateItem(state.items, id, { description }) })),
 
-  clearSession: () =>
-    set({ items: [], sessionName: '', activeItemId: null, lastSavedFile: null }),
+  resetSession: () => set(NEW_SESSION),
 
-  loadSession: (session) =>
+  loadSession: (session, fileName) =>
     set({
       sessionName: session.sessionName,
       unit: session.unit,
       items: session.items,
       activeItemId: null,
       lastSavedFile: writeSessionFile(session),
+      loadedFrom: fileName,
     }),
 
   markSaved: (file) => set({ lastSavedFile: file }),

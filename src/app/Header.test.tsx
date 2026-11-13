@@ -200,6 +200,10 @@ describe('Header', () => {
     const armed = screen.getByRole('button', {
       name: 'Unsaved changes, click again to leave',
     })
+    // Also announced, since a renamed focused button often isn't.
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Unsaved changes, click again to leave',
+    )
 
     await user.click(armed)
     expect(navigateMock).toHaveBeenCalledTimes(1)

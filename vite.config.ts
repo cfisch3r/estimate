@@ -1,5 +1,5 @@
 /// <reference types="vitest/config" />
-import { readFileSync } from 'node:fs'
+import { globSync, readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { quickpickle } from 'quickpickle'
@@ -41,7 +41,8 @@ export default defineConfig({
           name: 'specs-domain',
           include: ['specs/*/domain/*.feature'],
           environment: 'node',
-          setupFiles: ['./specs/session-persistence/domain/steps.ts'],
+          // Every concept's domain steps, so each concept's features find theirs.
+          setupFiles: globSync('specs/*/domain/steps.ts').map((path) => `./${path}`),
         },
       },
     ],

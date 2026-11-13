@@ -1,4 +1,4 @@
-import { isEstimationUnit } from './estimate'
+import { DEFAULT_ESTIMATION_UNIT, isEstimationUnit } from './estimate'
 import type { AggregateResult, EstimationUnit, Result } from './estimate'
 import type { Item } from './types'
 
@@ -135,6 +135,13 @@ export function readSessionFile(text: string): Result<SavedSession> {
   for (const [index, item] of file.items.entries()) {
     const problem = itemProblem(item, index)
     if (problem !== null) return { ok: false, error: problem }
+    const first = file.items.findIndex((other) => other.id === item.id)
+    if (first !== index) {
+      return {
+        ok: false,
+        error: `Item ${index + 1} has the same id as item ${first + 1}.`,
+      }
+    }
   }
   return {
     ok: true,
@@ -158,15 +165,20 @@ export function readSessionFile(text: string): Result<SavedSession> {
 /**
  * Whether `current` holds anything the last saved or loaded file
  * (`lastSaved`, as written by `writeSessionFile`) doesn't. Comparing whole
- * files makes every durable edit count and a running live round not. A
- * session nobody has touched yet — no name, no items — has nothing to lose.
+ * files makes every durable edit count and a running live round not. Before
+ * any save or load, the baseline is a new session — no name, no items, the
+ * default unit — so an untouched session has nothing to lose.
  */
 export function hasUnsavedChanges(
   current: SavedSession,
   lastSaved: string | null,
 ): boolean {
   if (lastSaved === null) {
-    return current.sessionName.trim().length > 0 || current.items.length > 0
+    return (
+      current.sessionName.trim().length > 0 ||
+      current.items.length > 0 ||
+      current.unit !== DEFAULT_ESTIMATION_UNIT
+    )
   }
   return writeSessionFile(current) !== lastSaved
 }

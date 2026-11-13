@@ -1,5 +1,4 @@
 export { SaveSessionButton } from './ui/SaveSessionButton'
 export { LoadedSessionCard } from './ui/LoadedSessionCard'
-export { LoadRejectedAlert } from './ui/LoadRejectedAlert'
-export { useSessionFileLoader } from './model/useSessionFileLoader'
+export { LoadSessionRow } from './ui/LoadSessionRow'
 export { useWarnBeforeUnload } from './model/useWarnBeforeUnload'

@@ -54,6 +54,7 @@ Feature: Reading a saved session file
         | items[0].title                | ""       | Item 1 has no title.                                                                   |
         | items[0].finalResult.min      | 13       | Item 1, "Payment provider switch", has a range where the minimum is above the maximum. |
         | items[0].finalResult.expected | 15       | Item 1, "Payment provider switch", has an expected value outside its range.            |
+        | items[1].id                   | "a"      | Item 2 has the same id as item 1.                                                      |
 
   Rule: A file only holds what outlives the session's tab
 

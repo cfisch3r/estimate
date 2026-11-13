@@ -3,6 +3,7 @@ import {
   deriveConnectionStatus,
   facilitatorStart,
   announcementFor,
+  holdsItemList,
   leaveConfirmation,
   shouldBroadcastSnapshot,
   normalizeSessionCode,
@@ -101,6 +102,13 @@ describe('withConnectionStatus', () => {
     expect(
       withConnectionStatus({ hasEverConnected: false }, 'idle').hasEverConnected,
     ).toBe(false)
+  })
+})
+
+describe('holdsItemList', () => {
+  it('is true for the facilitator only', () => {
+    expect(holdsItemList('facilitator')).toBe(true)
+    expect(holdsItemList('participant')).toBe(false)
   })
 })
 

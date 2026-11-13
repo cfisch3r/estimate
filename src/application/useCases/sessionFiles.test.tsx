@@ -6,7 +6,8 @@ import { FileDownloadContext } from '../ports/fileDownloadContext'
 import { useSessionStore } from '../stores'
 import { useSaveSession } from './useSaveSession'
 import { useLoadSessionFile } from './useLoadSessionFile'
-import { useHasUnsavedChanges } from './useHasUnsavedChanges'
+import { useSaveState } from './useSaveState'
+import { useConnectionStore } from '../stores'
 import { useDiscardSession } from './useDiscardSession'
 
 const download = vi.fn()
@@ -34,7 +35,9 @@ beforeEach(() => {
     items: [],
     activeItemId: null,
     lastSavedFile: null,
+    loadedFrom: null,
   })
+  useConnectionStore.getState().leaveLiveSession()
 })
 
 describe('useSaveSession', () => {
@@ -44,7 +47,7 @@ describe('useSaveSession', () => {
     useSessionStore.getState().setSessionName('Checkout rework')
     useSessionStore.getState().addItem('Payment provider switch')
     const { result } = renderHook(() => useSaveSession(), { wrapper: withDownload })
-    const unsaved = renderHook(() => useHasUnsavedChanges())
+    const unsaved = renderHook(() => useSaveState().unsaved)
     expect(unsaved.result.current).toBe(true)
 
     act(() => result.current())
@@ -73,7 +76,7 @@ describe('useLoadSessionFile', () => {
 
     let outcome
     act(() => {
-      outcome = result.current(SAVED)
+      outcome = result.current(SAVED, 'sprint-42.estimate.json')
     })
 
     expect(outcome).toEqual({ ok: true, value: undefined })
@@ -81,12 +84,13 @@ describe('useLoadSessionFile', () => {
       sessionName: 'Sprint 42',
       unit: 'weeks',
       activeItemId: null,
+      loadedFrom: 'sprint-42.estimate.json',
     })
     expect(useSessionStore.getState().items.map((item) => item.title)).toEqual([
       'Login',
       'Search',
     ])
-    expect(renderHook(() => useHasUnsavedChanges()).result.current).toBe(false)
+    expect(renderHook(() => useSaveState().unsaved).result.current).toBe(false)
   })
 
   it('leaves the session untouched when the file is rejected', () => {
@@ -95,7 +99,7 @@ describe('useLoadSessionFile', () => {
 
     let outcome
     act(() => {
-      outcome = result.current('not json')
+      outcome = result.current('not json', 'broken.estimate.json')
     })
 
     expect(outcome).toEqual({ ok: false, error: "This isn't an EstiMate session file." })
@@ -104,24 +108,52 @@ describe('useLoadSessionFile', () => {
 })
 
 describe('useDiscardSession', () => {
-  it('drops a loaded session and its saved state', () => {
-    renderHook(() => useLoadSessionFile()).result.current(SAVED)
+  it('drops a loaded session, its unit and its saved state', () => {
+    renderHook(() => useLoadSessionFile()).result.current(
+      SAVED,
+      'sprint-42.estimate.json',
+    )
     const { result } = renderHook(() => useDiscardSession())
 
     act(() => result.current())
 
     expect(useSessionStore.getState()).toMatchObject({
       sessionName: '',
+      unit: 'days',
       items: [],
       lastSavedFile: null,
+      loadedFrom: null,
     })
   })
 })
 
 describe('the saved file', () => {
   it('is what the store remembers after a load', () => {
-    renderHook(() => useLoadSessionFile()).result.current(SAVED)
+    renderHook(() => useLoadSessionFile()).result.current(
+      SAVED,
+      'sprint-42.estimate.json',
+    )
     const { sessionName, unit, items, lastSavedFile } = useSessionStore.getState()
     expect(lastSavedFile).toBe(writeSessionFile({ sessionName, unit, items }))
+  })
+})
+
+describe('useSaveState', () => {
+  it("gives a participant nothing to save, even with the facilitator's session name", () => {
+    useConnectionStore.setState({ mode: 'live', role: 'participant' })
+    useSessionStore.getState().setSessionName('Sprint 42')
+
+    const { result } = renderHook(() => useSaveState())
+
+    expect(result.current).toEqual({ canSave: false, unsaved: false })
+  })
+
+  it('counts a changed unit as unsaved for the facilitator', () => {
+    useSessionStore.getState().setUnit('hours')
+
+    expect(renderHook(() => useSaveState()).result.current).toEqual({
+      canSave: true,
+      unsaved: true,
+    })
   })
 })

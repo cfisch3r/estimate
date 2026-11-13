@@ -2,9 +2,13 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { downloadTextFile } from './fileDownload'
 
 describe('downloadTextFile', () => {
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.useRealTimers()
+  })
 
-  it('clicks a download link for a JSON blob and releases its URL', async () => {
+  it('clicks a download link for a JSON blob and releases its URL later', async () => {
+    vi.useFakeTimers()
     // jsdom has no object URLs, so stand them in.
     const createObjectURL = vi.fn((_blob: Blob) => 'blob:session')
     const revokeObjectURL = vi.fn()
@@ -22,6 +26,10 @@ describe('downloadTextFile', () => {
     const blob = createObjectURL.mock.calls[0]?.[0]
     expect(blob?.type).toBe('application/json')
     expect(await blob?.text()).toBe('{"version":1}')
+    // Not at once: the download may start only after click() returns.
+    expect(revokeObjectURL).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(60_000)
+    expect(revokeObjectURL).toHaveBeenCalledTimes(1)
     expect(revokeObjectURL).toHaveBeenCalledWith('blob:session')
   })
 })

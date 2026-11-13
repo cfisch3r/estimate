@@ -1,13 +1,15 @@
 import { DownloadSimpleIcon } from '@phosphor-icons/react/dist/csr/DownloadSimple'
 import { Button } from '../../../shared/ui'
-import { useHasUnsavedChanges, useSaveSession } from '../../../application'
+import { useSaveSession, useSaveState } from '../../../application'
 import './save-session-button.css'
 
 /** Downloads the session as a file. While the session holds changes no file
- *  has, the button shows an amber dot and its name says so. */
+ *  has, the button shows an amber dot and its name says so. Renders nothing
+ *  for a client that has no session of its own to save (a participant). */
 export function SaveSessionButton() {
   const save = useSaveSession()
-  const unsaved = useHasUnsavedChanges()
+  const { canSave, unsaved } = useSaveState()
+  if (!canSave) return null
 
   return (
     <Button

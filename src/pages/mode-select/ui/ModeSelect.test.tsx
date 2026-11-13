@@ -37,6 +37,7 @@ function resetStore() {
     items: [],
     activeItemId: null,
     lastSavedFile: null,
+    loadedFrom: null,
   })
   useConnectionStore.setState({
     mode: 'manual',
@@ -176,6 +177,8 @@ describe('ModeSelect', () => {
       const { view } = await loadFile(SAVED)
 
       const preview = await screen.findByRole('region', { name: 'Loaded session' })
+      // The Load row that had focus is gone; focus moves to the loaded session.
+      expect(screen.getByRole('heading', { name: 'Checkout rework' })).toHaveFocus()
       expect(preview).toHaveTextContent('Checkout rework')
       expect(preview).toHaveTextContent('2 items')
       expect(preview).toHaveTextContent('1 finalized')
@@ -201,15 +204,46 @@ describe('ModeSelect', () => {
     it('discards a loaded session', async () => {
       const { user } = await loadFile(SAVED)
 
-      await user.click(await screen.findByRole('button', { name: /Discard/ }))
+      await user.click(
+        await screen.findByRole('button', { name: 'Discard loaded session' }),
+      )
 
       expect(
         screen.queryByRole('region', { name: 'Loaded session' }),
       ).not.toBeInTheDocument()
       expect(useSessionStore.getState()).toMatchObject({ sessionName: '', items: [] })
-      expect(
-        screen.getByRole('button', { name: /Load a saved session/ }),
-      ).toBeInTheDocument()
+      // Focus returns to where the user started.
+      expect(screen.getByRole('button', { name: /Load a saved session/ })).toHaveFocus()
+    })
+
+    it('shows a session that is still loaded when the screen is visited again', () => {
+      useSessionStore.setState({
+        sessionName: 'Checkout rework',
+        loadedFrom: 'checkout-rework.estimate.json',
+      })
+      renderModeSelect()
+
+      expect(screen.getByRole('region', { name: 'Loaded session' })).toBeInTheDocument()
+      // A plain visit doesn't move focus.
+      expect(screen.getByRole('heading', { name: 'Checkout rework' })).not.toHaveFocus()
+    })
+
+    it('announces a second identical rejection again', async () => {
+      const damaged = SAVED.replace('"min":3', '"min":13')
+      const { user, view } = await loadFile(damaged, 'damaged.estimate.json')
+      const alert = screen.getByRole('alert')
+      await within(alert).findByText(/can’t be loaded/)
+      const input = view.container.querySelector<HTMLInputElement>('input[type="file"]')!
+      const seen: string[] = []
+      const observer = new MutationObserver(() => seen.push(alert.textContent ?? ''))
+      observer.observe(alert, { childList: true, subtree: true, characterData: true })
+
+      await user.upload(input, new File([damaged], 'damaged.estimate.json'))
+      await within(alert).findByText(/can’t be loaded/)
+      observer.disconnect()
+
+      // Emptied, then filled again: a change screen readers announce.
+      expect(seen).toContain('')
     })
 
     it('rejects a damaged file with its reason and loads nothing', async () => {

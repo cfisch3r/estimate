@@ -1,10 +1,10 @@
 import { leaveConfirmation } from '../../domain/connection'
 import type { LeaveConfirmation } from '../../domain/connection'
-import { useConnectionStore, useSessionStore } from '../stores'
-import { useHasUnsavedChanges } from './useHasUnsavedChanges'
+import { useConnectionStore } from '../stores'
+import { useSaveState } from './useSaveState'
 import { useTeardownLiveSession } from './useTeardownLiveSession'
 
-/** Tear down the workspace entirely: the live session (if any), then the item
+/** Tear down the workspace entirely: the live session (if any) and the item
  *  list. This is the one place that has to know "leaving" spans all three stores
  *  (see ADR-005). Navigation is the caller's. */
 export function useCloseWorkspace(): {
@@ -15,15 +15,11 @@ export function useCloseWorkspace(): {
 } {
   const mode = useConnectionStore((s) => s.mode)
   const peerCount = useConnectionStore((s) => s.peerCount)
-  const unsaved = useHasUnsavedChanges()
+  const { unsaved } = useSaveState()
   const teardownLiveSession = useTeardownLiveSession()
-  const clearSession = useSessionStore((s) => s.clearSession)
 
   return {
-    closeWorkspace: () => {
-      teardownLiveSession()
-      clearSession()
-    },
+    closeWorkspace: teardownLiveSession,
     confirmation: leaveConfirmation(mode, peerCount, unsaved),
   }
 }

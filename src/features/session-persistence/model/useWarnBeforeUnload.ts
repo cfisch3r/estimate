@@ -1,10 +1,10 @@
 import { useEffect } from 'react'
-import { useHasUnsavedChanges } from '../../../application'
+import { useSaveState } from '../../../application'
 
 /** While the session holds unsaved changes, closing or reloading the tab
  *  raises the browser's own leave-page warning. Mounted once, app-wide. */
 export function useWarnBeforeUnload(): void {
-  const unsaved = useHasUnsavedChanges()
+  const { unsaved } = useSaveState()
 
   useEffect(() => {
     if (!unsaved) return

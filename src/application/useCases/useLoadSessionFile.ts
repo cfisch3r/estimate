@@ -6,13 +6,13 @@ import { useSessionStore } from '../stores'
  *  the file breaks a rule — nothing, with the reason. Only offered before a
  *  mode starts, because a live session has no message for replacing the item
  *  list under connected participants. */
-export function useLoadSessionFile(): (text: string) => Result<void> {
+export function useLoadSessionFile(): (text: string, fileName: string) => Result<void> {
   const loadSession = useSessionStore((s) => s.loadSession)
 
-  return (text) => {
+  return (text, fileName) => {
     const read = readSessionFile(text)
     if (!read.ok) return read
-    loadSession(read.value)
+    loadSession(read.value, fileName)
     return { ok: true, value: undefined }
   }
 }

@@ -97,6 +97,12 @@ describe('hasUnsavedChanges', () => {
     expect(hasUnsavedChanges(session({ sessionName: '', items: [] }), null)).toBe(false)
   })
 
+  it('counts a changed unit in a session that was never saved', () => {
+    expect(
+      hasUnsavedChanges(session({ sessionName: '', items: [], unit: 'weeks' }), null),
+    ).toBe(true)
+  })
+
   it('is true for a named or non-empty session that was never saved', () => {
     expect(hasUnsavedChanges(session({ items: [] }), null)).toBe(true)
     expect(hasUnsavedChanges(session({ sessionName: '' }), null)).toBe(true)

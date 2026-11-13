@@ -1,7 +1,7 @@
 import { useLocation } from 'react-router'
 import { ChatTeardropTextIcon } from '@phosphor-icons/react/dist/csr/ChatTeardropText'
 import './header.css'
-import { BrandMark, Tag } from '../shared/ui'
+import { BrandMark, LiveRegion, Tag, VisuallyHidden } from '../shared/ui'
 import { useConfirmArm } from '../shared/lib/useConfirmArm'
 import { useConnectionStore } from '../application'
 import { SaveSessionButton } from '../features/session-persistence'
@@ -21,7 +21,6 @@ const FEEDBACK_URL =
 export function Header() {
   const location = useLocation()
   const mode = useConnectionStore((s) => s.mode)
-  const role = useConnectionStore((s) => s.role)
   const { leaveWorkspace, confirmation } = useLeaveWorkspace()
   const {
     armed,
@@ -32,8 +31,6 @@ export function Header() {
   const showModeTag =
     location.pathname !== ROUTES.modeSelect && location.pathname !== ROUTES.join
   const canLeave = EXIT_PATHS.has(location.pathname)
-  // Only the facilitator holds an item list; a participant has nothing to save.
-  const canSave = canLeave && role === 'facilitator'
   const armedLabel = confirmation !== 'none' && armed ? ARMED_LABEL[confirmation] : null
 
   return (
@@ -57,6 +54,11 @@ export function Header() {
             EstiMate
           </span>
         )}
+        {/* Renaming the focused button alone is announced unreliably, so the
+            armed prompt is also said through a persistent live region. */}
+        <LiveRegion>
+          <VisuallyHidden>{armedLabel ?? ''}</VisuallyHidden>
+        </LiveRegion>
         <a
           className="app-header-feedback"
           href={FEEDBACK_URL}
@@ -69,7 +71,7 @@ export function Header() {
         </a>
       </div>
       <div className="app-header-end">
-        {canSave && <SaveSessionButton />}
+        {canLeave && <SaveSessionButton />}
         {showModeTag &&
           (mode === 'live' ? (
             <Tag variant="accent">Live</Tag>

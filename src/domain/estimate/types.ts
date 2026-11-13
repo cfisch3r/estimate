@@ -37,6 +37,9 @@ export const ESTIMATION_UNITS = ['hours', 'days', 'weeks'] as const
 
 export type EstimationUnit = (typeof ESTIMATION_UNITS)[number]
 
+/** The unit a new session starts in. */
+export const DEFAULT_ESTIMATION_UNIT: EstimationUnit = 'days'
+
 /** Runtime guard for untrusted values (peer messages, persisted config). */
 export function isEstimationUnit(value: unknown): value is EstimationUnit {
   return (ESTIMATION_UNITS as readonly unknown[]).includes(value)

@@ -93,6 +93,14 @@ export function withConnectionStatus(
   }
 }
 
+/** Whether this role holds the session's item list, and so has a session it
+ *  can save and could lose: the facilitator in a live session, and the single
+ *  user. A participant only mirrors the facilitator's broadcast round, so it
+ *  never has anything to save. */
+export function holdsItemList(role: SessionRole): boolean {
+  return role === 'facilitator'
+}
+
 /** Why leaving the workspace needs a second click, if it does: `'unsaved'`
  *  when the session holds changes no saved file has (they would be lost), else
  *  `'live-peers'` when a live session still has peers (leaving ends it for

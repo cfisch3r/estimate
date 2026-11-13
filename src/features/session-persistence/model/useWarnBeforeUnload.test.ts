@@ -32,7 +32,7 @@ describe('useWarnBeforeUnload', () => {
     act(() => useSessionStore.getState().addItem('Story'))
     expect(unload().defaultPrevented).toBe(true)
 
-    act(() => useSessionStore.getState().clearSession())
+    act(() => useSessionStore.getState().resetSession())
     expect(unload().defaultPrevented).toBe(false)
     unmount()
   })
