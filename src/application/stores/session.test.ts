@@ -131,25 +131,25 @@ describe('selectFirstPending', () => {
   })
 })
 
-describe('resetUnit', () => {
-  it('returns the unit to the default', () => {
-    useSessionStore.getState().setUnit('weeks')
-    useSessionStore.getState().resetUnit()
-    expect(useSessionStore.getState().unit).toBe('days')
-  })
-})
-
-describe('clearSession', () => {
-  it('resets items, session name and active item', () => {
-    useSessionStore.setState({ sessionName: 'My session' })
+describe('resetSession', () => {
+  it('returns every field to a new session, the unit included', () => {
+    useSessionStore
+      .getState()
+      .loadSession(
+        { sessionName: 'Loaded', unit: 'weeks', items: [] },
+        'loaded.estimate.json',
+      )
     useSessionStore.getState().addItem('Item A')
 
-    useSessionStore.getState().clearSession()
+    useSessionStore.getState().resetSession()
 
     expect(useSessionStore.getState()).toMatchObject({
       items: [],
       sessionName: '',
+      unit: 'days',
       activeItemId: null,
+      lastSavedFile: null,
+      loadedFrom: null,
     })
   })
 })

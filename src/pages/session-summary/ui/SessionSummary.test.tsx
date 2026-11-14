@@ -2,11 +2,15 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
+import { FileDownloadContext } from '../../../application/composition'
 import { SessionSummary } from './SessionSummary'
 import { useSessionStore } from '../../../application/testing'
 import type { Item } from '../../../domain/types'
+import { aggregateOf } from '../../../domain/testFixtures'
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
+
+const downloadMock = vi.fn()
 
 vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router')>()
@@ -16,7 +20,9 @@ vi.mock('react-router', async (importOriginal) => {
 function renderSessionSummary() {
   return render(
     <MemoryRouter initialEntries={['/summary']}>
-      <SessionSummary />
+      <FileDownloadContext.Provider value={{ download: downloadMock }}>
+        <SessionSummary />
+      </FileDownloadContext.Provider>
     </MemoryRouter>,
   )
 }
@@ -34,7 +40,7 @@ function item(id: string, title: string, finalResult: Item['finalResult'] = null
   }
 }
 
-const finalized = { min: 2, expected: 5, max: 8, ci90: 8.85 }
+const finalized = aggregateOf(2, 5, 8)
 
 function resetStore() {
   useSessionStore.setState({
@@ -88,5 +94,18 @@ describe('SessionSummary', () => {
     expect(navigateMock).toHaveBeenCalledTimes(1)
     expect(navigateMock).toHaveBeenCalledWith('/workspace')
     expect(useSessionStore.getState().activeItemId).toBe('1')
+  })
+
+  it('saves the session as a file', async () => {
+    const user = userEvent.setup()
+    renderSessionSummary()
+
+    await user.click(screen.getByRole('button', { name: /^Save session/ }))
+
+    expect(downloadMock).toHaveBeenCalledTimes(1)
+    expect(downloadMock).toHaveBeenCalledWith(
+      expect.stringMatching(/\.estimate\.json$/),
+      expect.any(String),
+    )
   })
 })

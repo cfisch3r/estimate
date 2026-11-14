@@ -28,6 +28,7 @@ export type PublicSessionStore = Pick<
   | 'unit'
   | 'items'
   | 'activeItemId'
+  | 'loadedFrom'
   | 'setSessionName'
   | 'setUnit'
   | 'selectItem'

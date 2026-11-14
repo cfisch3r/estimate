@@ -117,9 +117,9 @@ function seedLiveParticipant() {
 }
 
 describe('useLeaveLiveSession', () => {
-  it('disconnects, resets connection, round and inherited unit, and returns to mode-select', () => {
+  it('disconnects, resets connection, round and the inherited session, and returns to mode-select', () => {
     seedLiveParticipant()
-    seedItems('Keep me')
+    useSessionStore.setState({ sessionName: 'Facilitator session' })
     const { result } = renderWithPath(useLeaveLiveSession, ROUTES.estimate)
 
     act(() => result.current.value())
@@ -127,8 +127,7 @@ describe('useLeaveLiveSession', () => {
     expect(disconnectMock).toHaveBeenCalledTimes(1)
     expect(useConnectionStore.getState().mode).toBe('manual')
     expect(useRoundStore.getState().liveRound).toBeNull()
-    expect(useSessionStore.getState().unit).toBe('days')
-    expect(useSessionStore.getState().items).toHaveLength(1)
+    expect(useSessionStore.getState()).toMatchObject({ sessionName: '', unit: 'days' })
     expect(result.current.path).toBe(ROUTES.modeSelect)
   })
 })
@@ -149,24 +148,31 @@ describe('useLeaveWorkspace', () => {
   })
 })
 
-describe('useLeaveWorkspace needsConfirm', () => {
-  it('is false without a live session', () => {
+describe('useLeaveWorkspace confirmation', () => {
+  it('is none for an untouched session without a live session', () => {
     const { result } = renderWithPath(useLeaveWorkspace, ROUTES.workspace)
 
-    expect(result.current.value.needsConfirm).toBe(false)
+    expect(result.current.value.confirmation).toBe('none')
   })
 
-  it('is false for a live session with no peers', () => {
+  it('is unsaved for a session with changes no file holds', () => {
+    useSessionStore.getState().addItem('Story')
+    const { result } = renderWithPath(useLeaveWorkspace, ROUTES.workspace)
+
+    expect(result.current.value.confirmation).toBe('unsaved')
+  })
+
+  it('is none for a live session with no peers', () => {
     useConnectionStore.setState({ mode: 'live', peerCount: 0 })
     const { result } = renderWithPath(useLeaveWorkspace, ROUTES.workspace)
 
-    expect(result.current.value.needsConfirm).toBe(false)
+    expect(result.current.value.confirmation).toBe('none')
   })
 
-  it('is true for a live session with peers', () => {
+  it('is live-peers for a live session with peers', () => {
     useConnectionStore.setState({ mode: 'live', peerCount: 2 })
     const { result } = renderWithPath(useLeaveWorkspace, ROUTES.workspace)
 
-    expect(result.current.value.needsConfirm).toBe(true)
+    expect(result.current.value.confirmation).toBe('live-peers')
   })
 })

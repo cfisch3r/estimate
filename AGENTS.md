@@ -20,6 +20,9 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 - `docs/domain/concepts/estimation-method.md` — domain concept: the three-point estimation
   process, the Estimate/AggregateResult/uncertainty-level information model, and the
   bias-guard rules
+- `docs/domain/concepts/session-persistence.md` — domain concept: saving a session to a
+  file and resuming it, the session-file information model, and the rules (unsaved-changes
+  warning, whole-or-nothing restore, load only before a mode starts)
 - `docs/domain/concepts/screen-flow.md` — domain concept: the screen-flow diagram and
   per-screen content table for Mode selection, Workspace, Join Session, Participant
   Estimate View, and Session Summary
@@ -42,7 +45,7 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 - `docs/technical/adr/006-router-adoption.md` — accepted decision on replacing the hand-rolled `currentScreen`/`goToScreen` navigation state with `react-router`, resolving an FSD layer-direction conflict ADR-005 hit
 - `docs/technical/adr/008-accessibility-testing-strategy.md` — accepted decision on the three-layer automated accessibility stack (oxlint `jsx-a11y`, `jest-axe` component scans, real-browser `@axe-core/playwright` e2e scans) and the deliberate, tracked `color-contrast` exclusion (issue #123)
 - `docs/technical/adr/009-architecture-style-fsd-vs-hexagonal-core.md` — accepted decision to replace FSD-everywhere with a hexagonal core plus an FSD UI, staged in three steps, all done (stages 1 and 2 were the `src/domain/` and `src/adapters/` extractions; stage 3 was the `src/application/` extraction, 3a-3d; 3d split the UI-only `entities/session` slice into `entities/item` and `entities/estimate`; 3b-1 moved the store rules into `src/domain`, 3c split the provider (then `NetworkProvider`, now `LiveSessionProvider`) into a framework-free live-session controller plus a thin shell in `src/app`). It governs where non-UI code goes; ADR-004 and ADR-005 describe the pre-extraction layout (stores and use cases are now in `src/application`). Read it before proposing structural moves of non-UI code
-- `docs/technical/adr/010-spec-first-gherkin-specs.md` — accepted decision on spec-first development: a `specs/<concept>/<test level>/` tree of executable Gherkin specs (`playwright-bdd` for the `e2e` Test Level), a dependency-cruiser rule keeping each Test Level's driver code out of `src/`, and the two asked-not-assumed workflow steps in [Picking the next task](#picking-the-next-task)
+- `docs/technical/adr/010-spec-first-gherkin-specs.md` — accepted decision on spec-first development: a `specs/<concept>/<test level>/` tree of executable Gherkin specs (`playwright-bdd` for the `e2e` Test Level, `quickpickle` for the `domain` one), dependency-cruiser rules keeping `e2e` driver code out of `src/` and `domain` driver code on `src/domain` only, shared `e2e` driver code in `specs/shared/e2e/`, and the two asked-not-assumed workflow steps in [Picking the next task](#picking-the-next-task)
 
 **Shared**
 
@@ -92,16 +95,17 @@ pnpm typecheck            # type-check only (tsc -b), no bundling
 pnpm preview              # serve the production build locally
 pnpm lint                 # oxlint
 pnpm arch                 # steiger (FSD inside the UI) and dependency-cruiser (layer rules, `pnpm arch:layers`)
-pnpm arch:specs           # dependency-cruiser on specs/ (Test Level driver code may not import src/, ADR-010); separate from `pnpm arch`, but runs in CI and the Stop hook
+pnpm arch:specs           # dependency-cruiser on specs/ (e2e driver code may not import src/, domain driver code only src/domain, ADR-010); separate from `pnpm arch`, but runs in CI and the Stop hook
 pnpm format               # prettier --write
 pnpm format:check         # prettier --check
-pnpm test                 # vitest run, summary output
+pnpm test                 # vitest run, summary output; includes the `domain` Gherkin specs
 pnpm test:watch           # vitest in watch mode
 pnpm test:verbose         # vitest run, every individual test name and result
-pnpm test:coverage        # vitest run --coverage; also enforces the `src/domain` 100% threshold below
+pnpm test:coverage        # vitest run --coverage; also enforces the `src/domain` 100% threshold below; includes the `domain` Gherkin specs
 pnpm test:e2e             # bddgen (ADR-010), then Playwright, real WebRTC via a local self-hosted relay (ADR-007)
 pnpm test:e2e:real-world  # same specs against production signaling (public Nostr relays)
 pnpm test:e2e:ui          # Playwright UI mode, for local debugging
+pnpm test:specs           # every executable Gherkin spec (ADR-010): the domain level in Vitest, then the e2e level (Playwright projects `*-bdd`); runs both even if the first fails
 pnpm deadcode             # knip — unused exports/files/dependencies
 pnpm metrics              # advisory complexity/size hotspots in the diff (`pnpm metrics all` for src/); never gates
 pnpm review:floor         # minimum review risk of the branch plus working tree from docs/technical/review-risk.md (`pnpm review:floor <commit>` for changes since a commit); prints JSON
@@ -169,7 +173,9 @@ merge (apart from scripts run through `pnpm`).
   writes outside the repo (apart from `~/.claude`, the Obsidian inbox and the Claude scratchpad), paths containing `..`, edits under `.git`, `node_modules` and `.env` files, and edits to `nocturne.css`; a `PostToolUse` per-file
   `oxlint` check (surfaces output, never blocks); a `Stop` hook running `pnpm lint`
   (including the `jsx-a11y` plugin)/typecheck/`pnpm arch`/`pnpm deadcode`/
-  `pnpm test:coverage` once per turn.
+  `pnpm test:coverage` once per turn. While a spec is deliberately failing (ADR-010's
+  failing-spec step), the gitignored marker `.claude/hooks/stop-checks.paused` skips that
+  hook; delete it once the specs pass.
 
 Architecture review and code placement come from the **`react-webapp-architecture` plugin**
 (personal marketplace `agiledojo-plugins`, installed with `--scope local`; `.worktreeinclude`

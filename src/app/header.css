@@ -40,6 +40,13 @@
   gap: var(--space-3);
 }
 
+/* — header end group — the Save button next to the mode tag. */
+.app-header-end {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
 /* — feedback link — quiet icon-only link next to the brand, opens a
    prefilled GitHub issue in a new tab. */
 .app-header-feedback {

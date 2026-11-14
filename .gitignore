@@ -40,3 +40,6 @@ test-results/
 
 # Throwaway project created by scripts/layerRules.test.ts
 .layer-canary-*
+
+# Stop hook pause marker (see .claude/hooks/stop-checks.sh)
+.claude/hooks/stop-checks.paused

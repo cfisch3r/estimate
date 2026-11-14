@@ -3,7 +3,8 @@
 EstiMate has two session modes. Both produce the same four values per item (minimum,
 expected, 90% confidence interval, maximum) and share the same summary, export, and
 save/load behavior — only how the numbers get in differs (**ADR-001** records why both
-modes exist). [PRD](../prd.md) §4.1 is the short product-facing summary of this process,
+modes exist). Saving and loading a session is its own concept,
+[session-persistence](session-persistence.md). [PRD](../prd.md) §4.1 is the short product-facing summary of this process,
 §4.2 its mode-comparison table.
 
 ## Process
@@ -62,7 +63,7 @@ A **round** is the lifecycle of one Item through estimate → reveal → (retry 
 Retrying an item clears its submissions and starts the round again; finalizing freezes its
 `finalResult` and moves the facilitator on to the next item.
 
-`Team`/`Workspace` (a lightweight grouping for session history, PRD §3) is not included
+`Team`/`Workspace` (a lightweight grouping for saved sessions, PRD §3) is not included
 above — it has no process, rule, or implemented behavior of its own yet, only a mention as
 a future grouping concept. It belongs here once a process or rule for it exists.
 

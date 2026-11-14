@@ -36,7 +36,7 @@ EstiMate applies **three-point estimation** — the method recommended in Episod
 - **Jira/backlog tool import**<br>
   Future phase (manual entry only for MVP)
 - **Formal accounts/orgs**<br>
-  Beyond what's needed for session persistence (see [live-collaboration](concepts/live-collaboration.md))
+  Beyond what's needed for session persistence (see [session-persistence](concepts/session-persistence.md))
 
 ## 4. Primary user & core flow
 
@@ -101,7 +101,7 @@ table: [estimation-method](concepts/estimation-method.md).
 - **Graceful degradation** *(Mode A)*<br>
   If a peer connection can't be established, the app surfaces this clearly rather than failing silently, and points the facilitator toward Mode B as a fallback for that session
 - **Session persistence**<br>
-  Sessions and their reports are saved and retrievable later by the team, regardless of mode
+  Sessions and their reports are saved and retrievable later by the team, regardless of mode (see [session-persistence](concepts/session-persistence.md))
 - **Export**<br>
   Session summary exportable as CSV and/or shareable read-only link
 
@@ -138,5 +138,6 @@ Cone-of-uncertainty guidance (§5) shipped as part of the MVP guard set, not a f
 Scenarios that pin down this PRD's behaviour as acceptance criteria live as executable
 Gherkin specs under `specs/<concept>/<test level>/` (ADR-010), not as prose here — a
 `.feature` file fails loudly when the app stops matching it, where a sentence in this
-document could silently drift. See [live-collaboration](concepts/live-collaboration.md)
-and [estimation-method](concepts/estimation-method.md) for which scenarios exist today.
+document could silently drift. See [live-collaboration](concepts/live-collaboration.md),
+[estimation-method](concepts/estimation-method.md) and
+[session-persistence](concepts/session-persistence.md) for which scenarios exist today.

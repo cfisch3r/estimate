@@ -16,7 +16,7 @@ scoped to the e2e/Playwright layer specifically; the broader QA/guardrails syste
 (oxlint, Steiger, knip, hooks, CI layering) is tracked separately (#114).
 
 A second kind of `e2e` Test Level test, generated from Gherkin `.feature` files rather than
-written as `.spec.ts` directly, lives under `specs/live-session/e2e/` — see
+written as `.spec.ts` directly, lives under `specs/<concept>/e2e/` — see
 ["Spec-first scenarios"](#spec-first-scenarios-specs) below and
 [ADR-010](../adr/010-spec-first-gherkin-specs.md) for why.
 
@@ -31,7 +31,7 @@ flowchart TD
     direction LR
     Specs["5 spec files<br/>[Playwright Test Files]"]
     Fixtures["facilitator / participant / lateJoiner<br/>[Playwright Fixture]"]
-    Helpers["session / join / item / estimate helpers<br/>[Test Helper Module]"]
+    Helpers["session / join / item / estimate /<br/>save / load helpers<br/>[Test Helper Module]"]
     RelayScript["relay-server.mjs<br/>[Node Script]"]
   end
 
@@ -149,19 +149,61 @@ same-context pages would collide on `participantId`; contexts have isolated stor
 ## Spec-first scenarios (`specs/`)
 
 [ADR-010](../adr/010-spec-first-gherkin-specs.md) adds an executable-Gherkin `e2e` Test
-Level alongside the plain `.spec.ts` files above: `specs/live-session/e2e/` holds
-`.feature` files, `steps.ts` (step text → actor actions) and `world.ts` (a named-actors
-fixture — one browser context per actor name, lazily created, closed at teardown).
-`playwright-bdd` generates native Playwright tests from them into gitignored
-`.features-gen/`, run as a second `chromium`-based project (`live-session-bdd`) in
-`playwright.config.ts`, sharing the same relay/app `webServer` entries as the table above.
-`pnpm test:e2e` runs `bddgen` first so generation is never a manual step.
+Level alongside the plain `.spec.ts` files above. Lines: **solid** = import/call,
+**dotted** = build-time generation.
 
-`specs/live-session/e2e/late-joiner.feature` is the first scenario — a direct port of
-`late-joiner-snapshot.spec.ts` below, kept side by side as the baseline comparison rather
-than a replacement. Step code calls only into `e2e/helpers.ts`, never raw selectors; a
-dependency-cruiser rule (`specs-e2e-no-src-import`, `pnpm arch:specs`) forbids
-`specs/*/e2e/**` from importing `src/` directly.
+```mermaid
+flowchart LR
+  subgraph conceptlane["SPECS LANE · specs/#lt;concept#gt;/"]
+    direction TB
+    Features["*.feature<br/>[Gherkin Scenarios]"]
+    ConceptSteps["e2e/steps.ts<br/>[Step Definitions]"]
+    Stereotypes["stereotypes.ts<br/>[Test Data]"]
+  end
+  subgraph sharedlane["SHARED LANE · specs/shared/e2e/"]
+    direction TB
+    World["world.ts<br/>[Playwright Fixture]"]
+    SharedSteps["steps.ts<br/>[Step Definitions]"]
+  end
+  Gen[".features-gen/<br/>[Generated Playwright Tests]"]
+  Project["one *-bdd project per concept<br/>[playwright.config.ts]"]
+  Helpers["e2e/helpers.ts<br/>[Test Helper Module]"]
+
+  Features -.->|bddgen| Gen
+  Project -->|runs| Gen
+  Project -->|loads| ConceptSteps
+  Project -->|loads| SharedSteps
+  ConceptSteps -->|uses| World
+  ConceptSteps -->|builds files with| Stereotypes
+  SharedSteps -->|uses| World
+  ConceptSteps & SharedSteps -->|call| Helpers
+
+  classDef spec fill:#DDD6FE,stroke:#7C3AED,color:#2E1065
+  classDef cfg  fill:#FDE68A,stroke:#D97706,color:#3F2D0B
+  class Features,ConceptSteps,Stereotypes,World,SharedSteps,Helpers spec
+  class Gen,Project cfg
+  style conceptlane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
+  style sharedlane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
+```
+
+| Part | Responsibility |
+|---|---|
+| `*.feature` | Scenarios in domain language, one folder per concept |
+| Concept `steps.ts` | That concept's step text → actor actions, through `e2e/helpers.ts` only (no raw selectors) |
+| `stereotypes.ts` | Valid default session files a step overrides where a scenario depends on a value |
+| `world.ts` | Named actors (one browser context per name, lazily created, closed at teardown), the scenario state, and a per-test output folder for saved and hand-written files |
+| Shared `steps.ts` | Steps every concept uses (joining a session) |
+| `*-bdd` projects | `live-session-bdd`, `session-persistence-bdd`; `chromium`-based, sharing the relay/app `webServer` entries above |
+
+`pnpm test:e2e` runs `bddgen` first, so generation is never a manual step; `pnpm test:specs`
+runs only the Gherkin specs (the `domain` Test Level, then every `*-bdd` project).
+Dependency-cruiser rules (`pnpm arch:specs`) keep `specs/*/e2e/**` and concept-level files
+such as `stereotypes.ts` free of `src/`.
+
+| Concept | Scenarios cover |
+|---|---|
+| `live-session` | A late joiner sees the running round — a direct port of `late-joiner-snapshot.spec.ts` below, kept side by side as the baseline comparison |
+| `session-persistence` | Save and resume in single-user and live mode, a damaged file rejected, the unsaved-changes leave and tab-close warnings |
 
 ## CI
 

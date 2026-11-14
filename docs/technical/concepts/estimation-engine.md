@@ -17,8 +17,10 @@ interface AggregateStrategy {
 }
 const DEFAULT_STRATEGY: AggregateStrategy = { best: 'min', likely: 'median', worst: 'max' }
 
-interface AggregateResult { min: number; expected: number; max: number; ci90: number }
+interface AggregateValues { min: number; expected: number; max: number; ci90: number }
+type AggregateResult = AggregateValues & { readonly [AggregateResultBrand]: true }
 
+function createAggregateResult(values: AggregateValues): Result<AggregateResult>
 function aggregateEstimates(estimates: Estimate[], strategy = DEFAULT_STRATEGY): AggregateResult
 function computeCI90(expected: number, best: number, worst: number): number {
   return expected + 1.28 * ((worst - best) / 3)   // McConnell's formula, PRD §5
@@ -50,6 +52,8 @@ function checkFalsePrecision(value: number, granularity: number): GuardResult
 function checkOutlier(estimate: Estimate, allEstimates: Estimate[], thresholdPct = 0.4): GuardResult
 function checkUncertaintyRange(best: number, worst: number, level: UncertaintyLevel): GuardResult
 ```
+
+**`AggregateResult` is self-validating the same way.** `createAggregateResult()` (`domain/estimate/aggregateResult.ts`) is the only producer: it rejects a value that isn't finite, a minimum of 0 or less, a minimum above the maximum, an expected value outside the range, and a 90% value that isn't `computeCI90`'s for the range (within floating-point noise), each with a clause naming the rule. `aggregateEstimates()` builds its result through it and throws if a strategy produces a result that breaks a rule (possible with a mean of best cases above a median of likely ones; the default strategy never does). The session-file reader (`domain/sessionFile.ts`) checks only the shape of a stored result and hands the four numbers to the same factory, prefixing its clause with the item ("Item 1, "Login", has a minimum of 0 or less."). Tests build results through `aggregateOf()` in `domain/testFixtures.ts`.
 
 `domain/estimate/estimate.ts` also exports `validateEstimateValues` — the numeric half of `createEstimate`'s invariant, usable for a live form preview before a participant exists; `createEstimate` runs it after its `participantId` check. It returns a `code` and the affected `fields` alongside the error text, and `features/estimate-round` (`lib/describeEstimateIssue.ts`) turns those into the actionable form messages (naming the numbers and what to change) and marks the offending inputs `aria-invalid` with `aria-describedby` pointing at the message. A problem first appears only after the entry has settled (~600 ms, `model/useSettledIssue.ts`) or a field loses focus, so typing through an intermediate value doesn't flash it; an entry that is already invalid when the form opens is shown at once, a showing problem updates in place, a resolved one clears at once, and the submit button is never delayed.
 

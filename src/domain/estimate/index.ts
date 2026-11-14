@@ -1,6 +1,7 @@
 export type {
   AggregateStrategy,
   AggregateResult,
+  AggregateValues,
   GuardResult,
   UncertaintyGuidance,
   EstimationUnit,
@@ -11,6 +12,7 @@ export {
   UNIT_GRANULARITY,
   UNIT_SUFFIX,
   ESTIMATION_UNITS,
+  DEFAULT_ESTIMATION_UNIT,
   isEstimationUnit,
   UNCERTAINTY_LEVELS,
   UNCERTAINTY_GUIDANCE,
@@ -29,6 +31,7 @@ export type {
 } from './estimate'
 export { createEstimate, findOrderViolation, validateEstimateValues } from './estimate'
 export { aggregateEstimates } from './aggregate'
+export { createAggregateResult } from './aggregateResult'
 export { computeCI90 } from './ci90'
 export {
   checkSymmetricRange,

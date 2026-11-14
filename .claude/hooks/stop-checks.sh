@@ -13,6 +13,13 @@ set -u
 root="${CLAUDE_PROJECT_DIR:-$PWD}"
 cd "$root" || exit 0
 
+# Paused while a spec is deliberately failing (spec-first, ADR-010): create
+# the gitignored marker to skip every check, delete it to resume.
+if [ -f .claude/hooks/stop-checks.paused ]; then
+  echo '{}'
+  exit 0
+fi
+
 tmpdir=$(mktemp -d)
 trap 'rm -rf "$tmpdir"' EXIT
 

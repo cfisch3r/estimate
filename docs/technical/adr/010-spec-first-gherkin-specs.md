@@ -4,6 +4,37 @@
 **Date:** 2026-11-09
 **Related:** [002-testing-strategy.md](002-testing-strategy.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md), [glossary.md](../../glossary.md), AGENTS.md
 
+> **Update 2026-11-13:** the session-persistence specs added a second Test Level, and with
+> it four changes to the decision below. The decision stands; where this update and the
+> text below differ, this update is current.
+>
+> - **`domain` Test Level**<br>
+>   `specs/<concept>/domain/*.feature` runs in Vitest through `quickpickle` (Vitest
+>   project `specs-domain`, which loads every concept's `domain/steps.ts`). Its driver code
+>   calls `src/domain` directly and nothing else in `src/` — enforced by the
+>   `specs-domain-only-domain-import` dependency-cruiser rule. Where several examples break
+>   one rule each, a `Rule:` with its own `Background:` gives them one visible valid base to
+>   change.
+> - **Shared `e2e` driver code**<br>
+>   The named-actors fixture and the steps more than one concept uses moved to
+>   `specs/shared/e2e/` (`world.ts`, `steps.ts`). Every `*-bdd` Playwright project loads
+>   them next to its concept's own `steps.ts`.
+> - **Concept-level test data**<br>
+>   Stereotypes ([glossary](../../glossary.md)) live in the concept folder
+>   (`specs/<concept>/stereotypes.ts`), where any of the concept's Test Levels can use them;
+>   today only `e2e` does. They build plain data, and the `specs-concept-no-src-import` rule
+>   keeps them, like `e2e` driver code, free of `src/`.
+> - **Running and pausing**<br>
+>   `pnpm test:specs` runs every Gherkin spec: the `domain` Test Level, then every `*-bdd`
+>   project. `pnpm test` and `pnpm test:coverage` include the `domain` specs, so while one
+>   is deliberately failing (step 2 below) the gitignored marker
+>   `.claude/hooks/stop-checks.paused` pauses the Stop hook.
+>
+> Two follow-ups below are now due: there are three spec dependency rules, so the canary
+> follow-up applies; and a second Test Level exists, so "no shared DSL across Test Levels"
+> is up for review — it still holds today, since stereotypes are test data, not a step
+> interface.
+
 ## Context
 
 Work in this repo has been picked from the **EstiMate Roadmap** GitHub Project board: a
@@ -53,7 +84,7 @@ A time-boxed spike (`spike/bdd-specs`) tested feasibility by porting the existin
 (here `live-session`), one subfolder per **Test Level** — what we call the kind of thing a
 scenario drives (`e2e`: real UI in real browsers, real WebRTC through the local relay per
 ADR-007). `protocol` and `domain` Test Levels are deferred until a scenario actually needs
-one; we call this a "Test Level" rather than a "layer" to avoid colliding with the
+one (`domain` since added, see the 2026-11-13 update); we call this a "Test Level" rather than a "layer" to avoid colliding with the
 architecture layer and FSD layer vocabulary already defined in
 [glossary.md](../../glossary.md).
 
@@ -68,7 +99,8 @@ Playwright, a browser, or anything else outside itself (`pure-domain`, see
 - `.feature` files are declarative, in domain language ("Jordan joins the session"), never
   UI words ("clicks Join"); actors are named, never "I".
 - `steps.ts` (step text → actor actions) and `world.ts` (the named-actors fixture) sit next
-  to the `.feature` file. Step code calls only into `e2e/helpers.ts` — no raw selectors.
+  to the `.feature` file (`world.ts` and shared steps since moved to `specs/shared/e2e/`, see
+  the 2026-11-13 update). Step code calls only into `e2e/helpers.ts` — no raw selectors.
 - Generated test files go into gitignored `.features-gen/`.
 - `specs/*/e2e/**` may not import from `src/` — enforced by the
   `specs-e2e-no-src-import` dependency-cruiser rule (`.dependency-cruiser.specs.cjs`,

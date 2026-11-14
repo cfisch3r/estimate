@@ -1,19 +1,23 @@
 import { UserIcon } from '@phosphor-icons/react/dist/csr/User'
 import { UsersThreeIcon } from '@phosphor-icons/react/dist/csr/UsersThree'
 import { SignInIcon } from '@phosphor-icons/react/dist/csr/SignIn'
-import { BrandMark, CardMeta, Tag } from '../../../shared/ui'
+import { ActionRow, BrandMark, CardMeta, Tag } from '../../../shared/ui'
 import { useNavigate } from 'react-router'
 import { ROUTES } from '../../../shared/lib/routes'
 import {
   useStartSingleUser,
   useStartCollaborative,
 } from '../../../features/session-lifecycle'
-import { ModeRow } from './ModeRow'
+import { LoadedSessionCard, LoadSessionRow } from '../../../features/session-persistence'
+import { useSessionStore } from '../../../application'
 
 export function ModeSelect() {
   const startSingleUser = useStartSingleUser()
   const startCollaborative = useStartCollaborative()
   const navigate = useNavigate()
+  const sessionName = useSessionStore((s) => s.sessionName)
+  const loaded = useSessionStore((s) => s.loadedFrom !== null)
+  const continuing = sessionName || 'this session'
 
   return (
     <div
@@ -55,24 +59,43 @@ export function ModeSelect() {
           maxWidth: 420,
         }}
       >
-        <ModeRow
+        <LoadedSessionCard />
+        {loaded && (
+          <span className="text-muted" style={{ fontSize: 12, padding: '6px 2px 0' }}>
+            Continue this session:
+          </span>
+        )}
+        <ActionRow
           icon={<UserIcon size={22} />}
           title="Start single-user mode"
-          description="Estimate on your own, at your own pace."
+          description={
+            loaded
+              ? `Continue ${continuing} on your own.`
+              : 'Estimate on your own, at your own pace.'
+          }
           onClick={startSingleUser}
         />
-        <ModeRow
+        <ActionRow
           icon={<UsersThreeIcon size={22} />}
           title="Start collaborative estimation"
-          description="Generate a code and estimate live with your team."
+          description={
+            loaded
+              ? `Continue ${continuing} live with your team.`
+              : 'Generate a code and estimate live with your team.'
+          }
           onClick={startCollaborative}
         />
-        <ModeRow
-          icon={<SignInIcon size={22} />}
-          title="Join a collaborative session"
-          description="Enter a code your facilitator shared."
-          onClick={() => navigate(ROUTES.join)}
-        />
+        {!loaded && (
+          <>
+            <ActionRow
+              icon={<SignInIcon size={22} />}
+              title="Join a collaborative session"
+              description="Enter a code your facilitator shared."
+              onClick={() => navigate(ROUTES.join)}
+            />
+            <LoadSessionRow />
+          </>
+        )}
       </div>
 
       <CardMeta
@@ -84,7 +107,7 @@ export function ModeSelect() {
         }}
       >
         <Tag variant="outline">Preview build {__APP_VERSION__}</Tag>
-        <span>Estimates aren&rsquo;t saved yet, and live mode is still in progress.</span>
+        <span>Sessions aren&rsquo;t kept in the browser. Save a file to keep one.</span>
       </CardMeta>
     </div>
   )

@@ -1,41 +1,49 @@
 import { BrowserRouter, Routes, Route } from 'react-router'
-import { ParticipantIdentityContext } from '../application/composition'
+import {
+  FileDownloadContext,
+  ParticipantIdentityContext,
+} from '../application/composition'
 import { LiveSessionProvider } from './LiveSessionProvider'
 import { getOrCreateParticipantId } from '../adapters/storage/participantIdentity'
+import { downloadTextFile } from '../adapters/file/fileDownload'
 import { ROUTES } from '../shared/lib/routes'
 import { Header } from './Header'
+import { useWarnBeforeUnload } from '../features/session-persistence'
 import { ModeSelect } from '../pages/mode-select'
 import { Workspace } from '../pages/workspace'
 import { SessionSummary } from '../pages/session-summary'
-import { SessionHistory } from '../pages/session-history'
 import { JoinSession } from '../pages/join-session'
 import { ParticipantEstimateView } from '../pages/participant-estimate'
 
 // Composition point: the one place that wires an adapter to an application-owned port.
 const participantIdentity = { getOrCreateParticipantId }
+const fileDownload = { download: downloadTextFile }
 
 function App() {
+  useWarnBeforeUnload()
+
   return (
     <BrowserRouter>
       <ParticipantIdentityContext.Provider value={participantIdentity}>
-        <LiveSessionProvider>
-          <a href="#main-content" className="skip-link">
-            Skip to main content
-          </a>
-          <Header />
-          {/* tabIndex={-1}: a plain <main> isn't focusable, so activating the skip
+        <FileDownloadContext.Provider value={fileDownload}>
+          <LiveSessionProvider>
+            <a href="#main-content" className="skip-link">
+              Skip to main content
+            </a>
+            <Header />
+            {/* tabIndex={-1}: a plain <main> isn't focusable, so activating the skip
             link above wouldn't move keyboard focus here in Firefox/Safari without it. */}
-          <main id="main-content" tabIndex={-1}>
-            <Routes>
-              <Route path={ROUTES.modeSelect} element={<ModeSelect />} />
-              <Route path={ROUTES.join} element={<JoinSession />} />
-              <Route path={ROUTES.estimate} element={<ParticipantEstimateView />} />
-              <Route path={ROUTES.workspace} element={<Workspace />} />
-              <Route path={ROUTES.summary} element={<SessionSummary />} />
-              <Route path={ROUTES.history} element={<SessionHistory />} />
-            </Routes>
-          </main>
-        </LiveSessionProvider>
+            <main id="main-content" tabIndex={-1}>
+              <Routes>
+                <Route path={ROUTES.modeSelect} element={<ModeSelect />} />
+                <Route path={ROUTES.join} element={<JoinSession />} />
+                <Route path={ROUTES.estimate} element={<ParticipantEstimateView />} />
+                <Route path={ROUTES.workspace} element={<Workspace />} />
+                <Route path={ROUTES.summary} element={<SessionSummary />} />
+              </Routes>
+            </main>
+          </LiveSessionProvider>
+        </FileDownloadContext.Provider>
       </ParticipantIdentityContext.Provider>
     </BrowserRouter>
   )

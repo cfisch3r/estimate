@@ -2,6 +2,7 @@ import type { AggregateResult, AggregateStrategy } from './types'
 import { DEFAULT_STRATEGY } from './types'
 import type { Estimate } from './estimate'
 import { computeCI90 } from './ci90'
+import { createAggregateResult } from './aggregateResult'
 
 export function median(values: number[]): number {
   const sorted = [...values].sort((a, b) => a - b)
@@ -52,6 +53,16 @@ export function aggregateEstimates(
     estimates.map((e) => e.worst),
     strategy.worst,
   )
-  const ci90 = computeCI90(expected, min, max)
-  return { min, expected, max, ci90 }
+  const result = createAggregateResult({
+    min,
+    expected,
+    max,
+    ci90: computeCI90(expected, min, max),
+  })
+  // Valid estimates reduced with the default strategy always keep the rules,
+  // but some strategies (a mean of best cases above a median of likely ones)
+  // can break them; such a strategy is a programming error, not user input.
+  if (!result.ok)
+    throw new Error(`aggregateEstimates produced a final result that ${result.error}`)
+  return result.value
 }
