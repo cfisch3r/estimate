@@ -6,6 +6,10 @@ Feature: Reading a saved session file
   part of the file, because its estimates belong to participants of a session
   that no longer exists.
 
+  The rules a stored final result has to keep are specified once, in
+  estimation-method/domain/final-result.feature. This feature only shows that a
+  file breaking one of them is rejected, naming the item.
+
   Rule: A file is restored whole or rejected with a reason
 
     Background:
@@ -52,10 +56,7 @@ Feature: Reading a saved session file
         | version                       | 2        | This file was saved by a newer version of EstiMate.                                    |
         | unit                          | "months" | The unit "months" isn't one EstiMate can estimate in.                                  |
         | items[0].title                | ""       | Item 1 has no title.                                                                   |
-        | items[0].finalResult.min      | 13       | Item 1, "Payment provider switch", has a range where the minimum is above the maximum. |
-        | items[0].finalResult.expected | 15       | Item 1, "Payment provider switch", has an expected value outside its range.            |
         | items[0].finalResult.min      | -1       | Item 1, "Payment provider switch", has a minimum of 0 or less.                         |
-        | items[0].finalResult.ci90     | 9.6      | Item 1, "Payment provider switch", has a 90% value that doesn't match its range.       |
         | items[1].id                   | "a"      | Item 2 has the same id as item 1.                                                      |
 
   Rule: A file only holds what outlives the session's tab
