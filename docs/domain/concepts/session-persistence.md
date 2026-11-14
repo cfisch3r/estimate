@@ -33,10 +33,10 @@ Item:                    # as saved — no running round
   title: string          # not blank
   description: string
   notes: string
-  finalResult: AggregateResult | null   # min <= expected <= max; null = not estimated
+  finalResult: AggregateResult | null   # keeps every final-result rule; null = not estimated
 ```
 
-`AggregateResult` is the four values of [estimation-method](estimation-method.md). A
+`AggregateResult` is the four values of [estimation-method](estimation-method.md), checked by its rules there. A
 running round's submissions, its reveal state and its round number are never part of the
 file: they belong to participants of a session that won't exist when the file is loaded.
 

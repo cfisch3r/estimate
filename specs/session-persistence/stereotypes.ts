@@ -45,7 +45,11 @@ export function anUnestimatedItem(
 
 /** A valid final result: min ≤ expected ≤ max. */
 function aFinalResult(overrides: Partial<FinalResultV1> = {}): FinalResultV1 {
-  return { min: 2, expected: 3, max: 6, ci90: 5.2, ...overrides }
+  const { min = 2, expected = 3, max = 6 } = overrides
+  // The app rejects a 90% value that isn't McConnell's for the range, so the
+  // default follows the formula (repeated here: specs may not import src/).
+  const ci90 = expected + (1.28 * (max - min)) / 3
+  return { min, expected, max, ci90, ...overrides }
 }
 
 /** An item with a finalized estimate. */

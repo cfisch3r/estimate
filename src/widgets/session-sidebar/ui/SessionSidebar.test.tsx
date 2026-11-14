@@ -6,6 +6,7 @@ import { axe } from 'jest-axe'
 import { SessionSidebar } from './SessionSidebar'
 import { useSessionStore } from '../../../application/testing'
 import type { Item } from '../../../domain/types'
+import { aggregateOf } from '../../../domain/testFixtures'
 
 function item(id: string, title: string, finalResult: Item['finalResult'] = null): Item {
   return {
@@ -20,7 +21,7 @@ function item(id: string, title: string, finalResult: Item['finalResult'] = null
   }
 }
 
-const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
+const finalized = aggregateOf(1, 2, 3)
 
 function renderSidebar(
   state: Partial<ReturnType<typeof useSessionStore.getState>> = {},

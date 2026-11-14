@@ -13,7 +13,7 @@ vocabulary used on both sides.
 |---|---|
 | [domain/prd.md](domain/prd.md) | Product requirements — problem, goals, non-goals, primary user & core flow, non-functional requirements, open questions, future phases. Links out to the four domain concepts below for process/model/rules/flow detail. |
 | [domain/concepts/live-collaboration.md](domain/concepts/live-collaboration.md) | Domain concept: the Live and Manual mode processes, the Session/Item/Estimate/Participant/Roster information model, and the rules (privacy before reveal, no mid-session mode switch, late-join catch-up). |
-| [domain/concepts/estimation-method.md](domain/concepts/estimation-method.md) | Domain concept: the three-point estimation process (aggregate, confidence interval, guard, finalize), the Estimate/AggregateResult/uncertainty-level information model, and the bias-guard rules. |
+| [domain/concepts/estimation-method.md](domain/concepts/estimation-method.md) | Domain concept: the three-point estimation process (aggregate, confidence interval, guard, finalize), the Estimate/AggregateResult/uncertainty-level information model, the final-result rule, and the bias-guard rules. |
 | [domain/concepts/session-persistence.md](domain/concepts/session-persistence.md) | Domain concept: saving a session to a file and resuming it, the session-file information model, and the rules (unsaved-changes warning, no running round in the file, load only before a mode starts, whole-or-nothing restore, file naming). |
 | [domain/concepts/screen-flow.md](domain/concepts/screen-flow.md) | Domain concept: the screen-flow diagram and per-screen content table for Mode selection, Workspace, Join Session, Participant Estimate View, and Session Summary. |
 

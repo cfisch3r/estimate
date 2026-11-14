@@ -1,5 +1,9 @@
-import { DEFAULT_ESTIMATION_UNIT, isEstimationUnit } from './estimate'
-import type { AggregateResult, EstimationUnit, Result } from './estimate'
+import {
+  createAggregateResult,
+  DEFAULT_ESTIMATION_UNIT,
+  isEstimationUnit,
+} from './estimate'
+import type { AggregateResult, AggregateValues, EstimationUnit, Result } from './estimate'
 import type { Item } from './types'
 
 /** A calendar date in the user's own time zone. */
@@ -56,8 +60,11 @@ export function writeSessionFile(session: SavedSession): string {
   })
 }
 
-/** An item as the file stores it, once its shape has been checked. */
-type FileItem = Pick<Item, 'id' | 'title' | 'description' | 'notes' | 'finalResult'>
+/** An item as the file stores it, once its shape has been checked: the final
+ *  result is only four numbers until `createAggregateResult` has checked it. */
+type FileItem = Pick<Item, 'id' | 'title' | 'description' | 'notes'> & {
+  finalResult: AggregateValues | null
+}
 
 type FileShape = { version: number; sessionName: string; unit: string; items: FileItem[] }
 
@@ -65,7 +72,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function isFinalResult(value: unknown): value is AggregateResult | null {
+function isFinalResultShape(value: unknown): value is AggregateValues | null {
   if (value === null) return true
   if (!isRecord(value)) return false
   return (['min', 'expected', 'max', 'ci90'] as const).every(
@@ -79,7 +86,7 @@ function isFileItem(value: unknown): value is FileItem {
     (['id', 'title', 'description', 'notes'] as const).every(
       (key) => typeof value[key] === 'string',
     ) &&
-    isFinalResult(value.finalResult)
+    isFinalResultShape(value.finalResult)
   )
 }
 
@@ -102,19 +109,33 @@ function parse(text: string): unknown {
   }
 }
 
-/** The first rule item `index` (0-based) breaks, as a reason the user can act on. */
-function itemProblem(item: FileItem, index: number): string | null {
+/** Item `index` (0-based) as the session holds it, or the first rule it
+ *  breaks as a reason the user can act on. Its final result goes through the
+ *  one factory every final result goes through. */
+function readItem(item: FileItem, index: number): Result<Item> {
   const label = `Item ${index + 1}`
-  if (item.title.trim().length === 0) return `${label} has no title.`
-  const result = item.finalResult
-  if (result === null) return null
-  if (result.min > result.max) {
-    return `${label}, "${item.title}", has a range where the minimum is above the maximum.`
+  if (item.title.trim().length === 0)
+    return { ok: false, error: `${label} has no title.` }
+  let finalResult: AggregateResult | null = null
+  if (item.finalResult !== null) {
+    const result = createAggregateResult(item.finalResult)
+    if (!result.ok)
+      return { ok: false, error: `${label}, "${item.title}", ${result.error}.` }
+    finalResult = result.value
   }
-  if (result.expected < result.min || result.expected > result.max) {
-    return `${label}, "${item.title}", has an expected value outside its range.`
+  return {
+    ok: true,
+    value: {
+      id: item.id,
+      title: item.title,
+      description: item.description,
+      notes: item.notes,
+      finalResult,
+      submissions: [],
+      revealed: false,
+      round: 0,
+    },
   }
-  return null
 }
 
 /**
@@ -132,9 +153,10 @@ export function readSessionFile(text: string): Result<SavedSession> {
   if (!isEstimationUnit(unit)) {
     return { ok: false, error: `The unit "${unit}" isn't one EstiMate can estimate in.` }
   }
+  const items: Item[] = []
   for (const [index, item] of file.items.entries()) {
-    const problem = itemProblem(item, index)
-    if (problem !== null) return { ok: false, error: problem }
+    const read = readItem(item, index)
+    if (!read.ok) return read
     const first = file.items.findIndex((other) => other.id === item.id)
     if (first !== index) {
       return {
@@ -142,24 +164,9 @@ export function readSessionFile(text: string): Result<SavedSession> {
         error: `Item ${index + 1} has the same id as item ${first + 1}.`,
       }
     }
+    items.push(read.value)
   }
-  return {
-    ok: true,
-    value: {
-      sessionName: file.sessionName,
-      unit,
-      items: file.items.map((item) => ({
-        id: item.id,
-        title: item.title,
-        description: item.description,
-        notes: item.notes,
-        finalResult: item.finalResult,
-        submissions: [],
-        revealed: false,
-        round: 0,
-      })),
-    },
-  }
+  return { ok: true, value: { sessionName: file.sessionName, unit, items } }
 }
 
 /**

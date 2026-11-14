@@ -141,7 +141,7 @@ describe('ModeSelect', () => {
           title: 'Payment provider switch',
           description: '',
           notes: '',
-          finalResult: { min: 3, expected: 5, max: 12, ci90: 9 },
+          finalResult: { min: 3, expected: 5, max: 12, ci90: 8.84 },
         },
         {
           id: 'b',

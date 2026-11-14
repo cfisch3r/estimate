@@ -36,11 +36,13 @@ Estimate:
   worst: number    # ≥ likely
 
 AggregateResult:
-  # The group range produced by the Process above
-  min: number
-  expected: number
-  ci90: number
-  max: number
+  # The group range produced by the Process above. Self-validating like Estimate:
+  # only constructible when every field keeps its rule, whether it comes from
+  # aggregating estimates or from a saved file
+  min: number       # > 0, finite
+  expected: number  # min ≤ expected ≤ max
+  ci90: number      # = expected + 1.28 × ((max − min) / 3)
+  max: number       # ≥ min
 
 UncertaintyLevel:
   # One of 5 phases of the classic Cone of Uncertainty (see below); selected per item, per participant
@@ -71,6 +73,12 @@ Worst Case is expected to land around 4× (High mult. / Low mult. = 16x) the Bes
 4× Most Likely. The guidance ratio is always `High mult. / Low mult.`, computed from the
 table at implementation time rather than stored as its own rounded column, since a rounded
 display value can drift out of sync with the exact division.
+
+## Rules (final result)
+
+| Rule | Condition | Behavior | Spec |
+|---|---|---|---|
+| **A final result keeps every rule** | Any final result, aggregated or read from a file | It is accepted only when its values are finite, the minimum is above 0, min ≤ expected ≤ max, and the 90% value is the formula's for that range; otherwise it is rejected with the rule it breaks | [final-result](../../../specs/estimation-method/domain/final-result.feature) |
 
 ## Rules (bias guards)
 

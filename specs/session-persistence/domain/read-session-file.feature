@@ -21,7 +21,7 @@ Feature: Reading a saved session file
               "title": "Payment provider switch",
               "description": "",
               "notes": "",
-              "finalResult": { "min": 3, "expected": 5.8, "max": 12, "ci90": 9.6 }
+              "finalResult": { "min": 3, "expected": 5.8, "max": 12, "ci90": 9.64 }
             },
             {
               "id": "b",
@@ -54,6 +54,8 @@ Feature: Reading a saved session file
         | items[0].title                | ""       | Item 1 has no title.                                                                   |
         | items[0].finalResult.min      | 13       | Item 1, "Payment provider switch", has a range where the minimum is above the maximum. |
         | items[0].finalResult.expected | 15       | Item 1, "Payment provider switch", has an expected value outside its range.            |
+        | items[0].finalResult.min      | -1       | Item 1, "Payment provider switch", has a minimum of 0 or less.                         |
+        | items[0].finalResult.ci90     | 9.6      | Item 1, "Payment provider switch", has a 90% value that doesn't match its range.       |
         | items[1].id                   | "a"      | Item 2 has the same id as item 1.                                                      |
 
   Rule: A file only holds what outlives the session's tab

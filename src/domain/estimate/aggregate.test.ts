@@ -3,6 +3,14 @@ import { aggregateEstimates, median } from './aggregate'
 import { est } from './testHelpers'
 
 describe('aggregateEstimates', () => {
+  it('refuses a strategy whose result breaks the final-result rules', () => {
+    // A mean of best cases lands above the median likely case here.
+    const estimates = [est('a', 1, 1, 1), est('b', 1, 1, 1), est('c', 100, 100, 100)]
+    expect(() =>
+      aggregateEstimates(estimates, { best: 'mean', likely: 'median', worst: 'max' }),
+    ).toThrow(/expected value outside its range/)
+  })
+
   it('degenerates to the raw values for a single estimate (Mode B path)', () => {
     const result = aggregateEstimates([est('facilitator', 3, 5, 9)])
     expect(result.min).toBe(3)
