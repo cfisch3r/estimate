@@ -80,7 +80,8 @@ time, never assumed, both optional** — before planning and implementation star
    appropriate **Test Level** (`docs/glossary.md`) under `specs/<concept>/<test level>/`,
    generate it, and confirm it fails for the right reason before any implementation code is
    written. Then tag it `@fail` (both Test Levels): it stays green while it fails, and turns
-   red once it passes, so the change that implements it removes the tag.
+   red once it passes, so the change that implements it removes the tag. CI refuses the tag
+   (`pnpm specs:no-pending`), so a PR can't merge with it.
 
 Once planning starts, the [Collaboration workflow](#collaboration-workflow-github) applies
 (branch per issue, PR with `Closes #n`, review passes, ask before merge).
@@ -96,6 +97,7 @@ pnpm typecheck            # type-check only (tsc -b), no bundling
 pnpm preview              # serve the production build locally
 pnpm lint                 # oxlint
 pnpm arch                 # steiger (FSD inside the UI) and dependency-cruiser (layer rules, `pnpm arch:layers`)
+pnpm specs:no-pending     # fails while any spec still carries @fail (ADR-010); runs in CI, not in the Stop hook
 pnpm arch:specs           # dependency-cruiser on specs/ (e2e driver code may not import src/, domain driver code only src/domain, ADR-010); separate from `pnpm arch`, but runs in CI and the Stop hook
 pnpm format               # prettier --write
 pnpm format:check         # prettier --check
@@ -114,7 +116,7 @@ pnpm review:guide         # render the Review guide page from the floor, signals
 pnpm review:signals       # evidence for the risk review of the branch plus working tree: file history, metrics, changed-line coverage (runs the unit tests), dependency diff and audit; each section may say "not available"; prints JSON
 ```
 
-Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm arch:specs`, `pnpm format:check`,
+Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm arch:specs`, `pnpm specs:no-pending`, `pnpm format:check`,
 `pnpm test`, `pnpm test:coverage`, `pnpm deadcode`, and `pnpm test:e2e` before considering
 any change complete. (`pnpm test:e2e:real-world` is not part of that list — it runs nightly and on
 manual dispatch only, never gates a PR.) These

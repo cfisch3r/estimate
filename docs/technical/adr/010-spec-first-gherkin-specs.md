@@ -31,7 +31,11 @@
 >   playwright-bdd (`test.fail()`) both count it as passing while it fails and turn the run
 >   red once it passes, so the tag has to go in the change that implements it. Every check,
 >   the Stop hook's included, keeps running meanwhile, and the tag shows in the diff which
->   specs are still pending.
+>   specs are still pending. Because a tagged scenario is green whatever makes it fail, CI
+>   refuses the tag (`pnpm specs:no-pending`, in the `arch-specs` job): a branch may carry
+>   it while in progress, but it can't merge with it. The check also catches quickpickle's
+>   own default fail tags (`@fails`, `@failing`, `@should-fail`), which stay active next to
+>   `@fail`.
 >
 > Two follow-ups below are now due: there are three spec dependency rules, so the canary
 > follow-up applies; and a second Test Level exists, so "no shared DSL across Test Levels"

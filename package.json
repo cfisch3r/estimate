@@ -12,6 +12,7 @@
     "arch": "steiger ./src && pnpm arch:layers",
     "arch:layers": "depcruise src --config .dependency-cruiser.cjs",
     "arch:specs": "depcruise specs --config .dependency-cruiser.specs.cjs",
+    "specs:no-pending": "node scripts/noPendingSpecs.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
