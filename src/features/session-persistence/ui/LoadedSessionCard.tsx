@@ -3,7 +3,7 @@ import { XIcon } from '@phosphor-icons/react/dist/csr/X'
 import { Button, CardKicker, Tag } from '../../../shared/ui'
 import { useDiscardSession, useSessionStore } from '../../../application'
 import { isFinalized } from '../../../domain/item'
-import { handFocusTo, takeFocus } from '../model/focusHandoff'
+import { useFocusHandoff } from '../model/focusHandoff'
 
 /** What a loaded file holds, before a mode starts with it. Renders nothing
  *  while no file is loaded. */
@@ -13,13 +13,14 @@ export function LoadedSessionCard() {
   const unit = useSessionStore((s) => s.unit)
   const items = useSessionStore((s) => s.items)
   const discardSession = useDiscardSession()
+  const { handFocusTo, takeFocus } = useFocusHandoff()
   const kickerId = useId()
   const headingRef = useRef<HTMLHeadingElement>(null)
 
   useEffect(() => {
     // Just loaded: the Load row that had focus is gone, so focus the result.
     if (loadedFrom !== null && takeFocus('loaded-session')) headingRef.current?.focus()
-  }, [loadedFrom])
+  }, [loadedFrom, takeFocus])
 
   if (loadedFrom === null) return null
   const finalized = items.filter(isFinalized).length
@@ -29,24 +30,9 @@ export function LoadedSessionCard() {
     <section
       className="card elev-sm"
       aria-labelledby={kickerId}
-      style={{ gap: 'var(--space-2)', padding: 'var(--space-4)' }}
+      style={{ position: 'relative', gap: 'var(--space-2)', padding: 'var(--space-4)' }}
     >
-      <div
-        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
-      >
-        <CardKicker id={kickerId}>Loaded session</CardKicker>
-        <Button
-          variant="ghost"
-          aria-label="Discard loaded session"
-          onClick={() => {
-            handFocusTo('load-row')
-            discardSession()
-          }}
-        >
-          <XIcon size={14} aria-hidden />
-          Discard
-        </Button>
-      </div>
+      <CardKicker id={kickerId}>Loaded session</CardKicker>
       <h2
         ref={headingRef}
         tabIndex={-1}
@@ -54,6 +40,21 @@ export function LoadedSessionCard() {
       >
         {sessionName || 'Unnamed session'}
       </h2>
+      {/* After the heading in the DOM, so Tab from the focused heading reaches
+          Discard first and the action follows the session it acts on; shown
+          in the card's top corner. */}
+      <Button
+        variant="ghost"
+        aria-label="Discard loaded session"
+        style={{ position: 'absolute', top: 'var(--space-3)', right: 'var(--space-3)' }}
+        onClick={() => {
+          handFocusTo('load-row')
+          discardSession()
+        }}
+      >
+        <XIcon size={14} aria-hidden />
+        Discard
+      </Button>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
         <Tag variant="neutral">
           {items.length} {items.length === 1 ? 'item' : 'items'}
@@ -61,7 +62,9 @@ export function LoadedSessionCard() {
         <Tag variant="accent">{finalized} finalized</Tag>
         <Tag variant="neutral">Unit: {unit}</Tag>
       </div>
-      <span className="text-muted" style={{ fontSize: 11 }}>
+      {/* A solid neutral, not .text-muted, which is below AA on the card
+          surface (see LoadRejectedAlert). */}
+      <span style={{ fontSize: 11, color: 'var(--color-neutral-400)' }}>
         From {loadedFrom}
       </span>
     </section>

@@ -50,7 +50,7 @@ export interface SessionStore {
    *  included — a participant's unit and name come from the facilitator's
    *  snapshot and must not leak into the next session. The one definition of
    *  "blank", shared by leaving and by discarding a loaded file. Composed with
-   *  the other two stores' own resets by `useTeardownLiveSession` (ADR-005). */
+   *  the other two stores' own resets by `useEndSession` (ADR-005). */
   resetSession: () => void
   /** Replace the whole session with one read from the file `fileName`.
    *  Nothing is selected yet: starting a mode selects the first item still

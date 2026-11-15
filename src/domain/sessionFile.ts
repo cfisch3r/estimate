@@ -42,6 +42,10 @@ export function sessionFileName(sessionName: string, savedOn: LocalDate): string
   return `${slug}-${savedOn.year}-${two(savedOn.month)}-${two(savedOn.day)}.estimate.json`
 }
 
+// architecture-exception: default-layout — the session file's format (JSON,
+// version, shape) stays next to its rules in the domain: the `domain` spec
+// Test Level reads and writes files through these functions and may import
+// src/domain only (ADR-010), and `hasUnsavedChanges` compares written files.
 /** The text of a version-1 session file for `session`. A running live round
  *  (`submissions`, `revealed`, `round`) is left out: its estimates belong to
  *  participants of a session that won't exist when the file is loaded. */
@@ -156,16 +160,18 @@ export function readSessionFile(text: string): Result<SavedSession> {
     return { ok: false, error: `The unit "${unit}" isn't one EstiMate can estimate in.` }
   }
   const items: Item[] = []
+  const firstIndexOf = new Map<string, number>()
   for (const [index, item] of file.items.entries()) {
     const read = readItem(item, index)
     if (!read.ok) return read
-    const first = file.items.findIndex((other) => other.id === item.id)
-    if (first !== index) {
+    const first = firstIndexOf.get(item.id)
+    if (first !== undefined) {
       return {
         ok: false,
         error: `Item ${index + 1} has the same id as item ${first + 1}.`,
       }
     }
+    firstIndexOf.set(item.id, index)
     items.push(read.value)
   }
   return { ok: true, value: { sessionName: file.sessionName, unit, items } }

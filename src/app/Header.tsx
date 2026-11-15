@@ -17,6 +17,9 @@ const ARMED_LABEL = {
     'Unsaved changes, and the session ends for everyone. Click again to leave',
 } as const
 
+const STILL_RUNNING =
+  'This session is still running. Leave it with the EstiMate button first.'
+
 const FEEDBACK_URL =
   'https://github.com/cfisch3r/estimate/issues/new?template=feedback.yml'
 
@@ -28,12 +31,16 @@ export function Header() {
     armed,
     handleClick: armAndLeave,
     ref: leaveRef,
-  } = useConfirmArm<HTMLButtonElement>(leaveWorkspace)
+  } = useConfirmArm<HTMLButtonElement>(leaveWorkspace, { holdWhileFocused: true })
 
   const showModeTag =
     location.pathname !== ROUTES.modeSelect && location.pathname !== ROUTES.join
   const canLeave = EXIT_PATHS.has(location.pathname)
   const armedLabel = confirmation !== 'none' && armed ? ARMED_LABEL[confirmation] : null
+  // The browser's Back button led to an entry screen, which sent it back here
+  // (`useRunningSessionGuard`): say why Back seemed to do nothing.
+  const stillRunning =
+    (location.state as { stillRunning?: boolean } | null)?.stillRunning === true
 
   return (
     <header className="app-header">
@@ -43,7 +50,7 @@ export function Header() {
             ref={leaveRef}
             type="button"
             className={`app-header-brand app-header-brand-home${armedLabel ? ' app-header-brand-armed' : ''}`}
-            aria-label={armedLabel ?? 'Back to mode selection'}
+            aria-label={armedLabel ?? 'EstiMate, back to mode selection'}
             style={{ color: armedLabel ? 'var(--color-warning)' : undefined }}
             onClick={confirmation === 'none' ? leaveWorkspace : armAndLeave}
           >
@@ -59,7 +66,9 @@ export function Header() {
         {/* Renaming the focused button alone is announced unreliably, so the
             armed prompt is also said through a persistent live region. */}
         <LiveRegion>
-          <VisuallyHidden>{armedLabel ?? ''}</VisuallyHidden>
+          <VisuallyHidden>
+            {armedLabel ?? (stillRunning ? STILL_RUNNING : '')}
+          </VisuallyHidden>
         </LiveRegion>
         <a
           className="app-header-feedback"

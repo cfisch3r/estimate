@@ -4,7 +4,6 @@ import { ROUTES } from '../../../shared/lib/routes'
 import { SessionSidebar } from '../../../widgets/session-sidebar'
 import { useSessionStore } from '../../../application'
 import { isFinalized } from '../../../domain/item'
-import { SaveSessionButton } from '../../../features/session-persistence'
 
 export function SessionSummary() {
   const items = useSessionStore((s) => s.items)
@@ -59,7 +58,6 @@ export function SessionSummary() {
           <Button variant="secondary" onClick={() => navigate(ROUTES.workspace)}>
             Back to item
           </Button>
-          <SaveSessionButton />
         </div>
       </div>
     </div>

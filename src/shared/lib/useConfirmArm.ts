@@ -4,9 +4,15 @@ const ARM_TIMEOUT_MS = 3000
 
 /** Two-click confirm: the first click "arms" the control for `ARM_TIMEOUT_MS`; a second
  *  click while armed fires `onConfirm`. Arming clears on timeout or on any click outside
- *  the confirming element, so a misclick can't linger into a later, unrelated click. */
+ *  the confirming element, so a misclick can't linger into a later, unrelated click.
+ *
+ *  `holdWhileFocused`: for a prompt too long to hear within the timeout, arming
+ *  then lasts as long as the control keeps focus and clears when focus leaves —
+ *  the timeout applies only when the control wasn't focused (a mouse click in a
+ *  browser that doesn't focus buttons). */
 export function useConfirmArm<T extends HTMLElement = HTMLElement>(
   onConfirm: () => void,
+  { holdWhileFocused = false }: { holdWhileFocused?: boolean } = {},
 ) {
   const [armed, setArmed] = useState(false)
   const timeoutRef = useRef<number | null>(null)
@@ -42,6 +48,13 @@ export function useConfirmArm<T extends HTMLElement = HTMLElement>(
     return () => document.removeEventListener('click', handleOutsideClick)
   }, [armed, disarm])
 
+  useEffect(() => {
+    const element = elementRef.current
+    if (!armed || !holdWhileFocused || element === null) return
+    element.addEventListener('focusout', disarm)
+    return () => element.removeEventListener('focusout', disarm)
+  }, [armed, holdWhileFocused, disarm])
+
   useEffect(() => disarm, [disarm])
 
   function handleClick() {
@@ -51,6 +64,9 @@ export function useConfirmArm<T extends HTMLElement = HTMLElement>(
       return
     }
     setArmed(true)
+    const focused =
+      elementRef.current !== null && elementRef.current.contains(document.activeElement)
+    if (holdWhileFocused && focused) return
     timeoutRef.current = window.setTimeout(disarm, ARM_TIMEOUT_MS)
   }
 

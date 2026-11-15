@@ -131,26 +131,53 @@ export function shouldBroadcastSnapshot(
   return mode === 'live' && role === 'facilitator' && Boolean(sessionId)
 }
 
-/** Where a connection state belongs, for a screen gated to one role: the
- *  single-user/facilitator Workspace, or the live participant's estimate
- *  screen. `'allow'` means the given screen already matches that state;
- *  otherwise the screen the caller should redirect to instead. Centralizes
- *  the access rule so the two gated screens can't disagree about where a
- *  given state belongs. */
+/** The state a screen's access depends on: the connection, and whether a mode
+ *  has started on the session (`useSessionStore`'s `started`). */
+export type ScreenAccessState = {
+  mode: SessionMode
+  role: SessionRole
+  sessionId: string | null
+  hasEverConnected: boolean
+  started: boolean
+}
+
+/** A screen that checks, on mount, whether the visitor belongs there. */
+export type GuardedScreen = 'modeSelect' | 'join' | 'workspace' | 'estimate'
+
+/**
+ * Where a visitor of `screen` belongs instead, or `'allow'`: the one access
+ * rule, so the guarded screens can't disagree about where a state belongs.
+ *
+ * - **workspace** — a live participant belongs on the estimate screen.
+ * - **estimate** — only a participant who has joined: without a session back
+ *   to mode selection, a facilitator to its Workspace.
+ * - **modeSelect / join** (the entry screens, reached around the app's own
+ *   leave only by the browser's Back button) — a joined participant goes back
+ *   to the estimate screen, or to Join while still getting in; a started
+ *   session to its Workspace. So Back never skips the leave confirmation or
+ *   offers a load over a running session.
+ */
 export function screenAccessFor(
-  connection: { mode: SessionMode; role: SessionRole; sessionId: string | null },
-  screen: 'workspace' | 'estimate',
-): 'allow' | 'workspace' | 'estimate' | 'modeSelect' {
-  const { mode, role, sessionId } = connection
-  const isLiveParticipant = mode === 'live' && role === 'participant'
+  state: ScreenAccessState,
+  screen: GuardedScreen,
+): 'allow' | 'workspace' | 'estimate' | 'modeSelect' | 'join' {
+  const { mode, role, sessionId, hasEverConnected, started } = state
+  const joined = role === 'participant' && sessionId !== null
 
-  if (screen === 'workspace') {
-    return isLiveParticipant ? 'estimate' : 'allow'
+  switch (screen) {
+    case 'workspace':
+      return mode === 'live' && role === 'participant' ? 'estimate' : 'allow'
+    case 'estimate':
+      if (sessionId === null) return 'modeSelect'
+      return role === 'facilitator' ? 'workspace' : 'allow'
+    case 'modeSelect':
+    case 'join':
+      if (joined) {
+        if (hasEverConnected) return 'estimate'
+        return screen === 'join' ? 'allow' : 'join'
+      }
+      return started ? 'workspace' : 'allow'
   }
-
-  if (sessionId === null) return 'modeSelect'
-  if (role === 'facilitator') return 'workspace'
-  return 'allow'
 }
 
 /** Which `participantId -> display name` a client announces to its peers, or
@@ -169,24 +196,4 @@ export function announcementFor(connection: {
       : connection.participantId
   if (participantId.length === 0) return null
   return { participantId, name: connection.myName }
-}
-
-/** Where a visitor of an entry screen (mode selection, Join) belongs instead,
- *  if a session is still running: the browser's Back button is the only way
- *  there without the app's own leave, which resets everything first. A joined
- *  participant goes back to the estimate screen — or to Join while still
- *  getting in — and a started single-user or facilitator session to its
- *  Workspace, so Back never skips the leave confirmation or offers a load over
- *  a running session. `'allow'` means the entry screen may show. */
-export function entryScreenAccess(
-  connection: { role: SessionRole; sessionId: string | null; hasEverConnected: boolean },
-  started: boolean,
-  screen: 'modeSelect' | 'join',
-): 'allow' | 'workspace' | 'estimate' | 'join' {
-  const { role, sessionId, hasEverConnected } = connection
-  if (role === 'participant' && sessionId !== null) {
-    if (hasEverConnected) return 'estimate'
-    return screen === 'join' ? 'allow' : 'join'
-  }
-  return started ? 'workspace' : 'allow'
 }

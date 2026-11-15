@@ -9,7 +9,11 @@ import {
   useStartSingleUser,
   useStartCollaborative,
 } from '../../../features/session-lifecycle'
-import { LoadedSessionCard, LoadSessionRow } from '../../../features/session-persistence'
+import {
+  LoadedSessionCard,
+  LoadSessionRow,
+  SessionFileFocusScope,
+} from '../../../features/session-persistence'
 import { useSessionStore } from '../../../application'
 
 export function ModeSelect() {
@@ -52,53 +56,55 @@ export function ModeSelect() {
         </div>
       </div>
 
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--space-3)',
-          width: '100%',
-          maxWidth: 420,
-        }}
-      >
-        <LoadedSessionCard />
-        {loaded && (
-          <span className="text-muted" style={{ fontSize: 12, padding: '6px 2px 0' }}>
-            Continue this session:
-          </span>
-        )}
-        <ActionRow
-          icon={<UserIcon size={22} />}
-          title="Start single-user mode"
-          description={
-            loaded
-              ? `Continue ${continuing} on your own.`
-              : 'Estimate on your own, at your own pace.'
-          }
-          onClick={startSingleUser}
-        />
-        <ActionRow
-          icon={<UsersThreeIcon size={22} />}
-          title="Start collaborative estimation"
-          description={
-            loaded
-              ? `Continue ${continuing} live with your team.`
-              : 'Generate a code and estimate live with your team.'
-          }
-          onClick={startCollaborative}
-        />
-        {!loaded && (
-          <>
-            <ActionRow
-              icon={<SignInIcon size={22} />}
-              title="Join a collaborative session"
-              description="Enter a code your facilitator shared."
-              onClick={() => navigate(ROUTES.join)}
-            />
-            <LoadSessionRow />
-          </>
-        )}
-      </div>
+      <SessionFileFocusScope>
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 'var(--space-3)',
+            width: '100%',
+            maxWidth: 420,
+          }}
+        >
+          <LoadedSessionCard />
+          {loaded && (
+            <span className="text-muted" style={{ fontSize: 12, padding: '6px 2px 0' }}>
+              Continue this session:
+            </span>
+          )}
+          <ActionRow
+            icon={<UserIcon size={22} />}
+            title="Start single-user mode"
+            description={
+              loaded
+                ? `Continue ${continuing} on your own.`
+                : 'Estimate on your own, at your own pace.'
+            }
+            onClick={startSingleUser}
+          />
+          <ActionRow
+            icon={<UsersThreeIcon size={22} />}
+            title="Start collaborative estimation"
+            description={
+              loaded
+                ? `Continue ${continuing} live with your team.`
+                : 'Generate a code and estimate live with your team.'
+            }
+            onClick={startCollaborative}
+          />
+          {!loaded && (
+            <>
+              <ActionRow
+                icon={<SignInIcon size={22} />}
+                title="Join a collaborative session"
+                description="Enter a code your facilitator shared."
+                onClick={() => navigate(ROUTES.join)}
+              />
+              <LoadSessionRow />
+            </>
+          )}
+        </div>
+      </SessionFileFocusScope>
 
       <CardMeta
         style={{

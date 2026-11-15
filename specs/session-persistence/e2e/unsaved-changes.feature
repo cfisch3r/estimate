@@ -50,3 +50,11 @@ Feature: Warn before unsaved changes are lost
     When Alex goes back in the browser
     Then Alex sees the items
       | Payment provider switch |
+
+  Scenario: Going back after reloading the workspace keeps unsaved changes
+    Given Alex has started estimating alone and reloaded the page
+    And Alex has added the items
+      | Payment provider switch |
+    When Alex goes back in the browser
+    Then Alex sees the items
+      | Payment provider switch |

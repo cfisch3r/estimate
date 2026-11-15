@@ -93,6 +93,15 @@ Given(
   },
 )
 
+Given(
+  '{word} has started estimating alone and reloaded the page',
+  async ({ actor }, name: string) => {
+    const page = await actor(name)
+    await startSingleUserSession(page)
+    await page.reload()
+  },
+)
+
 Given('{word} has added the items', async ({ actor }, name: string, table: DataTable) => {
   const page = await actor(name)
   for (const [title] of table.raw()) {

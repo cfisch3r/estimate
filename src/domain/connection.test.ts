@@ -8,10 +8,10 @@ import {
   shouldBroadcastSnapshot,
   normalizeSessionCode,
   participantJoin,
-  entryScreenAccess,
   screenAccessFor,
   withConnectionStatus,
 } from './connection'
+import type { ScreenAccessState } from './connection'
 import type { ConnectionStatus, SessionRole } from './types'
 
 const STATUSES: ConnectionStatus[] = ['connecting', 'connected', 'disconnected']
@@ -144,51 +144,50 @@ describe('shouldBroadcastSnapshot', () => {
 })
 
 describe('screenAccessFor', () => {
-  it('sends a live participant off Workspace, to their own estimate screen', () => {
-    expect(
-      screenAccessFor(
-        { mode: 'live', role: 'participant', sessionId: 'K7F9Q2' },
-        'workspace',
-      ),
-    ).toBe('estimate')
+  const state = (overrides: Partial<ScreenAccessState> = {}): ScreenAccessState => ({
+    mode: 'manual',
+    role: 'facilitator',
+    sessionId: null,
+    hasEverConnected: false,
+    started: false,
+    ...overrides,
   })
+  const participant = (overrides: Partial<ScreenAccessState> = {}) =>
+    state({ mode: 'live', role: 'participant', sessionId: 'K7F9Q2', ...overrides })
+  const facilitator = state({ mode: 'live', sessionId: 'K7F9Q2', started: true })
 
   it.each([
-    ['live', 'facilitator', 'K7F9Q2'],
-    ['manual', 'facilitator', null],
-    ['manual', 'participant', null],
-  ] as const)(
-    'allows Workspace for mode %s, role %s, session %j',
-    (mode, role, sessionId) => {
-      expect(screenAccessFor({ mode, role, sessionId }, 'workspace')).toBe('allow')
-    },
-  )
-
-  it('sends a visitor with no joined session off the estimate screen, to mode-select', () => {
-    expect(
-      screenAccessFor(
-        { mode: 'manual', role: 'facilitator', sessionId: null },
-        'estimate',
-      ),
-    ).toBe('modeSelect')
-  })
-
-  it('sends a facilitator with a session off the estimate screen, to their own Workspace', () => {
-    expect(
-      screenAccessFor(
-        { mode: 'live', role: 'facilitator', sessionId: 'K7F9Q2' },
-        'estimate',
-      ),
-    ).toBe('workspace')
-  })
-
-  it('allows the estimate screen for a participant with a joined session', () => {
-    expect(
-      screenAccessFor(
-        { mode: 'live', role: 'participant', sessionId: 'K7F9Q2' },
-        'estimate',
-      ),
-    ).toBe('allow')
+    // Workspace: a live participant belongs on their estimate screen.
+    ['a live participant', participant(), 'workspace', 'estimate'],
+    ['a live facilitator', facilitator, 'workspace', 'allow'],
+    ['a single user', state(), 'workspace', 'allow'],
+    ['a participant who left', state({ role: 'participant' }), 'workspace', 'allow'],
+    // Estimate screen: only a participant with a joined session.
+    ['a visitor with no session', state(), 'estimate', 'modeSelect'],
+    ['a live facilitator', facilitator, 'estimate', 'workspace'],
+    ['a joined participant', participant(), 'estimate', 'allow'],
+    // Entry screens: a running session goes back to its own screen.
+    [
+      'a connected participant',
+      participant({ hasEverConnected: true }),
+      'modeSelect',
+      'estimate',
+    ],
+    [
+      'a connected participant',
+      participant({ hasEverConnected: true }),
+      'join',
+      'estimate',
+    ],
+    ['a participant still joining', participant(), 'modeSelect', 'join'],
+    ['a participant still joining', participant(), 'join', 'allow'],
+    ['a participant who left', state({ role: 'participant' }), 'modeSelect', 'allow'],
+    ['a started session', state({ started: true }), 'modeSelect', 'workspace'],
+    ['a started session', state({ started: true }), 'join', 'workspace'],
+    ['no session', state(), 'modeSelect', 'allow'],
+    ['no session', state(), 'join', 'allow'],
+  ] as const)('%s on %s -> %s', (_who, given, screen, expected) => {
+    expect(screenAccessFor(given, screen)).toBe(expected)
   })
 })
 
@@ -215,45 +214,4 @@ describe('announcementFor', () => {
     expect(announcementFor({ ...participant, myName: '   ' })).toBeNull()
     expect(announcementFor({ ...participant, participantId: '' })).toBeNull()
   })
-})
-
-describe('entryScreenAccess', () => {
-  const participant = (sessionId: string | null, hasEverConnected: boolean) => ({
-    role: 'participant' as const,
-    sessionId,
-    hasEverConnected,
-  })
-  const facilitator = {
-    role: 'facilitator' as const,
-    sessionId: null,
-    hasEverConnected: false,
-  }
-
-  it.each([
-    [
-      'a connected participant',
-      participant('K7F9Q2', true),
-      false,
-      'modeSelect',
-      'estimate',
-    ],
-    ['a connected participant', participant('K7F9Q2', true), false, 'join', 'estimate'],
-    [
-      'a participant still joining',
-      participant('K7F9Q2', false),
-      false,
-      'modeSelect',
-      'join',
-    ],
-    ['a participant still joining', participant('K7F9Q2', false), false, 'join', 'allow'],
-    ['a participant who left', participant(null, false), false, 'modeSelect', 'allow'],
-    ['a started session', facilitator, true, 'modeSelect', 'workspace'],
-    ['a started session', facilitator, true, 'join', 'workspace'],
-    ['no session', facilitator, false, 'modeSelect', 'allow'],
-  ] as const)(
-    '%s, %s started, on %s -> %s',
-    (_who, connection, started, screen, expected) => {
-      expect(entryScreenAccess(connection, started, screen)).toBe(expected)
-    },
-  )
 })

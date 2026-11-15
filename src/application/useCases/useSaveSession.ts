@@ -10,14 +10,17 @@ function today(): LocalDate {
 
 /** Save the session: write it as a file named after the session and today's
  *  local date, hand it to the user, and remember it as the saved state. A
- *  running live round is not part of the file, so saving is safe in any mode. */
-export function useSaveSession(): () => void {
+ *  running live round is not part of the file, so saving is safe in any mode.
+ *  Returns the file's name, for the UI to confirm the save. */
+export function useSaveSession(): () => string {
   const { download } = useFileDownload()
 
   return () => {
     const { sessionName, unit, items, markSaved } = useSessionStore.getState()
     const file = writeSessionFile({ sessionName, unit, items })
-    download(sessionFileName(sessionName, today()), file)
+    const fileName = sessionFileName(sessionName, today())
+    download(fileName, file)
     markSaved(file)
+    return fileName
   }
 }

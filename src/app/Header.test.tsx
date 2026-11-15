@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
 import { FileDownloadContext } from '../application/composition'
 import { Header } from './Header'
@@ -39,7 +40,7 @@ function resetStore() {
   })
 }
 
-function renderHeader(path = '/') {
+function renderHeader(path: string | { pathname: string; state: unknown } = '/') {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <FileDownloadContext.Provider value={{ download: downloadMock }}>
@@ -47,6 +48,12 @@ function renderHeader(path = '/') {
       </FileDownloadContext.Provider>
     </MemoryRouter>,
   )
+}
+
+/** What the header's live regions currently say (one for the leave prompt,
+ *  one for saves). */
+function announced(): string[] {
+  return screen.getAllByRole('status').map((region) => region.textContent ?? '')
 }
 
 beforeEach(() => {
@@ -134,6 +141,21 @@ describe('Header', () => {
     ).toBeInTheDocument()
   })
 
+  it('announces a save with the file name', async () => {
+    const user = userEvent.setup()
+    useSessionStore.setState({ sessionName: 'Sprint 42' })
+    renderHeader('/workspace')
+
+    await user.click(screen.getByRole('button', { name: /^Save session/ }))
+
+    expect(
+      await screen.findByText(
+        /^Session saved as sprint-42-\d{4}-\d{2}-\d{2}\.estimate\.json$/,
+      ),
+    ).toBeInTheDocument()
+    expect(downloadMock).toHaveBeenCalledTimes(1)
+  })
+
   it('does not make the brand a button on join', () => {
     renderHeader('/join')
     expect(
@@ -147,7 +169,7 @@ describe('Header', () => {
       renderHeader(path)
 
       expect(
-        screen.getByRole('button', { name: 'Back to mode selection' }),
+        screen.getByRole('button', { name: 'EstiMate, back to mode selection' }),
       ).toBeInTheDocument()
     },
   )
@@ -178,7 +200,9 @@ describe('Header', () => {
     })
     renderHeader('/workspace')
 
-    await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))
+    await user.click(
+      screen.getByRole('button', { name: 'EstiMate, back to mode selection' }),
+    )
 
     expect(useSessionStore.getState()).toMatchObject({
       items: [],
@@ -195,19 +219,40 @@ describe('Header', () => {
     useSessionStore.setState({ sessionName: 'My session', items: [storyItem] })
     renderHeader('/workspace')
 
-    await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))
+    await user.click(
+      screen.getByRole('button', { name: 'EstiMate, back to mode selection' }),
+    )
     expect(navigateMock).not.toHaveBeenCalled()
     const armed = screen.getByRole('button', {
       name: 'Unsaved changes, click again to leave',
     })
     // Also announced, since a renamed focused button often isn't.
-    expect(screen.getByRole('status')).toHaveTextContent(
-      'Unsaved changes, click again to leave',
-    )
+    expect(announced()).toContain('Unsaved changes, click again to leave')
 
     await user.click(armed)
     expect(navigateMock).toHaveBeenCalledTimes(1)
     expect(navigateMock).toHaveBeenCalledWith('/')
+  })
+
+  it('has no axe violations while the leave prompt is armed', async () => {
+    const user = userEvent.setup()
+    useSessionStore.setState({ sessionName: 'My session', items: [storyItem] })
+    const { container } = renderHeader('/workspace')
+
+    await user.click(
+      screen.getByRole('button', { name: 'EstiMate, back to mode selection' }),
+    )
+
+    expect(
+      await axe(container, { rules: { 'color-contrast': { enabled: false } } }),
+    ).toHaveNoViolations()
+  })
+
+  it("says why the browser's Back button led back to a running session", () => {
+    renderHeader({ pathname: '/workspace', state: { stillRunning: true } })
+    expect(announced()).toContain(
+      'This session is still running. Leave it with the EstiMate button first.',
+    )
   })
 
   it('names both losses for a live facilitator with peers and unsaved changes', async () => {
@@ -216,11 +261,13 @@ describe('Header', () => {
     useSessionStore.setState({ sessionName: 'My session', items: [storyItem] })
     renderHeader('/workspace')
 
-    await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))
+    await user.click(
+      screen.getByRole('button', { name: 'EstiMate, back to mode selection' }),
+    )
     const label =
       'Unsaved changes, and the session ends for everyone. Click again to leave'
     expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
-    expect(screen.getByRole('status')).toHaveTextContent(label)
+    expect(announced()).toContain(label)
     expect(navigateMock).not.toHaveBeenCalled()
   })
 
@@ -229,7 +276,9 @@ describe('Header', () => {
     useConnectionStore.setState({ mode: 'live', peerCount: 0 })
     renderHeader('/workspace')
 
-    await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))
+    await user.click(
+      screen.getByRole('button', { name: 'EstiMate, back to mode selection' }),
+    )
 
     expect(navigateMock).toHaveBeenCalledTimes(1)
     expect(navigateMock).toHaveBeenCalledWith('/')
@@ -240,7 +289,9 @@ describe('Header', () => {
     useConnectionStore.setState({ mode: 'live', peerCount: 2 })
     renderHeader('/workspace')
 
-    await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))
+    await user.click(
+      screen.getByRole('button', { name: 'EstiMate, back to mode selection' }),
+    )
     expect(navigateMock).not.toHaveBeenCalled()
     expect(
       screen.getByRole('button', { name: 'Click again to leave session' }),

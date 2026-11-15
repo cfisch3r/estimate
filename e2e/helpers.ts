@@ -179,7 +179,7 @@ export async function goBackInBrowser(page: Page): Promise<void> {
 
 /** Header: the brand button that leaves the Workspace or Summary — one click. */
 export async function leaveSession(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Back to mode selection' }).click()
+  await page.getByRole('button', { name: 'EstiMate, back to mode selection' }).click()
 }
 
 /** After one click on the leave button: still in the Workspace, and the

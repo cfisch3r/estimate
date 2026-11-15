@@ -52,8 +52,8 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      // testHelpers.ts's defensive-throw branch is the one deliberate exception
-      // to the pure estimate core's 100% coverage bar (see AGENTS.md).
+      // The two test-data files' defensive throws are the one deliberate
+      // exception to the pure domain's 100% coverage bar (see AGENTS.md).
       exclude: ['src/domain/estimate/testHelpers.ts', 'src/domain/testFixtures.ts'],
       thresholds: {
         'src/domain/**': {

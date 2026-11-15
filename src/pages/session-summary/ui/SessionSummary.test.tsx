@@ -1,16 +1,14 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
-import { FileDownloadContext } from '../../../application/composition'
 import { SessionSummary } from './SessionSummary'
 import { useSessionStore } from '../../../application/testing'
 import type { Item } from '../../../domain/types'
 import { aggregateOf } from '../../../domain/testFixtures'
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
-
-const downloadMock = vi.fn()
 
 vi.mock('react-router', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router')>()
@@ -20,9 +18,7 @@ vi.mock('react-router', async (importOriginal) => {
 function renderSessionSummary() {
   return render(
     <MemoryRouter initialEntries={['/summary']}>
-      <FileDownloadContext.Provider value={{ download: downloadMock }}>
-        <SessionSummary />
-      </FileDownloadContext.Provider>
+      <SessionSummary />
     </MemoryRouter>,
   )
 }
@@ -96,16 +92,16 @@ describe('SessionSummary', () => {
     expect(useSessionStore.getState().activeItemId).toBe('1')
   })
 
-  it('saves the session as a file', async () => {
-    const user = userEvent.setup()
+  it('leaves saving to the header, with no second Save button', () => {
     renderSessionSummary()
+    expect(screen.queryByRole('button', { name: /Save session/ })).not.toBeInTheDocument()
+  })
 
-    await user.click(screen.getByRole('button', { name: /^Save session/ }))
-
-    expect(downloadMock).toHaveBeenCalledTimes(1)
-    expect(downloadMock).toHaveBeenCalledWith(
-      expect.stringMatching(/\.estimate\.json$/),
-      expect.any(String),
-    )
+  it('has no axe violations', async () => {
+    useSessionStore.setState({ items: [item('1', 'Migrate auth', finalized)] })
+    const { container } = renderSessionSummary()
+    expect(
+      await axe(container, { rules: { 'color-contrast': { enabled: false } } }),
+    ).toHaveNoViolations()
   })
 })

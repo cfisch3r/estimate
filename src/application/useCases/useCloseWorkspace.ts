@@ -2,7 +2,7 @@ import { leaveConfirmation } from '../../domain/connection'
 import type { LeaveConfirmation } from '../../domain/connection'
 import { useConnectionStore } from '../stores'
 import { useSaveState } from './useSaveState'
-import { useTeardownLiveSession } from './useTeardownLiveSession'
+import { useEndSession } from './useEndSession'
 
 /** Tear down the workspace entirely: the live session (if any) and the item
  *  list. This is the one place that has to know "leaving" spans all three stores
@@ -16,10 +16,10 @@ export function useCloseWorkspace(): {
   const mode = useConnectionStore((s) => s.mode)
   const peerCount = useConnectionStore((s) => s.peerCount)
   const { unsaved } = useSaveState()
-  const teardownLiveSession = useTeardownLiveSession()
+  const endSession = useEndSession()
 
   return {
-    closeWorkspace: teardownLiveSession,
+    closeWorkspace: endSession,
     confirmation: leaveConfirmation(mode, peerCount, unsaved),
   }
 }

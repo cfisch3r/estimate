@@ -61,7 +61,10 @@ describe('ModeSelect', () => {
     useSessionStore.setState({ started: true })
     renderModeSelect()
     expect(navigateMock).toHaveBeenCalledTimes(1)
-    expect(navigateMock).toHaveBeenCalledWith('/workspace', { replace: true })
+    expect(navigateMock).toHaveBeenCalledWith('/workspace', {
+      replace: true,
+      state: { stillRunning: true },
+    })
   })
 
   it('sends a joined participant back to the estimate screen', () => {
@@ -73,7 +76,10 @@ describe('ModeSelect', () => {
     })
     renderModeSelect()
     expect(navigateMock).toHaveBeenCalledTimes(1)
-    expect(navigateMock).toHaveBeenCalledWith('/estimate', { replace: true })
+    expect(navigateMock).toHaveBeenCalledWith('/estimate', {
+      replace: true,
+      state: { stillRunning: true },
+    })
   })
 
   it('stays on mode selection when no session has started', () => {

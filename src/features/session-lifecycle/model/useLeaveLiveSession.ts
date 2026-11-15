@@ -1,14 +1,14 @@
 import { useNavigate } from 'react-router'
-import { useTeardownLiveSession } from '../../../application'
+import { useEndSession } from '../../../application'
 import { ROUTES } from '../../../shared/lib/routes'
 
 /** Tear down the current live session and navigate back to mode-select. */
 export function useLeaveLiveSession(): () => void {
-  const teardownLiveSession = useTeardownLiveSession()
+  const endSession = useEndSession()
   const navigate = useNavigate()
 
   return () => {
-    teardownLiveSession()
+    endSession()
     navigate(ROUTES.modeSelect)
   }
 }

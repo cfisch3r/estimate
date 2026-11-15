@@ -12,7 +12,13 @@ export function useJoinFlow() {
   const connectionStatus = useConnectionStore((s) => s.connectionStatus)
   const joinLiveSession = useJoinLiveSession()
   const navigate = useNavigate()
-  const [submitted, setSubmitted] = useState(false)
+  // A join already under way when this screen mounts — the browser's Back
+  // button led away and the entry-screen guard led back — is still this
+  // client's own attempt, so it navigates onward once it connects.
+  const [submitted, setSubmitted] = useState(() => {
+    const { role, sessionId } = useConnectionStore.getState()
+    return role === 'participant' && sessionId !== null
+  })
   const [attempt, setAttempt] = useState(0)
 
   const connecting = connectionStatus === 'connecting'

@@ -3,7 +3,7 @@ import type { ChangeEvent } from 'react'
 import { FolderOpenIcon } from '@phosphor-icons/react/dist/csr/FolderOpen'
 import { ActionRow } from '../../../shared/ui'
 import { useLoadSessionFile } from '../../../application'
-import { handFocusTo, takeFocus } from '../model/focusHandoff'
+import { useFocusHandoff } from '../model/focusHandoff'
 import { LoadRejectedAlert } from './LoadRejectedAlert'
 import type { LoadRejection } from './LoadRejectedAlert'
 
@@ -15,6 +15,7 @@ const UNREADABLE = "This file couldn't be read. Pick it again."
  *  that doesn't leaves the session untouched and says why. */
 export function LoadSessionRow() {
   const load = useLoadSessionFile()
+  const { handFocusTo, takeFocus } = useFocusHandoff()
   const rowRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const [rejection, setRejection] = useState<LoadRejection | null>(null)
@@ -22,7 +23,7 @@ export function LoadSessionRow() {
   useEffect(() => {
     // Back from a discarded session: resume where the user started.
     if (takeFocus('load-row')) rowRef.current?.focus()
-  }, [])
+  }, [takeFocus])
 
   async function onFileChosen(event: ChangeEvent<HTMLInputElement>) {
     const input = event.currentTarget
