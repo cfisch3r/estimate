@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router'
+import { BrowserRouter, Navigate, Routes, Route } from 'react-router'
 import {
   FileDownloadContext,
   ParticipantIdentityContext,
@@ -40,6 +40,9 @@ function App() {
                 <Route path={ROUTES.estimate} element={<ParticipantEstimateView />} />
                 <Route path={ROUTES.workspace} element={<Workspace />} />
                 <Route path={ROUTES.summary} element={<SessionSummary />} />
+                {/* Anything else — an old bookmark such as the removed /history
+                    page, or a mistyped path — starts over at mode selection. */}
+                <Route path="*" element={<Navigate to={ROUTES.modeSelect} replace />} />
               </Routes>
             </main>
           </LiveSessionProvider>

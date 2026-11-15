@@ -269,7 +269,8 @@ stateDiagram-v2
 ```
 
 Each state is a real route (`ROUTES` in `shared/lib/routes.ts`, via `react-router` — see
-ADR-006): `/` (mode-select), `/workspace`, `/join`, `/estimate`, `/summary`
+ADR-006): `/` (mode-select), `/workspace`, `/join`, `/estimate`, `/summary`; any other path
+redirects to `/`
 (the #34 redesign replaced `create` / `session` with `mode-select` / `workspace`; reveal
 is no longer a screen — it's Workspace states 1c/1d, #8). The diagram writes ids as
 `mode_select` / `workspace` because Mermaid state ids can't contain `-` or `/`.

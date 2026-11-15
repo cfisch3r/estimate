@@ -167,6 +167,15 @@ describe('Mode selection routing', () => {
     expect(screen.getByText('Live')).toBeInTheDocument()
   })
 
+  it('sends an unknown route, such as the removed history page, to mode selection', () => {
+    window.history.replaceState({}, '', '/history')
+    render(<App />)
+    expect(
+      screen.getByRole('button', { name: /Start single-user mode/ }),
+    ).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/')
+  })
+
   it('navigates to the join screen and back to mode selection', async () => {
     const user = userEvent.setup()
     render(<App />)

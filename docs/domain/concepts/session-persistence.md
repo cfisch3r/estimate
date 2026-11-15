@@ -29,7 +29,7 @@ SessionFile:             # what a saved file holds (format version 1)
   items: Item[]          # every item, finalized or not, in order
 
 Item:                    # as saved — no running round
-  id: string             # unique within the file
+  id: string             # not blank, unique within the file
   title: string          # not blank
   description: string
   notes: string

@@ -114,6 +114,8 @@ function parse(text: string): unknown {
  *  one factory every final result goes through. */
 function readItem(item: FileItem, index: number): Result<Item> {
   const label = `Item ${index + 1}`
+  // A blank id would mean "no item" to a live session's messages.
+  if (item.id.trim().length === 0) return { ok: false, error: `${label} has no id.` }
   if (item.title.trim().length === 0)
     return { ok: false, error: `${label} has no title.` }
   let finalResult: AggregateResult | null = null

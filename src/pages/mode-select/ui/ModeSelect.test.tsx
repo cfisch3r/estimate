@@ -272,6 +272,22 @@ describe('ModeSelect', () => {
       expect(seen).toContain('')
     })
 
+    it('says so when the chosen file can no longer be read', async () => {
+      const user = userEvent.setup()
+      const view = renderModeSelect()
+      const input = view.container.querySelector<HTMLInputElement>('input[type="file"]')
+      if (!input) throw new Error('No file input')
+      const gone = new File([SAVED], 'gone.estimate.json')
+      vi.spyOn(gone, 'text').mockRejectedValue(new DOMException('gone', 'NotFoundError'))
+      await user.upload(input, gone)
+
+      const alert = screen.getByRole('alert')
+      expect(await within(alert).findByText(/can’t be loaded/)).toBeInTheDocument()
+      expect(alert).toHaveTextContent("This file couldn't be read. Pick it again.")
+      expect(alert).toHaveTextContent('gone.estimate.json · nothing was changed')
+      expect(useSessionStore.getState().items).toEqual([])
+    })
+
     it('rejects a damaged file with its reason and loads nothing', async () => {
       const damaged = SAVED.replace('"min":3', '"min":13')
       const { view } = await loadFile(damaged, 'damaged.estimate.json')

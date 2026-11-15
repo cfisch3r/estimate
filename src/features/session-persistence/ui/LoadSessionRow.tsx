@@ -7,6 +7,8 @@ import { handFocusTo, takeFocus } from '../model/focusHandoff'
 import { LoadRejectedAlert } from './LoadRejectedAlert'
 import type { LoadRejection } from './LoadRejectedAlert'
 
+const UNREADABLE = "This file couldn't be read. Pick it again."
+
 /** The "Load a saved session" row on mode selection, with the hidden file
  *  input it opens and the alert for a file that can't be loaded. A file that
  *  loads becomes the session (the page then shows `LoadedSessionCard`); one
@@ -30,7 +32,15 @@ export function LoadSessionRow() {
     if (!file) return
     // Emptied first so a second, identical rejection is announced again.
     setRejection(null)
-    const result = load(await file.text(), file.name)
+    let text: string
+    try {
+      text = await file.text()
+    } catch {
+      // The file was moved, deleted or locked after it was picked.
+      setRejection({ fileName: file.name, reason: UNREADABLE })
+      return
+    }
+    const result = load(text, file.name)
     if (result.ok) {
       handFocusTo('loaded-session')
     } else {

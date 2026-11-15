@@ -55,6 +55,7 @@ Feature: Reading a saved session file
         | field                         | value    | reason                                                                                 |
         | version                       | 2        | This file was saved by a newer version of EstiMate.                                    |
         | unit                          | "months" | The unit "months" isn't one EstiMate can estimate in.                                  |
+        | items[0].id                   | " "      | Item 1 has no id.                                                                      |
         | items[0].title                | ""       | Item 1 has no title.                                                                   |
         | items[0].finalResult.min      | -1       | Item 1, "Payment provider switch", has a minimum of 0 or less.                         |
         | items[1].id                   | "a"      | Item 2 has the same id as item 1.                                                      |
