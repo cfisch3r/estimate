@@ -170,3 +170,23 @@ export function announcementFor(connection: {
   if (participantId.length === 0) return null
   return { participantId, name: connection.myName }
 }
+
+/** Where a visitor of an entry screen (mode selection, Join) belongs instead,
+ *  if a session is still running: the browser's Back button is the only way
+ *  there without the app's own leave, which resets everything first. A joined
+ *  participant goes back to the estimate screen — or to Join while still
+ *  getting in — and a started single-user or facilitator session to its
+ *  Workspace, so Back never skips the leave confirmation or offers a load over
+ *  a running session. `'allow'` means the entry screen may show. */
+export function entryScreenAccess(
+  connection: { role: SessionRole; sessionId: string | null; hasEverConnected: boolean },
+  started: boolean,
+  screen: 'modeSelect' | 'join',
+): 'allow' | 'workspace' | 'estimate' | 'join' {
+  const { role, sessionId, hasEverConnected } = connection
+  if (role === 'participant' && sessionId !== null) {
+    if (hasEverConnected) return 'estimate'
+    return screen === 'join' ? 'allow' : 'join'
+  }
+  return started ? 'workspace' : 'allow'
+}

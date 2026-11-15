@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { aggregateEstimates, median } from './aggregate'
+import { MAX_ESTIMATE_VALUE } from './estimate'
 import { est } from './testHelpers'
 
 describe('aggregateEstimates', () => {
@@ -44,6 +45,12 @@ describe('aggregateEstimates', () => {
     expect(result.min).toBe(3)
     expect(result.expected).toBe(5)
     expect(result.max).toBe(7)
+  })
+
+  it('aggregates estimates at the largest allowed value into a finite result', () => {
+    const top = MAX_ESTIMATE_VALUE
+    const result = aggregateEstimates([est('a', top, top, top), est('b', 1, top, top)])
+    expect(Number.isFinite(result.ci90)).toBe(true)
   })
 
   it('throws on an empty estimate list', () => {

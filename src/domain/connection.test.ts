@@ -8,6 +8,7 @@ import {
   shouldBroadcastSnapshot,
   normalizeSessionCode,
   participantJoin,
+  entryScreenAccess,
   screenAccessFor,
   withConnectionStatus,
 } from './connection'
@@ -214,4 +215,45 @@ describe('announcementFor', () => {
     expect(announcementFor({ ...participant, myName: '   ' })).toBeNull()
     expect(announcementFor({ ...participant, participantId: '' })).toBeNull()
   })
+})
+
+describe('entryScreenAccess', () => {
+  const participant = (sessionId: string | null, hasEverConnected: boolean) => ({
+    role: 'participant' as const,
+    sessionId,
+    hasEverConnected,
+  })
+  const facilitator = {
+    role: 'facilitator' as const,
+    sessionId: null,
+    hasEverConnected: false,
+  }
+
+  it.each([
+    [
+      'a connected participant',
+      participant('K7F9Q2', true),
+      false,
+      'modeSelect',
+      'estimate',
+    ],
+    ['a connected participant', participant('K7F9Q2', true), false, 'join', 'estimate'],
+    [
+      'a participant still joining',
+      participant('K7F9Q2', false),
+      false,
+      'modeSelect',
+      'join',
+    ],
+    ['a participant still joining', participant('K7F9Q2', false), false, 'join', 'allow'],
+    ['a participant who left', participant(null, false), false, 'modeSelect', 'allow'],
+    ['a started session', facilitator, true, 'modeSelect', 'workspace'],
+    ['a started session', facilitator, true, 'join', 'workspace'],
+    ['no session', facilitator, false, 'modeSelect', 'allow'],
+  ] as const)(
+    '%s, %s started, on %s -> %s',
+    (_who, connection, started, screen, expected) => {
+      expect(entryScreenAccess(connection, started, screen)).toBe(expected)
+    },
+  )
 })

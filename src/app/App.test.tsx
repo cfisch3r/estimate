@@ -25,6 +25,7 @@ function resetStore() {
     unit: 'days',
     items: [],
     activeItemId: null,
+    started: false,
   })
   useConnectionStore.setState({
     mode: 'manual',
@@ -32,6 +33,7 @@ function resetStore() {
     sessionId: null,
     myName: '',
     connectionStatus: 'idle',
+    hasEverConnected: false,
     peerCount: 0,
   })
 }

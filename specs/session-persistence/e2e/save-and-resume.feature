@@ -64,3 +64,11 @@ Feature: Save a session to a file and resume it later
     When Alex goes back in the browser
     Then Alex sees the items
       | Login |
+
+  Scenario: Going back in the browser keeps a participant in the live session
+    Given Alex is facilitating a collaborative session named "Sprint 42"
+    And Alex has added the items
+      | Login |
+    And Sam has joined the session
+    When Sam goes back in the browser
+    Then Sam is still in the live session

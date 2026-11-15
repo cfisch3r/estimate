@@ -207,6 +207,13 @@ export async function expectLeaveConfirmationForUnsavedChangesInLiveSession(
   await expect(page).toHaveURL(/\/workspace$/)
 }
 
+/** Participant: on the estimate screen of the session they joined, with no
+ *  way to load a file over it. */
+export async function expectInLiveSessionAsParticipant(page: Page): Promise<void> {
+  await expect(page).toHaveURL(/\/estimate$/)
+  await expect(page.getByRole('button', { name: 'Load a saved session' })).toHaveCount(0)
+}
+
 /** ModeSelect is showing. */
 export async function expectAtModeSelection(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/$/)

@@ -7,6 +7,7 @@ import {
   createCollaborativeSession,
   expectActiveItem,
   expectAtModeSelection,
+  expectInLiveSessionAsParticipant,
   expectFinalizedEstimate,
   expectItemList,
   expectLeaveConfirmationForUnsavedChanges,
@@ -224,6 +225,10 @@ Then(
     await expectLeaveConfirmationForUnsavedChangesInLiveSession(await actor(name))
   },
 )
+
+Then('{word} is still in the live session', async ({ actor }, name: string) => {
+  await expectInLiveSessionAsParticipant(await actor(name))
+})
 
 Then('{word} is back at mode selection', async ({ actor }, name: string) => {
   await expectAtModeSelection(await actor(name))

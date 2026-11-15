@@ -5,15 +5,15 @@ import { ActionRow, BrandMark, CardMeta, Tag } from '../../../shared/ui'
 import { useNavigate } from 'react-router'
 import { ROUTES } from '../../../shared/lib/routes'
 import {
+  useRunningSessionGuard,
   useStartSingleUser,
   useStartCollaborative,
 } from '../../../features/session-lifecycle'
 import { LoadedSessionCard, LoadSessionRow } from '../../../features/session-persistence'
 import { useSessionStore } from '../../../application'
-import { useStartedSessionGuard } from '../model/useStartedSessionGuard'
 
 export function ModeSelect() {
-  useStartedSessionGuard()
+  useRunningSessionGuard('modeSelect')
   const startSingleUser = useStartSingleUser()
   const startCollaborative = useStartCollaborative()
   const navigate = useNavigate()

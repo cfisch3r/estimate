@@ -33,7 +33,7 @@ Estimate:
   # Self-validating: only constructible with best ≤ likely ≤ worst — illegal ranges can't be represented
   best: number     # > 0
   likely: number   # ≥ best
-  worst: number    # ≥ likely
+  worst: number    # ≥ likely, ≤ 1,000,000 (any unit)
 
 AggregateResult:
   # The group range produced by the Process above. Self-validating like Estimate:
@@ -79,6 +79,7 @@ display value can drift out of sync with the exact division.
 | Rule | Condition | Behavior | Spec |
 |---|---|---|---|
 | **A final result keeps every rule** | Any final result, aggregated or read from a file | It is accepted only when its values are finite, the minimum is above 0, min ≤ expected ≤ max, and the 90% value is the formula's for that range; otherwise it is rejected with the rule it breaks | [final-result](../../../specs/estimation-method/domain/final-result.feature) |
+| **An estimate stays within 1,000,000** | A best, likely or worst case above 1,000,000, in any unit, from the form or from a peer | The estimate is rejected ("Enter a smaller value"), so aggregating submissions can never produce a 90% value too large to keep the rules above | — |
 
 ## Rules (bias guards)
 

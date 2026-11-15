@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { createEstimate, findOrderViolation, validateEstimateValues } from './estimate'
+import {
+  createEstimate,
+  findOrderViolation,
+  MAX_ESTIMATE_VALUE,
+  validateEstimateValues,
+} from './estimate'
 
 describe('createEstimate', () => {
   it('accepts values in ascending order', () => {
@@ -87,6 +92,22 @@ describe('validateEstimateValues', () => {
       code: 'non-positive',
       fields: ['best'],
     })
+  })
+
+  it('names every field above the largest value an estimate may hold', () => {
+    expect(validateEstimateValues(2, 5, MAX_ESTIMATE_VALUE + 1)).toMatchObject({
+      ok: false,
+      code: 'too-large',
+      fields: ['worst'],
+    })
+    expect(validateEstimateValues(2e6, 3e6, 4e6)).toMatchObject({
+      code: 'too-large',
+      fields: ['best', 'likely', 'worst'],
+    })
+  })
+
+  it('accepts the largest value an estimate may hold', () => {
+    expect(validateEstimateValues(1, 2, MAX_ESTIMATE_VALUE)).toEqual({ ok: true })
   })
 
   it('flags best above likely', () => {

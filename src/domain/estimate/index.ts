@@ -29,7 +29,12 @@ export type {
   RawEstimateInput,
   Result,
 } from './estimate'
-export { createEstimate, findOrderViolation, validateEstimateValues } from './estimate'
+export {
+  createEstimate,
+  findOrderViolation,
+  MAX_ESTIMATE_VALUE,
+  validateEstimateValues,
+} from './estimate'
 export { aggregateEstimates } from './aggregate'
 export { createAggregateResult } from './aggregateResult'
 export { computeCI90 } from './ci90'

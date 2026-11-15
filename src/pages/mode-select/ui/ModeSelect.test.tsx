@@ -45,6 +45,7 @@ function resetStore() {
     role: 'facilitator',
     sessionId: null,
     connectionStatus: 'idle',
+    hasEverConnected: false,
     peerCount: 0,
   })
 }
@@ -61,6 +62,18 @@ describe('ModeSelect', () => {
     renderModeSelect()
     expect(navigateMock).toHaveBeenCalledTimes(1)
     expect(navigateMock).toHaveBeenCalledWith('/workspace', { replace: true })
+  })
+
+  it('sends a joined participant back to the estimate screen', () => {
+    useConnectionStore.setState({
+      mode: 'live',
+      role: 'participant',
+      sessionId: 'K7F9Q2',
+      hasEverConnected: true,
+    })
+    renderModeSelect()
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/estimate', { replace: true })
   })
 
   it('stays on mode selection when no session has started', () => {
