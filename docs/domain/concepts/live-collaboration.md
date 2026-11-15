@@ -63,7 +63,7 @@ A **round** is the lifecycle of one Item through estimate → reveal → (retry 
 Retrying an item clears its submissions and starts the round again; finalizing freezes its
 `finalResult` and moves the facilitator on to the next item.
 
-`Team`/`Workspace` (a lightweight grouping for saved sessions, PRD §3) is not included
+`Team` (a lightweight grouping for saved sessions) is not included
 above — it has no process, rule, or implemented behavior of its own yet, only a mention as
 a future grouping concept. It belongs here once a process or rule for it exists.
 

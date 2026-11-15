@@ -178,12 +178,16 @@ flowchart LR
   SharedSteps -->|uses| World
   ConceptSteps & SharedSteps -->|call| Helpers
 
-  classDef spec fill:#DDD6FE,stroke:#7C3AED,color:#2E1065
-  classDef cfg  fill:#FDE68A,stroke:#D97706,color:#3F2D0B
-  class Features,ConceptSteps,Stereotypes,World,SharedSteps,Helpers spec
+  classDef spec   fill:#DDD6FE,stroke:#7C3AED,color:#2E1065
+  classDef shared fill:#BFDBFE,stroke:#2563EB,color:#172554
+  classDef ext    fill:#E5E7EB,stroke:#6B7280,color:#111827
+  classDef cfg    fill:#FDE68A,stroke:#D97706,color:#3F2D0B
+  class Features,ConceptSteps,Stereotypes spec
+  class World,SharedSteps shared
+  class Helpers ext
   class Gen,Project cfg
   style conceptlane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
-  style sharedlane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
+  style sharedlane fill:#EFF6FF,stroke:#2563EB,stroke-width:2px,color:#14171f
 ```
 
 | Part | Responsibility |
@@ -203,7 +207,7 @@ such as `stereotypes.ts` free of `src/`.
 | Concept | Scenarios cover |
 |---|---|
 | `live-session` | A late joiner sees the running round — a direct port of `late-joiner-snapshot.spec.ts` below, kept side by side as the baseline comparison |
-| `session-persistence` | Save and resume in single-user and live mode, a damaged file rejected, the unsaved-changes leave warning (alone and with live participants) and tab-close warning, the browser's Back button kept away from a running session |
+| `session-persistence` | Save and resume in Manual and Live mode, a damaged file rejected, the unsaved-changes leave warning (alone and with live participants) and tab-close warning, the browser's Back button kept away from a running session |
 
 ## CI
 

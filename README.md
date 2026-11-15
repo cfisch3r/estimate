@@ -43,9 +43,10 @@ pnpm test:specs           # every executable Gherkin spec (domain, then e2e)
 pnpm deadcode             # knip — unused exports/files/dependencies
 ```
 
-Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm format:check`, `pnpm test`, and
-`pnpm deadcode` before considering any change complete. These also run as required checks
-in CI (`.github/workflows/ci.yml`) on every PR and push to `main` — `pnpm test:e2e` does
+Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm arch:specs`, `pnpm specs:no-pending`,
+`pnpm format:check`, `pnpm test`, `pnpm test:coverage`, and `pnpm deadcode` before
+considering any change complete (AGENTS.md has the authoritative list). These also run as
+required checks in CI (`.github/workflows/ci.yml`) on every PR and push to `main` — `pnpm test:e2e` does
 too (needs `pnpm exec playwright install --with-deps chromium` once beforehand).
 `pnpm test:e2e:real-world` only runs on a nightly schedule and manual dispatch
 (`.github/workflows/e2e-real-world.yml`); it never gates a PR.

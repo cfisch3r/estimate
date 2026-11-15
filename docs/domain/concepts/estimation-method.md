@@ -78,8 +78,8 @@ display value can drift out of sync with the exact division.
 
 | Rule | Condition | Behavior | Spec |
 |---|---|---|---|
-| **A final result keeps every rule** | Any final result, aggregated or read from a file | It is accepted only when its values are finite, the minimum is above 0, min ≤ expected ≤ max, and the 90% value is the formula's for that range; otherwise it is rejected with the rule it breaks | [final-result](../../../specs/estimation-method/domain/final-result.feature) |
-| **An estimate stays within 1,000,000** | A best, likely or worst case above 1,000,000, in any unit, from the form or from a peer | The estimate is rejected ("Enter a smaller value"), so aggregating submissions can never produce a 90% value too large to keep the rules above | — |
+| **A final result keeps every rule** | Any final result, aggregated or read from a file | **Accepted** only when every `AggregateResult` constraint in the information model holds; otherwise **rejected** with the rule it breaks | [final-result](../../../specs/estimation-method/domain/final-result.feature) |
+| **An estimate stays within 1,000,000** | A best, likely or worst case above 1,000,000, in any unit, from the form or from a peer | The estimate is **rejected** ("Enter a smaller value"), so aggregating submissions can never produce a 90% value too large to keep the rule above | — |
 
 ## Rules (bias guards)
 
@@ -92,5 +92,6 @@ These are nudges, not hard blocks — they never prevent submission or finalize.
 | **Outlier flag at reveal** | A participant's value is far from the group median | **Highlight** (not hide) the outlier, to prompt discussion rather than silently average it out |
 | **Uncertainty-range guard** | The entered range (worst/best ratio) is narrower than the selected uncertainty level's guidance ratio | **Nudge:** the range looks narrow for that phase, teams at this stage typically see a wider spread. If the ratio already meets or exceeds guidance, show a **calm confirmation** instead |
 
-No executable spec exists yet for this concept's behavior (only the live-session join flow
-is covered so far — see [live-collaboration](live-collaboration.md)).
+The final-result rules have an executable spec
+([final-result](../../../specs/estimation-method/domain/final-result.feature)); the
+aggregation and the bias guards don't yet.

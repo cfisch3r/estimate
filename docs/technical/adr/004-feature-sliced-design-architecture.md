@@ -4,6 +4,13 @@
 **Date:** 2026-09-29
 **Related:** `.oxlintrc.json`, `steiger.config.ts`, `docs/technical/concepts/` (diagram conventions), issues #111, #112
 
+> **Update 2026-11-15:** session save and load added a fourth feature slice,
+> `features/session-persistence` (Save button, Load row, loaded-session card, rejection
+> alert, the leave-page warning); the mode-select page's `ModeRow` moved to
+> `shared/ui/ActionRow` once that slice needed it too; and `useRunningSessionGuard` joined
+> the hooks in `features/session-lifecycle/model`. `features/submit-estimate` no longer
+> exists: participant submission is the application use case `useSubmitEstimate`.
+>
 > **Update 2026-10-09:** ADR-009 stage 3d split the remaining UI-only `entities/session` slice into
 > `entities/item` and `entities/estimate`; the `entities/session/...` paths below are the original record.
 >
