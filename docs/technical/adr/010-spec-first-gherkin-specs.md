@@ -26,9 +26,12 @@
 >   keeps them, like `e2e` driver code, free of `src/`.
 > - **Running and pausing**<br>
 >   `pnpm test:specs` runs every Gherkin spec: the `domain` Test Level, then every `*-bdd`
->   project. `pnpm test` and `pnpm test:coverage` include the `domain` specs, so while one
->   is deliberately failing (step 2 below) the gitignored marker
->   `.claude/hooks/stop-checks.paused` pauses the Stop hook.
+>   project. A scenario written before its implementation (step 2 below) carries the tag
+>   `@fail` at either Test Level: quickpickle (configured with `failTags: ['@fail']`) and
+>   playwright-bdd (`test.fail()`) both count it as passing while it fails and turn the run
+>   red once it passes, so the tag has to go in the change that implements it. Every check,
+>   the Stop hook's included, keeps running meanwhile, and the tag shows in the diff which
+>   specs are still pending.
 >
 > Two follow-ups below are now due: there are three spec dependency rules, so the canary
 > follow-up applies; and a second Test Level exists, so "no shared DSL across Test Levels"
@@ -120,7 +123,8 @@ never assumed, both optional**:
    discarded once the story ships.
 2. **After branching, before planning or implementation** — write the scenario(s) as a
    `.feature` file (plus driver code) at the appropriate Test Level, generate it, and
-   confirm it fails for the right reason before any implementation code is written.
+   confirm it fails for the right reason before any implementation code is written. Then
+   tag the scenario `@fail` until the implementation lands.
 
 ## Rationale
 

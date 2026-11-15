@@ -36,7 +36,10 @@ export default defineConfig({
       {
         // ADR-010's `domain` Test Level: Gherkin specs under
         // specs/<concept>/domain/, run by quickpickle against src/domain only.
-        plugins: [quickpickle()],
+        // `@fail` marks a scenario written before its implementation (ADR-010):
+        // it must fail, and turns the run red once it passes — the same tag
+        // playwright-bdd maps to Playwright's test.fail() at the `e2e` level.
+        plugins: [quickpickle({ failTags: ['@fail'] })],
         test: {
           name: 'specs-domain',
           include: ['specs/*/domain/*.feature'],

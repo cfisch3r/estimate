@@ -79,7 +79,8 @@ time, never assumed, both optional** — before planning and implementation star
    implementation. Write the scenario as a `.feature` file plus driver code at the
    appropriate **Test Level** (`docs/glossary.md`) under `specs/<concept>/<test level>/`,
    generate it, and confirm it fails for the right reason before any implementation code is
-   written.
+   written. Then tag it `@fail` (both Test Levels): it stays green while it fails, and turns
+   red once it passes, so the change that implements it removes the tag.
 
 Once planning starts, the [Collaboration workflow](#collaboration-workflow-github) applies
 (branch per issue, PR with `Closes #n`, review passes, ask before merge).
@@ -173,9 +174,8 @@ merge (apart from scripts run through `pnpm`).
   writes outside the repo (apart from `~/.claude`, the Obsidian inbox and the Claude scratchpad), paths containing `..`, edits under `.git`, `node_modules` and `.env` files, and edits to `nocturne.css`; a `PostToolUse` per-file
   `oxlint` check (surfaces output, never blocks); a `Stop` hook running `pnpm lint`
   (including the `jsx-a11y` plugin)/typecheck/`pnpm arch`/`pnpm deadcode`/
-  `pnpm test:coverage` once per turn. While a spec is deliberately failing (ADR-010's
-  failing-spec step), the gitignored marker `.claude/hooks/stop-checks.paused` skips that
-  hook; delete it once the specs pass.
+  `pnpm test:coverage` once per turn. A spec written before its implementation carries
+  `@fail` (ADR-010) instead of pausing the hook.
 
 Architecture review and code placement come from the **`react-webapp-architecture` plugin**
 (personal marketplace `agiledojo-plugins`, installed with `--scope local`; `.worktreeinclude`
