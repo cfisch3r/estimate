@@ -113,6 +113,19 @@ describe('hasUnsavedChanges', () => {
     expect(hasUnsavedChanges(saved, writeSessionFile(saved))).toBe(false)
   })
 
+  // The unsaved check compares two texts written by writeSessionFile, so it
+  // holds only while the writer gives the same text for the same session —
+  // a timestamp or any other per-call field would make every session count as
+  // unsaved right after a save or a load.
+  it('writes the same text again after a round trip through the reader', () => {
+    const written = writeSessionFile(
+      session({ items: [finalizedItemOf({ id: 'a', title: 'A' }), itemOf({ id: 'b' })] }),
+    )
+    const read = readSessionFile(written)
+    if (!read.ok) throw new Error(read.error)
+    expect(writeSessionFile(read.value)).toBe(written)
+  })
+
   it('is true after a durable edit', () => {
     const saved = writeSessionFile(session())
     expect(hasUnsavedChanges(session({ unit: 'weeks' }), saved)).toBe(true)
