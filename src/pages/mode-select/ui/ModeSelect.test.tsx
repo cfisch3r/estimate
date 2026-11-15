@@ -38,6 +38,7 @@ function resetStore() {
     activeItemId: null,
     lastSavedFile: null,
     loadedFrom: null,
+    started: false,
   })
   useConnectionStore.setState({
     mode: 'manual',
@@ -55,6 +56,18 @@ beforeEach(() => {
 })
 
 describe('ModeSelect', () => {
+  it('sends a started session back to its Workspace', () => {
+    useSessionStore.setState({ started: true })
+    renderModeSelect()
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/workspace', { replace: true })
+  })
+
+  it('stays on mode selection when no session has started', () => {
+    renderModeSelect()
+    expect(navigateMock).not.toHaveBeenCalled()
+  })
+
   it('has no axe violations', async () => {
     const { container } = renderModeSelect()
 

@@ -10,8 +10,10 @@ import {
 } from '../../../features/session-lifecycle'
 import { LoadedSessionCard, LoadSessionRow } from '../../../features/session-persistence'
 import { useSessionStore } from '../../../application'
+import { useStartedSessionGuard } from '../model/useStartedSessionGuard'
 
 export function ModeSelect() {
+  useStartedSessionGuard()
   const startSingleUser = useStartSingleUser()
   const startCollaborative = useStartCollaborative()
   const navigate = useNavigate()

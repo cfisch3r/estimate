@@ -171,6 +171,12 @@ export async function continueSingleUser(page: Page): Promise<void> {
   await page.waitForURL('**/workspace')
 }
 
+/** The browser's own Back button: history navigation, not the app's leave
+ *  button, so no leave confirmation or teardown runs on the way. */
+export async function goBackInBrowser(page: Page): Promise<void> {
+  await page.goBack()
+}
+
 /** Header: the brand button that leaves the Workspace or Summary — one click. */
 export async function leaveSession(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Back to mode selection' }).click()

@@ -34,3 +34,11 @@ Feature: Warn before unsaved changes are lost
       | Payment provider switch |
     When Alex closes the tab
     Then the browser asks Alex to confirm leaving the page
+
+  Scenario: Going back in the browser keeps a session with unsaved changes
+    Given Alex is estimating alone in a session named "Checkout rework"
+    And Alex has added the items
+      | Payment provider switch |
+    When Alex goes back in the browser
+    Then Alex sees the items
+      | Payment provider switch |

@@ -55,3 +55,12 @@ Feature: Save a session to a file and resume it later
     When Alex loads the saved file
     Then Alex is told the file can't be loaded
     And Alex has no session loaded
+
+  Scenario: Going back in the browser never reaches a load while live
+    Given Alex is facilitating a collaborative session named "Sprint 42"
+    And Alex has added the items
+      | Login |
+    And Sam has joined the session
+    When Alex goes back in the browser
+    Then Alex sees the items
+      | Login |

@@ -14,6 +14,7 @@ import {
   expectNoSessionLoaded,
   expectSessionName,
   finalizeItem,
+  goBackInBrowser,
   leaveSession,
   loadSessionFile,
   saveSession,
@@ -161,6 +162,10 @@ When('{word} continues alone', async ({ actor }, name: string) => {
 
 When('{word} starts a collaborative session', async ({ actor, state }, name: string) => {
   state.sessionCode = await startCollaborativeEstimation(await actor(name))
+})
+
+When('{word} goes back in the browser', async ({ actor }, name: string) => {
+  await goBackInBrowser(await actor(name))
 })
 
 When('{word} closes the tab', async ({ actor, state }, name: string) => {

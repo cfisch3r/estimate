@@ -26,6 +26,11 @@ export interface SessionStore {
    *  reset — what tells mode selection a loaded session is waiting to start.
    *  Null for a session that wasn't loaded. */
   loadedFrom: string | null
+  /** Whether a mode has started on this session and it hasn't been left yet.
+   *  Mode selection sends a started session back to its Workspace, so the
+   *  browser's Back button never skips the leave confirmation or offers a
+   *  load over a running session. */
+  started: boolean
 
   setSessionName: (name: string) => void
   setUnit: (unit: EstimationUnit) => void
@@ -36,8 +41,9 @@ export interface SessionStore {
   /** Passing null clears the selection (e.g. after finalizing the last item
    *  that still needed one), showing the "all items finalized" empty state. */
   selectItem: (id: string | null) => void
-  /** Select the first item that still needs an estimate (null if none). */
-  selectFirstPending: () => void
+  /** Start a mode on this session: mark it started and select the first item
+   *  that still needs an estimate (null if none). */
+  startSession: () => void
   setItemNotes: (id: string, notes: string) => void
   setItemDescription: (id: string, description: string) => void
   /** Back to a new session: every field as it starts, the default unit
@@ -61,6 +67,7 @@ const NEW_SESSION = {
   activeItemId: null,
   lastSavedFile: null,
   loadedFrom: null,
+  started: false,
 } satisfies Partial<SessionStore>
 
 export const useSessionStore = create<SessionStore>((set) => ({
@@ -91,8 +98,8 @@ export const useSessionStore = create<SessionStore>((set) => ({
     }),
 
   selectItem: (id) => set({ activeItemId: id }),
-  selectFirstPending: () =>
-    set((state) => ({ activeItemId: firstPendingItemId(state.items) })),
+  startSession: () =>
+    set((state) => ({ started: true, activeItemId: firstPendingItemId(state.items) })),
 
   setItemNotes: (id, notes) =>
     set((state) => ({ items: updateItem(state.items, id, { notes }) })),
