@@ -13,6 +13,8 @@ const EXIT_PATHS = new Set<string>([ROUTES.workspace, ROUTES.summary])
 const ARMED_LABEL = {
   unsaved: 'Unsaved changes, click again to leave',
   'live-peers': 'Click again to leave session',
+  'unsaved-and-live-peers':
+    'Unsaved changes, and the session ends for everyone. Click again to leave',
 } as const
 
 const FEEDBACK_URL =
@@ -40,7 +42,7 @@ export function Header() {
           <button
             ref={leaveRef}
             type="button"
-            className="app-header-brand app-header-brand-home"
+            className={`app-header-brand app-header-brand-home${armedLabel ? ' app-header-brand-armed' : ''}`}
             aria-label={armedLabel ?? 'Back to mode selection'}
             style={{ color: armedLabel ? 'var(--color-warning)' : undefined }}
             onClick={confirmation === 'none' ? leaveWorkspace : armAndLeave}

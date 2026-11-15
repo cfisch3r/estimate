@@ -10,6 +10,7 @@ import {
   expectFinalizedEstimate,
   expectItemList,
   expectLeaveConfirmationForUnsavedChanges,
+  expectLeaveConfirmationForUnsavedChangesInLiveSession,
   expectLoadRejected,
   expectNoSessionLoaded,
   expectSessionName,
@@ -214,6 +215,13 @@ Then(
   '{word} is asked to confirm leaving because of unsaved changes',
   async ({ actor }, name: string) => {
     await expectLeaveConfirmationForUnsavedChanges(await actor(name))
+  },
+)
+
+Then(
+  '{word} is asked to confirm leaving because of unsaved changes and the session ending for everyone',
+  async ({ actor }, name: string) => {
+    await expectLeaveConfirmationForUnsavedChangesInLiveSession(await actor(name))
   },
 )
 

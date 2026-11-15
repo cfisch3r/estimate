@@ -203,7 +203,7 @@ such as `stereotypes.ts` free of `src/`.
 | Concept | Scenarios cover |
 |---|---|
 | `live-session` | A late joiner sees the running round — a direct port of `late-joiner-snapshot.spec.ts` below, kept side by side as the baseline comparison |
-| `session-persistence` | Save and resume in single-user and live mode, a damaged file rejected, the unsaved-changes leave and tab-close warnings |
+| `session-persistence` | Save and resume in single-user and live mode, a damaged file rejected, the unsaved-changes leave warning (alone and with live participants) and tab-close warning, the browser's Back button kept away from a running session |
 
 ## CI
 

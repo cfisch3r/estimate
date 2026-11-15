@@ -120,7 +120,8 @@ describe('leaveConfirmation', () => {
     ['manual', 0, false, 'none'],
     ['manual', 3, false, 'none'],
     ['manual', 0, true, 'unsaved'],
-    ['live', 2, true, 'unsaved'],
+    ['live', 0, true, 'unsaved'],
+    ['live', 2, true, 'unsaved-and-live-peers'],
   ] as const)('mode %s, %i peers, unsaved %s -> %s', (mode, peers, unsaved, expected) => {
     expect(leaveConfirmation(mode, peers, unsaved)).toBe(expected)
   })

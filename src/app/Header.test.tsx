@@ -210,6 +210,20 @@ describe('Header', () => {
     expect(navigateMock).toHaveBeenCalledWith('/')
   })
 
+  it('names both losses for a live facilitator with peers and unsaved changes', async () => {
+    const user = userEvent.setup()
+    useConnectionStore.setState({ mode: 'live', role: 'facilitator', peerCount: 2 })
+    useSessionStore.setState({ sessionName: 'My session', items: [storyItem] })
+    renderHeader('/workspace')
+
+    await user.click(screen.getByRole('button', { name: 'Back to mode selection' }))
+    const label =
+      'Unsaved changes, and the session ends for everyone. Click again to leave'
+    expect(screen.getByRole('button', { name: label })).toBeInTheDocument()
+    expect(screen.getByRole('status')).toHaveTextContent(label)
+    expect(navigateMock).not.toHaveBeenCalled()
+  })
+
   it('leaves immediately for a live facilitator with nobody connected', async () => {
     const user = userEvent.setup()
     useConnectionStore.setState({ mode: 'live', peerCount: 0 })

@@ -193,6 +193,20 @@ export async function expectLeaveConfirmationForUnsavedChanges(
   await expect(page).toHaveURL(/\/workspace$/)
 }
 
+/** After one click on a live facilitator's leave button with unsaved
+ *  changes: still in the Workspace, and the armed button names both losses —
+ *  the unsaved changes and the session ending for every participant. */
+export async function expectLeaveConfirmationForUnsavedChangesInLiveSession(
+  page: Page,
+): Promise<void> {
+  await expect(
+    page.getByRole('button', {
+      name: 'Unsaved changes, and the session ends for everyone. Click again to leave',
+    }),
+  ).toBeVisible()
+  await expect(page).toHaveURL(/\/workspace$/)
+}
+
 /** ModeSelect is showing. */
 export async function expectAtModeSelection(page: Page): Promise<void> {
   await expect(page).toHaveURL(/\/$/)

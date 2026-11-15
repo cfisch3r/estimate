@@ -11,6 +11,14 @@ Feature: Warn before unsaved changes are lost
     When Alex leaves the session
     Then Alex is asked to confirm leaving because of unsaved changes
 
+  Scenario: Leaving a live session with unsaved changes names both losses
+    Given Alex is facilitating a collaborative session named "Sprint 42"
+    And Alex has added the items
+      | Login |
+    And Sam has joined the session
+    When Alex leaves the session
+    Then Alex is asked to confirm leaving because of unsaved changes and the session ending for everyone
+
   Scenario: Leaving right after saving needs no confirmation
     Given Alex is estimating alone in a session named "Checkout rework"
     And Alex has added the items

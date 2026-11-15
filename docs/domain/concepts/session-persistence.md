@@ -44,7 +44,7 @@ file: they belong to participants of a session that won't exist when the file is
 
 | Rule | Condition | Behavior | Spec |
 |---|---|---|---|
-| **A session survives only as a saved file** | The session holds changes that no saved or loaded file has | Leaving it, or closing the tab, asks for confirmation first. Right after a save or a load, nothing asks | [unsaved-changes](../../../specs/session-persistence/e2e/unsaved-changes.feature) |
+| **A session survives only as a saved file** | The session holds changes that no saved or loaded file has | Leaving it, or closing the tab, asks for confirmation first. In a live session with connected participants, the leave confirmation names both losses: the unsaved changes and the session ending for everyone. Right after a save or a load, nothing asks | [unsaved-changes](../../../specs/session-persistence/e2e/unsaved-changes.feature) |
 | **Only the item-list holder can lose a session** | A participant in a live session | Never asked to confirm leaving for unsaved changes, and offered no Save | — |
 | **A saved file holds no running round** | Saving in either mode | The file keeps name, unit and every item with its final result, nothing of a round in progress | [read-session-file](../../../specs/session-persistence/domain/read-session-file.feature) |
 | **Load only before a mode starts** | A facilitator resumes a saved session | Loading happens on mode selection; the loaded session then starts in either mode | [save-and-resume](../../../specs/session-persistence/e2e/save-and-resume.feature) |

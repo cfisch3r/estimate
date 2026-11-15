@@ -102,19 +102,22 @@ export function holdsItemList(role: SessionRole): boolean {
 }
 
 /** Why leaving the workspace needs a second click, if it does: `'unsaved'`
- *  when the session holds changes no saved file has (they would be lost), else
+ *  when the session holds changes no saved file has (they would be lost),
  *  `'live-peers'` when a live session still has peers (leaving ends it for
- *  them too), else `'none'`. Unsaved changes win because they are the larger
- *  loss and the one the user can still prevent by saving. */
-export type LeaveConfirmation = 'none' | 'unsaved' | 'live-peers'
+ *  them too), `'unsaved-and-live-peers'` when both hold — each loss is named,
+ *  neither hides the other — else `'none'`. */
+export type LeaveConfirmation =
+  'none' | 'unsaved' | 'live-peers' | 'unsaved-and-live-peers'
 
 export function leaveConfirmation(
   mode: SessionMode,
   peerCount: number,
   unsaved: boolean,
 ): LeaveConfirmation {
+  const livePeers = mode === 'live' && peerCount > 0
+  if (unsaved && livePeers) return 'unsaved-and-live-peers'
   if (unsaved) return 'unsaved'
-  if (mode === 'live' && peerCount > 0) return 'live-peers'
+  if (livePeers) return 'live-peers'
   return 'none'
 }
 
