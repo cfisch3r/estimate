@@ -1,77 +1,149 @@
 # Live Collaboration — Domain Concept
 
-EstiMate has two session modes. Both produce the same four values per item (minimum,
-expected, 90% confidence interval, maximum) and share the same summary, export, and
-save/load behavior — only how the numbers get in differs (**ADR-001** records why both
-modes exist). Saving and loading a session is its own concept,
-[session-persistence](session-persistence.md). [PRD](../prd.md) §4.1 is the short product-facing summary of this process,
-§4.2 its mode-comparison table.
+EstiMate has two session modes, **Live mode** and **Manual mode**. Both finalize each item
+to the same `AggregateResult` (min, expected, ci90, max); only how the values get in
+differs (see the rule **Both modes are interchangeable at the report**). Saving and loading
+a session is its own concept, [session-persistence](session-persistence.md).
+[PRD](../prd.md) §4.1 is the short product-facing summary of this process, §4.2 its
+mode-comparison table.
 
 ## Process
 
-**Live mode — live collaborative session (peer-to-peer)**
+### Live mode
+
 The team estimates together in real time, each participant submitting their own numbers
 from their own device.
 
-1. **Start collaborative** — the facilitator starts a session and immediately gets a
-   shareable code; the session name and items are added afterwards, and can keep changing
+Arrows lead to the next step; edge labels are the conditions.
+
+```mermaid
+flowchart TD
+    Start["1 Start Live mode"] --> Join["2 Join"]
+    Join --> Estimate["3 Estimate"]
+    Join -->|no connection| Fallback["2a Connection fallback"]
+    Fallback -->|retry| Join
+    Estimate --> Reveal["4 Reveal"]
+    Reveal --> Discuss{"5 Discuss:<br/>converged?"}
+    Discuss -->|no, retry| Estimate
+    Discuss -->|yes| Finalize["6 Finalize"]
+    Finalize --> More{"More items?"}
+    More -->|yes| Estimate
+    More -->|no| Summary["7 Session summary"]
+```
+
+1. **Start Live mode** — the facilitator picks "Start collaborative" and immediately gets a
+   shareable session code; the session name and items are added afterwards, and can keep changing
    mid-session
-2. **Join session** — a participant opens the link and enters their name (named, not
-   anonymous — enables direct discussion)
-3. **Estimate an item** — for the active item, each participant privately submits three
-   numbers: Best Case, Most Likely, Worst Case (same unit, e.g. days)
-4. **Reveal** — the facilitator reveals once everyone has submitted, or manually. Shows
-   each participant's three values side by side, plus the group's calculated confidence
-   interval
-5. **Discuss & converge** — the team discusses outliers; the facilitator can trigger a
-   re-estimate round for the item
-6. **Finalize item** — the facilitator locks in the item's values (either the
-   auto-calculated group range, or a manually reconciled one) and moves to the next item
-7. **Session summary** — at the end, a report of all items with their four values,
-   exportable and saveable to a file for later reference
-8. **Connection fallback** — if a participant never reaches the facilitator (e.g. a strict
-   network at join time), the app tells them plainly and offers a retry; there is no
-   in-app way to switch a single item, or the running session, to Manual mode mid-flight
-   (**ADR-003**, "Role-asymmetric link state")
+2. **Join** — a participant enters the code and their name (named, not anonymous — enables
+   direct discussion)
+   - **2a Connection fallback** — a participant who never reaches the facilitator (e.g. a
+     strict network at join time) is told so plainly and offered a retry (see the rule
+     **No mid-session mode switch**)
+3. **Estimate** — for the active item, each participant privately submits Best Case, Most
+   Likely and Worst Case in the session's unit
+4. **Reveal** — the facilitator reveals the round, typically once everyone has submitted,
+   but they may reveal as soon as anyone has. It shows each participant's three values side by side, plus the group's
+   `AggregateResult`
+5. **Discuss** — the team discusses outliers; the facilitator can retry the round, which
+   clears its submissions
+6. **Finalize** — the facilitator locks in the `AggregateResult` of the submissions and
+   moves on to the next item; a finalized item can be updated or reopened (see
+   [Item lifecycle](#item-lifecycle))
+7. **Session summary** — every finalized item with its min, expected and max; the session
+   can be saved to a file
 
-**Manual mode — single-user entry session**
+### Manual mode
+
 The facilitator ran the estimation discussion elsewhere (in person, on a call, over Slack)
-and just wants to type in the team's agreed-upon numbers to get the same calculated ranges,
-guardrails, and report. No connection, no participants joining.
+and types in the team's agreed numbers to get the same calculated ranges, guards and
+report. No connection, no participants joining.
 
-1. **Start single-user** — the facilitator starts a session and lands on the workspace,
+Arrows lead to the next step; edge labels are the conditions.
+
+```mermaid
+flowchart LR
+    Start["1 Start Manual mode"] --> Enter["2 Enter values"]
+    Enter --> Finalize["3 Finalize"]
+    Finalize --> More{"More items?"}
+    More -->|yes| Enter
+    More -->|no| Summary["4 Session summary"]
+```
+
+1. **Start Manual mode** — the facilitator picks "Start single-user" and lands on the Workspace,
    where the session name and items are added
-2. **Enter values per item** — the facilitator types in the group's agreed Best Case / Most
-   Likely / Worst Case directly (a single set of values, no per-participant breakdown)
-3. **Bias guards still apply** — the same guards fire as in Live mode (see
-   [estimation-method](estimation-method.md))
-4. **Finalize item** — same as Live mode: values are locked and the app calculates
-   min/expected/CI90/max
-5. **Session summary** — the same report format as Live mode
+2. **Enter values** — the facilitator types the group's agreed Best Case, Most Likely and
+   Worst Case for the item (a single set of values, no per-participant breakdown); the
+   same bias guards fire as in Live mode (see [estimation-method](estimation-method.md))
+3. **Finalize** — the values are locked in and the `AggregateResult` is calculated; a
+   finalized item can be updated with new values later (see
+   [Item lifecycle](#item-lifecycle))
+4. **Session summary** — the same report as in Live mode
 
 ## Information model
 
-| Entity / value object | Fields | Notes |
-|---|---|---|
-| **Session** | name, estimation unit, mode (live/manual) | Created by the facilitator; name and unit can change mid-session |
-| **Item** | title, description, order, status (pending/estimating/finalized), finalResult | One backlog item being estimated |
-| **Participant** | id, display name | Ephemeral — no account. Not used in Manual mode, where there is only the facilitator |
-| **Estimate** | participantId, best, likely, worst, round number | Self-validating: `best ≤ likely ≤ worst` (see [estimation-method](estimation-method.md)). In Manual mode, a single Estimate per item, authored by the facilitator |
-| **Roster** | participantId → submitted / connected | Values-free — tells who has submitted, never what |
+```yaml
+Session:
+  sessionName: string            # can change mid-session
+  unit: enum                     # hours | days | weeks, can change mid-session
+  mode: enum                     # live | manual, fixed when the session starts
+  items: Item[]                  # in list order
 
-A **round** is the lifecycle of one Item through estimate → reveal → (retry →) finalize.
-Retrying an item clears its submissions and starts the round again; finalizing freezes its
-`finalResult` and moves the facilitator on to the next item.
+Item:
+  id: string
+  title: string                  # never blank
+  description: string
+  notes: string                  # captured during discussion
+  finalResult: AggregateResult | null   # null until finalized
+  round: number                  # Live mode: starts at 0, +1 on each retry or reopen
+  revealed: boolean              # Live mode: this round's estimates are visible
+  submissions: Estimate[]        # Live mode, facilitator only: one per participant this round
 
-`Team` (a lightweight grouping for saved sessions) is not included
-above — it has no process, rule, or implemented behavior of its own yet, only a mention as
-a future grouping concept. It belongs here once a process or rule for it exists.
+Estimate:
+  participantId: string          # Manual mode: the facilitator
+  best: number                   # best <= likely <= worst (see estimation-method)
+  likely: number
+  worst: number
+
+Participant:                     # Live mode only; no account
+  participantId: string          # stable per browser, so a reconnect is the same person
+  name: string
+
+RosterEntry:                     # values-free: who has submitted, never what
+  participantId: string
+  submitted: boolean
+  connected: boolean
+```
+
+### Item lifecycle
+
+An item is pending until it is finalized. In Live mode it goes through one or more
+**rounds** on the way, each a pass of everyone estimating it; the `Round` state below
+holds them. Arrows are transitions, labelled with the action that causes them.
+
+```mermaid
+stateDiagram-v2
+    [*] --> Pending
+    Pending --> Round: becomes active (Live)
+    Pending --> Finalized: finalize (Manual)
+    state Round {
+        [*] --> Estimating
+        Estimating --> Revealed: reveal
+        Revealed --> Estimating: retry
+    }
+    Revealed --> Finalized: finalize
+    Finalized --> Round: reopen (Live)
+    Finalized --> Finalized: update
+```
+
+Retrying and reopening both clear the item's submissions and start a new round; reopening
+also clears its `finalResult`. Updating a finalized item replaces its `finalResult`: in
+Manual mode from newly entered values, in Live mode from the revealed submissions.
 
 ## Rules
 
-| Rule | Condition | Behavior |
-|---|---|---|
-| **Privacy before reveal** | Before the facilitator reveals the round | A participant never sees another's values — targeted submission, a values-free roster in the meantime |
-| **No mid-session mode switch** | Live connection fails | The facilitator starts a fresh Manual-mode session rather than switching the running one |
-| **Late join and reconnect land on the correct view** | A participant joins mid-round, or reconnects | They see the item currently active and how many teammates have submitted, regardless of what they missed while away. Pinned down as an executable acceptance criterion in [`specs/live-session/e2e/late-joiner.feature`](../../../specs/live-session/e2e/late-joiner.feature) |
-| **Both modes are interchangeable at the report** | Always | Saving, exporting, and the session summary look the same regardless of which mode produced the values |
+| Rule | Condition | Behavior | Spec |
+|---|---|---|---|
+| **Privacy before reveal** | Before the facilitator reveals the round | A participant never sees another's values: submissions go **only to the facilitator**, and everyone else sees a **values-free roster** | — |
+| **No mid-session mode switch** | The live connection fails | The **mode is fixed** when the session starts, for the session and for each item in it; the facilitator starts a fresh **Manual-mode session** instead of switching the running one | — |
+| **Late join and reconnect land on the correct view** | A participant joins mid-round, or reconnects | They see the **active item** and how many teammates have **submitted**, whatever they missed while away | [`late-joiner.feature`](../../../specs/live-session/e2e/late-joiner.feature) (late join only) |
+| **Both modes are interchangeable at the report** | Always | The **session summary** and the **saved file** look the same whichever mode produced the values | — |
