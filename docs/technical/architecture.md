@@ -266,12 +266,14 @@ flowchart LR
   subgraph PIPE["DEPLOY PIPELINE"]
     direction LR
     Build["Build<br/>[GitHub Actions job]"]
+    Trigger["Trigger deployment<br/>[GitHub Actions job]"]
     Deploy["Deploy to IONOS<br/>[GitHub Actions workflow]"]
   end
   Api["IONOS Deploy Now API<br/>[External service]"]
   Web["IONOS Webspace<br/>[Static file host]"]
   Browser["Browser<br/>[Runs the single-page app]"]
-  Build -.->|dispatch deployment| Api
+  Build --> Trigger
+  Trigger -.->|dispatch deployment| Api
   Api -.->|start workflow| Deploy
   Deploy -->|rsync over SSH| Web
   Browser -.->|loads the bundle| Web
@@ -279,7 +281,7 @@ flowchart LR
   style PIPE fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
   classDef job fill:#b2dfc0,stroke:#2f7a43,color:#14171f
   classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
-  class Build,Deploy job
+  class Build,Trigger,Deploy job
   class Api,Web,Browser ext
 ```
 
