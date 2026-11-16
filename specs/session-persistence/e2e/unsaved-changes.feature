@@ -27,6 +27,12 @@ Feature: Warn before unsaved changes are lost
     And Alex leaves the session
     Then Alex is back at mode selection
 
+  Scenario: Leaving a saved live session needs no confirmation
+    Given Alex is facilitating a collaborative session named "Sprint 42"
+    When Alex saves the session
+    And Alex leaves the session
+    Then Alex is back at mode selection
+
   Scenario: Leaving right after loading needs no confirmation
     Given Alex has a saved session file "Checkout rework" with the items
       | item                    | state     |

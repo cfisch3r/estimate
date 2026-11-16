@@ -24,13 +24,15 @@ export function useWorkspaceLiveRedirect() {
 
   useLayoutEffect(() => {
     const access = currentScreenAccess('workspace')
-    if (access !== 'allow') {
-      navigate(ROUTES[access], { replace: true })
-      return
-    }
+    if (access !== 'allow') navigate(ROUTES[access], { replace: true })
+    // mode/role/sessionId re-run the check when the connection changes.
+  }, [mode, role, sessionId, navigate])
+
+  useLayoutEffect(() => {
     // A Workspace reached without a start action (a reload, Forward, a typed
     // address) is still a running session for the browser's Back button.
-    markStarted()
-    // mode/role/sessionId re-run the check when the connection changes.
-  }, [mode, role, sessionId, navigate, markStarted])
+    // Only on opening: leaving resets the stores a render before the route
+    // changes, and marking then would revive the session just ended.
+    if (currentScreenAccess('workspace') === 'allow') markStarted()
+  }, [markStarted])
 }
