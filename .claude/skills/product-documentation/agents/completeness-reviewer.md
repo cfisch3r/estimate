@@ -27,13 +27,14 @@ mechanism: read that section before you start.
 A changed doc file in the diff — under `docs/domain/` or `docs/technical/`, or `AGENTS.md`
 or `README.md` at the repo root — that is a **prose** file (a PRD, a concept doc, an ADR,
 or an instructions file like `AGENTS.md` — not a tabular/data file like `review-risk.md`),
-with a **deletion-heavy hunk**.
+with a hunk that **removes or rewrites existing prose**.
 
-The exact threshold for "deletion-heavy" is intentionally unset — start conservative: any
-hunk that removes more lines than it adds in a prose doc file qualifies as a trigger.
-Note in your output if this threshold produced an unhelpful amount of triggering (too
-much noise, or a near-miss you had to catch by inspection anyway), so it can be tuned
-later. Don't invent a precise number yourself.
+Any hunk that deletes or replaces existing lines of prose qualifies, whether it removes
+more lines than it adds or not: a net-growth rewrite, or a one-for-one line replacement,
+can drop a clause just as well as a deletion. A hunk that only adds lines does not
+qualify. Note in your output if this threshold produced an unhelpful amount of triggering
+(too much noise, or a near-miss you had to catch by inspection anyway), so it can be
+tuned later.
 
 ## Mechanism, per triggered file
 

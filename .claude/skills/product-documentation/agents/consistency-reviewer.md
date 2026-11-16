@@ -35,7 +35,9 @@ portable "Definition of Good.")
 The skill passes you one of:
 
 - **diff** (default) — you are given the current working-tree/branch diff. Review:
-  1. **Changed doc files** — every doc touched by the diff, for the checks below.
+  1. **Changed doc files** — every doc touched by the diff, checked as a whole file
+     against the checks below, not only its changed lines. Mark each finding
+     **introduced** (the diff added or changed the offending lines) or **pre-existing**.
   2. **Docs made stale by code changes** — for each non-doc change in the diff (source
      modules, `package.json` scripts, config, directory structure), find the docs that
      describe that thing and check they still match. This is the most important part; a

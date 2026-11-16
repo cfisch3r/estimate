@@ -15,8 +15,10 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 - `docs/domain/prd.md` — product requirements: problem, goals, non-goals, primary user &
   core flow, non-functional requirements, open questions, future phases
 - `docs/domain/concepts/live-collaboration.md` — domain concept: the Live and Manual mode
-  processes, the Session/Item/Estimate/Participant/Roster information model, and the rules
-  (privacy before reveal, no mid-session mode switch, late-join catch-up)
+  processes, the Session/Item/Estimate/Participant/RosterEntry information model, the
+  item lifecycle, and the rules (privacy before reveal, no mid-session mode switch, late
+  join and reconnect land on the correct view, both modes are interchangeable at the
+  report)
 - `docs/domain/concepts/estimation-method.md` — domain concept: the three-point estimation
   process, the Estimate/AggregateResult/uncertainty-level information model, and the
   bias-guard rules
@@ -36,7 +38,7 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 - `docs/technical/adr/002-testing-strategy.md` — accepted decision on the layered test strategy: unit/component, plus a thin Playwright e2e layer since #26 landed the real browser-connection behaviour that was this ADR's own trigger — see that ADR's 2026-09-07 and 2026-09-30 updates, and ADR-007 for the e2e layer's own design
 - `docs/technical/adr/007-e2e-dual-mode-signaling.md` — accepted decision on dual-mode signaling for the Playwright e2e suite: a locally self-hosted relay by default (blocking CI), production Nostr relays in a separate nightly/manual job
 - `docs/technical/adr/003-session-reliability-model.md` — accepted decision on who owns live-session state and what reconnect restores: facilitator-authoritative rounds, a values-free submission roster in the snapshot, acknowledged submissions with a kind-driven retry policy, stable client identity, and role-asymmetric link state. **Read before working #9, #60, #61, #62, or #63** — it is the design anchor for all of them; the ADR's own status line tracks which elements have landed, rather than duplicating that list here.
-- `docs/technical/concepts/collaboration-mode.md` — Live mode (Mode A) technical concept: the Trystero P2P network layer, join flow, participant estimate round, facilitator reveal / retry-round flow, and screen/store wiring delivered so far. Implements `docs/domain/concepts/live-collaboration.md`
+- `docs/technical/concepts/collaboration-mode.md` — Live mode technical concept: the Trystero P2P network layer, join flow, participant estimate round, facilitator reveal / retry-round flow, and screen/store wiring delivered so far. Implements `docs/domain/concepts/live-collaboration.md`
 - `docs/technical/concepts/estimation-engine.md` — the estimation engine's detailed design (aggregation, the `Estimate` value type, bias guards). Implements `docs/domain/concepts/estimation-method.md`
 - `docs/technical/concepts/e2e-testing.md` — E2E testing technical concept: the Playwright/fixture/signaling component wiring, the dual-mode (local relay / real-world) build-and-run flows, and the spec-to-wire-action coverage map
 - `docs/technical/runbook.md` — deployment & release runbook: the IONOS Deploy Now CD pipeline, secrets, troubleshooting, and versioning/release process

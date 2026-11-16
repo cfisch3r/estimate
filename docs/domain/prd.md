@@ -42,6 +42,9 @@ EstiMate applies **three-point estimation** — the method recommended in Episod
 
 **Primary user:** dev teams doing estimation together (e.g., during backlog refinement or project kickoff), plus a facilitator running the session. This flow plays out across the screens detailed in [screen-flow](concepts/screen-flow.md).
 
+Arrows lead to the next step; edge labels are the conditions. The mode is picked once, for
+the whole session.
+
 ```mermaid
 flowchart TD
     Start(["Pick a mode"]) --> Mode{"Live or Manual?"}
@@ -52,15 +55,17 @@ flowchart TD
     LEst --> LReveal["Facilitator reveals round"]
     LReveal --> LDiscuss{"Converged?"}
     LDiscuss -->|No, retry round| LEst
-    LDiscuss -->|Yes| Finalize
+    LDiscuss -->|Yes| LFinalize["Finalize item"]
+    LFinalize --> LMore{"More items?"}
+    LMore -->|Yes| LEst
+    LMore -->|No| Summary(["Session summary"])
 
     Mode -->|Manual| MStart["Facilitator starts session"]
     MStart --> MEnter["Facilitator enters agreed<br/>Best / Likely / Worst"]
-    MEnter --> Finalize
-
-    Finalize["Finalize item<br/>min / expected / CI90 / max"] --> More{"More items?"}
-    More -->|Yes| Mode
-    More -->|No| Summary(["Session summary & export"])
+    MEnter --> MFinalize["Finalize item"]
+    MFinalize --> MMore{"More items?"}
+    MMore -->|Yes| MEnter
+    MMore -->|No| Summary
 ```
 
 | Role | Live mode | Manual mode |
@@ -76,7 +81,7 @@ model, and rules of both modes.
 
 ### 4.2 Mode comparison
 
-| | Live mode (Mode A) | Manual mode (Mode B) |
+| | Live mode | Manual mode |
 |---|---|---|
 | Who submits | Each participant, from their own device | Facilitator only |
 | Real-time sync needed | Yes (peer-to-peer) | No |
@@ -94,16 +99,16 @@ table: [estimation-method](concepts/estimation-method.md).
 
 ## 6. Non-functional requirements
 
-- **Real-time sync** *(Mode A only)*<br>
+- **Real-time sync** *(Live mode only)*<br>
   Submissions and reveals sync live across participants via **peer-to-peer WebRTC connections, using public STUN servers for NAT traversal and serverless signaling** — no backend operated by the app for session communication (full reasoning in **ADR-001**)
-- **No-account joining** *(Mode A)*<br>
+- **No-account joining** *(Live mode)*<br>
   Participants join with just a name, and nobody needs an account: a session is saved and reopened as a file the facilitator keeps
-- **Graceful degradation** *(Mode A)*<br>
-  If a peer connection can't be established, the app surfaces this clearly rather than failing silently, and points the facilitator toward Mode B as a fallback for that session
+- **Graceful degradation** *(Live mode)*<br>
+  If a peer connection can't be established, the app surfaces this clearly rather than failing silently and offers a retry; the facilitator can start a fresh Manual-mode session instead (see [live-collaboration](concepts/live-collaboration.md))
 - **Session persistence**<br>
   Sessions are saved as files and loaded again later, regardless of mode, with no accounts or server-side storage (see [session-persistence](concepts/session-persistence.md))
-- **Export**<br>
-  Session summary exportable as CSV and/or shareable read-only link
+- **Export** *(not built yet)*<br>
+  Session summary exportable as CSV or PDF, and/or as a shareable read-only link
 
 ## 7. Open questions
 
@@ -111,10 +116,8 @@ table: [estimation-method](concepts/estimation-method.md).
   How should re-estimate rounds be visualized in the final report — show convergence over rounds, or just the final round?
 - **Override/reconcile**<br>
   Should facilitators be able to override/reconcile the auto-calculated group range manually before finalizing an item?
-- **Mode switch mid-session**<br>
-  Can a session be switched from Mode A to Mode B mid-session (e.g., after a connection fallback on one item), or is mode fixed at creation?
 - **Manual-mode multi-entry**<br>
-  Should Mode B support multiple named entries per item (e.g., facilitator typing in what each person said) rather than a single reconciled value — closer to Mode A's data shape without the live connection?
+  Should Manual mode support multiple named entries per item (e.g., facilitator typing in what each person said) rather than a single reconciled value — closer to Live mode's data shape without the live connection?
 
 ## 8. Future phases (post-MVP)
 
@@ -124,8 +127,6 @@ table: [estimation-method](concepts/estimation-method.md).
   T-shirt sizing for epics with bridge-to-three-point workflow (Method 3)
 - **Phase 4**<br>
   Backlog tool import (Jira, Linear, etc.)
-
-Cone-of-uncertainty guidance (§5) shipped as part of the MVP guard set, not a future phase — moved out of this list accordingly.
 
 ## 9. Related decisions
 
