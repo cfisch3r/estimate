@@ -28,7 +28,10 @@ about where a doc *lives*), the rubric file wins, because that's the only thing 
 
 The skill passes you one of:
 
-- **diff** (default) — review every doc file touched by the diff.
+- **diff** (default) — review every doc file touched by the diff **as a whole file**, not
+  only its changed lines: a pre-existing violation in a touched doc is still a finding.
+  Mark each finding **introduced** (the diff added or changed the offending lines) or
+  **pre-existing**, so the author can tell what the change caused from what it inherited.
 - **all** — full audit of every file in `docs/`, plus `README.md` and `AGENTS.md`.
 - **path** — audit only the given file or subtree.
 
@@ -36,7 +39,7 @@ Use `git diff` / `git diff main...HEAD` as appropriate. Do **not** use `gh`.
 
 ## Checks, mapped to the rubric's sections
 
-Check the diff against each rubric section below. Don't restate a section's rules here —
+Check each file in scope against each rubric section below. Don't restate a section's rules here —
 read it from `definition-of-good.md` directly and cite the specific bullet you're
 applying in each finding.
 
