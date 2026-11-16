@@ -249,15 +249,14 @@ The mode-select screen's "Preview build" tag shows the running version
   Run `pnpm typecheck` locally (cheaper than a full build) if you've touched types —
   the `CI` workflow's `typecheck` job also catches this on every PR, separately from
   the IONOS `estimate-build.yaml` deploy build.
-- **Deploy run shows `action_required` with no jobs (only expected if a workflow
-  file was just regenerated, e.g. by re-provisioning the IONOS project):** the very
-  first `workflow_dispatch` run of a newly-added workflow file, when triggered by a
-  GitHub App (here, `ionos-deploy-now[bot]`) rather than a direct human push, comes
-  back as `action_required` with zero jobs run — this is GitHub's safety gate, not a
-  config error. A repo admin approves it once: open the flagged run under **Actions**
-  (conclusion `action_required`, event `workflow_dispatch`, actor
-  `ionos-deploy-now[bot]`) and click **Approve and run workflow**. Subsequent pushes
-  to `main` trigger the same workflow without further approval.
+- **Deploy run shows `action_required` with no jobs:** the `workflow_dispatch` run of
+  *Deploy to IONOS*, triggered by `ionos-deploy-now[bot]`, ends `action_required` with
+  zero jobs, so nothing deploys. This has happened on every such run since 2026-10-31
+  (earlier runs deployed unattended), with no change to the workflow files; the cause
+  is not confirmed. Until it is resolved, a repo admin approves each release's deploy
+  run: open the `main` run under **Actions** and click **Approve and run workflow**,
+  then re-check until the deploy job reports success. The matching `push` runs stay
+  `action_required`; only the `workflow_dispatch` run deploys.
 - **Root URL 404s or serves stale content:** check the **Orchestration** run's `build`
   job output directory is still `dist`; check the **Deploy to IONOS** run's rsync step
   for errors.
