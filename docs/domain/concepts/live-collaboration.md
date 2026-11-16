@@ -14,11 +14,14 @@ mode-comparison table.
 The team estimates together in real time, each participant submitting their own numbers
 from their own device.
 
+Arrows lead to the next step; edge labels are the conditions.
+
 ```mermaid
 flowchart TD
     Start["1 Start Live mode"] --> Join["2 Join"]
     Join --> Estimate["3 Estimate"]
-    Join -->|no connection| Fallback["8 Connection fallback"]
+    Join -->|no connection| Fallback["2a Connection fallback"]
+    Fallback -->|retry| Join
     Estimate --> Reveal["4 Reveal"]
     Reveal --> Discuss{"5 Discuss:<br/>converged?"}
     Discuss -->|no, retry| Estimate
@@ -28,32 +31,34 @@ flowchart TD
     More -->|no| Summary["7 Session summary"]
 ```
 
-1. **Start Live mode** — the facilitator starts a session and immediately gets a shareable
-   session code; the session name and items are added afterwards, and can keep changing
+1. **Start Live mode** — the facilitator picks "Start collaborative" and immediately gets a
+   shareable session code; the session name and items are added afterwards, and can keep changing
    mid-session
 2. **Join** — a participant enters the code and their name (named, not anonymous — enables
    direct discussion)
+   - **2a Connection fallback** — a participant who never reaches the facilitator (e.g. a
+     strict network at join time) is told so plainly and offered a retry (see the rule
+     **No mid-session mode switch**)
 3. **Estimate** — for the active item, each participant privately submits Best Case, Most
    Likely and Worst Case in the session's unit
-4. **Reveal** — the facilitator reveals the round, typically once everyone has submitted.
-   It shows each participant's three values side by side, plus the group's
+4. **Reveal** — the facilitator reveals the round, typically once everyone has submitted,
+   but they may reveal as soon as anyone has. It shows each participant's three values side by side, plus the group's
    `AggregateResult`
 5. **Discuss** — the team discusses outliers; the facilitator can retry the round, which
    clears its submissions
 6. **Finalize** — the facilitator locks in the `AggregateResult` of the submissions and
-   moves on to the next item; a finalized item can be reopened (see
-   [Round lifecycle](#round-lifecycle))
-7. **Session summary** — all items with their four values; the session can be saved to a
-   file
-8. **Connection fallback** — a participant who never reaches the facilitator (e.g. a
-   strict network at join time) is told so plainly and offered a retry (see the rule **No
-   mid-session mode switch**)
+   moves on to the next item; a finalized item can be updated or reopened (see
+   [Item lifecycle](#item-lifecycle))
+7. **Session summary** — every finalized item with its min, expected and max; the session
+   can be saved to a file
 
 ### Manual mode
 
 The facilitator ran the estimation discussion elsewhere (in person, on a call, over Slack)
 and types in the team's agreed numbers to get the same calculated ranges, guards and
 report. No connection, no participants joining.
+
+Arrows lead to the next step; edge labels are the conditions.
 
 ```mermaid
 flowchart LR
@@ -64,13 +69,14 @@ flowchart LR
     More -->|no| Summary["4 Session summary"]
 ```
 
-1. **Start Manual mode** — the facilitator starts a session and lands on the Workspace,
+1. **Start Manual mode** — the facilitator picks "Start single-user" and lands on the Workspace,
    where the session name and items are added
 2. **Enter values** — the facilitator types the group's agreed Best Case, Most Likely and
    Worst Case for the item (a single set of values, no per-participant breakdown); the
    same bias guards fire as in Live mode (see [estimation-method](estimation-method.md))
 3. **Finalize** — the values are locked in and the `AggregateResult` is calculated; a
-   finalized item can be updated with new values later
+   finalized item can be updated with new values later (see
+   [Item lifecycle](#item-lifecycle))
 4. **Session summary** — the same report as in Live mode
 
 ## Information model
@@ -108,9 +114,11 @@ RosterEntry:                     # values-free: who has submitted, never what
   connected: boolean
 ```
 
-### Round lifecycle
+### Item lifecycle
 
-A **round** is one pass of everyone estimating one item in Live mode.
+An item is pending until it is finalized. In Live mode it goes through one or more
+**rounds** on the way, each a pass of everyone estimating it; the `Round` state below
+holds them. Arrows are transitions, labelled with the action that causes them.
 
 ```mermaid
 stateDiagram-v2
@@ -122,19 +130,20 @@ stateDiagram-v2
         Estimating --> Revealed: reveal
         Revealed --> Estimating: retry
     }
-    Round --> Finalized: finalize
-    Finalized --> Round: reopen
-    Finalized --> Finalized: update values (Manual)
+    Revealed --> Finalized: finalize
+    Finalized --> Round: reopen (Live)
+    Finalized --> Finalized: update
 ```
 
 Retrying and reopening both clear the item's submissions and start a new round; reopening
-also clears its `finalResult`.
+also clears its `finalResult`. Updating a finalized item replaces its `finalResult`: in
+Manual mode from newly entered values, in Live mode from the revealed submissions.
 
 ## Rules
 
 | Rule | Condition | Behavior | Spec |
 |---|---|---|---|
 | **Privacy before reveal** | Before the facilitator reveals the round | A participant never sees another's values: submissions go **only to the facilitator**, and everyone else sees a **values-free roster** | — |
-| **No mid-session mode switch** | The live connection fails | The **mode is fixed** when the session starts; the facilitator starts a fresh **Manual-mode session** instead of switching the running one | — |
+| **No mid-session mode switch** | The live connection fails | The **mode is fixed** when the session starts, for the session and for each item in it; the facilitator starts a fresh **Manual-mode session** instead of switching the running one | — |
 | **Late join and reconnect land on the correct view** | A participant joins mid-round, or reconnects | They see the **active item** and how many teammates have **submitted**, whatever they missed while away | [`late-joiner.feature`](../../../specs/live-session/e2e/late-joiner.feature) (late join only) |
 | **Both modes are interchangeable at the report** | Always | The **session summary** and the **saved file** look the same whichever mode produced the values | — |

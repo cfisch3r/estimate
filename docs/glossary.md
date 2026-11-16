@@ -70,6 +70,8 @@ and use "lane" and "slice" in their own sense. They are not rewritten.
 | **Entity** | In the DDD sense: something with its own identity that changes over time, such as an item or a round. Say **FSD entities layer** for the folder `src/entities`. |
 | **Value object** | A value with no identity, compared by content and validated on creation. `Estimate` is one (`createEstimate`). |
 | **Session** | One estimation meeting. Live (peer to peer) or manual. |
+| **Live mode** | The session mode in which participants submit their own estimates from their own devices, peer to peer. The UI's "Start collaborative"; older docs say "Mode A" ([live-collaboration](domain/concepts/live-collaboration.md)). |
+| **Manual mode** | The session mode in which the facilitator alone types in the agreed values. The UI's "Start single-user"; older docs say "Mode B" ([live-collaboration](domain/concepts/live-collaboration.md)). |
 | **Round** | One pass of everyone estimating one item; the facilitator can retry it. |
 | **Submission** | One participant's estimate for the current round. |
 | **Roster** | The values-free list of who has submitted, sent in the snapshot ([ADR-003](technical/adr/003-session-reliability-model.md)). |
