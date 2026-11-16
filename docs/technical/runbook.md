@@ -249,15 +249,26 @@ The mode-select screen's "Preview build" tag shows the running version
   Run `pnpm typecheck` locally (cheaper than a full build) if you've touched types —
   the `CI` workflow's `typecheck` job also catches this on every PR, separately from
   the IONOS `estimate-build.yaml` deploy build.
-- **Deploy run shows `action_required` with no jobs (only expected if a workflow
-  file was just regenerated, e.g. by re-provisioning the IONOS project):** the very
-  first `workflow_dispatch` run of a newly-added workflow file, when triggered by a
-  GitHub App (here, `ionos-deploy-now[bot]`) rather than a direct human push, comes
-  back as `action_required` with zero jobs run — this is GitHub's safety gate, not a
-  config error. A repo admin approves it once: open the flagged run under **Actions**
-  (conclusion `action_required`, event `workflow_dispatch`, actor
-  `ionos-deploy-now[bot]`) and click **Approve and run workflow**. Subsequent pushes
-  to `main` trigger the same workflow without further approval.
+- **Deploy run shows `action_required` with no jobs:**
+  - **Symptom**<br>
+    Both runs of **Deploy to IONOS** for a push to `main`, the `push` run and the
+    `workflow_dispatch` run from `ionos-deploy-now[bot]`, end `action_required` with
+    zero jobs, so nothing deploys. Every later push is held the same way until one run
+    is approved, so an unnoticed gate silently stops all deploys.
+  - **Cause**<br>
+    A GitHub approval gate, not a config error. Its trigger is not confirmed: it has
+    appeared with no change to the workflow files, and it also appears after they are
+    regenerated (e.g. by re-provisioning the IONOS project).
+  - **Fix**<br>
+    A repo admin approves one run:
+    1. Under **Actions**, open the latest flagged `main` run of **Deploy to IONOS** with
+       event `workflow_dispatch` and actor `ionos-deploy-now[bot]`.
+    2. Click **Approve and run workflow**.
+    3. Check that the `deploy-to-ionos` job succeeds in every matrix leg on the run's
+       latest attempt.
+  - **Afterwards**<br>
+    Later pushes deploy on their own. The held `push` runs need no approval, and from
+    then on the `push` runs end `skipped` as usual (see [Pipeline](#pipeline)).
 - **Root URL 404s or serves stale content:** check the **Orchestration** run's `build`
   job output directory is still `dist`; check the **Deploy to IONOS** run's rsync step
   for errors.
