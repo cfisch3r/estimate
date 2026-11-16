@@ -33,6 +33,9 @@ export function LoadSessionRow() {
     if (!file) return
     // Emptied first so a second, identical rejection is announced again.
     setRejection(null)
+    // Read here rather than through a port like saving's FileDownloadApi: the
+    // file input already did the I/O, and the use case stays string-in. Add a
+    // port once there is a second load source (drag and drop, File System Access).
     let text: string
     try {
       text = await file.text()
