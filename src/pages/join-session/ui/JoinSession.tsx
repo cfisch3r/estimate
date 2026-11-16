@@ -10,9 +10,14 @@ import {
   Input,
   LiveRegion,
 } from '../../../shared/ui'
-import { useJoinFlow, useLeaveLiveSession } from '../../../features/session-lifecycle'
+import {
+  useJoinFlow,
+  useLeaveLiveSession,
+  useRunningSessionGuard,
+} from '../../../features/session-lifecycle'
 
 export function JoinSession() {
+  useRunningSessionGuard('join')
   const { join, connecting, failed } = useJoinFlow()
   const leave = useLeaveLiveSession()
 

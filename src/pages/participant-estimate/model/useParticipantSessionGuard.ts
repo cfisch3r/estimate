@@ -1,7 +1,6 @@
 import { useLayoutEffect } from 'react'
 import { useNavigate } from 'react-router'
-import { useConnectionStore } from '../../../application'
-import { screenAccessFor } from '../../../domain/connection'
+import { currentScreenAccess } from '../../../application'
 import { ROUTES } from '../../../shared/lib/routes'
 
 /** Sends a visitor who shouldn't be on the participant estimate screen
@@ -21,8 +20,7 @@ export function useParticipantSessionGuard() {
   const navigate = useNavigate()
 
   useLayoutEffect(() => {
-    const { mode, role, sessionId } = useConnectionStore.getState()
-    const access = screenAccessFor({ mode, role, sessionId }, 'estimate')
+    const access = currentScreenAccess('estimate')
     if (access !== 'allow') {
       navigate(ROUTES[access], { replace: true })
     }

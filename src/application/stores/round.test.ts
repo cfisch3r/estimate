@@ -4,6 +4,7 @@ import { useRoundStore } from './round'
 import { useSessionStore } from './session'
 import { useConnectionStore } from './connection'
 import type { Item } from '../../domain/types'
+import { aggregateOf } from '../../domain/testFixtures'
 
 function resetStore() {
   useSessionStore.setState({
@@ -191,7 +192,7 @@ describe('revealRound / retryRound / finalizeLiveItem (facilitator)', () => {
   })
 
   it('retryRound clears a finalized item’s recorded range (reopen)', () => {
-    const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
+    const finalized = aggregateOf(1, 2, 3)
     seed({ revealed: true, finalResult: finalized })
 
     // retryRound also backs the confirm-guarded "Reopen item" control (#36) for an

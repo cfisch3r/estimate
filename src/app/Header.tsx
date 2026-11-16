@@ -1,29 +1,46 @@
 import { useLocation } from 'react-router'
 import { ChatTeardropTextIcon } from '@phosphor-icons/react/dist/csr/ChatTeardropText'
 import './header.css'
-import { BrandMark, Tag } from '../shared/ui'
+import { BrandMark, LiveRegion, Tag, VisuallyHidden } from '../shared/ui'
 import { useConfirmArm } from '../shared/lib/useConfirmArm'
 import { useConnectionStore } from '../application'
+import { SaveSessionButton } from '../features/session-persistence'
 import { useLeaveWorkspace } from '../features/session-lifecycle'
 import { ROUTES } from '../shared/lib/routes'
 
-const EXIT_PATHS = new Set<string>([ROUTES.workspace, ROUTES.summary, ROUTES.history])
+const EXIT_PATHS = new Set<string>([ROUTES.workspace, ROUTES.summary])
+/** The armed brand's text per reason for a second click. */
+const ARMED_LABEL = {
+  unsaved: 'Unsaved changes, click again to leave',
+  'live-peers': 'Click again to leave session',
+  'unsaved-and-live-peers':
+    'Unsaved changes, and the session ends for everyone. Click again to leave',
+} as const
+
+const STILL_RUNNING =
+  'This session is still running. Leave it with the EstiMate button first.'
+
 const FEEDBACK_URL =
   'https://github.com/cfisch3r/estimate/issues/new?template=feedback.yml'
 
 export function Header() {
   const location = useLocation()
   const mode = useConnectionStore((s) => s.mode)
-  const { leaveWorkspace, needsConfirm } = useLeaveWorkspace()
+  const { leaveWorkspace, confirmation } = useLeaveWorkspace()
   const {
     armed,
     handleClick: armAndLeave,
     ref: leaveRef,
-  } = useConfirmArm<HTMLButtonElement>(leaveWorkspace)
+  } = useConfirmArm<HTMLButtonElement>(leaveWorkspace, { holdWhileFocused: true })
 
   const showModeTag =
     location.pathname !== ROUTES.modeSelect && location.pathname !== ROUTES.join
   const canLeave = EXIT_PATHS.has(location.pathname)
+  const armedLabel = confirmation !== 'none' && armed ? ARMED_LABEL[confirmation] : null
+  // The browser's Back button led to an entry screen, which sent it back here
+  // (`useRunningSessionGuard`): say why Back seemed to do nothing.
+  const stillRunning =
+    (location.state as { stillRunning?: boolean } | null)?.stillRunning === true
 
   return (
     <header className="app-header">
@@ -32,17 +49,13 @@ export function Header() {
           <button
             ref={leaveRef}
             type="button"
-            className="app-header-brand app-header-brand-home"
-            aria-label={
-              needsConfirm && armed
-                ? 'Click again to leave session'
-                : 'Back to mode selection'
-            }
-            style={{ color: needsConfirm && armed ? 'var(--color-warning)' : undefined }}
-            onClick={needsConfirm ? armAndLeave : leaveWorkspace}
+            className={`app-header-brand app-header-brand-home${armedLabel ? ' app-header-brand-armed' : ''}`}
+            aria-label={armedLabel ?? 'EstiMate, back to mode selection'}
+            style={{ color: armedLabel ? 'var(--color-warning)' : undefined }}
+            onClick={confirmation === 'none' ? leaveWorkspace : armAndLeave}
           >
             <BrandMark width={30} height={22} />
-            {needsConfirm && armed ? 'Click again to leave session' : 'EstiMate'}
+            {armedLabel ?? 'EstiMate'}
           </button>
         ) : (
           <span className="app-header-brand">
@@ -50,6 +63,13 @@ export function Header() {
             EstiMate
           </span>
         )}
+        {/* Renaming the focused button alone is announced unreliably, so the
+            armed prompt is also said through a persistent live region. */}
+        <LiveRegion>
+          <VisuallyHidden>
+            {armedLabel ?? (stillRunning ? STILL_RUNNING : '')}
+          </VisuallyHidden>
+        </LiveRegion>
         <a
           className="app-header-feedback"
           href={FEEDBACK_URL}
@@ -61,12 +81,15 @@ export function Header() {
           <ChatTeardropTextIcon size={18} />
         </a>
       </div>
-      {showModeTag &&
-        (mode === 'live' ? (
-          <Tag variant="accent">Live</Tag>
-        ) : (
-          <Tag variant="neutral">Single-user</Tag>
-        ))}
+      <div className="app-header-end">
+        {canLeave && <SaveSessionButton />}
+        {showModeTag &&
+          (mode === 'live' ? (
+            <Tag variant="accent">Live</Tag>
+          ) : (
+            <Tag variant="neutral">Single-user</Tag>
+          ))}
+      </div>
     </header>
   )
 }

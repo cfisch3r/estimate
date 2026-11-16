@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
 import { SessionSummary } from './SessionSummary'
 import { useSessionStore } from '../../../application/testing'
 import type { Item } from '../../../domain/types'
+import { aggregateOf } from '../../../domain/testFixtures'
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
 
@@ -34,7 +36,7 @@ function item(id: string, title: string, finalResult: Item['finalResult'] = null
   }
 }
 
-const finalized = { min: 2, expected: 5, max: 8, ci90: 8.85 }
+const finalized = aggregateOf(2, 5, 8)
 
 function resetStore() {
   useSessionStore.setState({
@@ -88,5 +90,18 @@ describe('SessionSummary', () => {
     expect(navigateMock).toHaveBeenCalledTimes(1)
     expect(navigateMock).toHaveBeenCalledWith('/workspace')
     expect(useSessionStore.getState().activeItemId).toBe('1')
+  })
+
+  it('leaves saving to the header, with no second Save button', () => {
+    renderSessionSummary()
+    expect(screen.queryByRole('button', { name: /Save session/ })).not.toBeInTheDocument()
+  })
+
+  it('has no axe violations', async () => {
+    useSessionStore.setState({ items: [item('1', 'Migrate auth', finalized)] })
+    const { container } = renderSessionSummary()
+    expect(
+      await axe(container, { rules: { 'color-contrast': { enabled: false } } }),
+    ).toHaveNoViolations()
   })
 })

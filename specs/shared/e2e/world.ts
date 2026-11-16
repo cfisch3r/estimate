@@ -9,26 +9,39 @@ import { newIsolatedPage } from '../../../e2e/helpers'
 export type Actor = (name: string) => Promise<Page>
 
 /** Mutable state for one scenario, scoped per test so scenarios never share
- *  state across parallel runs. `sessionCode` is set by the "has started a
- *  collaborative session" step before any step that reads it can run — every
- *  scenario's Given sequence establishes the session before participants join. */
-export type ScenarioState = { sessionCode?: string }
+ *  state across parallel runs. One type for every concept, because the
+ *  shared steps in this folder read it too. */
+export type ScenarioState = {
+  /** Set when an actor starts a collaborative session. */
+  sessionCode?: string
+  /** Local path of the session file the next load step picks: either the
+   *  file a save step downloaded, or one a Given step wrote as test data. */
+  sessionFile?: string
+  /** Whether the browser raised its leave-page warning when the tab closed. */
+  leavePageWarning?: boolean
+}
 
-/** Reads `sessionCode`, failing with a clear message (rather than a bare
- *  non-null assertion) if a step reads it before the session-creation step
- *  has run. */
-export function requireSessionCode(state: ScenarioState): string {
-  if (!state.sessionCode) {
+/** Reads a required state field, failing with a clear message (rather than a
+ *  bare non-null assertion) if a step reads it before the step that sets it. */
+export function requireState<K extends keyof ScenarioState>(
+  state: ScenarioState,
+  key: K,
+): NonNullable<ScenarioState[K]> {
+  const value = state[key]
+  if (value === undefined) {
     throw new Error(
-      'state.sessionCode is unset — this step ran before "a facilitator has started a collaborative session"',
+      `state.${key} is unset — a step read it before the step that sets it ran`,
     )
   }
-  return state.sessionCode
+  return value as NonNullable<ScenarioState[K]>
 }
 
 type Fixtures = {
   actor: Actor
   state: ScenarioState
+  /** Builds a path inside this test's own output folder, for downloaded and
+   *  hand-written files. */
+  filePath: (name: string) => string
 }
 
 export const test = base.extend<Fixtures>({
@@ -48,6 +61,9 @@ export const test = base.extend<Fixtures>({
   },
   state: async ({}, use) => {
     await use({})
+  },
+  filePath: async ({}, use, testInfo) => {
+    await use((name) => testInfo.outputPath(name))
   },
 })
 

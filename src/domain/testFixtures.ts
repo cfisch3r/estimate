@@ -1,5 +1,10 @@
-import { aggregateEstimates, createEstimate } from './estimate'
-import type { Estimate } from './estimate'
+import {
+  aggregateEstimates,
+  computeCI90,
+  createAggregateResult,
+  createEstimate,
+} from './estimate'
+import type { AggregateResult, Estimate } from './estimate'
 import type { Item } from './types'
 
 export function estimateOf(
@@ -29,4 +34,16 @@ export function itemOf(overrides: Partial<Item> = {}): Item {
 
 export function finalizedItemOf(overrides: Partial<Item> = {}): Item {
   return itemOf({ finalResult: aggregateEstimates([estimateOf('p')]), ...overrides })
+}
+
+/** A final result with the given range and the 90% value the formula gives. */
+export function aggregateOf(min: number, expected: number, max: number): AggregateResult {
+  const result = createAggregateResult({
+    min,
+    expected,
+    max,
+    ci90: computeCI90(expected, min, max),
+  })
+  if (!result.ok) throw new Error(result.error)
+  return result.value
 }

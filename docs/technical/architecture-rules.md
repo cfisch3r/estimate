@@ -20,7 +20,7 @@ adapter.
 | `composition-root` | Only `src/app` (the composition root) imports an adapter next to the application, creates the live-session controller and fills the contexts through which the hooks reach it. It is the one exception to `ui-no-adapters` | `ui-no-adapters` together with `app-layer-core` |
 | `ui-reads-views` | The UI reads store state through selectors on read-only views and may call only the trivial field setters. Every rule-bearing write goes through a use case | Type tests on the exported views (`publicStores.test.ts`), `ui-no-adapters` |
 | `store-vs-usecase` | Store action or use case: code that reaches another store, calls a port or triggers an effect is a use case. Stores do not reach into each other, except the round store reading the session's items and active item and writing items through `patchItem` (ADR-005), marked by an exception comment in `stores/round.ts` | the plugin's architecture reviewer |
-| `ports-at-boundaries` | Ports exist only at real external boundaries (peer transport, identity and storage) and are owned by the application layer | the plugin's architecture reviewer |
+| `ports-at-boundaries` | Ports exist only at real external boundaries (peer transport, identity, storage and file download) and are owned by the application layer | the plugin's architecture reviewer |
 | `pure-decisions-in-domain` | Pure decisions live in the domain as unit-tested functions, never inline in stores, use cases, adapters or components | the plugin's architecture reviewer, domain coverage |
 | `no-stale-mocks` | A relative `vi.mock` target must resolve, so a moved module cannot leave a stale mock | `src/viMockPaths.test.ts` |
 

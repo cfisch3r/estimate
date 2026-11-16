@@ -25,6 +25,7 @@ function resetStore() {
     unit: 'days',
     items: [],
     activeItemId: null,
+    started: false,
   })
   useConnectionStore.setState({
     mode: 'manual',
@@ -32,6 +33,7 @@ function resetStore() {
     sessionId: null,
     myName: '',
     connectionStatus: 'idle',
+    hasEverConnected: false,
     peerCount: 0,
   })
 }
@@ -163,6 +165,15 @@ describe('Mode selection routing', () => {
     expect(screen.getByText('LIVECODE')).toBeInTheDocument()
     expect(screen.getByText('Waiting for participants…')).toBeInTheDocument()
     expect(screen.getByText('Live')).toBeInTheDocument()
+  })
+
+  it('sends an unknown route, such as the removed history page, to mode selection', () => {
+    window.history.replaceState({}, '', '/history')
+    render(<App />)
+    expect(
+      screen.getByRole('button', { name: /Start single-user mode/ }),
+    ).toBeInTheDocument()
+    expect(window.location.pathname).toBe('/')
   })
 
   it('navigates to the join screen and back to mode selection', async () => {

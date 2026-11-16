@@ -2,8 +2,16 @@ import { act, render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { useConfirmArm } from './useConfirmArm'
 
-function TestButton({ onConfirm }: { onConfirm: () => void }) {
-  const { armed, handleClick, ref } = useConfirmArm<HTMLButtonElement>(onConfirm)
+function TestButton({
+  onConfirm,
+  holdWhileFocused,
+}: {
+  onConfirm: () => void
+  holdWhileFocused?: boolean
+}) {
+  const { armed, handleClick, ref } = useConfirmArm<HTMLButtonElement>(onConfirm, {
+    holdWhileFocused,
+  })
   return (
     <button ref={ref} onClick={handleClick}>
       {armed ? 'armed' : 'idle'}
@@ -62,5 +70,52 @@ describe('useConfirmArm', () => {
     act(() => screen.getByRole('button', { name: 'elsewhere' }).click())
     expect(button.textContent).toBe('idle')
     expect(onConfirm).not.toHaveBeenCalled()
+  })
+
+  describe('holdWhileFocused', () => {
+    it('stays armed past the timeout while the control keeps focus', () => {
+      vi.useFakeTimers()
+      try {
+        render(<TestButton onConfirm={vi.fn()} holdWhileFocused />)
+        const button = screen.getByRole('button')
+        act(() => button.focus())
+        act(() => button.click())
+
+        act(() => vi.advanceTimersByTime(10_000))
+        expect(button.textContent).toBe('armed')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('disarms when focus leaves the control', () => {
+      render(
+        <>
+          <TestButton onConfirm={vi.fn()} holdWhileFocused />
+          <button>elsewhere</button>
+        </>,
+      )
+      const button = screen.getByRole('button', { name: 'idle' })
+      act(() => button.focus())
+      act(() => button.click())
+      expect(button.textContent).toBe('armed')
+
+      act(() => screen.getByRole('button', { name: 'elsewhere' }).focus())
+      expect(button.textContent).toBe('idle')
+    })
+
+    it('still times out when the control was not focused', () => {
+      vi.useFakeTimers()
+      try {
+        render(<TestButton onConfirm={vi.fn()} holdWhileFocused />)
+        const button = screen.getByRole('button')
+        act(() => button.click())
+
+        act(() => vi.advanceTimersByTime(3000))
+        expect(button.textContent).toBe('idle')
+      } finally {
+        vi.useRealTimers()
+      }
+    })
   })
 })

@@ -38,8 +38,15 @@ export type OrderViolation =
   | { code: 'likely-above-worst'; fields: ['likely', 'worst'] }
   | { code: 'best-above-worst'; fields: ['best', 'worst'] }
 
+/** The largest value a best, likely or worst case may hold, in any unit. Far
+ *  above any real estimate, and far enough below the largest double that
+ *  aggregating such values (the 90% value adds to the maximum) stays finite —
+ *  so no submission, however large, can make a final result break its rules. */
+export const MAX_ESTIMATE_VALUE = 1_000_000
+
 export type EstimateValuesError =
   | { code: 'not-finite'; fields: EstimateField[] }
+  | { code: 'too-large'; fields: EstimateField[] }
   | { code: 'non-positive'; fields: ['best'] }
   | OrderViolation
 
@@ -86,6 +93,15 @@ export function validateEstimateValues(
       error: 'best, likely, and worst must all be finite numbers',
       code: 'not-finite',
       fields: notFinite.map(([field]) => field),
+    }
+  }
+  const tooLarge = entries.filter(([, value]) => value > MAX_ESTIMATE_VALUE)
+  if (tooLarge.length > 0) {
+    return {
+      ok: false,
+      error: `best, likely, and worst must all be at most ${MAX_ESTIMATE_VALUE}`,
+      code: 'too-large',
+      fields: tooLarge.map(([field]) => field),
     }
   }
   // best is the smallest of the three once the ordering check below passes, so checking

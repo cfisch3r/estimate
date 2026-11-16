@@ -6,6 +6,7 @@ import { createEstimate } from '../../../domain/estimate'
 import { useConnectionStore, useSessionStore } from '../../../application/testing'
 import type { Item } from '../../../domain/types'
 import { LiveFacilitatorPanel } from './LiveFacilitatorPanel'
+import { aggregateOf } from '../../../domain/testFixtures'
 
 const A11Y = { rules: { 'color-contrast': { enabled: false } } }
 
@@ -49,7 +50,7 @@ function Host({ onAdvance = () => {} }: { onAdvance?: () => void }) {
   )
 }
 
-const finalResult = { min: 1, expected: 2, max: 3, ci90: 3 }
+const finalResult = aggregateOf(1, 2, 3)
 
 beforeEach(() => {
   seed({})

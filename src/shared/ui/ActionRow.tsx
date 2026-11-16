@@ -1,17 +1,21 @@
-import type { ReactNode } from 'react'
+import type { ReactNode, Ref } from 'react'
 import { ArrowRightIcon } from '@phosphor-icons/react/dist/csr/ArrowRight'
-import { Card, CardTitle, CardBody } from '../../../shared/ui'
+import { Card, CardTitle, CardBody } from './Card'
 
-interface ModeRowProps {
+interface ActionRowProps {
   icon: ReactNode
   title: string
   description: string
   onClick: () => void
+  ref?: Ref<HTMLDivElement>
 }
 
-export function ModeRow({ icon, title, description, onClick }: ModeRowProps) {
+/** A full-width card row that starts an action: icon, title, one-line
+ *  description and an arrow. Used for the entry choices on mode selection. */
+export function ActionRow({ icon, title, description, onClick, ref }: ActionRowProps) {
   return (
     <Card
+      ref={ref}
       elevation="sm"
       // A native <button> can't validly contain this row's heading/paragraph
       // content (button's content model is phrasing content only, and
@@ -46,7 +50,7 @@ export function ModeRow({ icon, title, description, onClick }: ModeRowProps) {
         {icon}
       </span>
       <span style={{ flex: 1 }}>
-        {/* Not a document heading — these three rows are a list of entry
+        {/* Not a document heading — these rows are a list of entry
          *  actions, not subsections of the page, and an h3 here would jump
          *  straight from the page's own h1 with nothing in between. */}
         <CardTitle as="span" style={{ display: 'block' }}>

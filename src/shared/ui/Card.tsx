@@ -1,7 +1,8 @@
-import type { HTMLAttributes } from 'react'
+import type { HTMLAttributes, Ref } from 'react'
 
 interface CardProps extends HTMLAttributes<HTMLDivElement> {
   elevation?: 'sm' | 'md' | 'lg'
+  ref?: Ref<HTMLDivElement>
 }
 
 export function Card({ elevation, className, ...props }: CardProps) {

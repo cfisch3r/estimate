@@ -26,6 +26,8 @@ describe('public store views', () => {
       | 'unit'
       | 'items'
       | 'activeItemId'
+      | 'loadedFrom'
+      | 'started'
       | 'setSessionName'
       | 'setUnit'
       | 'selectItem'

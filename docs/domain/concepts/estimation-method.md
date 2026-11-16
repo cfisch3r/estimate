@@ -33,14 +33,16 @@ Estimate:
   # Self-validating: only constructible with best ≤ likely ≤ worst — illegal ranges can't be represented
   best: number     # > 0
   likely: number   # ≥ best
-  worst: number    # ≥ likely
+  worst: number    # ≥ likely, ≤ 1,000,000 (any unit)
 
 AggregateResult:
-  # The group range produced by the Process above
-  min: number
-  expected: number
-  ci90: number
-  max: number
+  # The group range produced by the Process above. Self-validating like Estimate:
+  # only constructible when every field keeps its rule, whether it comes from
+  # aggregating estimates or from a saved file
+  min: number       # > 0, finite
+  expected: number  # min ≤ expected ≤ max
+  ci90: number      # = expected + 1.28 × ((max − min) / 3)
+  max: number       # ≥ min
 
 UncertaintyLevel:
   # One of 5 phases of the classic Cone of Uncertainty (see below); selected per item, per participant
@@ -72,6 +74,13 @@ Worst Case is expected to land around 4× (High mult. / Low mult. = 16x) the Bes
 table at implementation time rather than stored as its own rounded column, since a rounded
 display value can drift out of sync with the exact division.
 
+## Rules (final result)
+
+| Rule | Condition | Behavior | Spec |
+|---|---|---|---|
+| **A final result keeps every rule** | Any final result, aggregated or read from a file | **Accepted** only when every `AggregateResult` constraint in the information model holds; otherwise **rejected** with the rule it breaks | [final-result](../../../specs/estimation-method/domain/final-result.feature) |
+| **An estimate stays within 1,000,000** | A best, likely or worst case above 1,000,000, in any unit, from the form or from a peer | The estimate is **rejected** ("Enter a smaller value"), so aggregating submissions can never produce a 90% value too large to keep the rule above | — |
+
 ## Rules (bias guards)
 
 These are nudges, not hard blocks — they never prevent submission or finalize.
@@ -83,5 +92,6 @@ These are nudges, not hard blocks — they never prevent submission or finalize.
 | **Outlier flag at reveal** | A participant's value is far from the group median | **Highlight** (not hide) the outlier, to prompt discussion rather than silently average it out |
 | **Uncertainty-range guard** | The entered range (worst/best ratio) is narrower than the selected uncertainty level's guidance ratio | **Nudge:** the range looks narrow for that phase, teams at this stage typically see a wider spread. If the ratio already meets or exceeds guidance, show a **calm confirmation** instead |
 
-No executable spec exists yet for this concept's behavior (only the live-session join flow
-is covered so far — see [live-collaboration](live-collaboration.md)).
+The final-result rules have an executable spec
+([final-result](../../../specs/estimation-method/domain/final-result.feature)); the
+aggregation and the bias guards don't yet.

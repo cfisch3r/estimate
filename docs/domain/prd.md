@@ -36,7 +36,7 @@ EstiMate applies **three-point estimation** — the method recommended in Episod
 - **Jira/backlog tool import**<br>
   Future phase (manual entry only for MVP)
 - **Formal accounts/orgs**<br>
-  Beyond what's needed for session persistence (see [live-collaboration](concepts/live-collaboration.md))
+  Beyond what's needed for session persistence (see [session-persistence](concepts/session-persistence.md))
 
 ## 4. Primary user & core flow
 
@@ -97,11 +97,11 @@ table: [estimation-method](concepts/estimation-method.md).
 - **Real-time sync** *(Mode A only)*<br>
   Submissions and reveals sync live across participants via **peer-to-peer WebRTC connections, using public STUN servers for NAT traversal and serverless signaling** — no backend operated by the app for session communication (full reasoning in **ADR-001**)
 - **No-account joining** *(Mode A)*<br>
-  Participants join with just a name; only the session creator/team needs persistent identity for saving and reopening sessions
+  Participants join with just a name, and nobody needs an account: a session is saved and reopened as a file the facilitator keeps
 - **Graceful degradation** *(Mode A)*<br>
   If a peer connection can't be established, the app surfaces this clearly rather than failing silently, and points the facilitator toward Mode B as a fallback for that session
 - **Session persistence**<br>
-  Sessions and their reports are saved and retrievable later by the team, regardless of mode
+  Sessions are saved as files and loaded again later, regardless of mode, with no accounts or server-side storage (see [session-persistence](concepts/session-persistence.md))
 - **Export**<br>
   Session summary exportable as CSV and/or shareable read-only link
 
@@ -111,8 +111,6 @@ table: [estimation-method](concepts/estimation-method.md).
   How should re-estimate rounds be visualized in the final report — show convergence over rounds, or just the final round?
 - **Override/reconcile**<br>
   Should facilitators be able to override/reconcile the auto-calculated group range manually before finalizing an item?
-- **Minimum viable auth**<br>
-  Magic-link/email for session creators only, or fully open workspace links?
 - **Mode switch mid-session**<br>
   Can a session be switched from Mode A to Mode B mid-session (e.g., after a connection fallback on one item), or is mode fixed at creation?
 - **Manual-mode multi-entry**<br>
@@ -138,5 +136,6 @@ Cone-of-uncertainty guidance (§5) shipped as part of the MVP guard set, not a f
 Scenarios that pin down this PRD's behaviour as acceptance criteria live as executable
 Gherkin specs under `specs/<concept>/<test level>/` (ADR-010), not as prose here — a
 `.feature` file fails loudly when the app stops matching it, where a sentence in this
-document could silently drift. See [live-collaboration](concepts/live-collaboration.md)
-and [estimation-method](concepts/estimation-method.md) for which scenarios exist today.
+document could silently drift. See [live-collaboration](concepts/live-collaboration.md),
+[estimation-method](concepts/estimation-method.md) and
+[session-persistence](concepts/session-persistence.md) for which scenarios exist today.

@@ -60,6 +60,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm arch:specs
+      - run: pnpm specs:no-pending
 
   format:
     name: format

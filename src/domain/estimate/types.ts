@@ -10,12 +10,21 @@ export const DEFAULT_STRATEGY: AggregateStrategy = {
   worst: 'max',
 }
 
-export interface AggregateResult {
+/** The four values of a final result, before they are checked. */
+export interface AggregateValues {
   min: number
   expected: number
   max: number
   ci90: number
 }
+
+declare const AggregateResultBrand: unique symbol
+
+/** A final result that keeps every rule: only producible via
+ *  `createAggregateResult()`, the one place those rules are checked, whether the
+ *  values come from aggregating estimates or from a saved file. The brand is
+ *  compile-time only, so the result stays plain, JSON-transparent data. */
+export type AggregateResult = AggregateValues & { readonly [AggregateResultBrand]: true }
 
 export interface GuardResult {
   fired: boolean
@@ -36,6 +45,9 @@ export interface UncertaintyGuidance {
 export const ESTIMATION_UNITS = ['hours', 'days', 'weeks'] as const
 
 export type EstimationUnit = (typeof ESTIMATION_UNITS)[number]
+
+/** The unit a new session starts in. */
+export const DEFAULT_ESTIMATION_UNIT: EstimationUnit = 'days'
 
 /** Runtime guard for untrusted values (peer messages, persisted config). */
 export function isEstimationUnit(value: unknown): value is EstimationUnit {

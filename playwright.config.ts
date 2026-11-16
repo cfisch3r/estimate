@@ -45,13 +45,22 @@ const relayWebServer = {
   env: { TRYSTERO_RELAY_PORT: String(RELAY_PORT) },
 }
 
+/** The fixture and the steps every concept's e2e specs share. */
+const sharedSteps = ['specs/shared/e2e/world.ts', 'specs/shared/e2e/steps.ts']
+
 // Spike (spike/bdd-specs): generates Playwright tests from
 // specs/live-session/e2e/*.feature via playwright-bdd. Run `pnpm exec bddgen`
 // before `playwright test` to (re)generate — see docs/technical/concepts/e2e-testing.md.
 const liveSessionBddDir = defineBddConfig({
   features: 'specs/live-session/e2e/*.feature',
-  steps: ['specs/live-session/e2e/steps.ts', 'specs/live-session/e2e/world.ts'],
+  steps: ['specs/live-session/e2e/steps.ts', ...sharedSteps],
   outputDir: '.features-gen/live-session',
+})
+
+const sessionPersistenceBddDir = defineBddConfig({
+  features: 'specs/session-persistence/e2e/*.feature',
+  steps: ['specs/session-persistence/e2e/steps.ts', ...sharedSteps],
+  outputDir: '.features-gen/session-persistence',
 })
 
 export default defineConfig({
@@ -77,6 +86,11 @@ export default defineConfig({
     {
       name: 'live-session-bdd',
       testDir: liveSessionBddDir,
+      use: { ...devices['Desktop Chrome'] },
+    },
+    {
+      name: 'session-persistence-bdd',
+      testDir: sessionPersistenceBddDir,
       use: { ...devices['Desktop Chrome'] },
     },
   ],

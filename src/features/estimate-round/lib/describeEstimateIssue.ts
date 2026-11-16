@@ -1,6 +1,7 @@
 import { formatValue } from '../../../shared/ui'
 import {
   findOrderViolation,
+  MAX_ESTIMATE_VALUE,
   type EstimateField,
   type EstimateValuesError,
   type EstimationUnit,
@@ -66,6 +67,14 @@ export function describeEstimateIssue(
         message: `${describeField(error.fields[0], values, unit)} must be greater than 0. Enter how many ${unit} it would take if everything goes well.`,
         fields: error.fields,
       }
+    case 'too-large': {
+      const labels = error.fields.map((field) => ESTIMATE_FIELD_LABEL[field])
+      return {
+        headline: 'Enter a smaller value',
+        message: `${labels.join(' and ')} must be at most ${MAX_ESTIMATE_VALUE.toLocaleString('en')} ${unit}.`,
+        fields: error.fields,
+      }
+    }
     case 'not-finite': {
       const labels = error.fields.map((field) => ESTIMATE_FIELD_LABEL[field])
       return {

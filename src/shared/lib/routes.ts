@@ -7,5 +7,4 @@ export const ROUTES = {
   estimate: '/estimate',
   workspace: '/workspace',
   summary: '/summary',
-  history: '/history',
 } as const

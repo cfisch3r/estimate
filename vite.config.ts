@@ -1,7 +1,8 @@
 /// <reference types="vitest/config" />
-import { readFileSync } from 'node:fs'
+import { globSync, readFileSync } from 'node:fs'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { quickpickle } from 'quickpickle'
 
 const { version } = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf-8'),
@@ -14,22 +15,45 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(version),
   },
   test: {
-    // Scoped to src/ and the tooling scripts' tests so Vitest's default *.spec.ts pickup doesn't also try to
-    // collect e2e/specs/*.spec.ts — those are Playwright tests, and Playwright's
-    // `test()` isn't the same global Vitest provides (see ADR-007).
-    include: [
-      'src/**/*.{test,spec}.{ts,tsx}',
-      'scripts/**/*.test.ts',
-      '.claude/skills/*/scripts/**/*.test.ts',
-    ],
-    environment: 'jsdom',
-    setupFiles: ['./src/setupTests.ts'],
     passWithNoTests: true,
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'unit',
+          // Scoped to src/ and the tooling scripts' tests so Vitest's default *.spec.ts pickup doesn't also try to
+          // collect e2e/specs/*.spec.ts — those are Playwright tests, and Playwright's
+          // `test()` isn't the same global Vitest provides (see ADR-007).
+          include: [
+            'src/**/*.{test,spec}.{ts,tsx}',
+            'scripts/**/*.test.ts',
+            '.claude/skills/*/scripts/**/*.test.ts',
+          ],
+          environment: 'jsdom',
+          setupFiles: ['./src/setupTests.ts'],
+        },
+      },
+      {
+        // ADR-010's `domain` Test Level: Gherkin specs under
+        // specs/<concept>/domain/, run by quickpickle against src/domain only.
+        // `@fail` marks a scenario written before its implementation (ADR-010):
+        // it must fail, and turns the run red once it passes — the same tag
+        // playwright-bdd maps to Playwright's test.fail() at the `e2e` level.
+        plugins: [quickpickle({ failTags: ['@fail'] })],
+        test: {
+          name: 'specs-domain',
+          include: ['specs/*/domain/*.feature'],
+          environment: 'node',
+          // Every concept's domain steps, so each concept's features find theirs.
+          setupFiles: globSync('specs/*/domain/steps.ts').map((path) => `./${path}`),
+        },
+      },
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      // testHelpers.ts's defensive-throw branch is the one deliberate exception
-      // to the pure estimate core's 100% coverage bar (see AGENTS.md).
+      // The two test-data files' defensive throws are the one deliberate
+      // exception to the pure domain's 100% coverage bar (see AGENTS.md).
       exclude: ['src/domain/estimate/testHelpers.ts', 'src/domain/testFixtures.ts'],
       thresholds: {
         'src/domain/**': {

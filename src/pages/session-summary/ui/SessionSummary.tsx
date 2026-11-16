@@ -58,9 +58,6 @@ export function SessionSummary() {
           <Button variant="secondary" onClick={() => navigate(ROUTES.workspace)}>
             Back to item
           </Button>
-          <Button variant="secondary" onClick={() => navigate(ROUTES.history)}>
-            View session history
-          </Button>
         </div>
       </div>
     </div>

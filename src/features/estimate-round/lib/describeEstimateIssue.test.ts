@@ -55,6 +55,18 @@ describe('describeEstimateIssue', () => {
     expect(issue.fields).toEqual(['best'])
   })
 
+  it('names every field above the largest allowed value', () => {
+    const issue = describeEstimateIssue(
+      { code: 'too-large', fields: ['worst'] },
+      { best: 1, likely: 3, worst: 2e6 },
+      'days',
+    )
+
+    expect(issue.headline).toBe('Enter a smaller value')
+    expect(issue.message).toBe('Worst case must be at most 1,000,000 days.')
+    expect(issue.fields).toEqual(['worst'])
+  })
+
   it('names every field that is not a number', () => {
     const issue = describeEstimateIssue(
       { code: 'not-finite', fields: ['best', 'worst'] },

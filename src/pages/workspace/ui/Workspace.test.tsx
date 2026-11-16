@@ -7,6 +7,7 @@ import { createEstimate, type Estimate } from '../../../domain/estimate'
 import { useSessionStore, useConnectionStore } from '../../../application/testing'
 import { ROUTES } from '../../../shared/lib/routes'
 import type { Item } from '../../../domain/types'
+import { aggregateOf } from '../../../domain/testFixtures'
 
 const { navigateMock } = vi.hoisted(() => ({ navigateMock: vi.fn() }))
 
@@ -126,7 +127,7 @@ describe('Workspace', () => {
   })
 
   it('distinguishes the empty, all-finalized, and nothing-selected panel states', () => {
-    const finalized = { min: 1, expected: 2, max: 3, ci90: 3 }
+    const finalized = aggregateOf(1, 2, 3)
     const { rerender } = renderWorkspace()
     expect(screen.getByText('Add an item to get started')).toBeInTheDocument()
 
@@ -364,7 +365,7 @@ describe('Workspace — live facilitator reveal flow', () => {
   it('hides Retry and shows Update/Reopen for an already-finalized item (re-open is a separate confirm flow, #36)', () => {
     setupRound({
       revealed: true,
-      finalResult: { min: 1, expected: 2, max: 3, ci90: 3 },
+      finalResult: aggregateOf(1, 2, 3),
       submissions: [estimate('p1')],
     })
     renderWorkspace()
@@ -385,7 +386,7 @@ describe('Workspace — live facilitator reveal flow', () => {
     const user = userEvent.setup()
     setupRound({
       revealed: true,
-      finalResult: { min: 1, expected: 2, max: 3, ci90: 3 },
+      finalResult: aggregateOf(1, 2, 3),
       submissions: [estimate('p1')],
     })
     renderWorkspace()

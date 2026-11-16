@@ -47,6 +47,7 @@ function resetStore() {
     sessionId: null,
     myName: '',
     connectionStatus: 'idle',
+    hasEverConnected: false,
     peerCount: 0,
   })
 }
@@ -212,6 +213,25 @@ describe('JoinSession', () => {
     renderJoinSession()
 
     expect(navigateMock).not.toHaveBeenCalled()
+  })
+
+  it('routes onward once a join already under way at mount connects', () => {
+    // Back from Join while connecting, then the entry-screen guard leads here
+    // again: the attempt in flight is still this client's own.
+    useConnectionStore.setState({
+      mode: 'live',
+      role: 'participant',
+      sessionId: 'K7F9Q2',
+      connectionStatus: 'connecting',
+      hasEverConnected: false,
+    })
+    renderJoinSession()
+    expect(navigateMock).not.toHaveBeenCalled()
+
+    act(() => useConnectionStore.setState({ connectionStatus: 'connected' }))
+
+    expect(navigateMock).toHaveBeenCalledTimes(1)
+    expect(navigateMock).toHaveBeenCalledWith('/estimate')
   })
 
   it('Back disconnects and returns to mode-select', async () => {

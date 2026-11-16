@@ -109,7 +109,7 @@ describe('patchItem', () => {
   })
 })
 
-describe('selectFirstPending', () => {
+describe('startSession', () => {
   it('selects the first item that has no final result yet', () => {
     const { addItem } = useSessionStore.getState()
     addItem('A')
@@ -119,37 +119,42 @@ describe('selectFirstPending', () => {
     if (!estimate.ok) throw new Error(estimate.error)
     patchItem(first!.id, { finalResult: aggregateEstimates([estimate.value]) })
 
-    useSessionStore.getState().selectFirstPending()
+    useSessionStore.getState().startSession()
 
     expect(useSessionStore.getState().activeItemId).toBe(second!.id)
   })
 
+  it('marks the session started', () => {
+    useSessionStore.getState().startSession()
+    expect(useSessionStore.getState().started).toBe(true)
+  })
+
   it('clears the selection when there are no items', () => {
     useSessionStore.getState().selectItem('stale')
-    useSessionStore.getState().selectFirstPending()
+    useSessionStore.getState().startSession()
     expect(useSessionStore.getState().activeItemId).toBeNull()
   })
 })
 
-describe('resetUnit', () => {
-  it('returns the unit to the default', () => {
-    useSessionStore.getState().setUnit('weeks')
-    useSessionStore.getState().resetUnit()
-    expect(useSessionStore.getState().unit).toBe('days')
-  })
-})
-
-describe('clearSession', () => {
-  it('resets items, session name and active item', () => {
-    useSessionStore.setState({ sessionName: 'My session' })
+describe('resetSession', () => {
+  it('returns every field to a new session, the unit included', () => {
+    useSessionStore
+      .getState()
+      .loadSession(
+        { sessionName: 'Loaded', unit: 'weeks', items: [] },
+        'loaded.estimate.json',
+      )
     useSessionStore.getState().addItem('Item A')
 
-    useSessionStore.getState().clearSession()
+    useSessionStore.getState().resetSession()
 
     expect(useSessionStore.getState()).toMatchObject({
       items: [],
       sessionName: '',
+      unit: 'days',
       activeItemId: null,
+      lastSavedFile: null,
+      loadedFrom: null,
     })
   })
 })

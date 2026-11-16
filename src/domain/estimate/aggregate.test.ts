@@ -1,8 +1,17 @@
 import { describe, expect, it } from 'vitest'
 import { aggregateEstimates, median } from './aggregate'
+import { MAX_ESTIMATE_VALUE } from './estimate'
 import { est } from './testHelpers'
 
 describe('aggregateEstimates', () => {
+  it('refuses a strategy whose result breaks the final-result rules', () => {
+    // A mean of best cases lands above the median likely case here.
+    const estimates = [est('a', 1, 1, 1), est('b', 1, 1, 1), est('c', 100, 100, 100)]
+    expect(() =>
+      aggregateEstimates(estimates, { best: 'mean', likely: 'median', worst: 'max' }),
+    ).toThrow(/expected value outside its range/)
+  })
+
   it('degenerates to the raw values for a single estimate (Mode B path)', () => {
     const result = aggregateEstimates([est('facilitator', 3, 5, 9)])
     expect(result.min).toBe(3)
@@ -36,6 +45,12 @@ describe('aggregateEstimates', () => {
     expect(result.min).toBe(3)
     expect(result.expected).toBe(5)
     expect(result.max).toBe(7)
+  })
+
+  it('aggregates estimates at the largest allowed value into a finite result', () => {
+    const top = MAX_ESTIMATE_VALUE
+    const result = aggregateEstimates([est('a', top, top, top), est('b', 1, top, top)])
+    expect(Number.isFinite(result.ci90)).toBe(true)
   })
 
   it('throws on an empty estimate list', () => {

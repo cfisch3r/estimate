@@ -32,9 +32,28 @@
   cursor: pointer;
 }
 
+/* — armed leave prompt — the brand button's warning text. Smaller and left
+   aligned so the longest prompt (unsaved changes in a live session) wraps to
+   a few short lines on a phone instead of squeezing the brand mark. */
+.app-header-brand-armed {
+  font-size: 14px;
+  line-height: 1.3;
+  text-align: left;
+}
+.app-header-brand-home > svg {
+  flex-shrink: 0;
+}
+
 /* — header start group — wraps the brand and the feedback link so the
    header's outer flex row keeps its two-item space-between layout. */
 .app-header-start {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* — header end group — the Save button next to the mode tag. */
+.app-header-end {
   display: inline-flex;
   align-items: center;
   gap: var(--space-3);
