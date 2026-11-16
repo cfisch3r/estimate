@@ -15,7 +15,8 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 - `docs/domain/prd.md` — product requirements: problem, goals, non-goals, primary user &
   core flow, non-functional requirements, open questions, future phases
 - `docs/domain/concepts/live-collaboration.md` — domain concept: the Live and Manual mode
-  processes, the Session/Item/Estimate/Participant/Roster information model, and the rules
+  processes, the Session/Item/Estimate/Participant/RosterEntry information model, the
+  round lifecycle, and the rules
   (privacy before reveal, no mid-session mode switch, late-join catch-up)
 - `docs/domain/concepts/estimation-method.md` — domain concept: the three-point estimation
   process, the Estimate/AggregateResult/uncertainty-level information model, and the

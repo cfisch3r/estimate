@@ -111,8 +111,6 @@ table: [estimation-method](concepts/estimation-method.md).
   How should re-estimate rounds be visualized in the final report — show convergence over rounds, or just the final round?
 - **Override/reconcile**<br>
   Should facilitators be able to override/reconcile the auto-calculated group range manually before finalizing an item?
-- **Mode switch mid-session**<br>
-  Can a session be switched from Mode A to Mode B mid-session (e.g., after a connection fallback on one item), or is mode fixed at creation?
 - **Manual-mode multi-entry**<br>
   Should Mode B support multiple named entries per item (e.g., facilitator typing in what each person said) rather than a single reconciled value — closer to Mode A's data shape without the live connection?
 
