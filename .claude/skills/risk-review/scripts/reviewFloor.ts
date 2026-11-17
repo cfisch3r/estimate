@@ -127,7 +127,7 @@ export function parseCatalogue(markdown: string): Category[] {
 // `matchesGlob` never lets `*` or `**` match a name starting with a dot, so a pattern
 // `<folder>/**` with no wildcard in the folder part is checked as a prefix: it covers dot
 // files and dot folders below that folder too.
-function matchesPattern(path: string, glob: string): boolean {
+export function matchesPattern(path: string, glob: string): boolean {
   const folder = glob.endsWith('/**') ? glob.slice(0, -2) : undefined
   if (folder && !/[*?[\]{}]/.test(folder) && path.startsWith(folder)) return true
   return matchesGlob(path, glob)
