@@ -58,9 +58,11 @@ strips:
       - '.*'
 
 # Files left off the map and only counted: tests and their helpers, styles, type
-# declarations.
+# declarations. `**` never enters a dot folder, so the tests of the plugins under .claude/
+# are named here.
 offMap:
   - '**/*.test.ts'
+  - '.claude/**/*.test.ts'
   - '**/*.test.tsx'
   - '**/testHelpers.ts'
   - '**/testFixtures.ts'

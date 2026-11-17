@@ -144,6 +144,12 @@ describe('placeFile', () => {
     expect(placeFile('LICENSE', config)).toEqual({ kind: 'strip', strip: 'Other' })
   })
 
+  it('keeps test files under dot folders off the map with the repo configuration', () => {
+    expect(
+      placeFile('.claude/skills/risk-review/scripts/reviewMap.test.ts', repoConfig()),
+    ).toEqual({ kind: 'off' })
+  })
+
   it('puts AGENTS.md and agent prompts into Docs with the repo configuration', () => {
     const repo = repoConfig()
     expect(placeFile('AGENTS.md', repo)).toEqual({ kind: 'strip', strip: 'Docs' })

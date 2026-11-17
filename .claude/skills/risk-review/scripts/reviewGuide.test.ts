@@ -17,6 +17,7 @@ import {
   type GuideInput,
   type Signals,
 } from './reviewGuide.ts'
+import type { ChangesetMap } from './reviewMap.ts'
 
 // The guide script holds the rules that the agent's prompt only asks for: the risk is the
 // higher of the floor and the agent's, hot spots must be lines of the change, and the
@@ -540,5 +541,46 @@ describe('originUrl', () => {
 
   it('gives nothing for an origin that is not on GitHub', () => {
     expect(originUrl(repo('https://gitlab.com/someone/estimate.git'))).toBeUndefined()
+  })
+})
+
+describe('changeset map', () => {
+  const map: ChangesetMap = {
+    layers: [
+      {
+        name: 'domain',
+        root: {
+          path: 'src/domain',
+          label: 'domain',
+          files: [],
+          folders: [],
+          changed: 0,
+          startsCollapsed: false,
+          collapsible: false,
+        },
+      },
+    ],
+    strips: [],
+    offMap: 0,
+  }
+
+  it('places the map between Risk and Hot spots', () => {
+    const html = page({ map: { status: 'ok', ...map } })
+    const at = html.indexOf('id="changeset-map"')
+    expect(at).toBeGreaterThan(html.indexOf('<h2>Risk</h2>'))
+    expect(at).toBeLessThan(html.indexOf('<h2>Hot spots</h2>'))
+  })
+
+  it('notes an unavailable map under Not verified', () => {
+    const html = page({
+      map: { status: 'not available', reason: 'changeset-map.yaml not found' },
+    })
+    const [shown] = html.split('<details>')
+    expect(shown).toContain('<li>Changeset map: changeset-map.yaml not found</li>')
+    expect(html).not.toContain('changeset-map-data')
+  })
+
+  it('renders as before without a map', () => {
+    expect(page()).not.toContain('changeset-map')
   })
 })

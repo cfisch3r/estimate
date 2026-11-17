@@ -23,6 +23,8 @@ flowchart TD
   Sig["Signals script<br/>[script]"]
   Agent["risk-review:reviewer agent<br/>[model, read-only]"]
   Guide["Guide script<br/>[script]"]
+  Map["Map module<br/>[module]"]
+  MapCfg["changeset-map.yaml<br/>[YAML file, plugin]"]
   Page["Review guide<br/>[HTML page, artifact]"]
 
   Cat["Catalogue on main<br/>[YAML block]"]
@@ -34,15 +36,18 @@ flowchart TD
   Sig -->|"evidence"| Guide
   Floor -->|"floor"| Guide
   Agent -->|"risk, categories, hot spots"| Guide
+  Diff -->|"changed files"| Map
+  MapCfg -->|"layers, strips"| Map
+  Map -->|"placed files"| Guide
   Guide -->|"rendered guide"| Page
 
   classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
   classDef model fill:#FEF08A,stroke:#CA8A04,color:#422006
   classDef data fill:#E2E8F0,stroke:#64748B,color:#0F172A
 
-  class Floor,Sig,Guide script
+  class Floor,Sig,Guide,Map script
   class Agent model
-  class Diff,Page,Cat data
+  class Diff,Page,Cat,MapCfg data
 ```
 
 | Step | Role |
@@ -50,6 +55,7 @@ flowchart TD
 | **Floor script** | Reads the YAML block below from the base branch (`origin/main`, else `main`; never from the pull request being checked, also when given a commit to start from), matches the changed files against it and reports the matched categories and the highest minimum risk. |
 | **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
 | **`risk-review:reviewer` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
+| **Map module** | Places every changed file for the changeset map: in a layer and slice of `src/`, in a side strip for files outside it, or off the map (tests, CSS, type declarations). The layers, strips and off-map patterns come from the plugin's `.claude/skills/risk-review/changeset-map.yaml`. It has no command; the guide script calls it. |
 | **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide page. |
 
 ## The agent's answer
@@ -90,6 +96,12 @@ self-contained HTML page. A script writes it, so the rules hold whatever the age
   below it.
 - A hot spot links to its file and line at the commit the guide covers when the repository has a
   GitHub address (read from the `origin` remote); otherwise the reference is plain text.
+- The changeset map, between Risk and Hot spots, shows every changed file in its layer, slice
+  and folder, coloured by status, with a dashed box at the old place of a moved file. Files
+  outside `src/` sit in strips below the layers. A slice with more than four changed files starts
+  collapsed; a reader opens or collapses any folder by clicking its name. When the map cannot
+  be built (a missing or invalid `changeset-map.yaml`), the page has no map and says why under
+  "Not verified".
 - The page describes the commit it names. After new commits, run the command again; it
   publishes over the earlier artifact of the same pull request and nothing compares the two.
 
@@ -97,6 +109,7 @@ self-contained HTML page. A script writes it, so the rules hold whatever the age
 |---|---|
 | Marker | `Covers <commit>`, the commit the guide was written for, so a reader can see what it describes |
 | Risk | The level and the category names |
+| Changeset map | The changed files in the app's layers and in side strips, with folders to collapse |
 | Hot spots | A headline, what the change is and what makes it a hot spot, the reference (`file:line`, linked to the covered commit) with the rule or ADR, and facts from the signals |
 | Skim only | Files a reader can skim, each with a reason |
 | Not verified | What a reader has to check by hand; the scripts' own findings are folded below it |
