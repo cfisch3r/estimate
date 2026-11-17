@@ -165,9 +165,16 @@
     return e
   }
 
+  // Re-rendering replaces every element, so focus moves to what now stands for the folder:
+  // its name after opening, its box after collapsing.
   function toggle(folder) {
-    toggled.set(folder.path, !isOpen(folder))
+    const opening = !isOpen(folder)
+    toggled.set(folder.path, opening)
     render()
+    const target = [
+      ...canvas.querySelectorAll(opening ? '.folder-label' : '.node.collapsed'),
+    ].find((e) => e.dataset.path === folder.path)
+    target?.focus()
   }
 
   function describe(file) {
@@ -249,6 +256,7 @@
         if (can) {
           button.setAttribute('aria-label', `Collapse folder ${f.folder.label}`)
           button.addEventListener('click', () => toggle(f.folder))
+          button.dataset.path = f.folder.path
         } else {
           button.disabled = true
         }
@@ -270,6 +278,7 @@
         const folder = unit.folder
         const c = counts(folder)
         box.classList.add('collapsed')
+        box.dataset.path = folder.path
         box.setAttribute('role', 'button')
         box.setAttribute('aria-label', `Folder ${folder.label}, collapsed, open it`)
         box.append(el('div', 'collapsed-label', `${folder.label}/ ▸`))

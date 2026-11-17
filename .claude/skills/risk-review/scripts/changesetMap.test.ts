@@ -172,6 +172,32 @@ describe('renderMapSection', () => {
     ])
   })
 
+  it('lets clicks through the frames to the folder names below them', () => {
+    open([
+      added('src/features/save/ui/Button.tsx'),
+      added('src/features/save/ui/Label.tsx'),
+    ])
+    for (const frame of document.querySelectorAll(
+      '.group-frame, .layer-frame, .folder-frame',
+    )) {
+      expect(getComputedStyle(frame).pointerEvents).toBe('none')
+    }
+  })
+
+  it('keeps keyboard focus on the folder it opened or collapsed', () => {
+    open(busySlice)
+    const box = document.querySelector<HTMLElement>('.node.collapsed')
+    box?.focus()
+    box?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    const label = document.activeElement as HTMLElement
+    expect(label.classList.contains('folder-label')).toBe(true)
+    expect(label.dataset.path).toBe('src/features/busy/model')
+    label.click()
+    const collapsed = document.activeElement as HTMLElement
+    expect(collapsed.classList.contains('collapsed')).toBe(true)
+    expect(collapsed.dataset.path).toBe('src/features/busy/model')
+  })
+
   it('counts the files left off the map in the legend', () => {
     open([added('src/domain/a.test.ts'), added('src/domain/a.ts')])
     expect(document.getElementById('changeset-map')?.textContent).toContain(

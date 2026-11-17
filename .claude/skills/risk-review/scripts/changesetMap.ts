@@ -8,6 +8,7 @@ import type { ChangesetMap } from './reviewMap.ts'
 
 const CLIENT = readFileSync(join(import.meta.dirname, 'changesetMap.client.js'), 'utf8')
 
+// Frames only draw: pointer-events:none lets clicks reach the folder names under them.
 // Status colours for both themes, next to the guide's own tokens.
 const DARK = `--add-bg:#12261e;--add:#3fb950;--del-bg:#2d1214;--del:#ff7b72;--chg-bg:#2e1f0e;--chg:#f0883e;--mov-bg:#231a33;--mov:#bc8cff;--frame:#6e7681;--focus:#58a6ff;`
 const STYLE = `
@@ -19,10 +20,10 @@ const STYLE = `
 #changeset-map .sw{display:inline-block;width:14px;height:11px;border-radius:3px;border:1.5px solid var(--frame);vertical-align:-1px;margin-right:4px}
 #changeset-map .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;padding:16px}
 #changeset-map .map-canvas{position:relative}
-#changeset-map .group-frame{position:absolute;box-sizing:border-box;border:1.5px solid var(--frame);border-radius:16px}
-#changeset-map .layer-frame{position:absolute;box-sizing:border-box;border:1.5px solid var(--fg);border-radius:14px;opacity:.7}
+#changeset-map .group-frame{position:absolute;pointer-events:none;box-sizing:border-box;border:1.5px solid var(--frame);border-radius:16px}
+#changeset-map .layer-frame{position:absolute;pointer-events:none;box-sizing:border-box;border:1.5px solid var(--fg);border-radius:14px;opacity:.7}
 #changeset-map .layer-frame.empty{background:var(--card);opacity:.4}
-#changeset-map .folder-frame{position:absolute;box-sizing:border-box;border:1px dashed var(--frame);border-radius:10px}
+#changeset-map .folder-frame{position:absolute;pointer-events:none;box-sizing:border-box;border:1px dashed var(--frame);border-radius:10px}
 #changeset-map .layer-label{position:absolute;font-size:12px;line-height:1.25}
 #changeset-map .layer-label span{color:var(--muted)}
 #changeset-map .folder-label{position:absolute;font:600 10.5px/1 ui-monospace,monospace;color:var(--muted);background:none;border:0;padding:2px;cursor:pointer;white-space:nowrap}
