@@ -1,7 +1,18 @@
 // @vitest-environment node
-import { readFileSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { parseMapConfig, placeFile, type MapConfig } from './reviewMap.ts'
+import type { ChangedFile } from './changedDiff.ts'
+import {
+  buildChangesetMap,
+  parseMapConfig,
+  placeFile,
+  readChangesetMap,
+  type ChangesetMap,
+  type Folder,
+  type MapConfig,
+} from './reviewMap.ts'
 
 // The changeset map places every changed file of a branch: in a layer and slice of the
 // app, in one of the side strips for files outside the source root, or off the map. All
@@ -67,6 +78,16 @@ describe('parseMapConfig', () => {
       'two side layers',
       'sourceRoot: src\nlayers:\n  - name: a\n    side: true\n  - name: b\n    side: true\nstrips: []\noffMap: []',
       /side/,
+    ],
+    [
+      'a flag is not true or false',
+      'sourceRoot: src\nlayers:\n  - name: a\n    side: yes please\nstrips: []\noffMap: []',
+      /layers\[0\]\.side/,
+    ],
+    [
+      'offMap is not a list',
+      'sourceRoot: src\nlayers: []\nstrips: []\noffMap: 1',
+      /offMap/,
     ],
   ])('names the field when %s', (_, text, message) => {
     expect(() => parseMapConfig(text)).toThrow(message)
@@ -142,5 +163,195 @@ describe('placeFile', () => {
       kind: 'strip',
       strip: 'Agent, CI and tooling',
     })
+  })
+})
+
+const added = (path: string): ChangedFile => ({ path, status: 'added' })
+const layerRoot = (map: ChangesetMap, name: string): Folder => {
+  const layer = map.layers.find((l) => l.name === name)
+  if (!layer) throw new Error(`no layer ${name}`)
+  return layer.root
+}
+const folder = (parent: Folder, label: string): Folder => {
+  const found = parent.folders.find((f) => f.label === label)
+  if (!found) throw new Error(`no folder ${label} in ${parent.path}`)
+  return found
+}
+
+describe('buildChangesetMap', () => {
+  it('maps git statuses', () => {
+    const map = buildChangesetMap(
+      [
+        added('src/domain/a.ts'),
+        { path: 'src/domain/b.ts', status: 'modified' },
+        { path: 'src/domain/c.ts', status: 'deleted' },
+      ],
+      config,
+    )
+    const files = folder(layerRoot(map, 'domain'), '(root)').files
+    expect(files.map((f) => [f.path, f.status])).toEqual([
+      ['src/domain/a.ts', 'added'],
+      ['src/domain/b.ts', 'changed'],
+      ['src/domain/c.ts', 'deleted'],
+    ])
+  })
+
+  it('puts a ghost at the old place of a file moved across layers', () => {
+    const map = buildChangesetMap(
+      [
+        {
+          path: 'src/features/y/A.tsx',
+          oldPath: 'src/domain/x/A.tsx',
+          status: 'renamed',
+        },
+      ],
+      config,
+    )
+    expect(folder(layerRoot(map, 'features'), 'y').files).toEqual([
+      { path: 'src/features/y/A.tsx', status: 'moved', from: 'src/domain/x/A.tsx' },
+    ])
+    expect(folder(layerRoot(map, 'domain'), 'x').files).toEqual([
+      { path: 'src/domain/x/A.tsx', status: 'ghost', movedTo: 'src/features/y/A.tsx' },
+    ])
+  })
+
+  it('counts off-map files', () => {
+    const map = buildChangesetMap(
+      [
+        added('src/domain/a.test.ts'),
+        added('src/domain/b.test.ts'),
+        added('src/features/x/x.css'),
+      ],
+      config,
+    )
+    expect(map.offMap).toBe(3)
+    expect(layerRoot(map, 'domain').folders).toEqual([])
+    expect(layerRoot(map, 'features').folders).toEqual([])
+  })
+
+  it('collapses a slice with more than four changed files', () => {
+    const busy = ['a', 'b', 'c', 'd'].map((n) => added(`src/features/busy/model/${n}.ts`))
+    const quiet = ['a', 'b', 'c', 'd'].map((n) => added(`src/features/quiet/${n}.ts`))
+    const map = buildChangesetMap(
+      [...busy, added('src/features/busy/ui/e.tsx'), ...quiet],
+      config,
+    )
+    const features = layerRoot(map, 'features')
+    expect(folder(features, 'busy')).toMatchObject({ changed: 5, startsCollapsed: true })
+    expect(folder(features, 'quiet')).toMatchObject({
+      changed: 4,
+      startsCollapsed: false,
+    })
+    expect(folder(folder(features, 'busy'), 'model').startsCollapsed).toBe(false)
+  })
+
+  it('does not count a ghost as a changed file', () => {
+    const moves = ['a', 'b', 'c', 'd', 'e'].map((n): ChangedFile => ({
+      path: `src/features/new/${n}.ts`,
+      oldPath: `src/features/old/${n}.ts`,
+      status: 'renamed',
+    }))
+    const features = layerRoot(buildChangesetMap(moves, config), 'features')
+    expect(folder(features, 'old')).toMatchObject({ changed: 0, startsCollapsed: false })
+    expect(folder(features, 'new')).toMatchObject({ changed: 5, startsCollapsed: true })
+  })
+
+  it('folds a single-child chain', () => {
+    const map = buildChangesetMap(
+      [
+        added('src/features/session-history/ui/A.tsx'),
+        added('src/features/session-history/ui/B.tsx'),
+      ],
+      config,
+    )
+    const chain = folder(layerRoot(map, 'features'), 'session-history/ui')
+    expect(chain.path).toBe('src/features/session-history/ui')
+    expect(chain.files.map((f) => f.path)).toEqual([
+      'src/features/session-history/ui/A.tsx',
+      'src/features/session-history/ui/B.tsx',
+    ])
+  })
+
+  it('sorts files before folders, each by name', () => {
+    const map = buildChangesetMap(
+      [
+        added('src/features/x/z.ts'),
+        added('src/features/x/b/c.ts'),
+        added('src/features/x/a.ts'),
+      ],
+      config,
+    )
+    const x = folder(layerRoot(map, 'features'), 'x')
+    expect(x.files.map((f) => f.path)).toEqual([
+      'src/features/x/a.ts',
+      'src/features/x/z.ts',
+    ])
+    expect(x.folders.map((f) => f.label)).toEqual(['b'])
+  })
+
+  it('marks a folder holding one file as not collapsible', () => {
+    const map = buildChangesetMap(
+      [
+        added('src/features/one/a.ts'),
+        added('src/features/two/a.ts'),
+        added('src/features/two/b.ts'),
+      ],
+      config,
+    )
+    expect(folder(layerRoot(map, 'features'), 'one').collapsible).toBe(false)
+    expect(folder(layerRoot(map, 'features'), 'two').collapsible).toBe(true)
+  })
+
+  it('lists only strips with files, Other last', () => {
+    const map = buildChangesetMap(
+      [added('LICENSE'), added('package.json'), added('docs/a.md')],
+      config,
+    )
+    expect(map.strips.map((s) => [s.name, s.files.map((f) => f.path)])).toEqual([
+      ['Docs', ['docs/a.md']],
+      ['Tooling', ['package.json']],
+      ['Other', ['LICENSE']],
+    ])
+  })
+
+  it('keeps every configured layer in order and adds Unplaced only when it holds files', () => {
+    expect(buildChangesetMap([], config).layers.map((l) => l.name)).toEqual([
+      'app',
+      'features',
+      'domain',
+    ])
+    expect(
+      buildChangesetMap([added('src/main.tsx')], config).layers.map((l) => l.name),
+    ).toEqual(['app', 'features', 'domain', 'Unplaced'])
+  })
+})
+
+describe('readChangesetMap', () => {
+  it('reports a missing configuration as not available', () => {
+    expect(readChangesetMap([], '/nonexistent/changeset-map.yaml')).toEqual({
+      status: 'not available',
+      reason: 'changeset-map.yaml not found',
+    })
+  })
+
+  it('reports an invalid configuration as not available with the field', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'changeset-map-'))
+    try {
+      const path = join(dir, 'changeset-map.yaml')
+      writeFileSync(path, 'sourceRoot: src\nlayers: 3\nstrips: []\noffMap: []\n')
+      const result = readChangesetMap([], path)
+      expect(result.status).toBe('not available')
+      expect(result.status === 'not available' && result.reason).toMatch(/layers/)
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  })
+
+  it("builds the map with the repo's configuration", () => {
+    const result = readChangesetMap(
+      [added('src/domain/a.ts')],
+      new URL('../changeset-map.yaml', import.meta.url).pathname,
+    )
+    expect(result.status).toBe('ok')
   })
 })

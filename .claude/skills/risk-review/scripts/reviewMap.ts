@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
+import type { ChangedFile } from './changedDiff.ts'
 import { matchesPattern } from './reviewFloor.ts'
+import type { Section } from './reviewSignals.ts'
 
 // The changeset map of the Review guide: every changed file of a branch, placed in a layer
 // and slice of the app or in a side strip. The layers, strips and the files left off the
@@ -142,4 +145,207 @@ export function placeFile(path: string, config: MapConfig): Place {
     s.paths.some((glob) => matchesPattern(path, glob)),
   )
   return { kind: 'strip', strip: strip?.name ?? OTHER_STRIP }
+}
+
+export type MapStatus = 'added' | 'changed' | 'deleted' | 'moved' | 'ghost'
+
+export interface MapFile {
+  path: string
+  status: MapStatus
+  /** The old path of a moved file. */
+  from?: string
+  /** The new path, on the ghost a moved file leaves at its old place. */
+  movedTo?: string
+}
+
+export interface Folder {
+  /** The full path; the key a reader collapses or opens it by. */
+  path: string
+  /** The folder's name, or a folded chain of single-child folders (`session-history/ui`). */
+  label: string
+  files: MapFile[]
+  folders: Folder[]
+  /** Files in this folder and below, ghosts not counted. */
+  changed: number
+  startsCollapsed: boolean
+  /** False when the folder holds a single file in all. */
+  collapsible: boolean
+}
+
+export interface LayerView {
+  name: string
+  group?: 'ui'
+  side?: boolean
+  root: Folder
+}
+
+export interface ChangesetMap {
+  /** The configured layers in drawing order, then `Unplaced` when it holds files. */
+  layers: LayerView[]
+  /** The strips that hold files, in configured order, then `Other`. */
+  strips: Array<{ name: string; files: MapFile[] }>
+  /** Changed files left off the map. */
+  offMap: number
+}
+
+/** A slice with more changed files than this starts collapsed. */
+export const COLLAPSE_ABOVE = 4
+const UNPLACED = 'Unplaced'
+const ROOT_SLICE = '(root)'
+
+const STATUS: Record<ChangedFile['status'], MapStatus> = {
+  added: 'added',
+  modified: 'changed',
+  deleted: 'deleted',
+  renamed: 'moved',
+}
+
+function mapFiles(files: ChangedFile[]): MapFile[] {
+  return files.flatMap((f): MapFile[] =>
+    f.status === 'renamed' && f.oldPath
+      ? [
+          { path: f.path, status: 'moved', from: f.oldPath },
+          { path: f.oldPath, status: 'ghost', movedTo: f.path },
+        ]
+      : [{ path: f.path, status: STATUS[f.status] }],
+  )
+}
+
+interface RawFolder {
+  path: string
+  name: string
+  files: MapFile[]
+  sub: Map<string, RawFolder>
+}
+
+const rawFolder = (path: string, name: string): RawFolder => ({
+  path,
+  name,
+  files: [],
+  sub: new Map(),
+})
+
+function addFile(root: RawFolder, dirs: string[], file: MapFile) {
+  let folder = root
+  for (const dir of dirs) {
+    let next = folder.sub.get(dir)
+    if (!next) {
+      next = rawFolder(`${folder.path}/${dir}`, dir)
+      folder.sub.set(dir, next)
+    }
+    folder = next
+  }
+  folder.files.push(file)
+}
+
+const byName =
+  <T>(key: (item: T) => string) =>
+  (a: T, b: T) =>
+    key(a).localeCompare(key(b))
+
+/** Folds single-child chains below the layer, counts files and sets the starting state. */
+function finish(raw: RawFolder, depth: number, sliceDepth: number | undefined): Folder {
+  let folder = raw
+  let label = raw.name
+  while (depth > 0 && folder.files.length === 0 && folder.sub.size === 1) {
+    folder = [...folder.sub.values()][0] as RawFolder
+    label += `/${folder.name}`
+  }
+  const folders = [...folder.sub.values()]
+    .map((f) => finish(f, depth + 1, sliceDepth))
+    .sort(byName((f) => f.label))
+  const files = [...folder.files].sort(byName((f) => f.path))
+  const changed =
+    files.filter((f) => f.status !== 'ghost').length +
+    folders.reduce((sum, f) => sum + f.changed, 0)
+  const total = files.length + folders.reduce((sum, f) => sum + count(f), 0)
+  return {
+    path: folder.path,
+    label,
+    files,
+    folders,
+    changed,
+    startsCollapsed: depth === sliceDepth && changed > COLLAPSE_ABOVE,
+    collapsible: total > 1,
+  }
+}
+
+const count = (f: Folder): number =>
+  f.files.length + f.folders.reduce((sum, sub) => sum + count(sub), 0)
+
+/** The map of a branch's changed files, placed by the configuration. */
+export function buildChangesetMap(
+  changed: ChangedFile[],
+  config: MapConfig,
+): ChangesetMap {
+  const roots = new Map(
+    config.layers.map((l) => [
+      l.name,
+      rawFolder(`${config.sourceRoot}/${l.name}`, l.name),
+    ]),
+  )
+  const unplaced = rawFolder(config.sourceRoot, UNPLACED)
+  const strips = new Map<string, MapFile[]>(config.strips.map((s) => [s.name, []]))
+  strips.set(OTHER_STRIP, [])
+  let offMap = 0
+
+  for (const file of mapFiles(changed)) {
+    const place = placeFile(file.path, config)
+    if (place.kind === 'off') {
+      offMap++
+    } else if (place.kind === 'strip') {
+      strips.get(place.strip)?.push(file)
+    } else if (place.kind === 'unplaced') {
+      const dirs = file.path
+        .slice(config.sourceRoot.length + 1)
+        .split('/')
+        .slice(0, -1)
+      addFile(unplaced, dirs, file)
+    } else {
+      const root = roots.get(place.layer) as RawFolder
+      const dirs = file.path
+        .slice(root.path.length + 1)
+        .split('/')
+        .slice(0, -1)
+      addFile(root, dirs.length === 0 ? [ROOT_SLICE] : dirs, file)
+    }
+  }
+
+  const layers: LayerView[] = config.layers.map((l) => ({
+    name: l.name,
+    ...(l.group ? { group: l.group } : {}),
+    ...(l.side ? { side: true } : {}),
+    root: finish(roots.get(l.name) as RawFolder, 0, l.wholeSlice ? undefined : 1),
+  }))
+  if (unplaced.files.length > 0 || unplaced.sub.size > 0) {
+    layers.push({ name: UNPLACED, root: finish(unplaced, 0, undefined) })
+  }
+  return {
+    layers,
+    strips: [...strips]
+      .filter(([, files]) => files.length > 0)
+      .map(([name, files]) => ({ name, files: files.sort(byName((f) => f.path)) })),
+    offMap,
+  }
+}
+
+/** The map, or why it is not available: a missing or invalid configuration file. */
+export function readChangesetMap(
+  changed: ChangedFile[],
+  configPath: string,
+): Section<ChangesetMap> {
+  let source: string
+  try {
+    source = readFileSync(configPath, 'utf8')
+  } catch {
+    return { status: 'not available', reason: 'changeset-map.yaml not found' }
+  }
+  try {
+    return { status: 'ok', ...buildChangesetMap(changed, parseMapConfig(source)) }
+  } catch (error) {
+    return {
+      status: 'not available',
+      reason: error instanceof Error ? error.message : String(error),
+    }
+  }
 }
