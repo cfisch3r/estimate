@@ -14,7 +14,7 @@ risk above it.
 `/risk-review` runs this flow when the maintainer reviews a branch; only the floor script runs
 when a PR opens, through the risk-review plugin's hook (without the plugin, run `pnpm review:floor`). The guide describes the commit it names: run the command again after new commits.
 
-Legend: solid line = data passed on. Scripts are deterministic; the agent is the only model step.
+Legend: solid line = data passed on, dotted line = file read. Scripts are deterministic; the agent is the only model step.
 
 ```mermaid
 flowchart TD
@@ -27,7 +27,7 @@ flowchart TD
   Page["Review guide<br/>[HTML page, artifact]"]
 
   Cat["Catalogue on main<br/>[YAML block]"]
-  Cat -->|"categories, paths"| Floor
+  Cat -.->|"categories, paths"| Floor
   Diff -->|"changed files"| Floor
   Diff -->|"changed files"| Sig
   Floor -->|"floor, categories"| Agent
@@ -36,7 +36,7 @@ flowchart TD
   Floor -->|"floor"| Guide
   Agent -->|"risk, categories, hot spots"| Guide
   Diff -->|"changed files"| Guide
-  MapCfg -->|"map rules"| Guide
+  MapCfg -.->|"map rules"| Guide
   Guide -->|"rendered guide"| Page
 
   classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
@@ -72,8 +72,8 @@ runs both scripts itself, and a signal never makes a category or a hot spot on i
 
 The guide is built on request, when the maintainer reviews a branch: `/risk-review` runs the
 scripts and the agent and publishes the result as a private artifact. The pull request body
-carries no guide. `pnpm review:guide` turns the floor, the signals and the agent's answer, plus the changed files it
-reads itself for the changeset map, into one self-contained HTML page. A script writes it, so the rules hold whatever the agent says:
+carries no guide. `pnpm review:guide` renders one self-contained HTML page from the inputs in the
+diagram above. A script writes it, so the rules hold whatever the agent says:
 
 - The risk is the higher of the floor and the agent's risk. A lower answer is ignored and noted
   under "Checked by the scripts".
@@ -103,48 +103,159 @@ reads itself for the changeset map, into one self-contained HTML page. A script 
 |---|---|
 | Marker | `Covers <commit>`, the commit the guide was written for, so a reader can see what it describes |
 | Risk | The level and the category names |
-| Changeset map | Every changed file of the branch in the app's structure; see [Changeset map](#changeset-map) |
+| Changeset map | The branch's changed files placed in the app's structure (since the floor's commit, when it had one); tests, CSS and type declarations only counted. See [Changeset map](#changeset-map) |
 | Hot spots | A headline, what the change is and what makes it a hot spot, the reference (`file:line`, linked to the covered commit) with the rule or ADR, and facts from the signals |
 | Skim only | Files a reader can skim, each with a reason |
 | Not verified | What a reader has to check by hand; the scripts' own findings are folded below it |
 
 Do not edit the page by hand; run the command again.
 
-### Changeset map
-
-The map shows where a branch's changes sit in the app, so a reader sees which rows and folders a
-change touches before reading the hot spots.
-
-| Place | Which files |
-|---|---|
-| Row and folder | A file in `src/`: one row per FSD layer and per application, domain and adapters layer, then the folder inside it. An "Unplaced" row takes a file no row matches. |
-| Strip | A file outside `src/`, in a list below the rows. An "Other" strip takes a file no strip matches. |
-| Off the map | Tests and their helpers, CSS and type declarations, only counted. |
-
-The rows, strips, off-map patterns and the source folder come from the plugin's
-`.claude/skills/risk-review/changeset-map.yaml`.
-
-- **Status**<br>
-  Each file carries a status sign and colour; a dashed box marks the old place of a moved file.
-- **Collapsing**<br>
-  A folder directly in a row with more than four changed files starts collapsed (except in the
-  `app` row, which counts as one whole slice). A folder of two or more files opens or collapses
-  by its name.
-- **Self-contained**<br>
-  A file's path and status show on hover or focus. The page loads nothing from outside.
-
-| File (`.claude/skills/risk-review/scripts/`) | Role |
-|---|---|
-| `reviewMap.ts` | Places the changed files by the configuration |
-| `changesetMap.ts` | Renders the map section: the legend, the placed files as embedded data and the inlined page script |
-| `changesetMap.client.js` | The page script: draws the rows, folders, file boxes and strips in the browser and lets the reader open and collapse folders |
-
-None of these files has a command; the guide script builds the map.
-
 When a pull request opens, the agent reports the minimum risk and categories first in its answer. A `PostToolUse` hook on `gh pr create`
 (`.claude/skills/risk-review/hooks/posttooluse-floor.sh`) also shows the floor to the maintainer, so the report does not
 depend on the agent. That costs seconds and no model, and it is the only automatic signal: the
 guide itself exists only when the maintainer asks for it.
+
+### Changeset map
+
+The map shows where a branch's changes sit in the app, so a reader sees which rows and slices a
+change touches before reading the hot spots. A **row** is drawn per configured layer, a **slice**
+is the first folder below it, and a **folder** is any folder deeper down.
+
+#### Where a file goes
+
+Legend: diamond = check, in this order; the first match decides.
+
+```mermaid
+flowchart TD
+  File["Changed file<br/>[path]"]
+  Off{"matches offMap?"}
+  Src{"under sourceRoot?"}
+  Layer{"in a layer folder?"}
+  Strip{"a strip's paths<br/>match?"}
+  OffMap["Off the map<br/>[counted in the legend]"]
+  Row["Layer row<br/>[slice, folders]"]
+  Unplaced["Unplaced row"]
+  First["First matching strip"]
+  Other["Other strip"]
+
+  File --> Off
+  Off -->|"yes"| OffMap
+  Off -->|"no"| Src
+  Src -->|"yes"| Layer
+  Layer -->|"yes"| Row
+  Layer -->|"no"| Unplaced
+  Src -->|"no"| Strip
+  Strip -->|"yes"| First
+  Strip -->|"no"| Other
+
+  classDef check fill:#FEF08A,stroke:#CA8A04,color:#422006
+  classDef place fill:#E2E8F0,stroke:#64748B,color:#0F172A
+  classDef off fill:transparent,stroke:#64748B,stroke-dasharray:2 2,color:#64748B
+
+  class Off,Src,Layer,Strip check
+  class File,Row,Unplaced,First,Other place
+  class OffMap off
+```
+
+The checks and their patterns come from the plugin's
+`.claude/skills/risk-review/changeset-map.yaml` (`offMap`, `sourceRoot`, `layers`, `strips`). A
+moved file is placed by its new path; its old place gets a ghost only when both places are on the
+map.
+
+#### What the page shows
+
+Legend: boxes are parts of the map as drawn; the UI frame and the side column come from the
+configuration.
+
+```mermaid
+flowchart LR
+  subgraph ROWS["ROWS, TOP TO BOTTOM"]
+    direction TB
+    App["app<br/>[layer row, one whole slice]"]
+    subgraph UI["UI FRAME"]
+      direction TB
+      Pages["pages"] ~~~ Widgets["widgets"] ~~~ Features["features"] ~~~ Entities["entities"] ~~~ Shared["shared"]
+    end
+    Application["application<br/>[layer row]"]
+    Domain["domain<br/>[layer row]"]
+    Unpl["Unplaced<br/>[only when it holds files]"]
+    App ~~~ UI ~~~ Application ~~~ Domain ~~~ Unpl
+  end
+  Adapters["adapters<br/>[side column, spans every row]"]
+  subgraph STRIPS["STRIPS, BELOW THE ROWS"]
+    direction LR
+    Specs["Specs"] ~~~ Docs["Docs"] ~~~ Tooling["Agent, CI and tooling"] ~~~ OtherS["Other"]
+  end
+  ROWS ~~~ Adapters
+  ROWS ~~~ STRIPS
+
+  classDef row fill:#BFDBFE,stroke:#2563EB,color:#0B2545
+  classDef strip fill:#E2E8F0,stroke:#64748B,color:#0F172A
+
+  class App,Pages,Widgets,Features,Entities,Shared,Application,Domain,Unpl,Adapters row
+  class Specs,Docs,Tooling,OtherS strip
+  style ROWS fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
+  style UI fill:#EFF6FF,stroke:#2563EB,color:#0B2545
+  style STRIPS fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
+```
+
+| Part | What it shows | `changeset-map.yaml` | Interaction |
+|---|---|---|---|
+| Layer row | The changed files of one layer, by slice and folder | `layers`, in drawing order | |
+| UI frame | The FSD layers `pages` to `shared`, drawn inside one frame | `group: ui` | |
+| Side column | `adapters`, at the right edge across every row | `side: true` | |
+| Slice | The first folder below a layer, in a dashed frame | `wholeSlice: true` makes a layer one slice | Starts collapsed with more than four changed files; collapsed, it shows a count per status |
+| Folder | A deeper folder; a chain of single-child folders shows as one name (`session-history/ui`) | | One with two or more entries collapses by its name and reopens by its box |
+| File box | One changed file: status sign and name | | Path and status on hover or focus |
+| Unplaced row | A file under `sourceRoot` in no layer folder | `sourceRoot` | |
+| Strip | Files outside `sourceRoot`, by full path; a long folder is shortened, the name kept whole | `strips`, first match wins, `Other` last | Path and status on hover |
+| Off-map count | The number of files left off the map, in the legend | `offMap` | |
+
+| Status | Sign | Box |
+|---|---|---|
+| Added | `+` | Green |
+| Changed | `~` | Orange |
+| Deleted | `−` | Red, name struck through |
+| Moved | `→` | Purple; the card names the old path |
+| Old place of a moved file | `⇠` | Dashed, empty; the card names the new path |
+
+The page loads nothing from outside: the data and the page script are inlined.
+
+#### How it is built
+
+Legend: solid line = data passed on, dotted line = file read; numbers give the order.
+
+```mermaid
+flowchart LR
+  Cfg["changeset-map.yaml<br/>[YAML file, plugin]"]
+  Changed["Changed files<br/>[read by the guide script]"]
+  subgraph NODE["GUIDE SCRIPT, NODE"]
+    direction LR
+    Place["reviewMap.ts<br/>[module]"]
+    Render["changesetMap.ts<br/>[module]"]
+  end
+  subgraph BROWSER["GUIDE PAGE, BROWSER"]
+    Client["changesetMap.client.js<br/>[page script]"]
+  end
+  Cfg -.->|"1 map rules"| Place
+  Changed -->|"2 files"| Place
+  Place -->|"3 placed files"| Render
+  Render -->|"4 data, script"| Client
+
+  classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
+  classDef data fill:#E2E8F0,stroke:#64748B,color:#0F172A
+
+  class Place,Render,Client script
+  class Cfg,Changed data
+  style NODE fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
+  style BROWSER fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
+```
+
+| File (`.claude/skills/risk-review/scripts/`) | Role |
+|---|---|
+| `reviewMap.ts` | Checks the configuration and places the changed files |
+| `changesetMap.ts` | Renders the map section: the legend, the placed files as embedded data and the inlined page script |
+| `changesetMap.client.js` | Draws the rows, slices, folders, file boxes and strips in the browser, lets the reader open and collapse folders and shows the hover card |
 
 ## Risk levels
 
