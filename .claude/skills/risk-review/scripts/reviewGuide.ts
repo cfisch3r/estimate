@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { mergeBase, readGitDiff, repoRoot } from './changedDiff.ts'
 import { renderMapSection } from './changesetMap.ts'
-import { esc } from './html.ts'
+import { escapeUTF8 as esc } from 'entities'
 import {
   currentCatalogueNames,
   RISK_LEVELS,

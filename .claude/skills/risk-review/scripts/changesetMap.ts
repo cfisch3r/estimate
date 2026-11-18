@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { esc } from './html.ts'
+import { escapeUTF8 as esc } from 'entities'
 import type { ChangesetMap, Folder } from './reviewMap.ts'
 
 // The changeset map section of the Review guide. The map data goes into the page as a JSON
