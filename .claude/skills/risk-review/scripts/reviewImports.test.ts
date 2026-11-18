@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   diffImports,
   importEdges,
+  programFacts,
   type ImportEdge,
   type SourceTree,
 } from './reviewImports.ts'
@@ -46,8 +47,11 @@ describe('importEdges', () => {
         'src/domain/range.ts': 'export const range = 2',
       }),
     ).toEqual([
-      edge('src/domain/index.ts', 'src/domain/format.ts', 'format'),
-      edge('src/domain/index.ts', 'src/domain/range.ts', '*'),
+      {
+        ...edge('src/domain/index.ts', 'src/domain/format.ts', 'format'),
+        reexports: ['format'],
+      },
+      { ...edge('src/domain/index.ts', 'src/domain/range.ts', '*'), reexports: ['*'] },
       edge('src/ui/Form.tsx', 'src/domain/format.ts', 'format'),
     ])
   })
@@ -135,6 +139,66 @@ describe('importEdges', () => {
     expect(importEdges(all, 'tsconfig.app.json')).toEqual([
       edge('src/app/a.ts', 'src/lib/b.ts', 'b'),
     ])
+  })
+})
+
+const factsOf = (files: Record<string, string>) =>
+  programFacts(tree(files), 'tsconfig.app.json')
+
+describe('programFacts', () => {
+  it('marks the names an edge only re-exports', () => {
+    const { edges } = factsOf({
+      'src/a.ts': "import { b } from './b.ts'\nexport { b }\nexport { c } from './b.ts'",
+      'src/b.ts': 'export const b = 1, c = 2',
+      'src/u.ts': "import { b } from './b.ts'\nexport const u = b",
+    })
+    expect(edges).toEqual([
+      { ...edge('src/a.ts', 'src/b.ts', 'b', 'c'), reexports: ['c'] },
+      edge('src/u.ts', 'src/b.ts', 'b'),
+    ])
+  })
+
+  it('keys each export by its declaration and leaves re-exports null', () => {
+    const { files } = factsOf({
+      'src/a.ts':
+        "export const x = 1, y = 2\nexport function f() { return x }\nexport { b } from './b.ts'",
+      'src/b.ts': 'export const b = 1',
+    })
+    expect(files['src/a.ts']?.exports).toEqual({ x: 'x,y', y: 'x,y', f: 'f', b: null })
+  })
+
+  it('keys an anonymous default export as default', () => {
+    const { files } = factsOf({ 'src/a.ts': 'export default 1' })
+    expect(files['src/a.ts']?.exports).toEqual({ default: 'default' })
+  })
+
+  it('prints a declaration without comments or formatting', () => {
+    const one = factsOf({ 'src/a.ts': 'export function f() { return 1 }' })
+    const two = factsOf({
+      'src/a.ts': '/** Says one. */\nexport function f()   {\n  // one\n  return 1\n}',
+    })
+    expect(two.files['src/a.ts']?.declarations['f']?.text).toBe(
+      one.files['src/a.ts']?.declarations['f']?.text,
+    )
+  })
+
+  it('lists the same-file declarations a declaration uses', () => {
+    const { files } = factsOf({
+      'src/a.ts': 'const h = 1\nfunction g() { return h }\nexport const a = g()',
+    })
+    const declarations = files['src/a.ts']?.declarations
+    expect(declarations?.['a']?.deps).toEqual(['g'])
+    expect(declarations?.['g']?.deps).toEqual(['h'])
+    expect(declarations?.['h']?.deps).toEqual([])
+  })
+
+  it("reads the file's leading doc comment", () => {
+    const { files } = factsOf({
+      'src/a.ts': '/**\n * The store:\n * items and estimates.\n */\nexport const s = 1',
+      'src/b.ts': '// note\nexport const b = 1',
+    })
+    expect(files['src/a.ts']?.doc).toBe('The store: items and estimates.')
+    expect(files['src/b.ts']?.doc).toBeUndefined()
   })
 })
 
