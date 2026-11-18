@@ -432,7 +432,7 @@
   padding: 2px 5px;
   white-space: nowrap;
 }
-#changeset-map .api-chip {
+#changeset-map .api-chip.floating {
   position: absolute;
   z-index: 1;
 }

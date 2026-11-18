@@ -27,8 +27,10 @@ const SWATCHES: Array<[string, string]> = [
 const arrowSample = (status: string) =>
   `<svg width="28" height="10" aria-hidden="true"><path class="edge ${status}" d="M1,5 H21"/><path class="head ${status}" d="M20,1 L27,5 L20,9 z"/></svg>`
 
-const row = (heading: string, items: string) =>
-  `<div class="lg-row"><span class="lg-h">${heading}</span><div class="lg-items">${items}</div></div>`
+const row = (heading: string, items: string, group = false) =>
+  group
+    ? `<div class="lg-row" role="group" aria-labelledby="lg-${heading.toLowerCase()}"><span class="lg-h" id="lg-${heading.toLowerCase()}">${heading}</span><div class="lg-items">${items}</div></div>`
+    : `<div class="lg-row"><span class="lg-h">${heading}</span><div class="lg-items">${items}</div></div>`
 
 /** The files the map draws as boxes, ghosts left out. */
 function boxPaths(map: ChangesetMap): Set<string> {
@@ -65,12 +67,13 @@ function showRow(map: ChangesetMap): string {
       box('removed', `removed imports (${count('removed')})`, true),
       box('importers', `unchanged importers (${importers})`, false),
     ].join(''),
+    true,
   )
 }
 
 const MARKS = [
-  '<span><b class="reach-sample">↗n</b>used by n unchanged files</span>',
-  '<span><b class="api-sample">API +n −m</b>barrel exports added, removed</span>',
+  '<span><b class="reach-sample" aria-hidden="true">↗n</b>used by n unchanged files</span>',
+  '<span><b class="api-sample" aria-hidden="true">API +n −m</b>barrel exports added, removed</span>',
   `<span>${arrowSample('kept')}kept imports of the active box</span>`,
 ].join('')
 
@@ -98,7 +101,7 @@ export function renderMapSection(map: ChangesetMap): string {
     `<style>${STYLE}</style>`,
     `<div class="legend">${legend}</div>`,
     `<script type="application/json" id="changeset-map-data">${embed(map)}</script>`,
-    '<div class="scroll"><div class="map-canvas"><div id="map-card" class="map-card" hidden></div></div></div>',
+    '<div class="scroll"><div class="map-canvas"><div id="map-card" class="map-card" hidden></div><span id="map-card-summary" class="sr"></span></div></div>',
     `<script>${CLIENT}</script>`,
     '</section>',
   ].join('\n')

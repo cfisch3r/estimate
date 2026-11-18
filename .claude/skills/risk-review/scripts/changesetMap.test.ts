@@ -496,10 +496,13 @@ describe('import arrows', () => {
     expect(card().textContent).toContain('features/busy/model/')
   })
 
-  it('describes the box with its card for a screen reader', () => {
+  it('describes the box with a short summary of its card for a screen reader', () => {
     open(files, edges)
     box('Form.tsx').focus()
-    expect(box('Form.tsx').getAttribute('aria-describedby')).toBe('map-card')
+    expect(box('Form.tsx').getAttribute('aria-describedby')).toBe('map-card-summary')
+    expect(document.getElementById('map-card-summary')?.textContent).toBe(
+      'changed; imports: 1 added, 1 removed, 1 kept',
+    )
     expect(box('format.ts').hasAttribute('aria-describedby')).toBe(false)
     box('Form.tsx').blur()
     expect(box('Form.tsx').hasAttribute('aria-describedby')).toBe(false)
@@ -634,14 +637,66 @@ describe('reach', () => {
     expect(box('index.ts').querySelector('.reach')).toBeNull()
   })
 
-  it('shows the API chip by the folder name, open and collapsed', () => {
+  it('shows the API chip beside the folder name inside the frame, and tells a screen reader', () => {
+    open(files, code)
+    const chip = document.querySelector<HTMLElement>('#changeset-map .api-chip')
+    expect(chip?.querySelector('[aria-hidden="true"]')?.textContent).toBe('API +2 −0')
+    expect(chip?.textContent).toContain('public API: 2 added, 0 removed')
+    const frame = [
+      ...document.querySelectorAll<HTMLElement>('#changeset-map .folder-frame'),
+    ].find(
+      (f) =>
+        parseFloat(f.style.left) <= parseFloat(chip?.style.left ?? '0') &&
+        parseFloat(f.style.top) + 10 > parseFloat(chip?.style.top ?? '0'),
+    ) as HTMLElement
+    const chipRight = parseFloat(chip?.style.left ?? '0') + 'API +2 −0'.length * 6 + 12
+    expect(chipRight).toBeLessThanOrEqual(
+      parseFloat(frame.style.left) + parseFloat(frame.style.width),
+    )
+  })
+
+  it('puts the API chip of a collapsed folder in its box, below the name', () => {
     const { label } = open(files, code)
-    const chip = () => document.querySelectorAll('#changeset-map .api-chip')
-    expect(chip()).toHaveLength(1)
-    expect(chip()[0]?.textContent).toBe('API +2 −0')
-    expect(chip()[0]?.getAttribute('aria-label')).toBe('public API: 2 added, 0 removed')
     label('e').click()
-    expect(chip()).toHaveLength(1)
+    const folder = document.querySelector<HTMLElement>(
+      '#changeset-map .node[data-key="src/domain/e"]',
+    )
+    expect(folder?.querySelector('.chips .api-chip')?.textContent).toBe('API +2 −0')
+    expect(folder?.getAttribute('aria-label')).toContain('public API: 2 added, 0 removed')
+  })
+
+  it("lists only the changed exports of each file in a collapsed folder's card", () => {
+    const { label } = open(files, code)
+    label('e').click()
+    document
+      .querySelector('#changeset-map .node[data-key="src/domain/e"]')
+      ?.dispatchEvent(new MouseEvent('mouseenter'))
+    expect(card()).toContain('b.ts: Changed exports (1)')
+    expect(card()).not.toContain('index.ts:')
+  })
+
+  it('names the Show row as the group of its checkboxes and hides the mark samples', () => {
+    open(files, code)
+    const row = document.querySelectorAll('#changeset-map .lg-row')[1] as HTMLElement
+    expect(row.getAttribute('role')).toBe('group')
+    const heading = document.getElementById(row.getAttribute('aria-labelledby') ?? '')
+    expect(heading?.textContent).toBe('Show')
+    for (const sample of document.querySelectorAll(
+      '#changeset-map .reach-sample, #changeset-map .api-sample',
+    ))
+      expect(sample.getAttribute('aria-hidden')).toBe('true')
+  })
+
+  it('lists an added import that is also a use in the card', () => {
+    const F = 'src/features/y/ui/F.tsx'
+    open(files, {
+      ...code,
+      status: 'ok',
+      edges: [edge(F, B, 'added', 'b')],
+    } as Section<MapCode>)
+    importers(true)
+    hover('F.tsx')
+    expect(card()).toContain('Imports added (1)')
   })
 
   it('lists the exports, changed ones in bold, and the unchanged users in the card', () => {

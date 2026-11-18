@@ -10,6 +10,7 @@
   const data = JSON.parse(dataBlock.textContent || '{}')
   const canvas = section.querySelector('.map-canvas')
   const card = document.getElementById('map-card')
+  const cardSummary = document.getElementById('map-card-summary')
 
   // Box, gap and frame sizes in px; the whole map is MAPW wide.
   const NW = 200
@@ -83,7 +84,11 @@
 
   function measureFolder(f, maxW) {
     const inner = measure(f.items, maxW - 2 * FP)
-    f.w = Math.min(maxW, Math.max(inner.w + 2 * FP, f.folder.label.length * 7 + 60))
+    const chip = f.folder.api ? apiWidth(f.folder.api) + 8 : 0
+    f.w = Math.min(
+      maxW,
+      Math.max(inner.w + 2 * FP, f.folder.label.length * 7 + 60 + chip),
+    )
     f.h = FH + inner.h + FP
     return [f.w, f.h]
   }
@@ -430,6 +435,15 @@
   /** A changed file's exports and their unchanged users; an importer's doc and its uses. */
   function reachLines(file, prefix) {
     const lines = []
+    // A collapsed folder's card stays short: only each file's changed exports.
+    if (prefix) {
+      const changed = (file.exports ?? []).filter((x) => x.change)
+      if (changed.length) {
+        lines.push(el('div', 'card-h', `${prefix}Changed exports (${changed.length})`))
+        for (const x of changed) lines.push(exportRow(x))
+      }
+      return lines
+    }
     if (file.exports?.length) {
       const changed = file.exports.filter((x) => x.change).length
       lines.push(
@@ -463,10 +477,15 @@
     const lines = [el('code', '', box.path), el('div', '', box.status)]
     for (const file of box.files)
       lines.push(...reachLines(file, box.collapsed ? `${baseName(file.path)}: ` : ''))
+    // A uses arrow stands in only for a kept import, so only those leave the list.
     const own = imports.filter(
       (e) =>
         boxOf(e.from) === key &&
-        !(showImporters && uses.some((u) => u.from === e.from && u.to === e.to)),
+        !(
+          showImporters &&
+          e.status === 'kept' &&
+          uses.some((u) => u.from === e.from && u.to === e.to)
+        ),
     )
     for (const [status, title] of [
       ['added', 'Imports added'],
@@ -495,15 +514,44 @@
     at(card, Math.min(Math.max(4, box.x), MAPW - CARDW), y)
   }
 
+  /** The card in one short line, for a screen reader: status and counts, no lists. */
+  function summary(key) {
+    const box = boxes.get(key)
+    const parts = [box.status]
+    if (!box.collapsed) {
+      const file = box.files[0]
+      const exports = file.exports ?? []
+      const changed = exports.filter((x) => x.change).length
+      if (exports.length)
+        parts.push(`${exports.length} exports${changed ? `, ${changed} changed` : ''}`)
+      const users = usersOf(file.path).length
+      if (users) parts.push(`used by ${users} unchanged file${users === 1 ? '' : 's'}`)
+      const used = uses.filter((u) => u.from === file.path).length
+      if (showImporters && used)
+        parts.push(`uses ${used} changed export${used === 1 ? '' : 's'}`)
+    }
+    const counts = ['added', 'removed', 'kept']
+      .map((status) => [
+        status,
+        imports.filter((e) => boxOf(e.from) === key && e.status === status).length,
+      ])
+      .filter(([, n]) => n > 0)
+      .map(([status, n]) => `${n} ${status}`)
+    if (counts.length) parts.push(`imports: ${counts.join(', ')}`)
+    return parts.join('; ')
+  }
+
   function refresh() {
     const focus = active()
     if (focus !== null && boxes.has(focus)) showCard(focus)
     else card.hidden = true
-    // The card describes the box it is shown for, so a screen reader hears the imports too.
+    // A screen reader hears the card as a short summary; the full card is for the eye.
     const shown = card.hidden ? null : focus
+    cardSummary.textContent = shown === null ? '' : summary(shown)
     for (const node of canvas.querySelectorAll('.node[data-key]')) {
       node.setAttribute('aria-pressed', String(node.dataset.key === pinned))
-      if (node.dataset.key === shown) node.setAttribute('aria-describedby', 'map-card')
+      if (node.dataset.key === shown)
+        node.setAttribute('aria-describedby', 'map-card-summary')
       else node.removeAttribute('aria-describedby')
     }
     drawArrows()
@@ -554,13 +602,18 @@
     })
   }
 
+  const apiText = (api) => `API +${api.added} −${api.removed}`
+  const apiWords = (api) => `public API: ${api.added} added, ${api.removed} removed`
+  /** The chip's width, as measureFolder reserves it: about 6px per character plus padding. */
+  function apiWidth(api) {
+    return apiText(api).length * 6 + 12
+  }
+
   /** "API +n −m" for a folder whose barrels added or removed re-exports. */
-  function apiChip(folder) {
-    if (!folder.api) return null
-    const { added, removed } = folder.api
-    const chip = el('span', 'api-chip', `API +${added} −${removed}`)
-    chip.setAttribute('role', 'note')
-    chip.setAttribute('aria-label', `public API: ${added} added, ${removed} removed`)
+  function apiChip(folder, spoken) {
+    const chip = el('span', 'api-chip')
+    chip.append(hidden(apiText(folder.api)))
+    if (spoken) chip.append(el('span', 'sr', ` ${apiWords(folder.api)}`))
     chip.title = 'Re-exports the folder’s barrels added and removed'
     return chip
   }
@@ -629,9 +682,13 @@
           name.dataset.path = f.folder.path
         }
         add(at(name, f.x + 8, f.y + 5))
-        const api = apiChip(f.folder)
-        // Beside the name: its monospace width plus the ▾.
-        if (api) add(at(api, f.x + 8 + (f.folder.label.length + 3) * 6.6 + 6, f.y + 4))
+        // Beside the name (about 7px per character, with the slash and the ▾); measureFolder
+        // made the frame wide enough for it.
+        if (f.folder.api) {
+          const api = apiChip(f.folder, true)
+          api.classList.add('floating')
+          add(at(api, f.x + 8 + (f.folder.label.length + 3) * 7 + 6, f.y + 4))
+        }
       }
     }
 
@@ -676,6 +733,11 @@
           chips.append(chip)
           words.push(`${c[status]} ${WORD[status]}`)
         }
+        // The box's label speaks for its content, so the chip is only seen.
+        if (folder.api) {
+          chips.append(apiChip(folder, false))
+          words.push(apiWords(folder.api))
+        }
         box.append(chips)
         box.setAttribute('aria-label', `${folder.path}/, collapsed, ${words.join(', ')}`)
         const status = `${folder.changed} changed file${folder.changed === 1 ? '' : 's'}, collapsed`
@@ -701,8 +763,6 @@
         hover(name, folder.path)
         add(box)
         add(at(name, x + 6, y + 4))
-        const api = apiChip(folder)
-        if (api) add(at(api, x + NW - 74, y + 3))
         continue
       }
       add(box)
