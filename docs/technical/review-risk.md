@@ -168,32 +168,36 @@ Legend: boxes are parts of the map as drawn; the UI frame and the side column co
 configuration.
 
 ```mermaid
-flowchart LR
-  subgraph ROWS["ROWS, TOP TO BOTTOM"]
-    direction TB
-    App["app<br/>[layer row, one whole slice]"]
-    subgraph UI["UI FRAME"]
+flowchart TB
+  subgraph MAP["LAYERS"]
+    direction LR
+    subgraph ROWS["ROWS, TOP TO BOTTOM"]
       direction TB
-      Pages["pages"] ~~~ Widgets["widgets"] ~~~ Features["features"] ~~~ Entities["entities"] ~~~ Shared["shared"]
+      App["app<br/>[layer row, one whole slice]"]
+      subgraph UI["UI FRAME"]
+        direction TB
+        Pages["pages"] ~~~ Widgets["widgets"] ~~~ Features["features"] ~~~ Entities["entities"] ~~~ Shared["shared"]
+      end
+      Application["application<br/>[layer row]"]
+      Domain["domain<br/>[layer row]"]
+      Unpl["Unplaced<br/>[only when it holds files]"]
+      App ~~~ UI ~~~ Application ~~~ Domain ~~~ Unpl
     end
-    Application["application<br/>[layer row]"]
-    Domain["domain<br/>[layer row]"]
-    Unpl["Unplaced<br/>[only when it holds files]"]
-    App ~~~ UI ~~~ Application ~~~ Domain ~~~ Unpl
+    Adapters["adapters<br/>[side column, spans every row]"]
+    ROWS ~~~ Adapters
   end
-  Adapters["adapters<br/>[side column, spans every row]"]
-  subgraph STRIPS["STRIPS, BELOW THE ROWS"]
+  subgraph STRIPS["STRIPS, BELOW THE LAYERS"]
     direction LR
     Specs["Specs"] ~~~ Docs["Docs"] ~~~ Tooling["Agent, CI and tooling"] ~~~ OtherS["Other"]
   end
-  ROWS ~~~ Adapters
-  ROWS ~~~ STRIPS
+  MAP ~~~ STRIPS
 
   classDef row fill:#BFDBFE,stroke:#2563EB,color:#0B2545
   classDef strip fill:#E2E8F0,stroke:#64748B,color:#0F172A
 
   class App,Pages,Widgets,Features,Entities,Shared,Application,Domain,Unpl,Adapters row
   class Specs,Docs,Tooling,OtherS strip
+  style MAP fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
   style ROWS fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
   style UI fill:#EFF6FF,stroke:#2563EB,color:#0B2545
   style STRIPS fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
