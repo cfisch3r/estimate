@@ -1,7 +1,8 @@
 // The changeset map's script in the Review guide page. It reads the map data embedded in
-// the page, lays out the layers, folders and file boxes, and lets the reader collapse and
-// open folders and see a file's details on hover. Inlined by changesetMap.ts; it runs in
-// the browser and loads nothing.
+// the page, lays out the layers, folders and file boxes, draws the import arrows between
+// them, and lets the reader collapse and open folders, hover or pin a box to see its imports
+// and details, and hide a kind of arrow. Inlined by changesetMap.ts; it runs in the browser
+// and loads nothing.
 ;(() => {
   const section = document.getElementById('changeset-map')
   const dataBlock = document.getElementById('changeset-map-data')
@@ -23,8 +24,8 @@
   const MAINW = MAPW - SIDEW - 24
   const STRIPW = 240
   const STRIP_ROW = 30
-  // The hover card's max-width in changesetMap.ts.
-  const CARDW = 320
+  // The hover card's max-width in changesetMap.css.
+  const CARDW = 360
 
   /** Folder path → open, for folders the reader toggled. */
   const toggled = new Map()
@@ -143,14 +144,22 @@
   function counts(folder) {
     const c = {}
     const walk = (f) => {
-      for (const file of f.files) c[file.status] = (c[file.status] || 0) + 1
+      for (const file of f.files)
+        if (file.status !== 'context') c[file.status] = (c[file.status] || 0) + 1
       f.folders.forEach(walk)
     }
     walk(folder)
     return c
   }
 
-  const SIGN = { added: '+', changed: '~', deleted: '−', moved: '→', ghost: '⇠' }
+  const SIGN = {
+    added: '+',
+    changed: '~',
+    deleted: '−',
+    moved: '→',
+    ghost: '⇠',
+    context: '·',
+  }
   /** What a count chip says to a screen reader after its sign and number. */
   const WORD = {
     added: 'added',
@@ -158,6 +167,7 @@
     deleted: 'deleted',
     moved: 'moved in',
     ghost: 'moved away',
+    context: 'unchanged',
   }
 
   /** The status sign before a file name, so the status does not rest on colour alone. */
@@ -189,41 +199,255 @@
     return e
   }
 
-  // Re-rendering replaces every element, so focus moves to what now stands for the folder:
-  // its name after opening, its box after collapsing.
+  // Re-rendering replaces every element, so focus moves to the folder's name again.
   function toggle(folder) {
     const opening = !isOpen(folder)
     toggled.set(folder.path, opening)
     render()
-    const target = [
-      ...canvas.querySelectorAll(opening ? '.folder-label' : '.node.collapsed'),
-    ].find((e) => e.dataset.path === folder.path)
+    const target = [...canvas.querySelectorAll('button.folder-label')].find(
+      (e) => e.dataset.path === folder.path,
+    )
     target?.focus()
   }
 
   function describe(file) {
     if (file.status === 'moved') return `moved from ${file.from}`
     if (file.status === 'ghost') return `moved to ${file.movedTo}`
+    if (file.status === 'context')
+      return 'unchanged; an import of it was added or removed'
     return file.status
   }
 
-  function showCard(lines, x, y) {
-    card.replaceChildren(
-      ...lines.map((line, i) => el(i === 0 ? 'code' : 'div', '', line)),
-    )
-    at(card, Math.min(Math.max(4, x), MAPW - CARDW), y)
-    card.hidden = false
+  // Import arrows. The active box is the one the pointer is on, else the one with keyboard
+  // focus, else the one pinned with a click; it shows all of its own imports and fades the
+  // other arrows.
+  const imports = data.imports?.status === 'ok' ? data.imports.edges : []
+  const show = { added: true, removed: true }
+  let hovered = null
+  let focused = null
+  let pinned = null
+  const active = () => hovered ?? focused ?? pinned
+  /** Box key (a file path, or a collapsed folder's path) → where it is drawn and its card. */
+  let boxes = new Map()
+  let svg = null
+  const SVGNS = 'http://www.w3.org/2000/svg'
+  const IMPORT_SIGN = { added: '+', removed: '−', kept: '·' }
+  const short = (path) => path.replace(/^src\//, '')
+
+  /** The box a file is drawn in: its own, or the collapsed folder that holds it. */
+  function boxOf(path) {
+    if (boxes.has(path)) return path
+    let found = null
+    for (const key of boxes.keys())
+      if (path.startsWith(`${key}/`) && (!found || key.length > found.length)) found = key
+    return found
   }
 
-  function hover(e, lines, x, y) {
-    const show = () => showCard(lines, x, y)
-    const hide = () => {
-      card.hidden = true
+  /** One arrow per two boxes and kind; imports joined in a collapsed folder are counted. */
+  function arrows() {
+    const joined = new Map()
+    for (const edge of imports) {
+      const from = boxOf(edge.from)
+      const to = boxOf(edge.to)
+      if (!from || !to || from === to) continue
+      const key = `${from}\0${to}\0${edge.status}`
+      if (!joined.has(key)) joined.set(key, { from, to, status: edge.status, count: 0 })
+      joined.get(key).count++
     }
-    e.addEventListener('mouseenter', show)
-    e.addEventListener('focus', show)
-    e.addEventListener('mouseleave', hide)
-    e.addEventListener('blur', hide)
+    return [...joined.values()]
+  }
+
+  /** A curve from the side of one box that faces the other to that side of the other. */
+  function route(a, b) {
+    const ac = { x: a.x + NW / 2, y: a.y + NH / 2 }
+    const bc = { x: b.x + NW / 2, y: b.y + NH / 2 }
+    let p1, p2, d1, d2
+    if (Math.abs(bc.y - ac.y) > NH) {
+      const s = Math.sign(bc.y - ac.y)
+      // The ends spread along the side, so arrows into one box don't meet in one point.
+      const off = Math.max(-NW / 2 + 16, Math.min(NW / 2 - 16, (bc.x - ac.x) * 0.25))
+      p1 = { x: ac.x + off, y: ac.y + (s * NH) / 2 }
+      p2 = { x: bc.x - off, y: bc.y - (s * NH) / 2 }
+      d1 = { x: 0, y: s }
+      d2 = { x: 0, y: -s }
+    } else {
+      const s = Math.sign(bc.x - ac.x) || 1
+      p1 = { x: ac.x + (s * NW) / 2, y: ac.y }
+      p2 = { x: bc.x - (s * NW) / 2, y: bc.y }
+      d1 = { x: s, y: 0 }
+      d2 = { x: -s, y: 0 }
+    }
+    const k = Math.max(30, Math.hypot(p2.x - p1.x, p2.y - p1.y) / 3)
+    const c1 = { x: p1.x + d1.x * k, y: p1.y + d1.y * k }
+    const c2 = { x: p2.x + d2.x * k, y: p2.y + d2.y * k }
+    const mid = {
+      x: (p1.x + 3 * c1.x + 3 * c2.x + p2.x) / 8,
+      y: (p1.y + 3 * c1.y + 3 * c2.y + p2.y) / 8,
+    }
+    return { d: `M${p1.x},${p1.y} C${c1.x},${c1.y} ${c2.x},${c2.y} ${p2.x},${p2.y}`, mid }
+  }
+
+  function svgEl(tag, attrs) {
+    const e = document.createElementNS(SVGNS, tag)
+    for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, String(v))
+    return e
+  }
+
+  function arrowLayer(height) {
+    const layer = svgEl('svg', {
+      class: 'edges drawn',
+      width: MAPW,
+      height,
+      'aria-hidden': 'true',
+    })
+    const defs = svgEl('defs', {})
+    for (const status of Object.keys(IMPORT_SIGN)) {
+      const marker = svgEl('marker', {
+        id: `arrow-${status}`,
+        viewBox: '0 0 10 10',
+        refX: 9.5,
+        refY: 5,
+        markerWidth: 9,
+        markerHeight: 9,
+        markerUnits: 'userSpaceOnUse',
+        orient: 'auto',
+      })
+      marker.append(svgEl('path', { d: 'M0,0 L10,5 L0,10 z', class: `head ${status}` }))
+      defs.append(marker)
+    }
+    layer.append(defs)
+    return layer
+  }
+
+  function drawArrows() {
+    if (!svg) return
+    svg.querySelectorAll('.edge, .edge-count').forEach((e) => e.remove())
+    const focus = active()
+    const faded = []
+    const lit = []
+    for (const a of arrows()) {
+      const own = focus !== null && a.from === focus
+      if (!(a.status === 'kept' ? own : show[a.status] || own)) continue
+      const dim = focus !== null && !own ? ' dim' : ''
+      const { d, mid } = route(boxes.get(a.from), boxes.get(a.to))
+      const parts = [
+        svgEl('path', {
+          d,
+          class: `edge ${a.status}${dim}`,
+          'marker-end': `url(#arrow-${a.status})`,
+        }),
+      ]
+      if (a.count > 1) {
+        const badge = svgEl('g', { class: `edge-count ${a.status}${dim}` })
+        badge.append(svgEl('circle', { cx: mid.x, cy: mid.y, r: 8 }))
+        const t = svgEl('text', { x: mid.x, y: mid.y + 3.5, 'text-anchor': 'middle' })
+        t.textContent = String(a.count)
+        badge.append(t)
+        parts.push(badge)
+      }
+      ;(dim ? faded : lit).push(...parts)
+    }
+    // The focused box's arrows lie on top of the faded ones.
+    svg.append(...faded, ...lit)
+  }
+
+  function importRow(edge, collapsed) {
+    const row = el('div', `imp ${edge.status}`)
+    const mark = el('span', 'imp-sign', IMPORT_SIGN[edge.status])
+    mark.setAttribute('aria-hidden', 'true')
+    const text = el('div', 'imp-text')
+    const target = `${collapsed ? `${baseName(edge.from)} → ` : ''}${short(edge.to)}`
+    text.append(el('code', '', target))
+    if (!boxOf(edge.to)) text.append(el('span', 'off', ' · not on the map'))
+    text.append(el('div', 'names', edge.names.join(', ')))
+    row.append(mark, text)
+    return row
+  }
+
+  function cardLines(key) {
+    const box = boxes.get(key)
+    const lines = [el('code', '', box.path), el('div', '', box.status)]
+    const own = imports.filter((e) => boxOf(e.from) === key)
+    for (const [status, title] of [
+      ['added', 'Imports added'],
+      ['removed', 'Imports removed'],
+      ['kept', 'Imports kept'],
+    ]) {
+      const list = own.filter((e) => e.status === status)
+      if (!list.length) continue
+      lines.push(el('div', 'card-h', `${title} (${list.length})`))
+      for (const edge of list) lines.push(importRow(edge, box.collapsed))
+    }
+    if (pinned === key)
+      lines.push(el('div', 'card-pin', 'Pinned: click the box again or press Esc'))
+    return lines
+  }
+
+  function showCard(key) {
+    const box = boxes.get(key)
+    card.replaceChildren(...cardLines(key))
+    card.hidden = false
+    // Below the box, or above it when it would run past the bottom of the map.
+    const below = box.y + NH + 8
+    const height = card.offsetHeight
+    const mapH = parseFloat(canvas.style.height) || 0
+    const y = below + height > mapH && box.y - height - 8 > 0 ? box.y - height - 8 : below
+    at(card, Math.min(Math.max(4, box.x), MAPW - CARDW), y)
+  }
+
+  function refresh() {
+    const focus = active()
+    if (focus !== null && boxes.has(focus)) showCard(focus)
+    else card.hidden = true
+    // The card describes the box it is shown for, so a screen reader hears the imports too.
+    const shown = card.hidden ? null : focus
+    for (const node of canvas.querySelectorAll('.node[data-key]')) {
+      node.setAttribute('aria-pressed', String(node.dataset.key === pinned))
+      if (node.dataset.key === shown) node.setAttribute('aria-describedby', 'map-card')
+      else node.removeAttribute('aria-describedby')
+    }
+    drawArrows()
+  }
+
+  function pin(key) {
+    pinned = pinned === key ? null : key
+    refresh()
+  }
+
+  /** Pointer and keyboard focus each make a box active on their own. */
+  function hover(e, key) {
+    e.addEventListener('mouseenter', () => {
+      hovered = key
+      refresh()
+    })
+    e.addEventListener('mouseleave', () => {
+      if (hovered === key) hovered = null
+      refresh()
+    })
+    e.addEventListener('focus', () => {
+      focused = key
+      refresh()
+    })
+    e.addEventListener('blur', () => {
+      if (focused === key) focused = null
+      refresh()
+    })
+  }
+
+  // Escape closes the card, whether hover, focus or a pin opened it; it does nothing while
+  // no card is open.
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || active() === null) return
+    hovered = null
+    focused = null
+    pinned = null
+    refresh()
+  })
+  for (const box of section.querySelectorAll('input[data-show]')) {
+    box.addEventListener('change', () => {
+      show[box.dataset.show] = box.checked
+      drawArrows()
+    })
   }
 
   function render() {
@@ -232,6 +456,9 @@
     // mouseleave or blur.
     card.hidden = true
     canvas.querySelectorAll('.drawn').forEach((e) => e.remove())
+    boxes = new Map()
+    hovered = null
+    focused = null
     const add = (e) => {
       e.classList.add('drawn')
       canvas.appendChild(e)
@@ -272,6 +499,7 @@
         )
         if (f.folder.collapsible) {
           name.type = 'button'
+          name.setAttribute('aria-label', `${f.folder.path}/`)
           name.setAttribute('aria-expanded', 'true')
           name.append(hidden(' ▾'))
           name.addEventListener('click', () => toggle(f.folder))
@@ -281,44 +509,55 @@
       }
     }
 
+    // Arrows run under the boxes, from the edge of one to the edge of the other.
+    svg = add(arrowLayer(L.height))
     for (const { unit, x, y } of L.boxes) {
-      const box = at(el(unit.kind === 'file' ? 'div' : 'button', 'node'), x, y, NW, NH)
+      // Every box is a toggle button that pins it.
+      const box = at(el('button', 'node'), x, y, NW, NH)
+      box.type = 'button'
       if (unit.kind === 'file') {
         const file = unit.file
-        box.tabIndex = 0
         box.classList.add(file.status)
+        box.dataset.key = file.path
         box.append(sign(file.status), el('span', 'name', baseName(file.path)))
         box.title = file.path
         box.setAttribute('aria-label', `${file.path}, ${describe(file)}`)
-        hover(box, [file.path, describe(file)], x, y + NH + 8)
+        boxes.set(file.path, { x, y, path: file.path, status: describe(file) })
+        box.addEventListener('click', () => pin(file.path))
+        hover(box, file.path)
       } else {
         const folder = unit.folder
         const c = counts(folder)
-        box.type = 'button'
         box.classList.add('collapsed')
-        box.dataset.path = folder.path
-        box.setAttribute('aria-expanded', 'false')
-        const label = el('div', 'collapsed-label', `${folder.label}/`)
-        label.append(hidden(' ▸'))
-        box.append(label)
+        box.dataset.key = folder.path
         const chips = el('div', 'chips')
+        const words = []
         for (const status of Object.keys(SIGN)) {
           if (!c[status]) continue
           const chip = el('span', `chip ${status}`, `${SIGN[status]}${c[status]}`)
           chip.append(el('span', 'sr', ` ${WORD[status]}`))
           chips.append(chip)
+          words.push(`${c[status]} ${WORD[status]}`)
         }
         box.append(chips)
-        box.addEventListener('click', () => toggle(folder))
-        hover(
-          box,
-          [
-            folder.path,
-            `${folder.changed} changed file${folder.changed === 1 ? '' : 's'}`,
-          ],
-          x,
-          y + NH + 8,
-        )
+        box.setAttribute('aria-label', `${folder.path}/, collapsed, ${words.join(', ')}`)
+        const status = `${folder.changed} changed file${folder.changed === 1 ? '' : 's'}, collapsed`
+        boxes.set(folder.path, { x, y, path: `${folder.path}/`, status, collapsed: true })
+        box.addEventListener('click', () => pin(folder.path))
+        hover(box, folder.path)
+        // The folder's name opens it; it lies on the box as a button of its own.
+        const name = el('button', 'folder-label collapsed-name', `${folder.label}/`)
+        name.type = 'button'
+        name.dataset.path = folder.path
+        name.setAttribute('aria-label', `${folder.path}/`)
+        name.setAttribute('aria-expanded', 'false')
+        name.append(hidden(' ▸'))
+        name.addEventListener('click', () => toggle(folder))
+        // The name lies on the box, so the pointer or focus on it still means the box.
+        hover(name, folder.path)
+        add(box)
+        add(at(name, x + 6, y + 4))
+        continue
       }
       add(box)
     }
@@ -349,6 +588,8 @@
     }
     canvas.style.width = `${MAPW}px`
     canvas.style.height = `${height}px`
+    if (pinned !== null && !boxes.has(pinned)) pinned = null
+    refresh()
   }
 
   render()

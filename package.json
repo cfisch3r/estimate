@@ -55,6 +55,7 @@
     "@vitejs/plugin-react": "^6.0.4",
     "@vitest/coverage-v8": "^4.1.10",
     "dependency-cruiser": "^18.5.0",
+    "entities": "^8.0.0",
     "fta-cli": "3.0.1",
     "jest-axe": "^11.0.0",
     "jsdom": "^30.0.1",

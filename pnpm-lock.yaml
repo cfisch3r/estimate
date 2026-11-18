@@ -75,6 +75,9 @@ importers:
       dependency-cruiser:
         specifier: ^18.5.0
         version: 18.5.0
+      entities:
+        specifier: ^8.0.0
+        version: 8.0.0
       fta-cli:
         specifier: 3.0.1
         version: 3.0.1

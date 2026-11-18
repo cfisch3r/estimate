@@ -2,7 +2,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import type { ChangedFile } from './changedDiff.ts'
 import { renderMapSection } from './changesetMap.ts'
-import { buildChangesetMap, type MapConfig } from './reviewMap.ts'
+import type { ImportChange } from './reviewImports.ts'
+import { buildChangesetMap, type MapConfig, type MapImports } from './reviewMap.ts'
 
 // The map section runs its own small script in the page: it lays out the boxes from the
 // embedded data and lets the reader collapse and open folders. These tests run the
@@ -28,12 +29,15 @@ const added = (path: string): ChangedFile => ({ path, status: 'added' })
 
 // Inserted markup does not run its scripts, so each one is replaced by a fresh copy, the
 // way the browser runs them when it loads the page.
-function open(files: ChangedFile[]) {
+function open(files: ChangedFile[], imports: ImportChange[] | MapImports = []) {
   const errors: string[] = []
   const onError = (e: ErrorEvent) => errors.push(e.message)
   window.addEventListener('error', onError)
   cleanups.push(() => window.removeEventListener('error', onError))
-  document.body.innerHTML = renderMapSection(buildChangesetMap(files, config))
+  const section = Array.isArray(imports)
+    ? { status: 'ok' as const, edges: imports }
+    : imports
+  document.body.innerHTML = renderMapSection(buildChangesetMap(files, config, section))
   for (const old of document.body.querySelectorAll('script:not([type])')) {
     const fresh = document.createElement('script')
     fresh.textContent = old.textContent
@@ -92,11 +96,10 @@ describe('renderMapSection', () => {
   })
 
   it('starts a busy slice collapsed', () => {
-    const { boxes } = open(busySlice)
+    const { boxes, label } = open(busySlice)
     const collapsed = document.querySelectorAll<HTMLElement>('.node.collapsed')
     expect(collapsed).toHaveLength(1)
-    expect(collapsed[0]?.textContent).toContain('busy/model')
-    collapsed[0]?.click()
+    label('busy/model').click()
     expect(boxes()).toHaveLength(5)
     expect(document.querySelectorAll('.node.collapsed')).toHaveLength(0)
   })
@@ -110,7 +113,7 @@ describe('renderMapSection', () => {
     label('save/ui').click()
     expect(boxes()).toHaveLength(1)
     expect(boxes()[0]?.classList.contains('collapsed')).toBe(true)
-    boxes()[0]?.click()
+    label('save/ui').click()
     expect(boxes()).toHaveLength(2)
   })
 
@@ -132,11 +135,12 @@ describe('renderMapSection', () => {
     const openName = label('save/ui')
     expect(openName.getAttribute('aria-expanded')).toBe('true')
     expect(openName.querySelector('[aria-hidden="true"]')?.textContent).toContain('▾')
+    const closedName = label('busy/model')
+    expect(closedName.getAttribute('aria-expanded')).toBe('false')
+    expect(closedName.querySelector('[aria-hidden="true"]')?.textContent).toContain('▸')
     const collapsed = document.querySelector<HTMLElement>('.node.collapsed')
     expect(collapsed?.tagName).toBe('BUTTON')
-    expect(collapsed?.getAttribute('aria-expanded')).toBe('false')
     expect(collapsed?.textContent).toContain('5 added')
-    expect(collapsed?.querySelector('[aria-hidden="true"]')?.textContent).toContain('▸')
   })
 
   it('marks each file status with a sign, not by colour alone', () => {
@@ -160,11 +164,11 @@ describe('renderMapSection', () => {
   })
 
   it('hides the card when a folder is toggled', () => {
-    open(busySlice)
+    const { label } = open(busySlice)
     const box = document.querySelector<HTMLElement>('.node.collapsed')
-    box?.focus()
+    box?.dispatchEvent(new MouseEvent('mouseenter'))
     expect(document.getElementById('map-card')?.hidden).toBe(false)
-    box?.click()
+    label('busy/model').click()
     expect(document.getElementById('map-card')?.hidden).toBe(true)
   })
 
@@ -172,7 +176,7 @@ describe('renderMapSection', () => {
     const { boxes } = open([added('src/adapters/file/download.ts')])
     boxes()[0]?.dispatchEvent(new MouseEvent('mouseenter'))
     const card = document.getElementById('map-card') as HTMLElement
-    expect(parseFloat(card.style.left) + 320).toBeLessThanOrEqual(1240)
+    expect(parseFloat(card.style.left) + 360).toBeLessThanOrEqual(1240)
   })
 
   it('puts the heading inside the section it names', () => {
@@ -258,18 +262,19 @@ describe('renderMapSection', () => {
     }
   })
 
-  it('keeps keyboard focus on the folder it opened or collapsed', () => {
-    open(busySlice)
-    const box = document.querySelector<HTMLElement>('.node.collapsed')
-    box?.focus()
-    box?.click()
-    const label = document.activeElement as HTMLElement
-    expect(label.classList.contains('folder-label')).toBe(true)
-    expect(label.dataset.path).toBe('src/features/busy/model')
-    label.click()
-    const collapsed = document.activeElement as HTMLElement
-    expect(collapsed.classList.contains('collapsed')).toBe(true)
-    expect(collapsed.dataset.path).toBe('src/features/busy/model')
+  it('keeps keyboard focus on the name of the folder it opened or collapsed', () => {
+    const { label } = open(busySlice)
+    label('busy/model').focus()
+    label('busy/model').click()
+    const opened = document.activeElement as HTMLElement
+    expect(opened.classList.contains('folder-label')).toBe(true)
+    expect(opened.getAttribute('aria-expanded')).toBe('true')
+    expect(opened.dataset.path).toBe('src/features/busy/model')
+    opened.click()
+    const closed = document.activeElement as HTMLElement
+    expect(closed.classList.contains('folder-label')).toBe(true)
+    expect(closed.getAttribute('aria-expanded')).toBe('false')
+    expect(closed.dataset.path).toBe('src/features/busy/model')
   })
 
   it('writes each status colour once for both themes', () => {
@@ -284,5 +289,251 @@ describe('renderMapSection', () => {
     expect(document.getElementById('changeset-map')?.textContent).toContain(
       '1 file left off the map',
     )
+  })
+})
+
+describe('import arrows', () => {
+  const imp = (
+    from: string,
+    to: string,
+    status: ImportChange['status'],
+    ...names: string[]
+  ): ImportChange => ({ from, to, status, names: names.length ? names : ['x'] })
+  const FORM = 'src/features/form/ui/Form.tsx'
+  const FMT = 'src/domain/format.ts'
+  const DAYS = 'src/domain/days.ts'
+  const files = [
+    { path: FORM, status: 'modified' as const },
+    added(FMT),
+    { path: DAYS, status: 'deleted' as const },
+  ]
+  const edges = [
+    imp(FORM, FMT, 'added', 'formatRange'),
+    imp(FORM, DAYS, 'removed', 'formatDays'),
+    imp(FORM, 'src/domain/estimate.ts', 'kept', 'createEstimate'),
+  ]
+  const arrows = (kind?: string) => [
+    ...document.querySelectorAll<SVGPathElement>(
+      `#changeset-map .edges path.edge${kind ? `.${kind}` : ''}`,
+    ),
+  ]
+  const box = (name: string) => {
+    const found = [
+      ...document.querySelectorAll<HTMLElement>('#changeset-map .node'),
+    ].find((b) => b.querySelector('.name')?.textContent === name)
+    if (!found) throw new Error(`no box ${name}`)
+    return found
+  }
+  const tick = (kind: string, on: boolean) => {
+    const input = document.querySelector<HTMLInputElement>(
+      `#changeset-map input[data-show="${kind}"]`,
+    )
+    if (!input) throw new Error(`no checkbox ${kind}`)
+    input.checked = on
+    input.dispatchEvent(new Event('change'))
+  }
+  const card = () => document.getElementById('map-card') as HTMLElement
+
+  it('draws the added and removed imports between boxes, and the kept ones only on focus', () => {
+    const { errors } = open(files, edges)
+    expect(errors).toEqual([])
+    expect(arrows('added')).toHaveLength(1)
+    expect(arrows('removed')).toHaveLength(1)
+    expect(arrows('kept')).toHaveLength(0)
+  })
+
+  it('draws an unchanged file an import points at as a box of its own', () => {
+    open(files, [imp(FORM, 'src/domain/estimate.ts', 'added')])
+    const context = box('estimate.ts')
+    expect(context.classList.contains('context')).toBe(true)
+    expect(context.querySelector('.sign')?.textContent).toBe('·')
+    expect(arrows('added')).toHaveLength(1)
+  })
+
+  it('hides a kind of arrow with its legend checkbox', () => {
+    open(files, edges)
+    tick('added', false)
+    expect(arrows('added')).toHaveLength(0)
+    expect(arrows('removed')).toHaveLength(1)
+    tick('removed', false)
+    expect(arrows()).toHaveLength(0)
+    tick('added', true)
+    expect(arrows('added')).toHaveLength(1)
+  })
+
+  it("shows a hovered box's own imports whatever the checkboxes say", () => {
+    open(files, edges)
+    tick('added', false)
+    tick('removed', false)
+    box('Form.tsx').dispatchEvent(new MouseEvent('mouseenter'))
+    expect(arrows('added')).toHaveLength(1)
+    expect(arrows('removed')).toHaveLength(1)
+    box('Form.tsx').dispatchEvent(new MouseEvent('mouseleave'))
+    expect(arrows()).toHaveLength(0)
+  })
+
+  it('shows only the imports of the focused box and fades the others', () => {
+    open(
+      [...files, { path: 'src/features/other/ui/Other.tsx', status: 'modified' }],
+      [...edges, imp('src/features/other/ui/Other.tsx', FMT, 'added')],
+    )
+    box('format.ts').dispatchEvent(new MouseEvent('mouseenter'))
+    expect(arrows('kept')).toHaveLength(0)
+    expect(arrows().every((a) => a.classList.contains('dim'))).toBe(true)
+    box('Form.tsx').dispatchEvent(new MouseEvent('mouseenter'))
+    expect(arrows('kept')).toHaveLength(0)
+    expect(arrows().filter((a) => !a.classList.contains('dim'))).toHaveLength(2)
+  })
+
+  it('draws an arrow to a file on the map in gray when it is kept', () => {
+    open(
+      files,
+      [...edges, imp(FORM, FMT, 'kept')].filter((e) => e.status !== 'added'),
+    )
+    box('Form.tsx').dispatchEvent(new MouseEvent('mouseenter'))
+    expect(arrows('kept')).toHaveLength(1)
+  })
+
+  it('pins a box with a click and unpins it with a second click or Escape', () => {
+    open(files, edges)
+    tick('added', false)
+    const form = box('Form.tsx')
+    form.click()
+    form.dispatchEvent(new MouseEvent('mouseleave'))
+    expect(form.getAttribute('aria-pressed')).toBe('true')
+    expect(card().hidden).toBe(false)
+    expect(arrows('added')).toHaveLength(1)
+    box('Form.tsx').click()
+    expect(box('Form.tsx').getAttribute('aria-pressed')).toBe('false')
+    expect(card().hidden).toBe(true)
+    box('Form.tsx').click()
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(box('Form.tsx').getAttribute('aria-pressed')).toBe('false')
+    expect(arrows('added')).toHaveLength(0)
+  })
+
+  it("lists the box's imports with the names they use in its card", () => {
+    open(files, edges)
+    box('Form.tsx').dispatchEvent(new MouseEvent('mouseenter'))
+    const text = card().textContent ?? ''
+    expect(text).toContain('Imports added (1)')
+    expect(text).toContain('domain/format.ts')
+    expect(text).toContain('formatRange')
+    expect(text).toContain('Imports removed (1)')
+    expect(text).toContain('formatDays')
+    expect(text).toContain('Imports kept (1)')
+    expect(text).toContain('domain/estimate.ts · not on the map')
+    expect(text).not.toContain('imported by')
+  })
+
+  it('joins the arrows of a collapsed folder and counts them', () => {
+    const busy = busySlice.map((f) => f.path)
+    open(
+      [...busySlice, added(FMT)],
+      [imp(busy[0] as string, FMT, 'added'), imp(busy[1] as string, FMT, 'added')],
+    )
+    expect(arrows('added')).toHaveLength(1)
+    expect(document.querySelector('#changeset-map .edge-count')?.textContent).toBe('2')
+  })
+
+  it('pins a collapsed folder with a click on the box, and opens it only by its name', () => {
+    const { boxes, label } = open(
+      [...busySlice, added(FMT)],
+      [imp(busySlice[0]?.path as string, FMT, 'added')],
+    )
+    const collapsed = document.querySelector<HTMLElement>(
+      '.node.collapsed',
+    ) as HTMLElement
+    collapsed.click()
+    expect(boxes()).toHaveLength(2)
+    expect(collapsed.getAttribute('aria-pressed')).toBe('true')
+    expect(card().textContent).toContain('a.ts → domain/format.ts')
+    label('busy/model').click()
+    expect(boxes()).toHaveLength(6)
+  })
+
+  it('names the import arrows in the legend with their counts', () => {
+    open(files, edges)
+    const legend = document.querySelector('#changeset-map .legend')?.textContent ?? ''
+    expect(legend).toContain('show added import arrows (1)')
+    expect(legend).toContain('show removed import arrows (1)')
+    expect(legend).toContain('pin a box to keep its card open')
+    expect(legend).toContain('· unchanged file')
+  })
+
+  it('says in the legend why the arrows are missing', () => {
+    open(files, {
+      status: 'not available',
+      reason: 'reading the imports failed: bad object',
+    })
+    expect(arrows()).toHaveLength(0)
+    expect(document.querySelector('#changeset-map .legend')?.textContent).toContain(
+      'import arrows not available: reading the imports failed: bad object',
+    )
+    expect(document.querySelector('#changeset-map input[data-show]')).toBeNull()
+  })
+
+  it('counts only the imports that are drawn as arrows in the legend', () => {
+    open(files, [...edges, imp(FORM, 'src/domain/types.test.ts', 'added')])
+    expect(document.querySelector('#changeset-map .legend')?.textContent).toContain(
+      'show added import arrows (1)',
+    )
+  })
+
+  it("keeps a collapsed folder's card open while the pointer is on its name", () => {
+    const { label } = open(
+      [...busySlice, added(FMT)],
+      [imp(busySlice[0]?.path as string, FMT, 'added')],
+    )
+    const collapsed = document.querySelector<HTMLElement>(
+      '.node.collapsed',
+    ) as HTMLElement
+    collapsed.dispatchEvent(new MouseEvent('mouseenter'))
+    collapsed.dispatchEvent(new MouseEvent('mouseleave'))
+    label('busy/model').dispatchEvent(new MouseEvent('mouseenter'))
+    expect(card().hidden).toBe(false)
+    expect(card().textContent).toContain('features/busy/model/')
+  })
+
+  it('describes the box with its card for a screen reader', () => {
+    open(files, edges)
+    box('Form.tsx').focus()
+    expect(box('Form.tsx').getAttribute('aria-describedby')).toBe('map-card')
+    expect(box('format.ts').hasAttribute('aria-describedby')).toBe(false)
+    box('Form.tsx').blur()
+    expect(box('Form.tsx').hasAttribute('aria-describedby')).toBe(false)
+  })
+
+  it('closes a card opened by hover or focus with Escape', () => {
+    open(files, edges)
+    box('Form.tsx').dispatchEvent(new MouseEvent('mouseenter'))
+    expect(card().hidden).toBe(false)
+    box('Form.tsx').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    )
+    expect(card().hidden).toBe(true)
+    box('Form.tsx').dispatchEvent(new MouseEvent('mouseenter'))
+    expect(card().hidden).toBe(false)
+  })
+
+  it('keeps the card of the focused box when the pointer passes over another one', () => {
+    open(files, edges)
+    box('Form.tsx').focus()
+    box('format.ts').dispatchEvent(new MouseEvent('mouseenter'))
+    box('format.ts').dispatchEvent(new MouseEvent('mouseleave'))
+    expect(card().hidden).toBe(false)
+    expect(card().textContent).toContain('features/form/ui/Form.tsx')
+  })
+
+  it("names every folder button with the folder's full path", () => {
+    const { label } = open([
+      ...busySlice,
+      added('src/features/save/ui/Button.tsx'),
+      added('src/features/save/ui/Label.tsx'),
+    ])
+    expect(label('busy/model').getAttribute('aria-label')).toBe(
+      'src/features/busy/model/',
+    )
+    expect(label('save/ui').getAttribute('aria-label')).toBe('src/features/save/ui/')
   })
 })

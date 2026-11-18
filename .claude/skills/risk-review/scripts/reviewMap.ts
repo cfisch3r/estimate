@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import type { ChangedFile } from './changedDiff.ts'
 import { matchesPattern } from './reviewFloor.ts'
+import type { ImportChange } from './reviewImports.ts'
 import type { Section } from './reviewSignals.ts'
 
 // The changeset map of the Review guide: every changed file of a branch, placed in a layer
@@ -168,7 +169,8 @@ export function placeFile(path: string, config: MapConfig): Place {
   return { kind: 'strip', strip: strip?.name ?? OTHER_STRIP }
 }
 
-export type MapStatus = 'added' | 'changed' | 'deleted' | 'moved' | 'ghost'
+/** `context`: an unchanged file that an added or removed import points at. */
+export type MapStatus = 'added' | 'changed' | 'deleted' | 'moved' | 'ghost' | 'context'
 
 export interface MapFile {
   path: string
@@ -207,7 +209,11 @@ export interface ChangesetMap {
   strips: Array<{ name: string; files: MapFile[] }>
   /** Changed files left off the map. */
   offMap: number
+  /** The import edges from the files on the map, or why they could not be read. */
+  imports: MapImports
 }
+
+export type MapImports = Section<{ edges: ImportChange[] }>
 
 /** A slice with more changed files than this starts collapsed. */
 export const COLLAPSE_ABOVE = 4
@@ -279,7 +285,7 @@ function finish(raw: RawFolder, depth: number, sliceDepth: number | undefined): 
     .sort(byName((f) => f.label))
   const files = [...folder.files].sort(byName((f) => f.path))
   const changed =
-    files.filter((f) => f.status !== 'ghost').length +
+    files.filter((f) => f.status !== 'ghost' && f.status !== 'context').length +
     folders.reduce((sum, f) => sum + f.changed, 0)
   const total = files.length + folders.reduce((sum, f) => sum + count(f), 0)
   return {
@@ -300,6 +306,7 @@ const count = (f: Folder): number =>
 export function buildChangesetMap(
   changed: ChangedFile[],
   config: MapConfig,
+  imports: MapImports = { status: 'ok', edges: [] },
 ): ChangesetMap {
   const roots = new Map(
     config.layers.map((l) => [
@@ -312,7 +319,24 @@ export function buildChangesetMap(
   strips.set(OTHER_STRIP, [])
   let offMap = 0
 
-  for (const file of mapFiles(changed, config)) {
+  const files = mapFiles(changed, config)
+  const boxes = new Set(files.filter((f) => f.status !== 'ghost').map((f) => f.path))
+  const onMap = (path: string) => {
+    const kind = placeFile(path, config).kind
+    return kind === 'layer' || kind === 'unplaced'
+  }
+  if (imports.status === 'ok') {
+    for (const edge of imports.edges) {
+      if (edge.status === 'kept') continue
+      for (const path of [edge.from, edge.to]) {
+        if (boxes.has(path) || !onMap(path)) continue
+        boxes.add(path)
+        files.push({ path, status: 'context' })
+      }
+    }
+  }
+
+  for (const file of files) {
     const place = placeFile(file.path, config)
     if (place.kind === 'off') {
       offMap++
@@ -349,6 +373,13 @@ export function buildChangesetMap(
       .filter(([, files]) => files.length > 0)
       .map(([name, files]) => ({ name, files: files.sort(byName((f) => f.path)) })),
     offMap,
+    imports:
+      imports.status === 'ok'
+        ? {
+            status: 'ok',
+            edges: imports.edges.filter((e) => boxes.has(e.from) && onMap(e.from)),
+          }
+        : imports,
   }
 }
 
@@ -359,6 +390,7 @@ export function buildChangesetMap(
 export function readChangesetMap(
   readChanged: () => ChangedFile[],
   configPath: string,
+  readImports: (changed: ChangedFile[]) => ImportChange[] = () => [],
 ): Section<ChangesetMap> {
   const notAvailable = (reason: string) => ({ status: 'not available' as const, reason })
   const message = (error: unknown) =>
@@ -381,5 +413,11 @@ export function readChangesetMap(
   } catch (error) {
     return notAvailable(`reading the changed files failed: ${message(error)}`)
   }
-  return { status: 'ok', ...buildChangesetMap(changed, config) }
+  let imports: MapImports
+  try {
+    imports = { status: 'ok', edges: readImports(changed) }
+  } catch (error) {
+    imports = notAvailable(`reading the imports failed: ${message(error)}`)
+  }
+  return { status: 'ok', ...buildChangesetMap(changed, config, imports) }
 }
