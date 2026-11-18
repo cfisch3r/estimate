@@ -368,7 +368,9 @@ export function buildChangesetMap(
         files.push({ path, status: 'context' })
       }
     }
-    uses.push(...usesOf(code, changedPaths))
+    // Tests and the other off-map files never count as importers, not even in the reach.
+    const off = (path: string) => placeFile(path, config).kind === 'off'
+    uses.push(...usesOf(code, changedPaths).filter((u) => !off(u.from)))
     addImporters(files, boxes, uses, code.docs ?? {}, onMap)
     addExports(files, code.exports ?? {}, uses)
   }

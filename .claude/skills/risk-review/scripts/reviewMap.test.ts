@@ -587,6 +587,16 @@ describe('buildChangesetMap with exports', () => {
     expect(usesOf(map)).toEqual([{ from: 'scripts/s.ts', to: B, names: ['b'] }])
   })
 
+  it('does not count a test or another off-map file as an importer', () => {
+    const map = buildChangesetMap(
+      [{ path: B, status: 'modified' }],
+      config,
+      code([kept('src/features/x/A.test.ts', B, 'b')], changedB),
+    )
+    expect(usesOf(map)).toEqual([])
+    expect(fileOf(map, B)?.reach).toBeUndefined()
+  })
+
   it('does not count importers as changed files', () => {
     const map = buildChangesetMap(
       [{ path: B, status: 'modified' }],
