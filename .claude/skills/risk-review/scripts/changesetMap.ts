@@ -3,8 +3,9 @@ import { join } from 'node:path'
 import type { ChangesetMap } from './reviewMap.ts'
 
 // The changeset map section of the Review guide. The map data goes into the page as a JSON
-// block; a small script (changesetMap.client.js, inlined) lays it out in the browser, so a
-// reader can collapse and open folders. Nothing is loaded from outside the page.
+// block; a small script (changesetMap.client.js, inlined) lays it out in the browser and
+// draws the import arrows, so a reader can collapse and open folders, pin a box and hide a
+// kind of arrow. Nothing is loaded from outside the page.
 
 const CLIENT = readFileSync(join(import.meta.dirname, 'changesetMap.client.js'), 'utf8')
 
@@ -17,7 +18,31 @@ const SWATCHES: Array<[string, string]> = [
   ['deleted', '− deleted'],
   ['moved', '→ moved'],
   ['ghost', '⇠ old place of a moved file'],
+  ['context', '· unchanged file an import points at'],
 ]
+
+/** A short line in an arrow's own stroke, for the legend. */
+const arrowSample = (status: string) =>
+  `<svg width="28" height="10" aria-hidden="true"><path class="edge ${status}" d="M1,5 H21"/><path class="head ${status}" d="M20,1 L27,5 L20,9 z"/></svg>`
+
+const escapeHtml = (text: string) =>
+  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+
+/** The legend's arrow part: a checkbox per changed kind, or why there are no arrows. */
+function arrowLegend(map: ChangesetMap): string {
+  if (map.imports.status !== 'ok') {
+    return `<span>import arrows not available: ${escapeHtml(map.imports.reason)}</span>`
+  }
+  const edges = map.imports.edges
+  const count = (status: string) => edges.filter((e) => e.status === status).length
+  const box = (status: string, sign: string) =>
+    `<label><input type="checkbox" id="show-${status}" data-show="${status}" checked>${arrowSample(status)}${sign} ${status} imports (${count(status)})</label>`
+  return [
+    box('added', '+'),
+    box('removed', '−'),
+    `<span>${arrowSample('kept')}kept imports: hover or click a box</span>`,
+  ].join('')
+}
 
 /** The map data as JSON that cannot end the script block it sits in (`</script`, `<!--`). */
 const embed = (map: ChangesetMap) => JSON.stringify(map).replace(/</g, '\\u003c')
@@ -35,7 +60,7 @@ export function renderMapSection(map: ChangesetMap): string {
     '<section id="changeset-map" aria-labelledby="changeset-map-title">',
     '<h2 id="changeset-map-title">Changeset map</h2>',
     `<style>${STYLE}</style>`,
-    `<p class="legend">${legend}<span>dashed frame: folder, click its name to collapse</span>${offMap}</p>`,
+    `<p class="legend">${legend}${arrowLegend(map)}<span>dashed frame: folder, click its name to collapse or open it</span>${offMap}</p>`,
     `<script type="application/json" id="changeset-map-data">${embed(map)}</script>`,
     '<div class="scroll"><div class="map-canvas"><div id="map-card" class="map-card" hidden></div></div></div>',
     `<script>${CLIENT}</script>`,

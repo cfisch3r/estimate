@@ -124,14 +124,25 @@
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
-  cursor: default;
+  text-align: left;
+  color: var(--fg);
+  cursor: pointer;
+}
+#changeset-map .node[aria-pressed='true'] {
+  box-shadow:
+    0 0 0 2px var(--bg),
+    0 0 0 4px var(--focus);
 }
 #changeset-map .node.collapsed {
   border-width: 2px;
-  cursor: pointer;
   white-space: normal;
-  text-align: left;
-  color: var(--fg);
+  padding-top: 19px;
+}
+#changeset-map .folder-label.collapsed-name {
+  z-index: 1;
+  max-width: 186px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 #changeset-map .chips {
   display: flex;
@@ -163,6 +174,13 @@
 }
 #changeset-map .node.deleted {
   text-decoration: line-through;
+}
+#changeset-map .context,
+#changeset-map .node.context {
+  background: var(--bg);
+  border-style: dotted;
+  color: var(--muted);
+  font-weight: 500;
 }
 #changeset-map .moved,
 #changeset-map .chip.moved {
@@ -211,7 +229,7 @@
 #changeset-map .map-card {
   position: absolute;
   z-index: 5;
-  max-width: 320px;
+  max-width: 360px;
   background: var(--bg);
   border: 1px solid var(--frame);
   border-radius: 8px;
@@ -226,4 +244,106 @@
 #changeset-map .folder-label:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+#changeset-map .legend label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  color: var(--fg);
+}
+#changeset-map .legend svg {
+  vertical-align: middle;
+  margin-right: 4px;
+}
+/* Import arrows: added solid, removed dashed, kept thin and gray, so the kind does not rest
+   on colour alone. */
+#changeset-map .edges {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+#changeset-map path.edge {
+  fill: none;
+  stroke-width: 1.75;
+}
+#changeset-map path.edge.added {
+  stroke: var(--add);
+}
+#changeset-map path.edge.removed {
+  stroke: var(--del);
+  stroke-dasharray: 6 4;
+}
+#changeset-map path.edge.kept {
+  stroke: var(--frame);
+  stroke-width: 1.25;
+}
+#changeset-map .head.added {
+  fill: var(--add);
+}
+#changeset-map .head.removed {
+  fill: var(--del);
+}
+#changeset-map .head.kept {
+  fill: var(--frame);
+}
+#changeset-map .dim {
+  opacity: 0.15;
+}
+#changeset-map .edge-count circle {
+  fill: var(--bg);
+  stroke-width: 1.5;
+}
+#changeset-map .edge-count.added circle {
+  stroke: var(--add);
+}
+#changeset-map .edge-count.removed circle {
+  stroke: var(--del);
+}
+#changeset-map .edge-count text {
+  font:
+    600 10px ui-monospace,
+    monospace;
+  fill: var(--fg);
+}
+#changeset-map .map-card .card-h {
+  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+#changeset-map .map-card .imp {
+  display: flex;
+  gap: 6px;
+  margin-top: 3px;
+  font:
+    11px/1.35 ui-monospace,
+    monospace;
+}
+#changeset-map .map-card .imp-sign {
+  flex-shrink: 0;
+  width: 10px;
+  font-weight: 700;
+}
+#changeset-map .map-card .imp.added .imp-sign {
+  color: var(--add);
+}
+#changeset-map .map-card .imp.removed .imp-sign {
+  color: var(--del);
+}
+#changeset-map .map-card .imp-text {
+  min-width: 0;
+}
+#changeset-map .map-card .names,
+#changeset-map .map-card .off {
+  color: var(--muted);
+}
+#changeset-map .map-card .card-pin {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--focus);
 }

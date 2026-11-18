@@ -466,8 +466,13 @@ describe('buildChangesetMap with imports', () => {
   })
 
   it('passes on why the imports are not available', () => {
-    const reason = { status: 'not available' as const, reason: 'tsconfig.app.json not found' }
-    expect(buildChangesetMap([added('src/features/a.ts')], config, reason).imports).toEqual(reason)
+    const reason = {
+      status: 'not available' as const,
+      reason: 'tsconfig.app.json not found',
+    }
+    expect(
+      buildChangesetMap([added('src/features/a.ts')], config, reason).imports,
+    ).toEqual(reason)
   })
 })
 
