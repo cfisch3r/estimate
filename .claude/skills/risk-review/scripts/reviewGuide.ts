@@ -1,12 +1,15 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
-import { repoRoot } from './changedDiff.ts'
+import { join } from 'node:path'
+import { readGitDiff, repoRoot } from './changedDiff.ts'
+import { renderMapSection } from './changesetMap.ts'
 import {
   currentCatalogueNames,
   RISK_LEVELS,
   type Floor,
   type RiskLevel,
 } from './reviewFloor.ts'
+import { readChangesetMap, type ChangesetMap } from './reviewMap.ts'
 import type { Section } from './reviewSignals.ts'
 
 // The Review guide, built on request while reviewing a branch. A script writes it, not the
@@ -18,7 +21,8 @@ import type { Section } from './reviewSignals.ts'
 //     [--covers <commit>] [--title <page title>]
 //
 // Prints the HTML page. The inputs are the outputs of `pnpm review:floor`,
-// `pnpm review:signals` and the `risk-review:reviewer` agent.
+// `pnpm review:signals` and the `risk-review:reviewer` agent. The script also reads the
+// branch's diff itself for the changeset map, placed by the plugin's `changeset-map.yaml`.
 
 export interface HotSpot {
   file: string
@@ -57,6 +61,7 @@ export interface GuideData {
   hotSpots: HotSpot[]
   skimOnly: SkimItem[]
   evidence: EvidenceItem[]
+  map?: Section<ChangesetMap>
 }
 
 export interface AgentAnswer {
@@ -75,6 +80,8 @@ export interface GuideInput {
   /** The category names of the catalogue, to drop names the agent made up. */
   catalogueNames: string[]
   repoUrl?: string
+  /** The changeset map; without it the page has no map section. */
+  map?: Section<ChangesetMap>
 }
 
 /** The parts of the signals output the guide uses; every section may be missing. */
@@ -237,6 +244,9 @@ export function buildGuide(input: GuideInput): GuideData {
   const evidence = evidenceFromSignals(input.signals)
   const note = (text: string) => evidence.push({ kind: 'note', text })
   const warn = (text: string) => evidence.push({ kind: 'warning', text })
+  if (input.map?.status === 'not available') {
+    evidence.push({ kind: 'not-checked', text: `Changeset map: ${input.map.reason}` })
+  }
 
   let agentRisk: RiskLevel = floor.floor
   if (RISK_LEVELS.includes(agent.risk as RiskLevel)) {
@@ -326,6 +336,7 @@ export function buildGuide(input: GuideInput): GuideData {
     hotSpots: spots.slice(0, MAX_HOT_SPOTS),
     skimOnly: skim,
     evidence,
+    ...(input.map ? { map: input.map } : {}),
   }
   return data
 }
@@ -424,6 +435,7 @@ export function renderHtml(data: GuideData, title = 'Review guide'): string {
     `<p class="muted">Covers ${code(data.covers.slice(0, 7))}</p>`,
     '<h2>Risk</h2>',
     `<p><span class="badge risk-${data.risk}">${data.risk}</span>${esc(raised)} — ${names}</p>`,
+    ...(data.map?.status === 'ok' ? [renderMapSection(data.map)] : []),
     '<h2>Hot spots</h2>',
     data.hotSpots.length === 0
       ? '<p class="muted">None.</p>'
@@ -498,7 +510,8 @@ function readJson(name: string): unknown {
 
 function main() {
   const cwd = repoRoot()
-  const floor = readJson('floor') as Floor
+  // The floor output also says since which commit it looked, when it was given one.
+  const floor = readJson('floor') as Floor & { since?: string | null }
   const signals = readJson('signals') as Signals
   const agent = parseAgentAnswer(readFileSync(required('agent'), 'utf8'))
   const covers =
@@ -507,7 +520,11 @@ function main() {
   const catalogueNames = currentCatalogueNames(floor.base, cwd)
 
   const repoUrl = originUrl(cwd)
-  const data = buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl })
+  const map = readChangesetMap(
+    () => readGitDiff({ cwd, ...(floor.since ? { from: floor.since } : {}) }).files,
+    join(import.meta.dirname, '..', 'changeset-map.yaml'),
+  )
+  const data = buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl, map })
   process.stdout.write(renderHtml(data, option('title')) + '\n')
 }
 
