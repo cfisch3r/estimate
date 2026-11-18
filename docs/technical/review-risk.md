@@ -233,6 +233,7 @@ Legend: solid line = data passed on, dotted line = file read; numbers give the o
 flowchart LR
   Cfg["changeset-map.yaml<br/>[YAML file, plugin]"]
   Changed["Changed files<br/>[read by the guide script]"]
+  Css["changesetMap.css<br/>[stylesheet]"]
   subgraph NODE["GUIDE SCRIPT, NODE"]
     direction LR
     Place["reviewMap.ts<br/>[module]"]
@@ -244,13 +245,14 @@ flowchart LR
   Cfg -.->|"1 map rules"| Place
   Changed -->|"2 files"| Place
   Place -->|"3 placed files"| Render
-  Render -->|"4 data, script"| Client
+  Css -.->|"4 styles"| Render
+  Render -->|"5 data, styles, script"| Client
 
   classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
   classDef data fill:#E2E8F0,stroke:#64748B,color:#0F172A
 
   class Place,Render,Client script
-  class Cfg,Changed data
+  class Cfg,Changed,Css data
   style NODE fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
   style BROWSER fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
 ```
@@ -259,7 +261,7 @@ flowchart LR
 |---|---|
 | `reviewMap.ts` | Checks the configuration and places the changed files |
 | `changesetMap.ts` | Renders the map section: the legend, the placed files as embedded data, and the inlined styles and page script |
-| `changesetMap.css` | The map's styles; its status colours follow the light or dark theme the guide's own stylesheet sets |
+| `changesetMap.css` | The map's styles; its status colours follow the light or dark theme that `reviewGuide.css` sets |
 | `changesetMap.client.js` | Draws the rows, slices, folders, file boxes and strips in the browser, lets the reader open and collapse folders and shows the hover card |
 
 ## Risk levels
