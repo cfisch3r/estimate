@@ -38,7 +38,7 @@ flowchart TD
   Agent -->|"risk, categories, hot spots"| Guide
   Diff -->|"changed files"| Guide
   MapCfg -.->|"map rules"| Guide
-  Src -.->|"imports"| Guide
+  Src -.->|"imports, exports"| Guide
   Guide -->|"rendered guide"| Page
 
   classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
@@ -55,7 +55,7 @@ flowchart TD
 | **Floor script** | Reads the YAML block below from the base branch (`origin/main`, else `main`; never from the pull request being checked, also when given a commit to start from), matches the changed files against it and reports the matched categories and the highest minimum risk. |
 | **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
 | **`risk-review:reviewer` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
-| **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide page. It also reads the changed files itself (since the floor's commit, when the floor had one) and the imports between the source files at that commit (else the merge base with the default branch) and now, and builds the changeset map from them (see [Changeset map](#changeset-map)). |
+| **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide page. It also reads the changed files itself (since the floor's commit, when the floor had one) and the imports and exports of the source files at that commit (else the merge base with the default branch) and now, and builds the changeset map from them (see [Changeset map](#changeset-map)). |
 
 ## The agent's answer
 
@@ -105,7 +105,7 @@ diagram above. A script writes it, so the rules hold whatever the agent says:
 |---|---|
 | Marker | `Covers <commit>`, the commit the guide was written for, so a reader can see what it describes |
 | Risk | The level and the category names |
-| Changeset map | The branch's changed files placed in the app's structure (since the floor's commit, when it had one), with the imports the change added and removed drawn as arrows; tests, CSS and type declarations only counted. See [Changeset map](#changeset-map) |
+| Changeset map | The branch's changed files placed in the app's structure (since the floor's commit, when it had one), with the imports the change added and removed drawn as arrows, and the unchanged files that use a changed export; tests, CSS and type declarations only counted. See [Changeset map](#changeset-map) |
 | Hot spots | A headline, what the change is and what makes it a hot spot, the reference (`file:line`, linked to the covered commit) with the rule or ADR, and facts from the signals |
 | Skim only | Files a reader can skim, each with a reason |
 | Not verified | What a reader has to check by hand; the scripts' own findings are folded below it |
@@ -119,11 +119,13 @@ guide itself exists only when the maintainer asks for it.
 
 ### Changeset map
 
-The map shows where a branch's changes sit in the app and which imports between them it adds
-and removes, so a reader sees which rows and slices a change touches and how it rewires them
-before reading the hot spots. A **row** is drawn per configured layer, a **slice** is the first
-folder below it, and a **folder** is any folder deeper down. An **import edge** is a pair of
-files: the file that imports, and the file that declares the imported name.
+The map shows where a branch's changes sit in the app, which imports between them it adds and
+removes, and which unchanged files use what it changed, so a reader sees which rows and slices a
+change touches, how it rewires them and what else it can break before reading the hot spots. A
+**row** is drawn per configured layer, a **slice** is the first folder below it, and a
+**folder** is any folder deeper down. An **import edge** is a pair of files: the file that
+imports, and the file that declares the imported name. A **changed export** is an export of a
+changed file whose declaration changed; an **importer** is an unchanged file that uses one.
 
 #### Where a file goes
 
@@ -209,12 +211,87 @@ flowchart TD
 | Added import | Only in the working tree | Green, solid | Unless its legend checkbox is cleared; always from the active box |
 | Removed import | Only at the base | Red, dashed | Unless its legend checkbox is cleared; always from the active box |
 | Kept import | In both; a moved file counts under its new path, so its imports stay kept | Gray, thin | Only from the active box |
+| Uses a changed export | An importer's kept import of a changed export | Gray, dotted | All while the importers checkbox is on, in place of the kept arrow of the same import; a box shows them at either end |
 
 The **active box** is the one the pointer is on, else the one with keyboard focus, else the
 pinned one. Imports of one kind between the same two boxes, such as several files of a
 collapsed folder, are drawn as one arrow with their count; an import between two files of the
 same collapsed folder gets no arrow, and the folder's card lists it. Arrows run under the
 boxes.
+
+#### Which exports changed and who uses them
+
+Legend: diamond = check, in this order; the first match decides.
+
+```mermaid
+flowchart TD
+  Export["Export of a changed file<br/>[name]"]
+  Now{"exported now?"}
+  Before{"exported<br/>at the base?"}
+  Decl{"declaration<br/>changed?"}
+  Helper{"uses a changed<br/>same-file declaration?"}
+  Added["Added"]
+  Removed["Removed"]
+  Changed["Changed"]
+  Via["Changed, via<br/>that declaration"]
+  Same["Unchanged"]
+
+  Export --> Now
+  Now -->|"no"| Removed
+  Now -->|"yes"| Before
+  Before -->|"no"| Added
+  Before -->|"yes"| Decl
+  Decl -->|"yes"| Changed
+  Decl -->|"no"| Helper
+  Helper -->|"yes"| Via
+  Helper -->|"no"| Same
+
+  classDef check fill:#FEF08A,stroke:#CA8A04,color:#422006
+  classDef place fill:#E2E8F0,stroke:#64748B,color:#0F172A
+  classDef off fill:transparent,stroke:#64748B,stroke-dasharray:2 2,color:#64748B
+
+  class Now,Before,Decl,Helper check
+  class Added,Removed,Changed,Via place
+  class Same off
+```
+
+A declaration changed when its text differs from the base with comments and layout left out, so
+a change to a doc comment alone changes nothing. "Uses" follows the same-file declarations it
+refers to through any number of steps. Every export of a deleted file is removed, every export
+of an added file added.
+
+Legend: diamond = check, in this order; the first match decides.
+
+```mermaid
+flowchart TD
+  Edge["Import edge of an unchanged file<br/>[to a changed file]"]
+  Off{"importing file<br/>off the map?"}
+  Uses{"imports a changed export<br/>or the whole namespace?"}
+  Box{"importing file<br/>on the map?"}
+  Dropped["Not an importer"]
+  White["Importer box and uses arrow,<br/>counted in the reach"]
+  Card["Listed in the card,<br/>counted in the reach"]
+
+  Edge --> Off
+  Off -->|"yes"| Dropped
+  Off -->|"no"| Uses
+  Uses -->|"no"| Dropped
+  Uses -->|"yes"| Box
+  Box -->|"yes"| White
+  Box -->|"no"| Card
+
+  classDef check fill:#FEF08A,stroke:#CA8A04,color:#422006
+  classDef place fill:#E2E8F0,stroke:#64748B,color:#0F172A
+  classDef off fill:transparent,stroke:#64748B,stroke-dasharray:2 2,color:#64748B
+
+  class Off,Uses,Box check
+  class White,Card place
+  class Dropped off
+```
+
+A name a file only re-exports is not a use, so an unchanged barrel is no importer. A removed
+export has no importers: a file that still imports one does not compile, and the type check
+reports it. Only one step is followed: the importers of an importer are not drawn.
 
 #### What the page shows
 
@@ -259,6 +336,7 @@ flowchart TB
 
 | Part | What it shows | `changeset-map.yaml` | Interaction |
 |---|---|---|---|
+| Legend | Three rows: **Boxes** (the statuses), **Show** (a checkbox each for added imports, removed imports and unchanged importers, with their counts), **Marks** (the reach badge, the API chip, the kept arrow); then how to use the map and the off-map count | | The importers checkbox starts cleared |
 | Layer row | The changed files of one layer, by slice and folder | `layers`, in drawing order | |
 | UI frame | The FSD layers `pages` to `shared`, drawn inside one frame | `group: ui` | |
 | Side column | `adapters`, at the right edge across every row | `side: true` | |
@@ -266,7 +344,10 @@ flowchart TB
 | Folder | A deeper folder; a chain of single-child folders shows as one name (`session-history/ui`) | | One with two or more entries collapses and reopens by its name only; a collapsed one is a box that can be pinned like a file box |
 | File box | One changed file: status sign and name | | Becomes the active box on hover or focus: its card opens, its own arrows show and the rest fade; a click pins it until a second click or Esc |
 | Unchanged-file box | An unchanged file at either end of an added or removed import | | Like a file box |
-| Card | The box's path and status, then its imports added, removed and kept, each with the names it uses; a file that has no box is marked "not on the map" | | Shown for the active box; Esc closes it. A screen reader reads it as the box's description |
+| Importer box | An importer, white | | Shown only while the importers checkbox is on; otherwise like a file box |
+| Reach badge | `↗n` on a changed file box: n importers, on the map or not; none at 0 | | A screen reader hears "used by n unchanged files" |
+| API chip | `API +n −m` beside a folder's name: the names its barrels' re-exports added and removed | | |
+| Card | The box's path and status; a changed file's exports, the changed ones bold, and its importers with the names they use; an importer's leading doc comment and the changed exports it uses; then the box's imports added, removed and kept, each with its names. A file that has no box is marked "not on the map" | | Shown for the active box; Esc closes it. A screen reader reads it as the box's description |
 | Import arrow | One arrow per kind between two boxes, with a count when it stands for several import edges; see [Which imports are drawn](#which-imports-are-drawn) | | |
 | Unplaced row | A file under `sourceRoot` in no layer folder | `sourceRoot` | |
 | Strip | Files outside `sourceRoot`, by full path; a long folder is shortened, the name kept whole | `strips`, first match wins, `Other` last | Path and status on hover |
@@ -280,9 +361,10 @@ flowchart TB
 | Moved | `→` | Purple; the card names the old path |
 | Old place of a moved file | `⇠` | Dashed, empty; the card names the new path |
 | Unchanged, at either end of an added or removed import | `·` | Dotted, gray name |
+| Unchanged, uses a changed export | `◦` | White, solid border; a file that is both this and the row above shows white while the importers checkbox is on |
 
-An unchanged-file box is not counted as changed, in a collapsed folder's counts or anywhere
-else. The page loads nothing from outside: the data, the styles and the page script are
+Unchanged-file and importer boxes are not counted as changed, in a collapsed folder's counts or
+anywhere else. The page loads nothing from outside: the data, the styles and the page script are
 inlined.
 
 #### How it is built
@@ -298,6 +380,7 @@ flowchart LR
   subgraph NODE["GUIDE SCRIPT, NODE"]
     direction LR
     Imports["reviewImports.ts<br/>[module]"]
+    Exports["reviewExports.ts<br/>[module]"]
     Place["reviewMap.ts<br/>[module]"]
     Render["changesetMap.ts<br/>[module]"]
   end
@@ -306,17 +389,19 @@ flowchart LR
   end
   Cfg -.->|"1 map rules"| Place
   Changed -->|"2 files"| Place
-  Changed -->|"3 moved files"| Imports
+  Changed -->|"3 moved, changed files"| Imports
   Src -.->|"4 sources"| Imports
-  Imports -->|"5 import edges"| Place
-  Place -->|"6 placed files, edges"| Render
-  Css -.->|"7 styles"| Render
-  Render -->|"8 data, styles, script"| Client
+  Imports -->|"5 both sides'<br/>exports"| Exports
+  Exports -->|"6 export changes"| Place
+  Imports -->|"7 import edges,<br/>doc comments"| Place
+  Place -->|"8 placed files, edges"| Render
+  Css -.->|"9 styles"| Render
+  Render -->|"10 data, styles, script"| Client
 
   classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
   classDef data fill:#E2E8F0,stroke:#64748B,color:#0F172A
 
-  class Imports,Place,Render,Client script
+  class Imports,Exports,Place,Render,Client script
   class Cfg,Changed,Src,Css data
   style NODE fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
   style BROWSER fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
@@ -325,16 +410,19 @@ flowchart LR
 The import edges come from two TypeScript programs over `tsconfig.app.json`: one on the commit
 the map starts from, read from git into memory, and one on the working tree. Each imported name
 is followed to the file that declares it, so a barrel never stands between two boxes; a
-barrel's own re-exports are edges too. When the programs cannot be built, the map is drawn
-without arrows and the legend says why.
+barrel's own re-exports are edges too. The same pass lists each file's exports, its top-level
+declarations as their tokens without comments, the same-file declarations each one refers to,
+and its leading doc comment. When the programs cannot be built, the map is drawn without arrows,
+importers or exports, and the legend says why.
 
 | File (`.claude/skills/risk-review/scripts/`) | Role |
 |---|---|
-| `reviewImports.ts` | Builds the two TypeScript programs and compares their import edges |
-| `reviewMap.ts` | Checks the configuration, places the changed files, adds the unchanged files at either end of an added or removed import and keeps the edges whose importing file has a box |
+| `reviewImports.ts` | Builds the two TypeScript programs once, reads their import edges and export facts, and compares the edges |
+| `reviewExports.ts` | Compares the two sides' export facts: the added, removed and changed exports of each changed file, and each barrel's added and removed re-exports |
+| `reviewMap.ts` | Checks the configuration, places the changed files, adds the unchanged files at either end of an added or removed import and the importers, counts the reach and the API chips, and keeps the edges whose importing file has a box |
 | `changesetMap.ts` | Renders the map section: the legend, the placed files as embedded data, and the inlined styles and page script |
 | `changesetMap.css` | The map's styles; its status colours follow the light or dark theme that `reviewGuide.css` sets |
-| `changesetMap.client.js` | Draws the rows, slices, folders, file boxes, strips and import arrows in the browser, lets the reader open and collapse folders, pin a box and hide a kind of arrow, and shows the card |
+| `changesetMap.client.js` | Draws the rows, slices, folders, file boxes, strips, import and uses arrows, reach badges and API chips in the browser, lets the reader open and collapse folders, pin a box, hide a kind of arrow and show the importers, and shows the card |
 
 ## Risk levels
 
