@@ -520,9 +520,8 @@ function main() {
   const catalogueNames = currentCatalogueNames(floor.base, cwd)
 
   const repoUrl = originUrl(cwd)
-  const diff = readGitDiff({ cwd, ...(floor.since ? { from: floor.since } : {}) })
   const map = readChangesetMap(
-    diff.files,
+    () => readGitDiff({ cwd, ...(floor.since ? { from: floor.since } : {}) }).files,
     join(import.meta.dirname, '..', 'changeset-map.yaml'),
   )
   const data = buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl, map })

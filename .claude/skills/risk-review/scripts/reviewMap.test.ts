@@ -85,6 +85,26 @@ describe('parseMapConfig', () => {
       /layers\[0\]\.side/,
     ],
     [
+      'two layers share a name',
+      'sourceRoot: src\nlayers:\n  - name: app\n  - name: app\nstrips: []\noffMap: []',
+      /layers\[1\]\.name.*"app"/,
+    ],
+    [
+      'a layer takes the reserved name Unplaced',
+      'sourceRoot: src\nlayers:\n  - name: Unplaced\nstrips: []\noffMap: []',
+      /layers\[0\]\.name.*"Unplaced"/,
+    ],
+    [
+      'two strips share a name',
+      'sourceRoot: src\nlayers: []\nstrips:\n  - name: Docs\n    paths: []\n  - name: Docs\n    paths: []\noffMap: []',
+      /strips\[1\]\.name.*"Docs"/,
+    ],
+    [
+      'a strip takes the reserved name Other',
+      'sourceRoot: src\nlayers: []\nstrips:\n  - name: Other\n    paths: []\noffMap: []',
+      /strips\[0\]\.name.*"Other"/,
+    ],
+    [
       'offMap is not a list',
       'sourceRoot: src\nlayers: []\nstrips: []\noffMap: 1',
       /offMap/,
@@ -221,6 +241,52 @@ describe('buildChangesetMap', () => {
     ])
   })
 
+  it('counts a renamed off-map file once', () => {
+    const map = buildChangesetMap(
+      [
+        {
+          path: 'src/domain/b.test.ts',
+          oldPath: 'src/domain/a.test.ts',
+          status: 'renamed',
+        },
+      ],
+      config,
+    )
+    expect(map.offMap).toBe(1)
+  })
+
+  it('leaves no ghost when a file moves off the map', () => {
+    const map = buildChangesetMap(
+      [
+        {
+          path: 'src/domain/x/a.test.ts',
+          oldPath: 'src/domain/x/a.ts',
+          status: 'renamed',
+        },
+      ],
+      config,
+    )
+    expect(map.offMap).toBe(1)
+    expect(layerRoot(map, 'domain').folders).toEqual([])
+  })
+
+  it('shows a file moved onto the map without a ghost at its off-map place', () => {
+    const map = buildChangesetMap(
+      [
+        {
+          path: 'src/domain/x/a.ts',
+          oldPath: 'src/domain/x/a.test.ts',
+          status: 'renamed',
+        },
+      ],
+      config,
+    )
+    expect(map.offMap).toBe(0)
+    expect(folder(layerRoot(map, 'domain'), 'x').files).toEqual([
+      { path: 'src/domain/x/a.ts', status: 'moved', from: 'src/domain/x/a.test.ts' },
+    ])
+  })
+
   it('counts off-map files', () => {
     const map = buildChangesetMap(
       [
@@ -334,7 +400,7 @@ describe('buildChangesetMap', () => {
 
 describe('readChangesetMap', () => {
   it('reports a missing configuration as not available', () => {
-    expect(readChangesetMap([], '/nonexistent/changeset-map.yaml')).toEqual({
+    expect(readChangesetMap(() => [], '/nonexistent/changeset-map.yaml')).toEqual({
       status: 'not available',
       reason: 'changeset-map.yaml not found',
     })
@@ -345,7 +411,7 @@ describe('readChangesetMap', () => {
     try {
       const path = join(dir, 'changeset-map.yaml')
       writeFileSync(path, 'sourceRoot: src\nlayers: 3\nstrips: []\noffMap: []\n')
-      const result = readChangesetMap([], path)
+      const result = readChangesetMap(() => [], path)
       expect(result.status).toBe('not available')
       expect(result.status === 'not available' && result.reason).toMatch(/layers/)
     } finally {
@@ -355,9 +421,22 @@ describe('readChangesetMap', () => {
 
   it("builds the map with the repo's configuration", () => {
     const result = readChangesetMap(
-      [added('src/domain/a.ts')],
+      () => [added('src/domain/a.ts')],
       new URL('../changeset-map.yaml', import.meta.url).pathname,
     )
     expect(result.status).toBe('ok')
+  })
+
+  it('reports a failing read of the changed files as not available', () => {
+    const result = readChangesetMap(
+      () => {
+        throw new Error('fatal: bad revision')
+      },
+      new URL('../changeset-map.yaml', import.meta.url).pathname,
+    )
+    expect(result).toEqual({
+      status: 'not available',
+      reason: 'reading the changed files failed: fatal: bad revision',
+    })
   })
 })

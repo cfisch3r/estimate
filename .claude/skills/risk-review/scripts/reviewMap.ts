@@ -39,6 +39,8 @@ export type Place =
 
 /** The strip for files outside the source root that no configured strip matches. */
 export const OTHER_STRIP = 'Other'
+/** The row for files below the source root that no configured layer matches. */
+const UNPLACED = 'Unplaced'
 
 const TOP_KEYS = new Set(['sourceRoot', 'layers', 'strips', 'offMap'])
 const LAYER_KEYS = new Set(['name', 'group', 'side', 'wholeSlice'])
@@ -82,6 +84,15 @@ function flag(value: unknown, where: string): boolean | undefined {
   return value
 }
 
+/** Throws when a name repeats an earlier one or takes the name the map keeps for itself. */
+function checkNames(names: string[], kind: string, reserved: string) {
+  names.forEach((name, i) => {
+    if (name === reserved || names.indexOf(name) < i) {
+      throw new Error(`changeset-map.yaml: ${kind}[${i}].name "${name}" is taken`)
+    }
+  })
+}
+
 /** The map configuration, checked; an error names the faulty field. */
 export function parseMapConfig(source: string): MapConfig {
   const top = mapping(parse(source), 'the file', TOP_KEYS)
@@ -100,6 +111,11 @@ export function parseMapConfig(source: string): MapConfig {
     if (flag(row.wholeSlice, `${where}.wholeSlice`)) layer.wholeSlice = true
     return layer
   })
+  checkNames(
+    layers.map((l) => l.name),
+    'layers',
+    UNPLACED,
+  )
   if (layers.filter((l) => l.side).length > 1) {
     throw new Error('changeset-map.yaml: at most one layer can have side: true')
   }
@@ -112,6 +128,11 @@ export function parseMapConfig(source: string): MapConfig {
     }
     return { name: text(row.name, `${where}.name`), paths: row.paths }
   })
+  checkNames(
+    strips.map((s) => s.name),
+    'strips',
+    OTHER_STRIP,
+  )
 
   if (!isStringList(top.offMap)) {
     throw new Error('changeset-map.yaml: offMap must be a list of globs')
@@ -190,7 +211,6 @@ export interface ChangesetMap {
 
 /** A slice with more changed files than this starts collapsed. */
 export const COLLAPSE_ABOVE = 4
-const UNPLACED = 'Unplaced'
 const ROOT_SLICE = '(root)'
 
 const STATUS: Record<ChangedFile['status'], MapStatus> = {
@@ -200,15 +220,18 @@ const STATUS: Record<ChangedFile['status'], MapStatus> = {
   renamed: 'moved',
 }
 
-function mapFiles(files: ChangedFile[]): MapFile[] {
-  return files.flatMap((f): MapFile[] =>
-    f.status === 'renamed' && f.oldPath
-      ? [
-          { path: f.path, status: 'moved', from: f.oldPath },
-          { path: f.oldPath, status: 'ghost', movedTo: f.path },
-        ]
-      : [{ path: f.path, status: STATUS[f.status] }],
-  )
+// A moved file leaves a ghost at its old place only when both places are on the map, so a
+// rename into or out of the off-map files is counted or drawn once.
+function mapFiles(files: ChangedFile[], config: MapConfig): MapFile[] {
+  const off = (path: string) => placeFile(path, config).kind === 'off'
+  return files.flatMap((f): MapFile[] => {
+    if (f.status !== 'renamed' || !f.oldPath)
+      return [{ path: f.path, status: STATUS[f.status] }]
+    const moved: MapFile = { path: f.path, status: 'moved', from: f.oldPath }
+    return off(f.path) || off(f.oldPath)
+      ? [moved]
+      : [moved, { path: f.oldPath, status: 'ghost', movedTo: f.path }]
+  })
 }
 
 interface RawFolder {
@@ -289,7 +312,7 @@ export function buildChangesetMap(
   strips.set(OTHER_STRIP, [])
   let offMap = 0
 
-  for (const file of mapFiles(changed)) {
+  for (const file of mapFiles(changed, config)) {
     const place = placeFile(file.path, config)
     if (place.kind === 'off') {
       offMap++
@@ -329,23 +352,34 @@ export function buildChangesetMap(
   }
 }
 
-/** The map, or why it is not available: a missing or invalid configuration file. */
+/**
+ * The map, or why it is not available: a missing or invalid configuration file, or a
+ * failing read of the changed files. Either way only the map is lost, not the guide.
+ */
 export function readChangesetMap(
-  changed: ChangedFile[],
+  readChanged: () => ChangedFile[],
   configPath: string,
 ): Section<ChangesetMap> {
+  const notAvailable = (reason: string) => ({ status: 'not available' as const, reason })
+  const message = (error: unknown) =>
+    error instanceof Error ? error.message : String(error)
   let source: string
   try {
     source = readFileSync(configPath, 'utf8')
   } catch {
-    return { status: 'not available', reason: 'changeset-map.yaml not found' }
+    return notAvailable('changeset-map.yaml not found')
   }
+  let config: MapConfig
   try {
-    return { status: 'ok', ...buildChangesetMap(changed, parseMapConfig(source)) }
+    config = parseMapConfig(source)
   } catch (error) {
-    return {
-      status: 'not available',
-      reason: error instanceof Error ? error.message : String(error),
-    }
+    return notAvailable(message(error))
   }
+  let changed: ChangedFile[]
+  try {
+    changed = readChanged()
+  } catch (error) {
+    return notAvailable(`reading the changed files failed: ${message(error)}`)
+  }
+  return { status: 'ok', ...buildChangesetMap(changed, config) }
 }

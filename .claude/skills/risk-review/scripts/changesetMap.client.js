@@ -23,6 +23,8 @@
   const MAINW = MAPW - SIDEW - 24
   const STRIPW = 240
   const STRIP_ROW = 30
+  // The hover card's max-width in changesetMap.ts.
+  const CARDW = 320
 
   /** Folder path → open, for folders the reader toggled. */
   const toggled = new Map()
@@ -149,6 +151,28 @@
   }
 
   const SIGN = { added: '+', changed: '~', deleted: '−', moved: '→', ghost: '⇠' }
+  /** What a count chip says to a screen reader after its sign and number. */
+  const WORD = {
+    added: 'added',
+    changed: 'changed',
+    deleted: 'deleted',
+    moved: 'moved in',
+    ghost: 'moved away',
+  }
+
+  /** The status sign before a file name, so the status does not rest on colour alone. */
+  function sign(status) {
+    const e = el('span', 'sign', SIGN[status])
+    e.setAttribute('aria-hidden', 'true')
+    return e
+  }
+
+  /** A mark only sighted readers need, such as the ▾ and ▸ of a folder. */
+  function hidden(text) {
+    const e = el('span', '', text)
+    e.setAttribute('aria-hidden', 'true')
+    return e
+  }
 
   function el(tag, className, text) {
     const e = document.createElement(tag)
@@ -187,7 +211,7 @@
     card.replaceChildren(
       ...lines.map((line, i) => el(i === 0 ? 'code' : 'div', '', line)),
     )
-    at(card, Math.max(4, x), y)
+    at(card, Math.min(Math.max(4, x), MAPW - CARDW), y)
     card.hidden = false
   }
 
@@ -202,18 +226,11 @@
     e.addEventListener('blur', hide)
   }
 
-  function activate(e, action) {
-    e.addEventListener('click', action)
-    e.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter' || ev.key === ' ') {
-        ev.preventDefault()
-        action()
-      }
-    })
-  }
-
   function render() {
     const L = layout()
+    // The element the card describes is about to go, and a removed element sends no
+    // mouseleave or blur.
+    card.hidden = true
     canvas.querySelectorAll('.drawn').forEach((e) => e.remove())
     const add = (e) => {
       e.classList.add('drawn')
@@ -246,49 +263,53 @@
         add(at(name, f.x + 14, f.y + (f.empty ? 9 : 10)))
       } else {
         add(at(el('div', 'folder-frame'), f.x, f.y, f.w, f.h))
-        const can = f.folder.collapsible
-        const button = el(
-          'button',
+        // A folder that can be collapsed names itself with a disclosure button; one that
+        // holds a single file only has a name.
+        const name = el(
+          f.folder.collapsible ? 'button' : 'span',
           'folder-label',
-          `${f.folder.label}/${can ? ' ▾' : ''}`,
+          `${f.folder.label}/`,
         )
-        button.type = 'button'
-        if (can) {
-          button.setAttribute('aria-label', `Collapse folder ${f.folder.label}`)
-          button.addEventListener('click', () => toggle(f.folder))
-          button.dataset.path = f.folder.path
-        } else {
-          button.disabled = true
+        if (f.folder.collapsible) {
+          name.type = 'button'
+          name.setAttribute('aria-expanded', 'true')
+          name.append(hidden(' ▾'))
+          name.addEventListener('click', () => toggle(f.folder))
+          name.dataset.path = f.folder.path
         }
-        add(at(button, f.x + 8, f.y + 5))
+        add(at(name, f.x + 8, f.y + 5))
       }
     }
 
     for (const { unit, x, y } of L.boxes) {
-      const box = at(el('div', 'node'), x, y, NW, NH)
-      box.tabIndex = 0
+      const box = at(el(unit.kind === 'file' ? 'div' : 'button', 'node'), x, y, NW, NH)
       if (unit.kind === 'file') {
         const file = unit.file
+        box.tabIndex = 0
         box.classList.add(file.status)
-        box.textContent = baseName(file.path)
+        box.append(sign(file.status), el('span', 'name', baseName(file.path)))
         box.title = file.path
         box.setAttribute('aria-label', `${file.path}, ${describe(file)}`)
         hover(box, [file.path, describe(file)], x, y + NH + 8)
       } else {
         const folder = unit.folder
         const c = counts(folder)
+        box.type = 'button'
         box.classList.add('collapsed')
         box.dataset.path = folder.path
-        box.setAttribute('role', 'button')
-        box.setAttribute('aria-label', `Folder ${folder.label}, collapsed, open it`)
-        box.append(el('div', 'collapsed-label', `${folder.label}/ ▸`))
+        box.setAttribute('aria-expanded', 'false')
+        const label = el('div', 'collapsed-label', `${folder.label}/`)
+        label.append(hidden(' ▸'))
+        box.append(label)
         const chips = el('div', 'chips')
         for (const status of Object.keys(SIGN)) {
-          if (c[status])
-            chips.append(el('span', `chip ${status}`, `${SIGN[status]}${c[status]}`))
+          if (!c[status]) continue
+          const chip = el('span', `chip ${status}`, `${SIGN[status]}${c[status]}`)
+          chip.append(el('span', 'sr', ` ${WORD[status]}`))
+          chips.append(chip)
         }
         box.append(chips)
-        activate(box, () => toggle(folder))
+        box.addEventListener('click', () => toggle(folder))
         hover(
           box,
           [
@@ -314,6 +335,7 @@
           const cut = file.path.lastIndexOf('/') + 1
           const row = el('div', `strip-file ${file.status}`)
           row.append(
+            sign(file.status),
             el('span', 'dir', file.path.slice(0, cut)),
             el('span', 'name', file.path.slice(cut)),
           )

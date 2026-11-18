@@ -114,13 +114,73 @@ describe('renderMapSection', () => {
     expect(boxes()).toHaveLength(2)
   })
 
-  it('disables the label of a single-file folder', () => {
+  it('names a single-file folder as plain text, not as a control', () => {
+    open([added('src/features/one/a.ts'), added('src/features/two/a.ts')])
+    const name = [...document.querySelectorAll('.folder-label')].find((e) =>
+      e.textContent?.startsWith('one/'),
+    )
+    expect(name?.tagName).toBe('SPAN')
+    expect(name?.textContent).not.toContain('▾')
+  })
+
+  it('tells a screen reader whether a folder is open and what a collapsed one holds', () => {
     const { label } = open([
-      added('src/features/one/a.ts'),
-      added('src/features/two/a.ts'),
+      ...busySlice,
+      added('src/features/save/ui/Button.tsx'),
+      added('src/features/save/ui/Label.tsx'),
     ])
-    expect(label('one').disabled).toBe(true)
-    expect(label('one').textContent).not.toContain('▾')
+    const openName = label('save/ui')
+    expect(openName.getAttribute('aria-expanded')).toBe('true')
+    expect(openName.querySelector('[aria-hidden="true"]')?.textContent).toContain('▾')
+    const collapsed = document.querySelector<HTMLElement>('.node.collapsed')
+    expect(collapsed?.tagName).toBe('BUTTON')
+    expect(collapsed?.getAttribute('aria-expanded')).toBe('false')
+    expect(collapsed?.textContent).toContain('5 added')
+    expect(collapsed?.querySelector('[aria-hidden="true"]')?.textContent).toContain('▸')
+  })
+
+  it('marks each file status with a sign, not by colour alone', () => {
+    open([
+      added('src/domain/a.ts'),
+      { path: 'src/domain/b.ts', status: 'modified' },
+      { path: 'src/domain/c.ts', status: 'deleted' },
+      added('docs/x.md'),
+    ])
+    const signs = Object.fromEntries(
+      [...document.querySelectorAll('#changeset-map .node')].map((b) => [
+        b.querySelector('.name')?.textContent,
+        b.querySelector('.sign')?.textContent,
+      ]),
+    )
+    expect(signs).toEqual({ 'a.ts': '+', 'b.ts': '~', 'c.ts': '−' })
+    expect(document.querySelector('.strip-file .sign')?.textContent).toBe('+')
+    expect(document.querySelector('#changeset-map .legend')?.textContent).toContain(
+      '+ added',
+    )
+  })
+
+  it('hides the card when a folder is toggled', () => {
+    open(busySlice)
+    const box = document.querySelector<HTMLElement>('.node.collapsed')
+    box?.focus()
+    expect(document.getElementById('map-card')?.hidden).toBe(false)
+    box?.click()
+    expect(document.getElementById('map-card')?.hidden).toBe(true)
+  })
+
+  it('keeps the card inside the map for a box at the right edge', () => {
+    const { boxes } = open([added('src/adapters/file/download.ts')])
+    boxes()[0]?.dispatchEvent(new MouseEvent('mouseenter'))
+    const card = document.getElementById('map-card') as HTMLElement
+    expect(parseFloat(card.style.left) + 320).toBeLessThanOrEqual(1240)
+  })
+
+  it('puts the heading inside the section it names', () => {
+    open([added('src/domain/a.ts')])
+    const section = document.getElementById('changeset-map')
+    const heading = section?.querySelector('h2')
+    expect(heading?.textContent).toBe('Changeset map')
+    expect(section?.getAttribute('aria-labelledby')).toBe(heading?.id)
   })
 
   it('shows the full path and status in the hover card', () => {
@@ -128,7 +188,9 @@ describe('renderMapSection', () => {
       { path: 'src/features/y/A.tsx', oldPath: 'src/domain/x/A.tsx', status: 'renamed' },
     ])
     const moved = boxes().find(
-      (b) => b.textContent === 'A.tsx' && b.classList.contains('moved'),
+      (b) =>
+        b.querySelector('.name')?.textContent === 'A.tsx' &&
+        b.classList.contains('moved'),
     )
     moved?.dispatchEvent(new MouseEvent('mouseenter'))
     const card = document.getElementById('map-card')
@@ -163,8 +225,9 @@ describe('renderMapSection', () => {
     expect(errors).toEqual([])
     expect(boxes()).toHaveLength(0)
     expect(
-      [...document.querySelectorAll('#changeset-map .strip-file')].map(
-        (f) => f.textContent,
+      [...document.querySelectorAll<HTMLElement>('#changeset-map .strip-file')].map(
+        (f) =>
+          `${f.querySelector('.dir')?.textContent}${f.querySelector('.name')?.textContent}`,
       ),
     ).toEqual([
       'docs/technical/review-risk.md',
@@ -199,7 +262,7 @@ describe('renderMapSection', () => {
     open(busySlice)
     const box = document.querySelector<HTMLElement>('.node.collapsed')
     box?.focus()
-    box?.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+    box?.click()
     const label = document.activeElement as HTMLElement
     expect(label.classList.contains('folder-label')).toBe(true)
     expect(label.dataset.path).toBe('src/features/busy/model')

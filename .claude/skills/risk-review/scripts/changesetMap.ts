@@ -26,11 +26,14 @@ const STYLE = `
 #changeset-map .folder-frame{position:absolute;pointer-events:none;box-sizing:border-box;border:1px dashed var(--frame);border-radius:10px}
 #changeset-map .layer-label{position:absolute;font-size:12px;line-height:1.25}
 #changeset-map .layer-label span{color:var(--muted)}
-#changeset-map .folder-label{position:absolute;font:600 10.5px/1 ui-monospace,monospace;color:var(--muted);background:none;border:0;padding:2px;cursor:pointer;white-space:nowrap}
-#changeset-map .folder-label:disabled{cursor:default}
-#changeset-map .folder-label:not(:disabled):hover{color:var(--fg)}
+#changeset-map>h2{max-width:760px;margin:32px auto 12px}
+#changeset-map .folder-label{position:absolute;font:600 10.5px/1 ui-monospace,monospace;color:var(--muted);background:none;border:0;padding:2px;white-space:nowrap}
+#changeset-map button.folder-label{cursor:pointer}
+#changeset-map button.folder-label:hover{color:var(--fg)}
+#changeset-map .sign{margin-right:5px}
+#changeset-map .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
 #changeset-map .node{position:absolute;box-sizing:border-box;border:1.5px solid var(--frame);border-radius:10px;padding:5px 8px;font:600 10.5px/1.25 ui-monospace,monospace;background:var(--bg);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:default}
-#changeset-map .node.collapsed{border-width:2px;cursor:pointer;white-space:normal}
+#changeset-map .node.collapsed{border-width:2px;cursor:pointer;white-space:normal;text-align:left;color:var(--fg)}
 #changeset-map .chips{display:flex;gap:4px;margin-top:3px}
 #changeset-map .chip{font:600 10px/1 ui-monospace,monospace;padding:2px 4px;border-radius:4px;border:1px solid}
 #changeset-map .added,#changeset-map .chip.added{background:var(--add-bg);border-color:var(--add)}
@@ -47,12 +50,13 @@ const STYLE = `
 #changeset-map .node:focus-visible,#changeset-map .folder-label:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 `
 
+// The same signs as the file boxes, so the legend does not rest on colour alone.
 const SWATCHES: Array<[string, string]> = [
-  ['added', 'added'],
-  ['changed', 'changed'],
-  ['deleted', 'deleted'],
-  ['moved', 'moved'],
-  ['ghost', 'old place of a moved file'],
+  ['added', '+ added'],
+  ['changed', '~ changed'],
+  ['deleted', '− deleted'],
+  ['moved', '→ moved'],
+  ['ghost', '⇠ old place of a moved file'],
 ]
 
 /** The map data as JSON that cannot end the script block it sits in (`</script`, `<!--`). */
@@ -68,8 +72,8 @@ export function renderMapSection(map: ChangesetMap): string {
     ([cls, text]) => `<span><i class="sw ${cls}"></i>${text}</span>`,
   ).join('')
   return [
-    '<h2>Changeset map</h2>',
-    '<section id="changeset-map" aria-label="Changeset map">',
+    '<section id="changeset-map" aria-labelledby="changeset-map-title">',
+    '<h2 id="changeset-map-title">Changeset map</h2>',
     `<style>${STYLE}</style>`,
     `<p class="legend">${legend}<span>dashed frame: folder, click its name to collapse</span>${offMap}</p>`,
     `<script type="application/json" id="changeset-map-data">${embed(map)}</script>`,
