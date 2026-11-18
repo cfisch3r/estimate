@@ -161,7 +161,8 @@ export function importEdges(tree: SourceTree, configPath: string): ImportEdge[] 
             )
           }
         } else if (bindings) {
-          namespaceUses(
+          // A namespace used only as a whole depends on the whole module.
+          const uses = namespaceUses(
             source,
             checker.getSymbolAtLocation(bindings.name),
             (name, symbol) =>
@@ -171,6 +172,7 @@ export function importEdges(tree: SourceTree, configPath: string): ImportEdge[] 
                 name,
               ),
           )
+          if (uses === 0) add(from, moduleFile(statement.moduleSpecifier), '*')
         }
       } else if (ts.isExportDeclaration(statement) && statement.moduleSpecifier) {
         const clause = statement.exportClause
@@ -190,12 +192,13 @@ export function importEdges(tree: SourceTree, configPath: string): ImportEdge[] 
     }
   }
 
-  /** Each `ns.name` in the file, with the symbol it names. */
+  /** Each `ns.name` in the file, with the symbol it names; returns how many it found. */
   function namespaceUses(
     source: ts.SourceFile,
     namespace: ts.Symbol | undefined,
     use: (name: string, symbol: ts.Symbol | undefined) => void,
-  ) {
+  ): number {
+    let found = 0
     const visit = (node: ts.Node) => {
       const pair = ts.isPropertyAccessExpression(node)
         ? ([node.expression, node.name] as const)
@@ -208,10 +211,12 @@ export function importEdges(tree: SourceTree, configPath: string): ImportEdge[] 
         checker.getSymbolAtLocation(pair[0]) === namespace
       ) {
         use(pair[1].text, checker.getSymbolAtLocation(pair[1]))
+        found++
       }
       ts.forEachChild(node, visit)
     }
     ts.forEachChild(source, visit)
+    return found
   }
 
   return [...edges.values()]

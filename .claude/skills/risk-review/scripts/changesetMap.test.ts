@@ -455,8 +455,9 @@ describe('import arrows', () => {
   it('names the import arrows in the legend with their counts', () => {
     open(files, edges)
     const legend = document.querySelector('#changeset-map .legend')?.textContent ?? ''
-    expect(legend).toContain('added imports (1)')
-    expect(legend).toContain('removed imports (1)')
+    expect(legend).toContain('show added import arrows (1)')
+    expect(legend).toContain('show removed import arrows (1)')
+    expect(legend).toContain('pin a box to keep its card open')
     expect(legend).toContain('· unchanged file')
   })
 
@@ -470,5 +471,69 @@ describe('import arrows', () => {
       'import arrows not available: reading the imports failed: bad object',
     )
     expect(document.querySelector('#changeset-map input[data-show]')).toBeNull()
+  })
+
+  it('counts only the imports that are drawn as arrows in the legend', () => {
+    open(files, [...edges, imp(FORM, 'src/domain/types.test.ts', 'added')])
+    expect(document.querySelector('#changeset-map .legend')?.textContent).toContain(
+      'show added import arrows (1)',
+    )
+  })
+
+  it("keeps a collapsed folder's card open while the pointer is on its name", () => {
+    const { label } = open(
+      [...busySlice, added(FMT)],
+      [imp(busySlice[0]?.path as string, FMT, 'added')],
+    )
+    const collapsed = document.querySelector<HTMLElement>(
+      '.node.collapsed',
+    ) as HTMLElement
+    collapsed.dispatchEvent(new MouseEvent('mouseenter'))
+    collapsed.dispatchEvent(new MouseEvent('mouseleave'))
+    label('busy/model').dispatchEvent(new MouseEvent('mouseenter'))
+    expect(card().hidden).toBe(false)
+    expect(card().textContent).toContain('features/busy/model/')
+  })
+
+  it('describes the box with its card for a screen reader', () => {
+    open(files, edges)
+    box('Form.tsx').focus()
+    expect(box('Form.tsx').getAttribute('aria-describedby')).toBe('map-card')
+    expect(box('format.ts').hasAttribute('aria-describedby')).toBe(false)
+    box('Form.tsx').blur()
+    expect(box('Form.tsx').hasAttribute('aria-describedby')).toBe(false)
+  })
+
+  it('closes a card opened by hover or focus with Escape', () => {
+    open(files, edges)
+    box('Form.tsx').dispatchEvent(new MouseEvent('mouseenter'))
+    expect(card().hidden).toBe(false)
+    box('Form.tsx').dispatchEvent(
+      new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+    )
+    expect(card().hidden).toBe(true)
+    box('Form.tsx').dispatchEvent(new MouseEvent('mouseenter'))
+    expect(card().hidden).toBe(false)
+  })
+
+  it('keeps the card of the focused box when the pointer passes over another one', () => {
+    open(files, edges)
+    box('Form.tsx').focus()
+    box('format.ts').dispatchEvent(new MouseEvent('mouseenter'))
+    box('format.ts').dispatchEvent(new MouseEvent('mouseleave'))
+    expect(card().hidden).toBe(false)
+    expect(card().textContent).toContain('features/form/ui/Form.tsx')
+  })
+
+  it("names every folder button with the folder's full path", () => {
+    const { label } = open([
+      ...busySlice,
+      added('src/features/save/ui/Button.tsx'),
+      added('src/features/save/ui/Label.tsx'),
+    ])
+    expect(label('busy/model').getAttribute('aria-label')).toBe(
+      'src/features/busy/model/',
+    )
+    expect(label('save/ui').getAttribute('aria-label')).toBe('src/features/save/ui/')
   })
 })

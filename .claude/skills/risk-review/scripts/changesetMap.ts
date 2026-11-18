@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import type { ChangesetMap } from './reviewMap.ts'
+import { esc } from './html.ts'
+import type { ChangesetMap, Folder } from './reviewMap.ts'
 
 // The changeset map section of the Review guide. The map data goes into the page as a JSON
 // block; a small script (changesetMap.client.js, inlined) lays it out in the browser and
@@ -18,29 +19,33 @@ const SWATCHES: Array<[string, string]> = [
   ['deleted', '− deleted'],
   ['moved', '→ moved'],
   ['ghost', '⇠ old place of a moved file'],
-  ['context', '· unchanged file an import points at'],
+  ['context', '· unchanged file at either end of an added or removed import'],
 ]
 
 /** A short line in an arrow's own stroke, for the legend. */
 const arrowSample = (status: string) =>
   `<svg width="28" height="10" aria-hidden="true"><path class="edge ${status}" d="M1,5 H21"/><path class="head ${status}" d="M20,1 L27,5 L20,9 z"/></svg>`
 
-const escapeHtml = (text: string) =>
-  text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-
 /** The legend's arrow part: a checkbox per changed kind, or why there are no arrows. */
 function arrowLegend(map: ChangesetMap): string {
   if (map.imports.status !== 'ok') {
-    return `<span>import arrows not available: ${escapeHtml(map.imports.reason)}</span>`
+    return `<span>import arrows not available: ${esc(map.imports.reason)}</span>`
   }
-  const edges = map.imports.edges
-  const count = (status: string) => edges.filter((e) => e.status === status).length
+  // Only imports between two boxes are drawn; the others are listed in the cards.
+  const boxes = new Set<string>()
+  const walk = (folder: Folder) => {
+    for (const file of folder.files) if (file.status !== 'ghost') boxes.add(file.path)
+    folder.folders.forEach(walk)
+  }
+  map.layers.forEach((layer) => walk(layer.root))
+  const drawn = map.imports.edges.filter((e) => boxes.has(e.to))
+  const count = (status: string) => drawn.filter((e) => e.status === status).length
   const box = (status: string, sign: string) =>
-    `<label><input type="checkbox" id="show-${status}" data-show="${status}" checked>${arrowSample(status)}${sign} ${status} imports (${count(status)})</label>`
+    `<label><input type="checkbox" id="show-${status}" data-show="${status}" checked>${arrowSample(status)}${sign} show ${status} import arrows (${count(status)})</label>`
   return [
     box('added', '+'),
     box('removed', '−'),
-    `<span>${arrowSample('kept')}kept imports: hover or click a box</span>`,
+    `<span>${arrowSample('kept')}kept imports: hover or focus a box; pin a box to keep its card open</span>`,
   ].join('')
 }
 

@@ -92,6 +92,15 @@ describe('importEdges', () => {
     ])
   })
 
+  it('keeps a namespace import that is only used as a whole', () => {
+    expect(
+      edgesOf({
+        'src/a.ts': "import * as b from './b.ts'\nexport const a = [b]",
+        'src/b.ts': 'export const x = 1',
+      }),
+    ).toEqual([edge('src/a.ts', 'src/b.ts', '*')])
+  })
+
   it('joins the names one file takes from another', () => {
     expect(
       edgesOf({

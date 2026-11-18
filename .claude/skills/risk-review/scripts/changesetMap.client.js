@@ -218,12 +218,15 @@
     return file.status
   }
 
-  // Import arrows. The focus is the box the reader hovers, else the one pinned with a click;
-  // it shows all of its own imports and fades the other arrows.
+  // Import arrows. The active box is the one the pointer is on, else the one with keyboard
+  // focus, else the one pinned with a click; it shows all of its own imports and fades the
+  // other arrows.
   const imports = data.imports?.status === 'ok' ? data.imports.edges : []
   const show = { added: true, removed: true }
   let hovered = null
+  let focused = null
   let pinned = null
+  const active = () => hovered ?? focused ?? pinned
   /** Box key (a file path, or a collapsed folder's path) → where it is drawn and its card. */
   let boxes = new Map()
   let svg = null
@@ -319,7 +322,7 @@
   function drawArrows() {
     if (!svg) return
     svg.querySelectorAll('.edge, .edge-count').forEach((e) => e.remove())
-    const focus = hovered ?? pinned
+    const focus = active()
     const faded = []
     const lit = []
     for (const a of arrows()) {
@@ -393,11 +396,15 @@
   }
 
   function refresh() {
-    const focus = hovered ?? pinned
+    const focus = active()
     if (focus !== null && boxes.has(focus)) showCard(focus)
     else card.hidden = true
+    // The card describes the box it is shown for, so a screen reader hears the imports too.
+    const shown = card.hidden ? null : focus
     for (const node of canvas.querySelectorAll('.node[data-key]')) {
       node.setAttribute('aria-pressed', String(node.dataset.key === pinned))
+      if (node.dataset.key === shown) node.setAttribute('aria-describedby', 'map-card')
+      else node.removeAttribute('aria-describedby')
     }
     drawArrows()
   }
@@ -407,26 +414,34 @@
     refresh()
   }
 
+  /** Pointer and keyboard focus each make a box active on their own. */
   function hover(e, key) {
-    const on = () => {
+    e.addEventListener('mouseenter', () => {
       hovered = key
       refresh()
-    }
-    const off = () => {
+    })
+    e.addEventListener('mouseleave', () => {
       if (hovered === key) hovered = null
       refresh()
-    }
-    e.addEventListener('mouseenter', on)
-    e.addEventListener('focus', on)
-    e.addEventListener('mouseleave', off)
-    e.addEventListener('blur', off)
+    })
+    e.addEventListener('focus', () => {
+      focused = key
+      refresh()
+    })
+    e.addEventListener('blur', () => {
+      if (focused === key) focused = null
+      refresh()
+    })
   }
 
+  // Escape closes the card, whether hover, focus or a pin opened it; it does nothing while
+  // no card is open.
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && pinned !== null) {
-      pinned = null
-      refresh()
-    }
+    if (e.key !== 'Escape' || active() === null) return
+    hovered = null
+    focused = null
+    pinned = null
+    refresh()
   })
   for (const box of section.querySelectorAll('input[data-show]')) {
     box.addEventListener('change', () => {
@@ -443,6 +458,7 @@
     canvas.querySelectorAll('.drawn').forEach((e) => e.remove())
     boxes = new Map()
     hovered = null
+    focused = null
     const add = (e) => {
       e.classList.add('drawn')
       canvas.appendChild(e)
@@ -483,6 +499,7 @@
         )
         if (f.folder.collapsible) {
           name.type = 'button'
+          name.setAttribute('aria-label', `${f.folder.path}/`)
           name.setAttribute('aria-expanded', 'true')
           name.append(hidden(' ▾'))
           name.addEventListener('click', () => toggle(f.folder))
@@ -532,9 +549,12 @@
         const name = el('button', 'folder-label collapsed-name', `${folder.label}/`)
         name.type = 'button'
         name.dataset.path = folder.path
+        name.setAttribute('aria-label', `${folder.path}/`)
         name.setAttribute('aria-expanded', 'false')
         name.append(hidden(' ▸'))
         name.addEventListener('click', () => toggle(folder))
+        // The name lies on the box, so the pointer or focus on it still means the box.
+        hover(name, folder.path)
         add(box)
         add(at(name, x + 6, y + 4))
         continue

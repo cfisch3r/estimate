@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { mergeBase, readGitDiff, repoRoot } from './changedDiff.ts'
 import { renderMapSection } from './changesetMap.ts'
+import { esc } from './html.ts'
 import {
   currentCatalogueNames,
   RISK_LEVELS,
@@ -344,14 +345,6 @@ export function buildGuide(input: GuideInput): GuideData {
 
 // --- rendering ------------------------------------------------------------------------
 
-/** Escapes text for HTML, in content and in a quoted attribute. */
-const esc = (text: string) =>
-  text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
 const code = (text: string) => `<code>${esc(text)}</code>`
 const evidenceLine = (e: EvidenceItem) =>
   `${{ checked: 'Checked', 'not-checked': 'Not checked', note: 'Note', reviewer: 'Reviewer note', warning: 'Warning' }[e.kind]}: ${e.text}`
