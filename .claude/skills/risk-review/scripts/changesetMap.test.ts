@@ -3,7 +3,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { ChangedFile } from './changedDiff.ts'
 import { renderMapSection } from './changesetMap.ts'
 import type { ImportChange } from './reviewImports.ts'
-import { buildChangesetMap, type MapConfig, type MapImports } from './reviewMap.ts'
+import { buildChangesetMap, type MapCode, type MapConfig } from './reviewMap.ts'
+import type { Section } from './reviewSignals.ts'
 
 // The map section runs its own small script in the page: it lays out the boxes from the
 // embedded data and lets the reader collapse and open folders. These tests run the
@@ -29,7 +30,7 @@ const added = (path: string): ChangedFile => ({ path, status: 'added' })
 
 // Inserted markup does not run its scripts, so each one is replaced by a fresh copy, the
 // way the browser runs them when it loads the page.
-function open(files: ChangedFile[], imports: ImportChange[] | MapImports = []) {
+function open(files: ChangedFile[], imports: ImportChange[] | Section<MapCode> = []) {
   const errors: string[] = []
   const onError = (e: ErrorEvent) => errors.push(e.message)
   window.addEventListener('error', onError)
@@ -455,10 +456,10 @@ describe('import arrows', () => {
   it('names the import arrows in the legend with their counts', () => {
     open(files, edges)
     const legend = document.querySelector('#changeset-map .legend')?.textContent ?? ''
-    expect(legend).toContain('show added import arrows (1)')
-    expect(legend).toContain('show removed import arrows (1)')
-    expect(legend).toContain('pin a box to keep its card open')
-    expect(legend).toContain('· unchanged file')
+    expect(legend).toContain('added imports (1)')
+    expect(legend).toContain('removed imports (1)')
+    expect(legend).toContain('click to pin it')
+    expect(legend).toContain('· unchanged, at a changed import')
   })
 
   it('says in the legend why the arrows are missing', () => {
@@ -476,7 +477,7 @@ describe('import arrows', () => {
   it('counts only the imports that are drawn as arrows in the legend', () => {
     open(files, [...edges, imp(FORM, 'src/domain/types.test.ts', 'added')])
     expect(document.querySelector('#changeset-map .legend')?.textContent).toContain(
-      'show added import arrows (1)',
+      'added imports (1)',
     )
   })
 
@@ -495,10 +496,13 @@ describe('import arrows', () => {
     expect(card().textContent).toContain('features/busy/model/')
   })
 
-  it('describes the box with its card for a screen reader', () => {
+  it('describes the box with a short summary of its card for a screen reader', () => {
     open(files, edges)
     box('Form.tsx').focus()
-    expect(box('Form.tsx').getAttribute('aria-describedby')).toBe('map-card')
+    expect(box('Form.tsx').getAttribute('aria-describedby')).toBe('map-card-summary')
+    expect(document.getElementById('map-card-summary')?.textContent).toBe(
+      'changed; imports: 1 added, 1 removed, 1 kept',
+    )
     expect(box('format.ts').hasAttribute('aria-describedby')).toBe(false)
     box('Form.tsx').blur()
     expect(box('Form.tsx').hasAttribute('aria-describedby')).toBe(false)
@@ -535,5 +539,201 @@ describe('import arrows', () => {
       'src/features/busy/model/',
     )
     expect(label('save/ui').getAttribute('aria-label')).toBe('src/features/save/ui/')
+  })
+})
+
+describe('reach', () => {
+  const B = 'src/domain/e/b.ts'
+  const IDX = 'src/domain/e/index.ts'
+  const A = 'src/features/x/ui/A.tsx'
+  const C = 'src/features/c/ui/C.tsx'
+  const S = 'src/shared/lib/s.ts'
+  const edge = (
+    from: string,
+    to: string,
+    status: ImportChange['status'],
+    ...names: string[]
+  ): ImportChange => ({ from, to, status, names })
+  const files: ChangedFile[] = [
+    { path: B, status: 'modified' },
+    { path: IDX, status: 'modified' },
+    { path: C, status: 'modified' },
+  ]
+  const code: Section<MapCode> = {
+    status: 'ok',
+    edges: [edge(A, B, 'kept', 'b'), edge(C, S, 'added', 's'), edge(S, B, 'kept', 'b')],
+    exports: {
+      [B]: [{ name: 'b', change: 'changed', via: 'h' }, { name: 'c' }],
+      [IDX]: [{ name: 'b' }],
+    },
+    barrels: { [IDX]: { added: ['x', 'y'], removed: [] } },
+    docs: { [A]: 'The A file.' },
+  }
+  const box = (name: string) => {
+    const found = [
+      ...document.querySelectorAll<HTMLElement>('#changeset-map .node'),
+    ].find((b) => b.querySelector('.name')?.textContent === name)
+    if (!found) throw new Error(`no box ${name}`)
+    return found
+  }
+  const importers = (on: boolean) => {
+    const input = document.getElementById('show-importers') as HTMLInputElement
+    input.checked = on
+    input.dispatchEvent(new Event('change'))
+  }
+  const hover = (name: string) => box(name).dispatchEvent(new MouseEvent('mouseenter'))
+  const card = () => document.getElementById('map-card')?.textContent ?? ''
+  const uses = (lit = false) => [
+    ...document.querySelectorAll(
+      `#changeset-map .edges path.edge.uses${lit ? ':not(.dim)' : ''}`,
+    ),
+  ]
+
+  it('groups the legend into Boxes, Show and Marks rows', () => {
+    open(files, code)
+    const rows = [...document.querySelectorAll('#changeset-map .legend .lg-row')]
+    expect(rows.map((r) => r.querySelector('.lg-h')?.textContent)).toEqual([
+      'Boxes',
+      'Show',
+      'Marks',
+    ])
+    expect(rows[1]?.querySelectorAll('input[type="checkbox"]')).toHaveLength(3)
+    expect(rows[1]?.textContent).toContain('unchanged importers (2)')
+  })
+
+  it('starts with the importer boxes hidden and shows them with the checkbox', () => {
+    const { errors } = open(files, code)
+    expect(document.querySelectorAll('#changeset-map .node.importer')).toHaveLength(0)
+    importers(true)
+    expect(errors).toEqual([])
+    expect(box('A.tsx').classList).toContain('importer')
+    expect(box('A.tsx').querySelector('.sign')?.textContent).toBe('◦')
+  })
+
+  it('draws every uses arrow while the checkbox is on and fades the others for the active box', () => {
+    open(files, code)
+    expect(uses()).toHaveLength(0)
+    importers(true)
+    expect(uses()).toHaveLength(2)
+    hover('A.tsx')
+    expect(uses(true)).toHaveLength(1)
+    hover('b.ts')
+    expect(uses(true)).toHaveLength(2)
+  })
+
+  it('draws a uses arrow instead of the kept arrow between the same two boxes', () => {
+    open(files, code)
+    importers(true)
+    hover('A.tsx')
+    expect(
+      document.querySelectorAll('#changeset-map .edges path.edge.kept'),
+    ).toHaveLength(0)
+  })
+
+  it('shows ↗n on a changed box and says it to a screen reader', () => {
+    open(files, code)
+    expect(box('b.ts').querySelector('.reach')?.textContent).toBe('↗2')
+    expect(box('b.ts').getAttribute('aria-label')).toMatch(/used by 2 unchanged files$/)
+    expect(box('index.ts').querySelector('.reach')).toBeNull()
+  })
+
+  it('shows the API chip beside the folder name inside the frame, and tells a screen reader', () => {
+    open(files, code)
+    const chip = document.querySelector<HTMLElement>('#changeset-map .api-chip')
+    expect(chip?.querySelector('[aria-hidden="true"]')?.textContent).toBe('API +2 −0')
+    expect(chip?.textContent).toContain('public API: 2 added, 0 removed')
+    const frame = [
+      ...document.querySelectorAll<HTMLElement>('#changeset-map .folder-frame'),
+    ].find(
+      (f) =>
+        parseFloat(f.style.left) <= parseFloat(chip?.style.left ?? '0') &&
+        parseFloat(f.style.top) + 10 > parseFloat(chip?.style.top ?? '0'),
+    ) as HTMLElement
+    const chipRight = parseFloat(chip?.style.left ?? '0') + 'API +2 −0'.length * 6 + 12
+    expect(chipRight).toBeLessThanOrEqual(
+      parseFloat(frame.style.left) + parseFloat(frame.style.width),
+    )
+  })
+
+  it('puts the API chip of a collapsed folder in its box, below the name', () => {
+    const { label } = open(files, code)
+    label('e').click()
+    const folder = document.querySelector<HTMLElement>(
+      '#changeset-map .node[data-key="src/domain/e"]',
+    )
+    expect(folder?.querySelector('.chips .api-chip')?.textContent).toBe('API +2 −0')
+    expect(folder?.getAttribute('aria-label')).toContain('public API: 2 added, 0 removed')
+  })
+
+  it("lists only the changed exports of each file in a collapsed folder's card", () => {
+    const { label } = open(files, code)
+    label('e').click()
+    document
+      .querySelector('#changeset-map .node[data-key="src/domain/e"]')
+      ?.dispatchEvent(new MouseEvent('mouseenter'))
+    expect(card()).toContain('b.ts: Changed exports (1)')
+    expect(card()).not.toContain('index.ts:')
+  })
+
+  it('names the Show row as the group of its checkboxes and hides the mark samples', () => {
+    open(files, code)
+    const row = document.querySelectorAll('#changeset-map .lg-row')[1] as HTMLElement
+    expect(row.getAttribute('role')).toBe('group')
+    const heading = document.getElementById(row.getAttribute('aria-labelledby') ?? '')
+    expect(heading?.textContent).toBe('Show')
+    for (const sample of document.querySelectorAll(
+      '#changeset-map .reach-sample, #changeset-map .api-sample',
+    ))
+      expect(sample.getAttribute('aria-hidden')).toBe('true')
+  })
+
+  it('lists an added import that is also a use in the card', () => {
+    const F = 'src/features/y/ui/F.tsx'
+    open(files, {
+      ...code,
+      status: 'ok',
+      edges: [edge(F, B, 'added', 'b')],
+    } as Section<MapCode>)
+    importers(true)
+    hover('F.tsx')
+    expect(card()).toContain('Imports added (1)')
+  })
+
+  it('lists the exports, changed ones in bold, and the unchanged users in the card', () => {
+    open(files, code)
+    hover('b.ts')
+    expect(card()).toContain('Exports (2, 1 changed)')
+    expect(document.querySelector('#map-card b')?.textContent).toBe('b')
+    expect(card()).toContain('changed via h')
+    expect(card()).toContain('Used by, unchanged (2)')
+    expect(card()).toContain('features/x/ui/A.tsx')
+  })
+
+  it("shows an importer's doc comment and what it uses in its card", () => {
+    open(files, code)
+    importers(true)
+    hover('A.tsx')
+    expect(card()).toContain('Doc comment')
+    expect(card()).toContain('The A file.')
+    expect(card()).toContain('Uses changed exports (1)')
+    expect(card()).toContain('domain/e/b.ts')
+  })
+
+  it('draws a file that is both a context box and an importer white while the checkbox is on', () => {
+    open(files, code)
+    expect(box('s.ts').classList).toContain('context')
+    importers(true)
+    expect(box('s.ts').classList).toContain('importer')
+    hover('s.ts')
+    expect(card()).toContain(
+      'an import of it was added or removed, and it uses a changed export',
+    )
+  })
+
+  it('keeps a pin when the checkbox redraws the map', () => {
+    open(files, code)
+    box('b.ts').click()
+    importers(true)
+    expect(box('b.ts').getAttribute('aria-pressed')).toBe('true')
   })
 })

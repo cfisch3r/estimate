@@ -1,7 +1,13 @@
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   diffImports,
   importEdges,
+  programFacts,
+  readCodeChanges,
   type ImportEdge,
   type SourceTree,
 } from './reviewImports.ts'
@@ -46,8 +52,11 @@ describe('importEdges', () => {
         'src/domain/range.ts': 'export const range = 2',
       }),
     ).toEqual([
-      edge('src/domain/index.ts', 'src/domain/format.ts', 'format'),
-      edge('src/domain/index.ts', 'src/domain/range.ts', '*'),
+      {
+        ...edge('src/domain/index.ts', 'src/domain/format.ts', 'format'),
+        reexports: ['format'],
+      },
+      { ...edge('src/domain/index.ts', 'src/domain/range.ts', '*'), reexports: ['*'] },
       edge('src/ui/Form.tsx', 'src/domain/format.ts', 'format'),
     ])
   })
@@ -101,6 +110,15 @@ describe('importEdges', () => {
     ).toEqual([edge('src/a.ts', 'src/b.ts', '*')])
   })
 
+  it('counts a namespace used both as a whole and by member as a whole use', () => {
+    expect(
+      edgesOf({
+        'src/a.ts': "import * as b from './b.ts'\nexport const a = [b, b.x]",
+        'src/b.ts': 'export const x = 1',
+      }),
+    ).toEqual([edge('src/a.ts', 'src/b.ts', '*', 'x')])
+  })
+
   it('joins the names one file takes from another', () => {
     expect(
       edgesOf({
@@ -138,6 +156,66 @@ describe('importEdges', () => {
   })
 })
 
+const factsOf = (files: Record<string, string>) =>
+  programFacts(tree(files), 'tsconfig.app.json')
+
+describe('programFacts', () => {
+  it('marks the names an edge only re-exports', () => {
+    const { edges } = factsOf({
+      'src/a.ts': "import { b } from './b.ts'\nexport { b }\nexport { c } from './b.ts'",
+      'src/b.ts': 'export const b = 1, c = 2',
+      'src/u.ts': "import { b } from './b.ts'\nexport const u = b",
+    })
+    expect(edges).toEqual([
+      { ...edge('src/a.ts', 'src/b.ts', 'b', 'c'), reexports: ['c'] },
+      edge('src/u.ts', 'src/b.ts', 'b'),
+    ])
+  })
+
+  it('keys each export by its declaration and leaves re-exports null', () => {
+    const { files } = factsOf({
+      'src/a.ts':
+        "export const x = 1, y = 2\nexport function f() { return x }\nexport { b } from './b.ts'",
+      'src/b.ts': 'export const b = 1',
+    })
+    expect(files['src/a.ts']?.exports).toEqual({ x: 'x,y', y: 'x,y', f: 'f', b: null })
+  })
+
+  it('keys an anonymous default export as default', () => {
+    const { files } = factsOf({ 'src/a.ts': 'export default 1' })
+    expect(files['src/a.ts']?.exports).toEqual({ default: 'default' })
+  })
+
+  it('prints a declaration without comments or formatting', () => {
+    const one = factsOf({ 'src/a.ts': 'export function f() { return 1 }' })
+    const two = factsOf({
+      'src/a.ts': '/** Says one. */\nexport function f()   {\n  // one\n  return 1\n}',
+    })
+    expect(two.files['src/a.ts']?.declarations['f']?.text).toBe(
+      one.files['src/a.ts']?.declarations['f']?.text,
+    )
+  })
+
+  it('lists the same-file declarations a declaration uses', () => {
+    const { files } = factsOf({
+      'src/a.ts': 'const h = 1\nfunction g() { return h }\nexport const a = g()',
+    })
+    const declarations = files['src/a.ts']?.declarations
+    expect(declarations?.['a']?.deps).toEqual(['g'])
+    expect(declarations?.['g']?.deps).toEqual(['h'])
+    expect(declarations?.['h']?.deps).toEqual([])
+  })
+
+  it("reads the file's leading doc comment", () => {
+    const { files } = factsOf({
+      'src/a.ts': '/**\n * The store:\n * items and estimates.\n */\nexport const s = 1',
+      'src/b.ts': '// note\nexport const b = 1',
+    })
+    expect(files['src/a.ts']?.doc).toBe('The store: items and estimates.')
+    expect(files['src/b.ts']?.doc).toBeUndefined()
+  })
+})
+
 describe('diffImports', () => {
   it('marks edges as added, removed or kept', () => {
     const base = [edge('a.ts', 'old.ts', 'f'), edge('a.ts', 'k.ts', 'k')]
@@ -159,5 +237,48 @@ describe('diffImports', () => {
     expect(diffImports(base, head, moves)).toEqual([
       { ...edge('new/a.ts', 'new/b.ts', 'b'), status: 'kept' },
     ])
+  })
+})
+
+describe('readCodeChanges', () => {
+  it('reads the import and export changes of a repository in one pass', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'code-changes-'))
+    try {
+      const git = (...args: string[]) =>
+        execFileSync(
+          'git',
+          [
+            '-c',
+            'user.name=t',
+            '-c',
+            'user.email=t@t',
+            '-c',
+            'core.hooksPath=/dev/null',
+            ...args,
+          ],
+          { cwd: dir, stdio: 'ignore' },
+        )
+      const write = (path: string, text: string) => {
+        mkdirSync(join(dir, path, '..'), { recursive: true })
+        writeFileSync(join(dir, path), text)
+      }
+      write('tsconfig.app.json', CONFIG)
+      write('src/a.ts', "import { b } from './b.ts'\nexport const a = b")
+      write('src/b.ts', '/** The b file. */\nexport const b = 1')
+      git('init', '-q')
+      git('add', '.')
+      git('commit', '-qm', 'base')
+      write('src/b.ts', '/** The b file. */\nexport const b = 2')
+
+      const changes = readCodeChanges(dir, 'HEAD', new Map(), new Set(['src/b.ts']))
+      expect(changes.edges).toEqual([
+        { ...edge('src/a.ts', 'src/b.ts', 'b'), status: 'kept' },
+      ])
+      expect(changes.exports).toEqual({ 'src/b.ts': [{ name: 'b', change: 'changed' }] })
+      expect(changes.barrels).toEqual({})
+      expect(changes.docs).toEqual({ 'src/b.ts': 'The b file.' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

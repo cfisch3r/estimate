@@ -19,13 +19,49 @@
   transform: translateX(-50%);
   width: min(1274px, calc(100vw - 32px));
 }
+/* The legend: one labelled row each for boxes, arrow checkboxes and marks, then a note. */
 #changeset-map .legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px 16px;
+  display: grid;
+  gap: 6px;
   font-size: 0.82rem;
   color: var(--muted);
-  margin: 0 0 10px;
+  margin: 0 0 12px;
+}
+#changeset-map .lg-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  align-items: baseline;
+  gap: 8px;
+}
+#changeset-map .lg-h {
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+#changeset-map .lg-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  min-width: 0;
+}
+#changeset-map .lg-items > * {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+#changeset-map .lg-note {
+  margin: 2px 0 0 64px;
+  font-size: 0.78rem;
+}
+@media (max-width: 560px) {
+  #changeset-map .lg-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  #changeset-map .lg-note {
+    margin-left: 0;
+  }
 }
 #changeset-map .sw {
   display: inline-block;
@@ -346,4 +382,75 @@
   margin-top: 8px;
   font-size: 11px;
   color: var(--focus);
+}
+/* Unchanged importers: white, solid-bordered boxes; their uses arrows gray and dotted. */
+#changeset-map .node.importer,
+#changeset-map .sw.importer {
+  background: var(--bg);
+  border: 1.5px solid var(--fg);
+  color: var(--fg);
+  font-weight: 500;
+}
+#changeset-map path.edge.uses {
+  fill: none;
+  stroke: var(--fg);
+  stroke-width: 1.25;
+  stroke-dasharray: 2 3;
+  opacity: 0.75;
+}
+#changeset-map .head.uses {
+  fill: var(--fg);
+  opacity: 0.75;
+}
+/* Marks: reach on a changed box, public API next to a folder's name. */
+#changeset-map .reach,
+#changeset-map .reach-sample {
+  font:
+    700 10.5px/1.2 ui-monospace,
+    monospace;
+  color: var(--focus);
+  background: var(--bg);
+  border: 1px solid var(--focus);
+  border-radius: 8px;
+  padding: 1px 5px;
+}
+#changeset-map .reach {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+#changeset-map .api-chip,
+#changeset-map .api-sample {
+  font:
+    700 9.5px/1 ui-monospace,
+    monospace;
+  color: var(--mov);
+  background: var(--mov-bg);
+  border: 1px solid var(--mov);
+  border-radius: 8px;
+  padding: 2px 5px;
+  white-space: nowrap;
+}
+#changeset-map .api-chip.floating {
+  position: absolute;
+  z-index: 1;
+}
+#changeset-map .map-card .imp.exp.changed .imp-sign {
+  color: var(--chg);
+}
+#changeset-map .map-card .imp.exp.added .imp-sign {
+  color: var(--add);
+}
+#changeset-map .map-card .imp.exp.removed .imp-sign {
+  color: var(--del);
+}
+#changeset-map .map-card .doc {
+  margin-top: 3px;
+  font-style: italic;
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+#changeset-map .node:has(.reach) {
+  padding-right: 40px;
 }

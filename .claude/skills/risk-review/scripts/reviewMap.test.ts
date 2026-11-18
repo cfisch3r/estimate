@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { ChangedFile } from './changedDiff.ts'
+import type { ExportInfo } from './reviewExports.ts'
 import type { ImportChange } from './reviewImports.ts'
 import {
   buildChangesetMap,
@@ -13,6 +14,7 @@ import {
   type ChangesetMap,
   type Folder,
   type MapConfig,
+  type MapFile,
 } from './reviewMap.ts'
 
 // The changeset map places every changed file of a branch: in a layer and slice of the
@@ -452,7 +454,10 @@ describe('buildChangesetMap with imports', () => {
       config,
       ok(...edges),
     )
-    expect(map.imports).toEqual(ok(edges[0] as ImportChange, edges[1] as ImportChange))
+    expect(map.imports).toEqual({
+      ...ok(edges[0] as ImportChange, edges[1] as ImportChange),
+      uses: [],
+    })
   })
 
   it('adds no box for an off-map file an import points at', () => {
@@ -473,6 +478,182 @@ describe('buildChangesetMap with imports', () => {
     expect(
       buildChangesetMap([added('src/features/a.ts')], config, reason).imports,
     ).toEqual(reason)
+  })
+})
+
+describe('buildChangesetMap with exports', () => {
+  const B = 'src/domain/e/b.ts'
+  const A = 'src/features/x/A.ts'
+  const kept = (from: string, to: string, ...names: string[]): ImportChange => ({
+    from,
+    to,
+    names,
+    status: 'kept',
+  })
+  const code = (
+    edges: ImportChange[],
+    exports: Record<string, ExportInfo[]> = {},
+    rest: {
+      barrels?: Record<string, { added: string[]; removed: string[] }>
+      docs?: Record<string, string>
+    } = {},
+  ) => ({ status: 'ok' as const, edges, exports, ...rest })
+  const changedB = { [B]: [{ name: 'b', change: 'changed' as const }] }
+  const filesOf = (map: ChangesetMap) =>
+    map.layers.flatMap((l) => {
+      const walk = (f: Folder): MapFile[] => [...f.files, ...f.folders.flatMap(walk)]
+      return walk(l.root)
+    })
+  const fileOf = (map: ChangesetMap, path: string) =>
+    filesOf(map).find((f) => f.path === path)
+  const usesOf = (map: ChangesetMap) =>
+    map.imports.status === 'ok' ? map.imports.uses : []
+
+  it('adds an unchanged file that uses a changed export as an importer', () => {
+    const map = buildChangesetMap(
+      [{ path: B, status: 'modified' }],
+      config,
+      code([kept(A, B, 'b')], changedB),
+    )
+    expect(fileOf(map, A)).toEqual({ path: A, status: 'importer' })
+    expect(usesOf(map)).toEqual([{ from: A, to: B, names: ['b'] }])
+    expect(fileOf(map, B)).toEqual({
+      path: B,
+      status: 'changed',
+      exports: [{ name: 'b', change: 'changed' }],
+      reach: 1,
+    })
+  })
+
+  it('leaves out an importer that uses only unchanged exports', () => {
+    const map = buildChangesetMap(
+      [{ path: B, status: 'modified' }],
+      config,
+      code([kept(A, B, 'b')], { [B]: [{ name: 'b' }, { name: 'c', change: 'changed' }] }),
+    )
+    expect(fileOf(map, A)).toBeUndefined()
+    expect(fileOf(map, B)?.reach).toBeUndefined()
+  })
+
+  it('does not count a re-export as a use', () => {
+    const map = buildChangesetMap(
+      [{ path: B, status: 'modified' }],
+      config,
+      code([{ ...kept(A, B, 'b'), reexports: ['b'] }], changedB),
+    )
+    expect(fileOf(map, A)).toBeUndefined()
+  })
+
+  it('gives a removed export no importers', () => {
+    const map = buildChangesetMap(
+      [{ path: B, status: 'modified' }],
+      config,
+      code([kept(A, B, 'b')], { [B]: [{ name: 'b', change: 'removed' }] }),
+    )
+    expect(fileOf(map, A)).toBeUndefined()
+  })
+
+  it('counts a namespace used whole', () => {
+    const map = buildChangesetMap(
+      [{ path: B, status: 'modified' }],
+      config,
+      code([kept(A, B, '*')], changedB),
+    )
+    expect(usesOf(map)).toEqual([{ from: A, to: B, names: ['*'] }])
+  })
+
+  it('marks a context file that is also an importer', () => {
+    const C = 'src/features/c.ts'
+    const map = buildChangesetMap(
+      [
+        { path: B, status: 'modified' },
+        { path: C, status: 'modified' },
+      ],
+      config,
+      code([{ ...kept(C, A, 'a'), status: 'added' }, kept(A, B, 'b')], changedB),
+    )
+    expect(fileOf(map, A)).toEqual({ path: A, status: 'context', importer: true })
+  })
+
+  it('counts an importer off the map in the reach but places no box', () => {
+    const map = buildChangesetMap(
+      [{ path: B, status: 'modified' }],
+      config,
+      code([kept('scripts/s.ts', B, 'b')], changedB),
+    )
+    expect(fileOf(map, 'scripts/s.ts')).toBeUndefined()
+    expect(map.strips).toEqual([])
+    expect(fileOf(map, B)?.reach).toBe(1)
+    expect(usesOf(map)).toEqual([{ from: 'scripts/s.ts', to: B, names: ['b'] }])
+  })
+
+  it('does not count a test or another off-map file as an importer', () => {
+    const map = buildChangesetMap(
+      [{ path: B, status: 'modified' }],
+      config,
+      code([kept('src/features/x/A.test.ts', B, 'b')], changedB),
+    )
+    expect(usesOf(map)).toEqual([])
+    expect(fileOf(map, B)?.reach).toBeUndefined()
+  })
+
+  it('does not count importers as changed files', () => {
+    const map = buildChangesetMap(
+      [{ path: B, status: 'modified' }],
+      config,
+      code([kept(A, B, 'b')], changedB),
+    )
+    expect(map.layers.find((l) => l.name === 'features')?.root.changed).toBe(0)
+  })
+
+  it('puts the barrel diff on the folder that holds the barrel', () => {
+    const map = buildChangesetMap(
+      [
+        { path: B, status: 'modified' },
+        { path: 'src/domain/e/index.ts', status: 'modified' },
+      ],
+      config,
+      code(
+        [],
+        {},
+        {
+          barrels: {
+            'src/domain/e/index.ts': { added: ['x', 'y'], removed: [] },
+            'src/domain/e/more.ts': { added: [], removed: ['z'] },
+          },
+        },
+      ),
+    )
+    const folder = map.layers.find((l) => l.name === 'domain')?.root.folders[0]
+    expect(folder?.path).toBe('src/domain/e')
+    expect(folder?.api).toEqual({ added: 2, removed: 1 })
+  })
+
+  it('keeps the API chip of a folder folded into a chain', () => {
+    const map = buildChangesetMap(
+      [{ path: 'src/domain/e/model/b.ts', status: 'modified' }],
+      config,
+      code(
+        [],
+        {},
+        { barrels: { 'src/domain/e/index.ts': { added: ['x'], removed: [] } } },
+      ),
+    )
+    const folder = map.layers.find((l) => l.name === 'domain')?.root.folders[0]
+    expect(folder?.label).toBe('e/model')
+    expect(folder?.api).toEqual({ added: 1, removed: 0 })
+  })
+
+  it("gives an importer its doc comment and no other file's", () => {
+    const map = buildChangesetMap(
+      [{ path: B, status: 'modified' }],
+      config,
+      code([kept(A, B, 'b')], changedB, {
+        docs: { [A]: 'The A file.', [B]: 'The b file.' },
+      }),
+    )
+    expect(fileOf(map, A)?.doc).toBe('The A file.')
+    expect(fileOf(map, B)?.doc).toBeUndefined()
   })
 })
 
@@ -539,7 +720,7 @@ describe('readChangesetMap', () => {
       new URL('../changeset-map.yaml', import.meta.url).pathname,
       (files) => {
         seen.push(files)
-        return []
+        return { edges: [] }
       },
     )
     expect(seen).toEqual([[added('src/domain/a.ts')]])
