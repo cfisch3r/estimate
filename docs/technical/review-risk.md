@@ -25,6 +25,7 @@ flowchart TD
   Guide["Guide script<br/>[script]"]
   Map["Map module<br/>[module]"]
   MapCfg["changeset-map.yaml<br/>[YAML file, plugin]"]
+  View["Map view<br/>[module, page script]"]
   Page["Review guide<br/>[HTML page, artifact]"]
 
   Cat["Catalogue on main<br/>[YAML block]"]
@@ -40,13 +41,15 @@ flowchart TD
   Guide -->|"changed files"| Map
   MapCfg -->|"map rules"| Map
   Map -->|"placed files"| Guide
+  Guide -->|"placed files"| View
+  View -->|"map section"| Guide
   Guide -->|"rendered guide"| Page
 
   classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
   classDef model fill:#FEF08A,stroke:#CA8A04,color:#422006
   classDef data fill:#E2E8F0,stroke:#64748B,color:#0F172A
 
-  class Floor,Sig,Guide,Map script
+  class Floor,Sig,Guide,Map,View script
   class Agent model
   class Diff,Page,Cat,MapCfg data
 ```
@@ -57,6 +60,7 @@ flowchart TD
 | **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
 | **`risk-review:reviewer` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
 | **Map module** (`.claude/skills/risk-review/scripts/reviewMap.ts`) | Places every changed file for the changeset map. A file in `src/` goes into a row, one per FSD layer and per application, domain and adapters layer, and into a folder inside it; an "Unplaced" row takes a file no row matches. A file outside `src/` goes into a strip, a list below the rows; an "Other" strip takes a file no strip matches. Tests and their helpers, CSS and type declarations are left off the map and only counted. The rows, strips, off-map patterns and the source folder come from the plugin's `.claude/skills/risk-review/changeset-map.yaml`. It has no command; the guide script calls it. |
+| **Map view** (`.claude/skills/risk-review/scripts/changesetMap.ts`, with `changesetMap.client.js`) | Renders the map section of the guide page: the legend, the placed files as embedded data, and a small script inlined into the page that draws the rows, folders, file boxes and strips in the browser, lets the reader open and collapse folders, and shows a file's path and status on hover or focus. The page loads nothing from outside. |
 | **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide page. For the changeset map it reads the changed files itself (since the floor's commit, when the floor had one) and hands them to the Map module. |
 
 ## The agent's answer
