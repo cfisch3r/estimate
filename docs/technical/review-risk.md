@@ -223,7 +223,7 @@ flowchart TB
 | Moved | `→` | Purple; the card names the old path |
 | Old place of a moved file | `⇠` | Dashed, empty; the card names the new path |
 
-The page loads nothing from outside: the data and the page script are inlined.
+The page loads nothing from outside: the data, the styles and the page script are inlined.
 
 #### How it is built
 
@@ -258,7 +258,8 @@ flowchart LR
 | File (`.claude/skills/risk-review/scripts/`) | Role |
 |---|---|
 | `reviewMap.ts` | Checks the configuration and places the changed files |
-| `changesetMap.ts` | Renders the map section: the legend, the placed files as embedded data and the inlined page script |
+| `changesetMap.ts` | Renders the map section: the legend, the placed files as embedded data, and the inlined styles and page script |
+| `changesetMap.css` | The map's styles; its status colours follow the light or dark theme the guide's own stylesheet sets |
 | `changesetMap.client.js` | Draws the rows, slices, folders, file boxes and strips in the browser, lets the reader open and collapse folders and shows the hover card |
 
 ## Risk levels

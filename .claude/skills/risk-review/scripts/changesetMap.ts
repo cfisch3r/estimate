@@ -8,47 +8,7 @@ import type { ChangesetMap } from './reviewMap.ts'
 
 const CLIENT = readFileSync(join(import.meta.dirname, 'changesetMap.client.js'), 'utf8')
 
-// Frames only draw: pointer-events:none lets clicks reach the folder names under them.
-// Status colours for both themes, next to the guide's own tokens.
-const DARK = `--add-bg:#12261e;--add:#3fb950;--del-bg:#2d1214;--del:#ff7b72;--chg-bg:#2e1f0e;--chg:#f0883e;--mov-bg:#231a33;--mov:#bc8cff;--frame:#6e7681;--focus:#58a6ff;`
-const STYLE = `
-:root{--add-bg:#dafbe1;--add:#1a7f37;--del-bg:#ffebe9;--del:#cf222e;--chg-bg:#fff1e5;--chg:#bc4c00;--mov-bg:#fbefff;--mov:#8250df;--frame:#8c959f;--focus:#0969da}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${DARK}}}
-:root[data-theme="dark"]{${DARK}}
-#changeset-map{position:relative;left:50%;transform:translateX(-50%);width:min(1274px,calc(100vw - 32px))}
-#changeset-map .legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.82rem;color:var(--muted);margin:0 0 10px}
-#changeset-map .sw{display:inline-block;width:14px;height:11px;border-radius:3px;border:1.5px solid var(--frame);vertical-align:-1px;margin-right:4px}
-#changeset-map .scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;padding:16px}
-#changeset-map .map-canvas{position:relative}
-#changeset-map .group-frame{position:absolute;pointer-events:none;box-sizing:border-box;border:1.5px solid var(--frame);border-radius:16px}
-#changeset-map .layer-frame{position:absolute;pointer-events:none;box-sizing:border-box;border:1.5px solid var(--fg);border-radius:14px;opacity:.7}
-#changeset-map .layer-frame.empty{background:var(--card);opacity:.4}
-#changeset-map .folder-frame{position:absolute;pointer-events:none;box-sizing:border-box;border:1px dashed var(--frame);border-radius:10px}
-#changeset-map .layer-label{position:absolute;font-size:12px;line-height:1.25}
-#changeset-map .layer-label span{color:var(--muted)}
-#changeset-map>h2{max-width:760px;margin:32px auto 12px}
-#changeset-map .folder-label{position:absolute;font:600 10.5px/1 ui-monospace,monospace;color:var(--muted);background:none;border:0;padding:2px;white-space:nowrap}
-#changeset-map button.folder-label{cursor:pointer}
-#changeset-map button.folder-label:hover{color:var(--fg)}
-#changeset-map .sign{margin-right:5px}
-#changeset-map .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
-#changeset-map .node{position:absolute;box-sizing:border-box;border:1.5px solid var(--frame);border-radius:10px;padding:5px 8px;font:600 10.5px/1.25 ui-monospace,monospace;background:var(--bg);overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:default}
-#changeset-map .node.collapsed{border-width:2px;cursor:pointer;white-space:normal;text-align:left;color:var(--fg)}
-#changeset-map .chips{display:flex;gap:4px;margin-top:3px}
-#changeset-map .chip{font:600 10px/1 ui-monospace,monospace;padding:2px 4px;border-radius:4px;border:1px solid}
-#changeset-map .added,#changeset-map .chip.added{background:var(--add-bg);border-color:var(--add)}
-#changeset-map .changed,#changeset-map .chip.changed{background:var(--chg-bg);border-color:var(--chg)}
-#changeset-map .deleted,#changeset-map .chip.deleted{background:var(--del-bg);border-color:var(--del)}
-#changeset-map .node.deleted{text-decoration:line-through}
-#changeset-map .moved,#changeset-map .chip.moved{background:var(--mov-bg);border-color:var(--mov)}
-#changeset-map .ghost,#changeset-map .chip.ghost{background:transparent;border-color:var(--mov);border-style:dashed;color:var(--muted)}
-#changeset-map .strip-title{position:absolute;font-size:12px;font-weight:650}
-#changeset-map .strip-file{position:absolute;display:flex;box-sizing:border-box;border:1.5px solid var(--frame);border-radius:7px;padding:3px 7px;font:10.5px/1.3 ui-monospace,monospace;overflow:hidden;white-space:nowrap}
-#changeset-map .strip-file .dir{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
-#changeset-map .strip-file .name{flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-weight:600}
-#changeset-map .map-card{position:absolute;z-index:5;max-width:320px;background:var(--bg);border:1px solid var(--frame);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.4;box-shadow:0 6px 20px rgba(0,0,0,.18);pointer-events:none;overflow-wrap:anywhere}
-#changeset-map .node:focus-visible,#changeset-map .folder-label:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
-`
+const STYLE = readFileSync(join(import.meta.dirname, 'changesetMap.css'), 'utf8')
 
 // The same signs as the file boxes, so the legend does not rest on colour alone.
 const SWATCHES: Array<[string, string]> = [
