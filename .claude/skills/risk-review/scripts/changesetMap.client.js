@@ -1,8 +1,8 @@
 // The changeset map's script in the Review guide page. It reads the map data embedded in
 // the page, lays out the layers, folders and file boxes, draws the import arrows between
-// them, and lets the reader collapse and open folders, hover or pin a box to see its imports
-// and details, and hide a kind of arrow. Inlined by changesetMap.ts; it runs in the browser
-// and loads nothing.
+// them, and lets the reader collapse and open folders, hover or pin a box to see its imports,
+// exports and users, hide a kind of arrow and show the unchanged files that use a changed
+// export. Inlined by changesetMap.ts; it runs in the browser and loads nothing.
 ;(() => {
   const section = document.getElementById('changeset-map')
   const dataBlock = document.getElementById('changeset-map-data')
@@ -27,6 +27,18 @@
   // The hover card's max-width in changesetMap.css.
   const CARDW = 360
 
+  // Unchanged importers: drawn only while their checkbox is on. A context file that is also
+  // an importer stays a context box until then.
+  const uses = data.imports?.status === 'ok' ? data.imports.uses : []
+  let showImporters = false
+  const isImporter = (file) => file.status === 'importer' || file.importer === true
+  const drawnStatus = (file) =>
+    showImporters && isImporter(file) ? 'importer' : file.status
+  const visible = (file) => file.status !== 'importer' || showImporters
+  const hasVisible = (folder) =>
+    folder.files.some(visible) || folder.folders.some(hasVisible)
+  const usersOf = (path) => uses.filter((u) => u.to === path)
+
   /** Folder path → open, for folders the reader toggled. */
   const toggled = new Map()
   const isOpen = (f) =>
@@ -37,12 +49,14 @@
   /** The units of a folder: file boxes, open folders (frames) and collapsed folders (boxes). */
   function unitsOf(folder) {
     return [
-      ...folder.files.map((file) => ({ kind: 'file', file })),
-      ...folder.folders.map((sub) =>
-        isOpen(sub)
-          ? { kind: 'folder', folder: sub, items: unitsOf(sub) }
-          : { kind: 'collapsed', folder: sub },
-      ),
+      ...folder.files.filter(visible).map((file) => ({ kind: 'file', file })),
+      ...folder.folders
+        .filter(hasVisible)
+        .map((sub) =>
+          isOpen(sub)
+            ? { kind: 'folder', folder: sub, items: unitsOf(sub) }
+            : { kind: 'collapsed', folder: sub },
+        ),
     ]
   }
 
@@ -145,7 +159,8 @@
     const c = {}
     const walk = (f) => {
       for (const file of f.files)
-        if (file.status !== 'context') c[file.status] = (c[file.status] || 0) + 1
+        if (file.status !== 'context' && file.status !== 'importer')
+          c[file.status] = (c[file.status] || 0) + 1
       f.folders.forEach(walk)
     }
     walk(folder)
@@ -159,6 +174,7 @@
     moved: '→',
     ghost: '⇠',
     context: '·',
+    importer: '◦',
   }
   /** What a count chip says to a screen reader after its sign and number. */
   const WORD = {
@@ -168,6 +184,7 @@
     moved: 'moved in',
     ghost: 'moved away',
     context: 'unchanged',
+    importer: 'unchanged importer',
   }
 
   /** The status sign before a file name, so the status does not rest on colour alone. */
@@ -178,8 +195,8 @@
   }
 
   /** A mark only sighted readers need, such as the ▾ and ▸ of a folder. */
-  function hidden(text) {
-    const e = el('span', '', text)
+  function hidden(text, className = '') {
+    const e = el('span', className, text)
     e.setAttribute('aria-hidden', 'true')
     return e
   }
@@ -213,8 +230,10 @@
   function describe(file) {
     if (file.status === 'moved') return `moved from ${file.from}`
     if (file.status === 'ghost') return `moved to ${file.movedTo}`
-    if (file.status === 'context')
-      return 'unchanged; an import of it was added or removed'
+    const why = []
+    if (file.status === 'context') why.push('an import of it was added or removed')
+    if (showImporters && isImporter(file)) why.push('it uses a changed export')
+    if (why.length) return `unchanged; ${why.join(', and ')}`
     return file.status
   }
 
@@ -231,7 +250,8 @@
   let boxes = new Map()
   let svg = null
   const SVGNS = 'http://www.w3.org/2000/svg'
-  const IMPORT_SIGN = { added: '+', removed: '−', kept: '·' }
+  const IMPORT_SIGN = { added: '+', removed: '−', kept: '·', uses: '◦' }
+  const EXPORT_SIGN = { added: '+', removed: '−', changed: '~' }
   const short = (path) => path.replace(/^src\//, '')
 
   /** The box a file is drawn in: its own, or the collapsed folder that holds it. */
@@ -243,10 +263,22 @@
     return found
   }
 
-  /** One arrow per two boxes and kind; imports joined in a collapsed folder are counted. */
+  /**
+   * One arrow per two boxes and kind; imports joined in a collapsed folder are counted. While
+   * the importers are shown, a uses arrow stands in for the kept arrow of the same import.
+   */
   function arrows() {
     const joined = new Map()
-    for (const edge of imports) {
+    const usePairs = new Set(uses.map((u) => `${u.from}\0${u.to}`))
+    const all = showImporters
+      ? [
+          ...imports.filter(
+            (e) => !(e.status === 'kept' && usePairs.has(`${e.from}\0${e.to}`)),
+          ),
+          ...uses.map((u) => ({ ...u, status: 'uses' })),
+        ]
+      : imports
+    for (const edge of all) {
       const from = boxOf(edge.from)
       const to = boxOf(edge.to)
       if (!from || !to || from === to) continue
@@ -326,8 +358,12 @@
     const faded = []
     const lit = []
     for (const a of arrows()) {
-      const own = focus !== null && a.from === focus
-      if (!(a.status === 'kept' ? own : show[a.status] || own)) continue
+      // A box's uses arrows point at it, so they are its own at either end.
+      const own =
+        focus !== null && (a.from === focus || (a.status === 'uses' && a.to === focus))
+      const drawn =
+        a.status === 'kept' ? own : a.status === 'uses' || show[a.status] || own
+      if (!drawn) continue
       const dim = focus !== null && !own ? ' dim' : ''
       const { d, mid } = route(boxes.get(a.from), boxes.get(a.to))
       const parts = [
@@ -364,10 +400,74 @@
     return row
   }
 
+  function exportRow(x) {
+    const row = el('div', `imp exp${x.change ? ` ${x.change}` : ''}`)
+    const mark = el('span', 'imp-sign', x.change ? EXPORT_SIGN[x.change] : '')
+    mark.setAttribute('aria-hidden', 'true')
+    const text = el('div', 'imp-text')
+    const code = el('code')
+    code.append(el(x.change ? 'b' : 'span', '', x.name))
+    text.append(code)
+    if (x.change)
+      text.append(el('span', 'names', ` ${x.change}${x.via ? ` via ${x.via}` : ''}`))
+    row.append(mark, text)
+    return row
+  }
+
+  /** A use, named by its other end: the user in a changed box's card, else what is used. */
+  function usageRow(use, other) {
+    const row = el('div', 'imp uses')
+    const mark = el('span', 'imp-sign', IMPORT_SIGN.uses)
+    mark.setAttribute('aria-hidden', 'true')
+    const text = el('div', 'imp-text')
+    text.append(el('code', '', short(other)))
+    if (!placed.has(other)) text.append(el('span', 'off', ' · not on the map'))
+    text.append(el('div', 'names', use.names.join(', ')))
+    row.append(mark, text)
+    return row
+  }
+
+  /** A changed file's exports and their unchanged users; an importer's doc and its uses. */
+  function reachLines(file, prefix) {
+    const lines = []
+    if (file.exports?.length) {
+      const changed = file.exports.filter((x) => x.change).length
+      lines.push(
+        el(
+          'div',
+          'card-h',
+          `${prefix}Exports (${file.exports.length}${changed ? `, ${changed} changed` : ''})`,
+        ),
+      )
+      for (const x of file.exports) lines.push(exportRow(x))
+    }
+    const users = usersOf(file.path)
+    if (users.length) {
+      lines.push(el('div', 'card-h', `${prefix}Used by, unchanged (${users.length})`))
+      for (const u of users) lines.push(usageRow(u, u.from))
+    }
+    if (showImporters && isImporter(file)) {
+      if (file.doc) {
+        lines.push(el('div', 'card-h', 'Doc comment'))
+        lines.push(el('div', 'doc', file.doc))
+      }
+      const own = uses.filter((u) => u.from === file.path)
+      lines.push(el('div', 'card-h', `Uses changed exports (${own.length})`))
+      for (const u of own) lines.push(usageRow(u, u.to))
+    }
+    return lines
+  }
+
   function cardLines(key) {
     const box = boxes.get(key)
     const lines = [el('code', '', box.path), el('div', '', box.status)]
-    const own = imports.filter((e) => boxOf(e.from) === key)
+    for (const file of box.files)
+      lines.push(...reachLines(file, box.collapsed ? `${baseName(file.path)}: ` : ''))
+    const own = imports.filter(
+      (e) =>
+        boxOf(e.from) === key &&
+        !(showImporters && uses.some((u) => u.from === e.from && u.to === e.to)),
+    )
     for (const [status, title] of [
       ['added', 'Imports added'],
       ['removed', 'Imports removed'],
@@ -443,12 +543,35 @@
     pinned = null
     refresh()
   })
-  for (const box of section.querySelectorAll('input[data-show]')) {
+  section.querySelector('#show-importers')?.addEventListener('change', (e) => {
+    showImporters = e.target.checked
+    render()
+  })
+  for (const box of section.querySelectorAll('input[data-show]:not(#show-importers)')) {
     box.addEventListener('change', () => {
       show[box.dataset.show] = box.checked
       drawArrows()
     })
   }
+
+  /** "API +n −m" for a folder whose barrels added or removed re-exports. */
+  function apiChip(folder) {
+    if (!folder.api) return null
+    const { added, removed } = folder.api
+    const chip = el('span', 'api-chip', `API +${added} −${removed}`)
+    chip.setAttribute('role', 'note')
+    chip.setAttribute('aria-label', `public API: ${added} added, ${removed} removed`)
+    chip.title = 'Re-exports the folder’s barrels added and removed'
+    return chip
+  }
+
+  /** Every file in a folder and below. */
+  const filesIn = (folder) => [...folder.files, ...folder.folders.flatMap(filesIn)]
+
+  /** Every file the map places, shown now or not, for "not on the map" in the cards. */
+  const placed = new Set(
+    data.layers.flatMap((layer) => filesIn(layer.root).map((f) => f.path)),
+  )
 
   function render() {
     const L = layout()
@@ -506,6 +629,9 @@
           name.dataset.path = f.folder.path
         }
         add(at(name, f.x + 8, f.y + 5))
+        const api = apiChip(f.folder)
+        // Beside the name: its monospace width plus the ▾.
+        if (api) add(at(api, f.x + 8 + (f.folder.label.length + 3) * 6.6 + 6, f.y + 4))
       }
     }
 
@@ -517,12 +643,23 @@
       box.type = 'button'
       if (unit.kind === 'file') {
         const file = unit.file
-        box.classList.add(file.status)
+        const status = drawnStatus(file)
+        box.classList.add(status)
         box.dataset.key = file.path
-        box.append(sign(file.status), el('span', 'name', baseName(file.path)))
+        box.append(sign(status), el('span', 'name', baseName(file.path)))
+        const reach = file.reach
+          ? `, used by ${file.reach} unchanged file${file.reach === 1 ? '' : 's'}`
+          : ''
+        if (file.reach) box.append(hidden(`↗${file.reach}`, 'reach'))
         box.title = file.path
-        box.setAttribute('aria-label', `${file.path}, ${describe(file)}`)
-        boxes.set(file.path, { x, y, path: file.path, status: describe(file) })
+        box.setAttribute('aria-label', `${file.path}, ${describe(file)}${reach}`)
+        boxes.set(file.path, {
+          x,
+          y,
+          path: file.path,
+          status: describe(file),
+          files: [file],
+        })
         box.addEventListener('click', () => pin(file.path))
         hover(box, file.path)
       } else {
@@ -542,7 +679,14 @@
         box.append(chips)
         box.setAttribute('aria-label', `${folder.path}/, collapsed, ${words.join(', ')}`)
         const status = `${folder.changed} changed file${folder.changed === 1 ? '' : 's'}, collapsed`
-        boxes.set(folder.path, { x, y, path: `${folder.path}/`, status, collapsed: true })
+        boxes.set(folder.path, {
+          x,
+          y,
+          path: `${folder.path}/`,
+          status,
+          collapsed: true,
+          files: filesIn(folder).filter(visible),
+        })
         box.addEventListener('click', () => pin(folder.path))
         hover(box, folder.path)
         // The folder's name opens it; it lies on the box as a button of its own.
@@ -557,6 +701,8 @@
         hover(name, folder.path)
         add(box)
         add(at(name, x + 6, y + 4))
+        const api = apiChip(folder)
+        if (api) add(at(api, x + NW - 74, y + 3))
         continue
       }
       add(box)
