@@ -297,7 +297,7 @@ export function programFacts(tree: SourceTree, configPath: string): ProgramFacts
   function namespaceUses(
     source: ts.SourceFile,
     namespace: ts.Symbol | undefined,
-    use: (name: string, symbol: ts.Symbol | undefined) => void,
+    onUse: (name: string, symbol: ts.Symbol | undefined) => void,
   ): number {
     let found = 0
     const visit = (node: ts.Node) => {
@@ -311,7 +311,7 @@ export function programFacts(tree: SourceTree, configPath: string): ProgramFacts
         ts.isIdentifier(pair[0]) &&
         checker.getSymbolAtLocation(pair[0]) === namespace
       ) {
-        use(pair[1].text, checker.getSymbolAtLocation(pair[1]))
+        onUse(pair[1].text, checker.getSymbolAtLocation(pair[1]))
         found++
       }
       ts.forEachChild(node, visit)
