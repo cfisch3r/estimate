@@ -24,6 +24,7 @@ flowchart TD
   Agent["risk-review:reviewer agent<br/>[model, read-only]"]
   Guide["Guide script<br/>[script]"]
   MapCfg["changeset-map.yaml<br/>[YAML file, plugin]"]
+  Src["Source files at the base and now<br/>[TypeScript, tsconfig.app.json]"]
   Page["Review guide<br/>[HTML page, artifact]"]
 
   Cat["Catalogue on main<br/>[YAML block]"]
@@ -37,6 +38,7 @@ flowchart TD
   Agent -->|"risk, categories, hot spots"| Guide
   Diff -->|"changed files"| Guide
   MapCfg -.->|"map rules"| Guide
+  Src -.->|"imports"| Guide
   Guide -->|"rendered guide"| Page
 
   classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
@@ -45,7 +47,7 @@ flowchart TD
 
   class Floor,Sig,Guide script
   class Agent model
-  class Diff,Page,Cat,MapCfg data
+  class Diff,Page,Cat,MapCfg,Src data
 ```
 
 | Step | Role |
@@ -53,7 +55,7 @@ flowchart TD
 | **Floor script** | Reads the YAML block below from the base branch (`origin/main`, else `main`; never from the pull request being checked, also when given a commit to start from), matches the changed files against it and reports the matched categories and the highest minimum risk. |
 | **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
 | **`risk-review:reviewer` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
-| **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide page. It also reads the changed files itself (since the floor's commit, when the floor had one) and builds the changeset map from them (see [Changeset map](#changeset-map)). |
+| **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide page. It also reads the changed files itself (since the floor's commit, when the floor had one) and the imports between the source files at that commit and now, and builds the changeset map from them (see [Changeset map](#changeset-map)). |
 
 ## The agent's answer
 
@@ -103,7 +105,7 @@ diagram above. A script writes it, so the rules hold whatever the agent says:
 |---|---|
 | Marker | `Covers <commit>`, the commit the guide was written for, so a reader can see what it describes |
 | Risk | The level and the category names |
-| Changeset map | The branch's changed files placed in the app's structure (since the floor's commit, when it had one); tests, CSS and type declarations only counted. See [Changeset map](#changeset-map) |
+| Changeset map | The branch's changed files placed in the app's structure (since the floor's commit, when it had one), with the imports the change added and removed drawn as arrows; tests, CSS and type declarations only counted. See [Changeset map](#changeset-map) |
 | Hot spots | A headline, what the change is and what makes it a hot spot, the reference (`file:line`, linked to the covered commit) with the rule or ADR, and facts from the signals |
 | Skim only | Files a reader can skim, each with a reason |
 | Not verified | What a reader has to check by hand; the scripts' own findings are folded below it |
@@ -117,9 +119,11 @@ guide itself exists only when the maintainer asks for it.
 
 ### Changeset map
 
-The map shows where a branch's changes sit in the app, so a reader sees which rows and slices a
-change touches before reading the hot spots. A **row** is drawn per configured layer, a **slice**
-is the first folder below it, and a **folder** is any folder deeper down.
+The map shows where a branch's changes sit in the app and which imports between them it adds
+and removes, so a reader sees which rows and slices a change touches and how it rewires them
+before reading the hot spots. A **row** is drawn per configured layer, a **slice** is the first
+folder below it, and a **folder** is any folder deeper down. An **import edge** is a pair of
+files: the file that imports, and the file that declares the imported name.
 
 #### Where a file goes
 
@@ -161,6 +165,60 @@ The checks and their patterns come from the plugin's
 `.claude/skills/risk-review/changeset-map.yaml` (`offMap`, `sourceRoot`, `layers`, `strips`). A
 moved file is placed by its new path; its old place gets a ghost only when both places are on the
 map.
+
+#### Which imports are drawn
+
+Legend: diamond = check, in this order; the first match decides.
+
+```mermaid
+flowchart TD
+  Edge["Import edge<br/>[added, removed or kept]"]
+  From{"importing file<br/>has a box?"}
+  Kept{"kept?"}
+  To{"imported file<br/>has a box?"}
+  Place{"imported file<br/>on the map?"}
+  Dropped["Not drawn"]
+  Focus["Gray arrow, only while<br/>its box has the focus"]
+  Arrow["Green or red arrow"]
+  Context["Unchanged-file box,<br/>then green or red arrow"]
+  Card["Listed in the card,<br/>no arrow"]
+
+  Edge --> From
+  From -->|"no"| Dropped
+  From -->|"yes"| Kept
+  Kept -->|"yes"| To
+  To -->|"yes"| Focus
+  To -->|"no"| Card
+  Kept -->|"no"| Place
+  Place -->|"changed"| Arrow
+  Place -->|"unchanged"| Context
+  Place -->|"no, off the map"| Card
+
+  classDef check fill:#FEF08A,stroke:#CA8A04,color:#422006
+  classDef place fill:#E2E8F0,stroke:#64748B,color:#0F172A
+  classDef off fill:transparent,stroke:#64748B,stroke-dasharray:2 2,color:#64748B
+
+  class From,Kept,To,Place check
+  class Edge,Focus,Arrow,Context,Card place
+  class Dropped off
+```
+
+The edges come from two TypeScript programs over `tsconfig.app.json`: one on the commit the
+map starts from, read from git into memory, and one on the working tree. Each imported name is
+followed to the file that declares it, so a barrel never stands between two boxes; a barrel's
+own re-exports are edges too. An edge in both programs is kept, one only in the working tree
+is added, one only at the base is removed. A moved file's old path is replaced by its new one
+first, so its imports stay kept. When the programs cannot be built, the map is drawn without
+arrows and the legend says why.
+
+| Arrow | Line | Shown |
+|---|---|---|
+| Added import | Green, solid | Unless its legend checkbox is cleared; always for the box with the focus |
+| Removed import | Red, dashed | Unless its legend checkbox is cleared; always for the box with the focus |
+| Kept import | Gray, thin | Only for the box with the focus |
+
+Imports of one kind between the same two boxes, such as several files of a collapsed folder,
+are drawn as one arrow with their count. Arrows run under the boxes.
 
 #### What the page shows
 
@@ -209,8 +267,11 @@ flowchart TB
 | UI frame | The FSD layers `pages` to `shared`, drawn inside one frame | `group: ui` | |
 | Side column | `adapters`, at the right edge across every row | `side: true` | |
 | Slice | The first folder below a layer, in a dashed frame | `wholeSlice: true` makes a layer one slice | Starts collapsed with more than four changed files; collapsed, it shows a count per status |
-| Folder | A deeper folder; a chain of single-child folders shows as one name (`session-history/ui`) | | One with two or more entries collapses by its name and reopens by its box |
-| File box | One changed file: status sign and name | | Path and status on hover or focus |
+| Folder | A deeper folder; a chain of single-child folders shows as one name (`session-history/ui`) | | One with two or more entries collapses and reopens by its name only; a collapsed one is a box that can be pinned like a file box |
+| File box | One changed file: status sign and name | | Hover or focus shows its card and its own arrows and fades the rest; a click pins it until a second click or Esc |
+| Unchanged-file box | An unchanged file that an added or removed import points at | | Like a file box |
+| Card | The box's path and status, then its imports added, removed and kept, each with the names it uses; a file that has no box is marked "not on the map" | | Stays open while its box is pinned |
+| Import arrow | One import edge between two boxes; see [Which imports are drawn](#which-imports-are-drawn) | | Legend checkboxes hide added or removed arrows |
 | Unplaced row | A file under `sourceRoot` in no layer folder | `sourceRoot` | |
 | Strip | Files outside `sourceRoot`, by full path; a long folder is shortened, the name kept whole | `strips`, first match wins, `Other` last | Path and status on hover |
 | Off-map count | The number of files left off the map, in the legend | `offMap` | |
@@ -222,6 +283,7 @@ flowchart TB
 | Deleted | `−` | Red, name struck through |
 | Moved | `→` | Purple; the card names the old path |
 | Old place of a moved file | `⇠` | Dashed, empty; the card names the new path |
+| Unchanged, an import of it changed | `·` | Dotted, gray name; not counted as changed |
 
 The page loads nothing from outside: the data, the styles and the page script are inlined.
 
@@ -233,9 +295,11 @@ Legend: solid line = data passed on, dotted line = file read; numbers give the o
 flowchart LR
   Cfg["changeset-map.yaml<br/>[YAML file, plugin]"]
   Changed["Changed files<br/>[read by the guide script]"]
+  Src["Source files at the base and now<br/>[git, working tree]"]
   Css["changesetMap.css<br/>[stylesheet]"]
   subgraph NODE["GUIDE SCRIPT, NODE"]
     direction LR
+    Imports["reviewImports.ts<br/>[module]"]
     Place["reviewMap.ts<br/>[module]"]
     Render["changesetMap.ts<br/>[module]"]
   end
@@ -244,25 +308,29 @@ flowchart LR
   end
   Cfg -.->|"1 map rules"| Place
   Changed -->|"2 files"| Place
-  Place -->|"3 placed files"| Render
-  Css -.->|"4 styles"| Render
-  Render -->|"5 data, styles, script"| Client
+  Changed -->|"3 moved files"| Imports
+  Src -.->|"4 sources"| Imports
+  Imports -->|"5 import edges"| Place
+  Place -->|"6 placed files, edges"| Render
+  Css -.->|"7 styles"| Render
+  Render -->|"8 data, styles, script"| Client
 
   classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
   classDef data fill:#E2E8F0,stroke:#64748B,color:#0F172A
 
-  class Place,Render,Client script
-  class Cfg,Changed,Css data
+  class Imports,Place,Render,Client script
+  class Cfg,Changed,Src,Css data
   style NODE fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
   style BROWSER fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
 ```
 
 | File (`.claude/skills/risk-review/scripts/`) | Role |
 |---|---|
-| `reviewMap.ts` | Checks the configuration and places the changed files |
+| `reviewImports.ts` | Builds the two TypeScript programs and compares their import edges |
+| `reviewMap.ts` | Checks the configuration, places the changed files, adds the unchanged files an added or removed import points at and keeps the edges whose importing file has a box |
 | `changesetMap.ts` | Renders the map section: the legend, the placed files as embedded data, and the inlined styles and page script |
 | `changesetMap.css` | The map's styles; its status colours follow the light or dark theme that `reviewGuide.css` sets |
-| `changesetMap.client.js` | Draws the rows, slices, folders, file boxes and strips in the browser, lets the reader open and collapse folders and shows the hover card |
+| `changesetMap.client.js` | Draws the rows, slices, folders, file boxes, strips and import arrows in the browser, lets the reader open and collapse folders, pin a box and hide a kind of arrow, and shows the card |
 
 ## Risk levels
 
