@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import type { ChangedFile } from './changedDiff.ts'
 import { matchesPattern } from './reviewFloor.ts'
-import type { ImportChange } from './reviewImports.ts'
+import type { ExportInfo } from './reviewExports.ts'
+import type { CodeChanges, ImportChange } from './reviewImports.ts'
 import type { Section } from './reviewSignals.ts'
 
 // The changeset map of the Review guide: every changed file of a branch, placed in a layer
@@ -169,8 +170,12 @@ export function placeFile(path: string, config: MapConfig): Place {
   return { kind: 'strip', strip: strip?.name ?? OTHER_STRIP }
 }
 
-/** `context`: an unchanged file that an added or removed import points at. */
-export type MapStatus = 'added' | 'changed' | 'deleted' | 'moved' | 'ghost' | 'context'
+/**
+ * `context`: an unchanged file that an added or removed import points at. `importer`: an
+ * unchanged file that uses a changed export.
+ */
+export type MapStatus =
+  'added' | 'changed' | 'deleted' | 'moved' | 'ghost' | 'context' | 'importer'
 
 export interface MapFile {
   path: string
@@ -179,6 +184,21 @@ export interface MapFile {
   from?: string
   /** The new path, on the ghost a moved file leaves at its old place. */
   movedTo?: string
+  /** On a context file that also uses a changed export. */
+  importer?: true
+  /** A changed file's exports, the changed ones marked. */
+  exports?: ExportInfo[]
+  /** How many unchanged files use the file's changed exports, on the map or not; never 0. */
+  reach?: number
+  /** An importer's leading doc comment. */
+  doc?: string
+}
+
+/** An unchanged file using changed exports of a changed file. */
+export interface UseEdge {
+  from: string
+  to: string
+  names: string[]
 }
 
 export interface Folder {
@@ -193,6 +213,8 @@ export interface Folder {
   startsCollapsed: boolean
   /** False when the folder holds a single file in all. */
   collapsible: boolean
+  /** The re-exported names the barrels directly in this folder added and removed. */
+  api?: { added: number; removed: number }
 }
 
 export interface LayerView {
@@ -213,7 +235,10 @@ export interface ChangesetMap {
   imports: MapImports
 }
 
-export type MapImports = Section<{ edges: ImportChange[] }>
+export type MapImports = Section<{ edges: ImportChange[]; uses: UseEdge[] }>
+
+/** What the map reads from the code: the import edges, and the export facts when known. */
+export type MapCode = Pick<CodeChanges, 'edges'> & Partial<Omit<CodeChanges, 'edges'>>
 
 /** A slice with more changed files than this starts collapsed. */
 export const COLLAPSE_ABOVE = 4
@@ -273,7 +298,12 @@ const byName =
     key(a).localeCompare(key(b))
 
 /** Folds single-child chains below the layer, counts files and sets the starting state. */
-function finish(raw: RawFolder, depth: number, sliceDepth: number | undefined): Folder {
+function finish(
+  raw: RawFolder,
+  depth: number,
+  sliceDepth: number | undefined,
+  api: Map<string, { added: number; removed: number }>,
+): Folder {
   let folder = raw
   let label = raw.name
   while (depth > 0 && folder.files.length === 0 && folder.sub.size === 1) {
@@ -281,12 +311,13 @@ function finish(raw: RawFolder, depth: number, sliceDepth: number | undefined): 
     label += `/${folder.name}`
   }
   const folders = [...folder.sub.values()]
-    .map((f) => finish(f, depth + 1, sliceDepth))
+    .map((f) => finish(f, depth + 1, sliceDepth, api))
     .sort(byName((f) => f.label))
   const files = [...folder.files].sort(byName((f) => f.path))
   const changed =
-    files.filter((f) => f.status !== 'ghost' && f.status !== 'context').length +
-    folders.reduce((sum, f) => sum + f.changed, 0)
+    files.filter(
+      (f) => f.status !== 'ghost' && f.status !== 'context' && f.status !== 'importer',
+    ).length + folders.reduce((sum, f) => sum + f.changed, 0)
   const total = files.length + folders.reduce((sum, f) => sum + count(f), 0)
   return {
     path: folder.path,
@@ -296,6 +327,7 @@ function finish(raw: RawFolder, depth: number, sliceDepth: number | undefined): 
     changed,
     startsCollapsed: depth === sliceDepth && changed > COLLAPSE_ABOVE,
     collapsible: total > 1,
+    ...(api.has(folder.path) ? { api: api.get(folder.path) } : {}),
   }
 }
 
@@ -306,7 +338,7 @@ const count = (f: Folder): number =>
 export function buildChangesetMap(
   changed: ChangedFile[],
   config: MapConfig,
-  imports: MapImports = { status: 'ok', edges: [] },
+  code: Section<MapCode> = { status: 'ok', edges: [] },
 ): ChangesetMap {
   const roots = new Map(
     config.layers.map((l) => [
@@ -325,8 +357,10 @@ export function buildChangesetMap(
     const kind = placeFile(path, config).kind
     return kind === 'layer' || kind === 'unplaced'
   }
-  if (imports.status === 'ok') {
-    for (const edge of imports.edges) {
+  const changedPaths = new Set(boxes)
+  const uses: UseEdge[] = []
+  if (code.status === 'ok') {
+    for (const edge of code.edges) {
       if (edge.status === 'kept') continue
       for (const path of [edge.from, edge.to]) {
         if (boxes.has(path) || !onMap(path)) continue
@@ -334,6 +368,9 @@ export function buildChangesetMap(
         files.push({ path, status: 'context' })
       }
     }
+    uses.push(...usesOf(code, changedPaths))
+    addImporters(files, boxes, uses, code.docs ?? {}, onMap)
+    addExports(files, code.exports ?? {}, uses)
   }
 
   for (const file of files) {
@@ -358,14 +395,15 @@ export function buildChangesetMap(
     }
   }
 
+  const api = apiByFolder(code.status === 'ok' ? (code.barrels ?? {}) : {}, config, roots)
   const layers: LayerView[] = config.layers.map((l) => ({
     name: l.name,
     ...(l.group ? { group: l.group } : {}),
     ...(l.side ? { side: true } : {}),
-    root: finish(roots.get(l.name) as RawFolder, 0, l.wholeSlice ? undefined : 1),
+    root: finish(roots.get(l.name) as RawFolder, 0, l.wholeSlice ? undefined : 1, api),
   }))
   if (unplaced.files.length > 0 || unplaced.sub.size > 0) {
-    layers.push({ name: UNPLACED, root: finish(unplaced, 0, undefined) })
+    layers.push({ name: UNPLACED, root: finish(unplaced, 0, undefined, api) })
   }
   return {
     layers,
@@ -374,13 +412,98 @@ export function buildChangesetMap(
       .map(([name, files]) => ({ name, files: files.sort(byName((f) => f.path)) })),
     offMap,
     imports:
-      imports.status === 'ok'
+      code.status === 'ok'
         ? {
             status: 'ok',
-            edges: imports.edges.filter((e) => boxes.has(e.from) && onMap(e.from)),
+            edges: code.edges.filter((e) => boxes.has(e.from) && onMap(e.from)),
+            uses,
           }
-        : imports,
+        : code,
   }
+}
+
+/**
+ * Each unchanged file's use of a changed file's changed exports. A name the file only
+ * re-exports is not a use, and a namespace used as a whole (`*`) uses every export.
+ */
+function usesOf(code: MapCode, changed: Set<string>): UseEdge[] {
+  const uses: UseEdge[] = []
+  for (const edge of code.edges) {
+    if (edge.status === 'removed' || changed.has(edge.from) || !changed.has(edge.to))
+      continue
+    const changedNames = new Set(
+      (code.exports?.[edge.to] ?? [])
+        .filter((x) => x.change === 'changed')
+        .map((x) => x.name),
+    )
+    if (changedNames.size === 0) continue
+    const own = edge.names.filter((n) => !edge.reexports?.includes(n))
+    const names = own.filter((n) => n === '*' || changedNames.has(n))
+    if (names.length > 0) uses.push({ from: edge.from, to: edge.to, names })
+  }
+  return uses
+}
+
+/** Places the importers on the map: a box of their own, or a mark on a context box. */
+function addImporters(
+  files: MapFile[],
+  boxes: Set<string>,
+  uses: UseEdge[],
+  docs: Record<string, string>,
+  onMap: (path: string) => boolean,
+) {
+  for (const path of new Set(uses.map((u) => u.from))) {
+    if (!onMap(path)) continue
+    const doc = docs[path]
+    const known = files.find((f) => f.path === path)
+    if (known) {
+      known.importer = true
+      if (doc) known.doc = doc
+      continue
+    }
+    boxes.add(path)
+    files.push({ path, status: 'importer', ...(doc ? { doc } : {}) })
+  }
+}
+
+/** Gives each changed file its exports and how many unchanged files use them. */
+function addExports(
+  files: MapFile[],
+  exports: Record<string, ExportInfo[]>,
+  uses: UseEdge[],
+) {
+  for (const file of files) {
+    if (
+      file.status === 'ghost' ||
+      file.status === 'context' ||
+      file.status === 'importer'
+    )
+      continue
+    const list = exports[file.path]
+    if (list?.length) file.exports = list
+    const reach = new Set(uses.filter((u) => u.to === file.path).map((u) => u.from)).size
+    if (reach > 0) file.reach = reach
+  }
+}
+
+/** The barrels' added and removed re-exports, summed per folder the map draws them in. */
+function apiByFolder(
+  barrels: Record<string, { added: string[]; removed: string[] }>,
+  config: MapConfig,
+  roots: Map<string, RawFolder>,
+): Map<string, { added: number; removed: number }> {
+  const api = new Map<string, { added: number; removed: number }>()
+  for (const [path, diff] of Object.entries(barrels)) {
+    const place = placeFile(path, config)
+    let folder = path.slice(0, path.lastIndexOf('/'))
+    if (place.kind === 'layer' && folder === roots.get(place.layer)?.path)
+      folder = `${folder}/${ROOT_SLICE}`
+    const sum = api.get(folder) ?? { added: 0, removed: 0 }
+    sum.added += diff.added.length
+    sum.removed += diff.removed.length
+    api.set(folder, sum)
+  }
+  return api
 }
 
 /**
@@ -390,7 +513,7 @@ export function buildChangesetMap(
 export function readChangesetMap(
   readChanged: () => ChangedFile[],
   configPath: string,
-  readImports: (changed: ChangedFile[]) => ImportChange[] = () => [],
+  readCode: (changed: ChangedFile[]) => MapCode = () => ({ edges: [] }),
 ): Section<ChangesetMap> {
   const notAvailable = (reason: string) => ({ status: 'not available' as const, reason })
   const message = (error: unknown) =>
@@ -413,11 +536,11 @@ export function readChangesetMap(
   } catch (error) {
     return notAvailable(`reading the changed files failed: ${message(error)}`)
   }
-  let imports: MapImports
+  let code: Section<MapCode>
   try {
-    imports = { status: 'ok', edges: readImports(changed) }
+    code = { status: 'ok', ...readCode(changed) }
   } catch (error) {
-    imports = notAvailable(`reading the imports failed: ${message(error)}`)
+    code = notAvailable(`reading the imports failed: ${message(error)}`)
   }
-  return { status: 'ok', ...buildChangesetMap(changed, config, imports) }
+  return { status: 'ok', ...buildChangesetMap(changed, config, code) }
 }

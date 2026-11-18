@@ -504,7 +504,7 @@ function main() {
         from,
         new Map(files.flatMap((f) => (f.oldPath ? [[f.oldPath, f.path] as const] : []))),
         new Set(files.map((f) => f.path)),
-      ).edges,
+      ),
   )
   const data = buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl, map })
   process.stdout.write(renderHtml(data, option('title')) + '\n')
