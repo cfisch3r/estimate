@@ -340,11 +340,15 @@ describe('rendering the page', () => {
     )
   })
 
-  it('has light and dark colours and a body background', () => {
+  // Each colour is written once with light-dark(); color-scheme picks the side: the
+  // system's by default, the one data-theme forces when the viewer sets it.
+  it('has light and dark colours, a forced theme and a body background', () => {
     const html = page()
-    expect(html).toContain('prefers-color-scheme: dark')
-    expect(html).toContain(':root[data-theme="dark"]')
-    expect(html).toContain('background:var(--bg)')
+    expect(html).toMatch(/:root\s*\{[^}]*color-scheme:\s*light dark/)
+    expect(html).toMatch(/:root\[data-theme=["']light["']\]\s*\{\s*color-scheme:\s*light/)
+    expect(html).toMatch(/:root\[data-theme=["']dark["']\]\s*\{\s*color-scheme:\s*dark/)
+    expect(html).toMatch(/--bg:\s*light-dark\(#ffffff,\s*#0d1117\)/)
+    expect(html).toMatch(/background:\s*var\(--bg\)/)
   })
 })
 

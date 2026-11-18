@@ -369,29 +369,8 @@ const encodePath = (path: string) =>
     )
     .join('/')
 
-const DARK_TOKENS = `--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--card:#161b22;--link:#58a6ff;--low:#3fb950;--medium:#d29922;--high:#f0883e;--critical:#ff7b72;color-scheme:dark;`
-const STYLE = `
-:root{--bg:#ffffff;--fg:#1f2328;--muted:#59636e;--line:#d1d9e0;--card:#f6f8fa;--link:#0969da;--low:#1a7f37;--medium:#9a6700;--high:#bc4c00;--critical:#cf222e}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){${DARK_TOKENS}}}
-:root[data-theme="dark"]{${DARK_TOKENS}}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
-main{max-width:760px;margin:0 auto;padding:24px 16px 48px}
-h1{font-size:1.6rem;margin:0 0 4px}
-h2{font-size:1.1rem;margin:32px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
-code{font:0.9em ui-monospace,monospace;overflow-wrap:anywhere}
-a{color:var(--link)}
-.muted{color:var(--muted)}
-.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-weight:600;border:1px solid currentColor}
-.risk-low{color:var(--low)}.risk-medium{color:var(--medium)}.risk-high{color:var(--high)}.risk-critical{color:var(--critical)}
-.spots{list-style:none;margin:0;padding:0;display:grid;gap:12px}
-.spot{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:12px 16px}
-.spot p{margin:6px 0 0}
-.spot .title{font-weight:600;margin:0}
-.facts{color:var(--muted);font-size:0.9rem}
-ul.plain{margin:0;padding-left:20px}
-details{margin-top:16px}
-summary{cursor:pointer;color:var(--muted)}
-`
+// The page styles, inlined so the page stays self-contained.
+const STYLE = readFileSync(join(import.meta.dirname, 'reviewGuide.css'), 'utf8')
 
 function htmlSpot(s: HotSpot, data: GuideData): string {
   const place = code(`${s.file}:${s.line}`)

@@ -272,6 +272,13 @@ describe('renderMapSection', () => {
     expect(collapsed.dataset.path).toBe('src/features/busy/model')
   })
 
+  it('writes each status colour once for both themes', () => {
+    open([added('src/domain/a.ts')])
+    const style = document.querySelector('#changeset-map style')?.textContent ?? ''
+    expect(style).toMatch(/--add:\s*light-dark\(#1a7f37,\s*#3fb950\)/)
+    expect(style).not.toContain('prefers-color-scheme')
+  })
+
   it('counts the files left off the map in the legend', () => {
     open([added('src/domain/a.test.ts'), added('src/domain/a.ts')])
     expect(document.getElementById('changeset-map')?.textContent).toContain(
