@@ -310,13 +310,14 @@
         const x = i * (STRIPW + G)
         add(at(el('div', 'strip-title', `${strip.name} (${strip.files.length})`), x, top))
         strip.files.forEach((file, j) => {
-          const row = at(
-            el('div', `strip-file ${file.status}`, file.path),
-            x,
-            top + 26 + j * STRIP_ROW,
-            STRIPW,
-            24,
+          // The file name stays whole; a long folder path is shortened instead.
+          const cut = file.path.lastIndexOf('/') + 1
+          const row = el('div', `strip-file ${file.status}`)
+          row.append(
+            el('span', 'dir', file.path.slice(0, cut)),
+            el('span', 'name', file.path.slice(cut)),
           )
+          at(row, x, top + 26 + j * STRIP_ROW, STRIPW, 24)
           row.title = `${file.path} · ${describe(file)}`
           add(row)
         })

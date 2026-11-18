@@ -40,7 +40,9 @@ const STYLE = `
 #changeset-map .moved,#changeset-map .chip.moved{background:var(--mov-bg);border-color:var(--mov)}
 #changeset-map .ghost,#changeset-map .chip.ghost{background:transparent;border-color:var(--mov);border-style:dashed;color:var(--muted)}
 #changeset-map .strip-title{position:absolute;font-size:12px;font-weight:650}
-#changeset-map .strip-file{position:absolute;box-sizing:border-box;border:1.5px solid var(--frame);border-radius:7px;padding:3px 7px;font:10.5px/1.3 ui-monospace,monospace;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+#changeset-map .strip-file{position:absolute;display:flex;box-sizing:border-box;border:1.5px solid var(--frame);border-radius:7px;padding:3px 7px;font:10.5px/1.3 ui-monospace,monospace;overflow:hidden;white-space:nowrap}
+#changeset-map .strip-file .dir{flex:0 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+#changeset-map .strip-file .name{flex-shrink:0;max-width:100%;overflow:hidden;text-overflow:ellipsis;font-weight:600}
 #changeset-map .map-card{position:absolute;z-index:5;max-width:320px;background:var(--bg);border:1px solid var(--frame);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.4;box-shadow:0 6px 20px rgba(0,0,0,.18);pointer-events:none;overflow-wrap:anywhere}
 #changeset-map .node:focus-visible,#changeset-map .folder-label:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
 `

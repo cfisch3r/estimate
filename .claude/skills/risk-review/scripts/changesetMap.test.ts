@@ -172,6 +172,17 @@ describe('renderMapSection', () => {
     ])
   })
 
+  it('keeps the file name of a strip row whole and shortens its folder instead', () => {
+    open([added('docs/technical/adr/002-testing-strategy.md')])
+    const row = document.querySelector<HTMLElement>('#changeset-map .strip-file')
+    const dir = row?.querySelector<HTMLElement>('.dir')
+    const name = row?.querySelector<HTMLElement>('.name')
+    expect(dir?.textContent).toBe('docs/technical/adr/')
+    expect(name?.textContent).toBe('002-testing-strategy.md')
+    expect(getComputedStyle(name as HTMLElement).flexShrink).toBe('0')
+    expect(getComputedStyle(dir as HTMLElement).textOverflow).toBe('ellipsis')
+  })
+
   it('lets clicks through the frames to the folder names below them', () => {
     open([
       added('src/features/save/ui/Button.tsx'),
