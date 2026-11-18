@@ -1,8 +1,13 @@
+import { execFileSync } from 'node:child_process'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   diffImports,
   importEdges,
   programFacts,
+  readCodeChanges,
   type ImportEdge,
   type SourceTree,
 } from './reviewImports.ts'
@@ -223,5 +228,48 @@ describe('diffImports', () => {
     expect(diffImports(base, head, moves)).toEqual([
       { ...edge('new/a.ts', 'new/b.ts', 'b'), status: 'kept' },
     ])
+  })
+})
+
+describe('readCodeChanges', () => {
+  it('reads the import and export changes of a repository in one pass', () => {
+    const dir = mkdtempSync(join(tmpdir(), 'code-changes-'))
+    try {
+      const git = (...args: string[]) =>
+        execFileSync(
+          'git',
+          [
+            '-c',
+            'user.name=t',
+            '-c',
+            'user.email=t@t',
+            '-c',
+            'core.hooksPath=/dev/null',
+            ...args,
+          ],
+          { cwd: dir, stdio: 'ignore' },
+        )
+      const write = (path: string, text: string) => {
+        mkdirSync(join(dir, path, '..'), { recursive: true })
+        writeFileSync(join(dir, path), text)
+      }
+      write('tsconfig.app.json', CONFIG)
+      write('src/a.ts', "import { b } from './b.ts'\nexport const a = b")
+      write('src/b.ts', '/** The b file. */\nexport const b = 1')
+      git('init', '-q')
+      git('add', '.')
+      git('commit', '-qm', 'base')
+      write('src/b.ts', '/** The b file. */\nexport const b = 2')
+
+      const changes = readCodeChanges(dir, 'HEAD', new Map(), new Set(['src/b.ts']))
+      expect(changes.edges).toEqual([
+        { ...edge('src/a.ts', 'src/b.ts', 'b'), status: 'kept' },
+      ])
+      expect(changes.exports).toEqual({ 'src/b.ts': [{ name: 'b', change: 'changed' }] })
+      expect(changes.barrels).toEqual({})
+      expect(changes.docs).toEqual({ 'src/b.ts': 'The b file.' })
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
   })
 })

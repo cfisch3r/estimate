@@ -10,7 +10,7 @@ import {
   type Floor,
   type RiskLevel,
 } from './reviewFloor.ts'
-import { readImportChanges } from './reviewImports.ts'
+import { readCodeChanges } from './reviewImports.ts'
 import { readChangesetMap, type ChangesetMap } from './reviewMap.ts'
 import type { Section } from './reviewSignals.ts'
 
@@ -499,11 +499,12 @@ function main() {
     () => readGitDiff({ cwd, from }).files,
     join(import.meta.dirname, '..', 'changeset-map.yaml'),
     (files) =>
-      readImportChanges(
+      readCodeChanges(
         cwd,
         from,
         new Map(files.flatMap((f) => (f.oldPath ? [[f.oldPath, f.path] as const] : []))),
-      ),
+        new Set(files.map((f) => f.path)),
+      ).edges,
   )
   const data = buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl, map })
   process.stdout.write(renderHtml(data, option('title')) + '\n')

@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import ts from 'typescript'
+import { diffExports, type ExportDiff } from './reviewExports.ts'
 import { matchesPattern } from './reviewFloor.ts'
 
 // The import edges of the changeset map: which project file imports which, before and after
@@ -480,16 +481,28 @@ export function workingTree(cwd: string): SourceTree {
   }
 }
 
-/** The import changes between `from` and the working tree, by the given configuration. */
-export function readImportChanges(
+/** The import and export changes between `from` and the working tree, and the doc comments. */
+export interface CodeChanges {
+  edges: ImportChange[]
+  exports: ExportDiff['exports']
+  barrels: ExportDiff['barrels']
+  /** The leading doc comment of each project file now. */
+  docs: Record<string, string>
+}
+
+/** The code changes between `from` and the working tree; each side's program is built once. */
+export function readCodeChanges(
   cwd: string,
   from: string,
   moves: Map<string, string>,
+  changed: Set<string>,
   configPath = 'tsconfig.app.json',
-): ImportChange[] {
-  return diffImports(
-    importEdges(gitTree(cwd, from), configPath),
-    importEdges(workingTree(cwd), configPath),
-    moves,
-  )
+): CodeChanges {
+  const base = programFacts(gitTree(cwd, from), configPath)
+  const head = programFacts(workingTree(cwd), configPath)
+  const { exports, barrels } = diffExports(base, head, moves, changed)
+  const docs: Record<string, string> = {}
+  for (const [path, file] of Object.entries(head.files))
+    if (file.doc) docs[path] = file.doc
+  return { edges: diffImports(base.edges, head.edges, moves), exports, barrels, docs }
 }
