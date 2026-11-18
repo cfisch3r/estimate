@@ -204,19 +204,11 @@ flowchart TD
   class Dropped off
 ```
 
-The edges come from two TypeScript programs over `tsconfig.app.json`: one on the commit the
-map starts from, read from git into memory, and one on the working tree. Each imported name is
-followed to the file that declares it, so a barrel never stands between two boxes; a barrel's
-own re-exports are edges too. An edge in both programs is kept, one only in the working tree
-is added, one only at the base is removed. A moved file's old path is replaced by its new one
-first, so its imports stay kept. When the programs cannot be built, the map is drawn without
-arrows and the legend says why.
-
-| Arrow | Line | Shown |
-|---|---|---|
-| Added import | Green, solid | Unless its legend checkbox is cleared; always from the active box |
-| Removed import | Red, dashed | Unless its legend checkbox is cleared; always from the active box |
-| Kept import | Gray, thin | Only from the active box |
+| Arrow | Means | Line | Shown |
+|---|---|---|---|
+| Added import | Only in the working tree | Green, solid | Unless its legend checkbox is cleared; always from the active box |
+| Removed import | Only at the base | Red, dashed | Unless its legend checkbox is cleared; always from the active box |
+| Kept import | In both; a moved file counts under its new path, so its imports stay kept | Gray, thin | Only from the active box |
 
 The **active box** is the one the pointer is on, else the one with keyboard focus, else the
 pinned one. Imports of one kind between the same two boxes, such as several files of a
@@ -329,6 +321,12 @@ flowchart LR
   style NODE fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
   style BROWSER fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
 ```
+
+The import edges come from two TypeScript programs over `tsconfig.app.json`: one on the commit
+the map starts from, read from git into memory, and one on the working tree. Each imported name
+is followed to the file that declares it, so a barrel never stands between two boxes; a
+barrel's own re-exports are edges too. When the programs cannot be built, the map is drawn
+without arrows and the legend says why.
 
 | File (`.claude/skills/risk-review/scripts/`) | Role |
 |---|---|
