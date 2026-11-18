@@ -125,11 +125,12 @@ change touches, how it rewires them and what else it can break before reading th
 **row** is drawn per configured layer, a **slice** is the first folder below it, and a
 **folder** is any folder deeper down. An **import edge** is a pair of files: the file that
 imports, and the file that declares the imported name. A **changed export** is an export of a
-changed file whose declaration changed; an **importer** is an unchanged file that uses one.
+changed file whose declaration, or a same-file declaration it uses, changed; an **importer** is
+an unchanged file that uses one; a changed file's **reach** is the number of its importers.
 
 #### Where a file goes
 
-Legend: diamond = check, in this order; the first match decides.
+Legend: diamond = check, in this order; the first match decides; dashed box = nothing marked on the map.
 
 ```mermaid
 flowchart TD
@@ -170,7 +171,7 @@ map.
 
 #### Which imports are drawn
 
-Legend: diamond = check, in this order; the first match decides.
+Legend: diamond = check, in this order; the first match decides; dashed box = nothing marked on the map.
 
 ```mermaid
 flowchart TD
@@ -211,17 +212,18 @@ flowchart TD
 | Added import | Only in the working tree | Green, solid | Unless its legend checkbox is cleared; always from the active box |
 | Removed import | Only at the base | Red, dashed | Unless its legend checkbox is cleared; always from the active box |
 | Kept import | In both; a moved file counts under its new path, so its imports stay kept | Gray, thin | Only from the active box |
-| Uses a changed export | An importer's kept import of a changed export | Gray, dotted | All while the importers checkbox is on, in place of the kept arrow of the same import; a box shows them at either end |
+| Uses arrow | An importer's import of a changed export | Text colour, dotted | All while the importers checkbox is on |
 
-The **active box** is the one the pointer is on, else the one with keyboard focus, else the
-pinned one. Imports of one kind between the same two boxes, such as several files of a
+A uses arrow stands in for the kept arrow of the same import, and a box counts its uses arrows
+as its own at either end. The **active box** is the one the pointer is on, else the one with
+keyboard focus, else the pinned one. Imports of one kind between the same two boxes, such as several files of a
 collapsed folder, are drawn as one arrow with their count; an import between two files of the
 same collapsed folder gets no arrow, and the folder's card lists it. Arrows run under the
 boxes.
 
-#### Which exports changed and who uses them
+#### Which exports changed
 
-Legend: diamond = check, in this order; the first match decides.
+Legend: diamond = check, in this order; the first match decides; dashed box = nothing marked on the map.
 
 ```mermaid
 flowchart TD
@@ -251,7 +253,7 @@ flowchart TD
   classDef off fill:transparent,stroke:#64748B,stroke-dasharray:2 2,color:#64748B
 
   class Now,Before,Decl,Helper check
-  class Added,Removed,Changed,Via place
+  class Export,Added,Removed,Changed,Via place
   class Same off
 ```
 
@@ -260,14 +262,16 @@ a change to a doc comment alone changes nothing. "Uses" follows the same-file de
 refers to through any number of steps. Every export of a deleted file is removed, every export
 of an added file added.
 
-Legend: diamond = check, in this order; the first match decides.
+#### Who uses a changed export
+
+Legend: diamond = check, in this order; the first match decides; dashed box = nothing marked on the map.
 
 ```mermaid
 flowchart TD
   Edge["Import edge of an unchanged file<br/>[to a changed file]"]
-  Off{"importing file<br/>off the map?"}
+  Off{"importing file a test, style<br/>or type declaration?"}
   Uses{"imports a changed export<br/>or the whole namespace?"}
-  Box{"importing file<br/>on the map?"}
+  Box{"importing file in a layer<br/>or the Unplaced row?"}
   Dropped["Not an importer"]
   White["Importer box and uses arrow,<br/>counted in the reach"]
   Card["Listed in the card,<br/>counted in the reach"]
@@ -285,13 +289,15 @@ flowchart TD
   classDef off fill:transparent,stroke:#64748B,stroke-dasharray:2 2,color:#64748B
 
   class Off,Uses,Box check
-  class White,Card place
+  class Edge,White,Card place
   class Dropped off
 ```
 
-A name a file only re-exports is not a use, so an unchanged barrel is no importer. A removed
-export has no importers: a file that still imports one does not compile, and the type check
-reports it. Only one step is followed: the importers of an importer are not drawn.
+The first check uses the map's `offMap` patterns. A name a file only re-exports is not a use, so
+an unchanged barrel is no importer. A namespace used as a whole counts only when it is imported
+from the changed file itself, not through a barrel. A removed export has no importers: a file
+that still imports one does not compile, and the type check reports it. Only one step is
+followed: the importers of an importer are not drawn.
 
 #### What the page shows
 
@@ -344,10 +350,10 @@ flowchart TB
 | Folder | A deeper folder; a chain of single-child folders shows as one name (`session-history/ui`) | | One with two or more entries collapses and reopens by its name only; a collapsed one is a box that can be pinned like a file box |
 | File box | One changed file: status sign and name | | Becomes the active box on hover or focus: its card opens, its own arrows show and the rest fade; a click pins it until a second click or Esc |
 | Unchanged-file box | An unchanged file at either end of an added or removed import | | Like a file box |
-| Importer box | An importer, white | | Shown only while the importers checkbox is on; otherwise like a file box |
-| Reach badge | `↗n` on a changed file box: n importers, on the map or not; none at 0 | | A screen reader hears "used by n unchanged files" |
-| API chip | `API +n −m` beside a folder's name: the names its barrels' re-exports added and removed | | |
-| Card | The box's path and status; a changed file's exports, the changed ones bold, and its importers with the names they use; an importer's leading doc comment and the changed exports it uses; then the box's imports added, removed and kept, each with its names. A file that has no box is marked "not on the map" | | Shown for the active box; Esc closes it. A screen reader reads it as the box's description |
+| Importer box | An importer | | Shown only while the importers checkbox is on; otherwise like a file box |
+| Reach badge | `↗n` on a changed file box: its reach, with a box or not; none at 0 | | A screen reader hears "used by n unchanged files" |
+| API chip | `API +n −m`: the names the barrels in a folder added to and removed from their re-exports; beside an open folder's name, inside a collapsed folder's box | | A screen reader hears "public API: n added, m removed" |
+| Card | The box's path and status. **Changed file**: its exports, the changed ones bold, and its importers with the names they use. **Importer**: its leading doc comment and the changed exports it uses. **Collapsed folder**: each file's changed exports only. **Every box**: its imports added, removed and kept, each with its names. A file that has no box is marked "not on the map" | | Shown for the active box; Esc closes it. A screen reader hears a one-line summary of it, status and counts, as the box's description |
 | Import arrow | One arrow per kind between two boxes, with a count when it stands for several import edges; see [Which imports are drawn](#which-imports-are-drawn) | | |
 | Unplaced row | A file under `sourceRoot` in no layer folder | `sourceRoot` | |
 | Strip | Files outside `sourceRoot`, by full path; a long folder is shortened, the name kept whole | `strips`, first match wins, `Other` last | Path and status on hover |
@@ -361,8 +367,9 @@ flowchart TB
 | Moved | `→` | Purple; the card names the old path |
 | Old place of a moved file | `⇠` | Dashed, empty; the card names the new path |
 | Unchanged, at either end of an added or removed import | `·` | Dotted, gray name |
-| Unchanged, uses a changed export | `◦` | White, solid border; a file that is both this and the row above shows white while the importers checkbox is on |
+| Unchanged, uses a changed export | `◦` | Page background, solid border in the text colour |
 
+A file that is both of the last two is drawn as an importer while the importers checkbox is on.
 Unchanged-file and importer boxes are not counted as changed, in a collapsed folder's counts or
 anywhere else. The page loads nothing from outside: the data, the styles and the page script are
 inlined.
@@ -413,7 +420,7 @@ is followed to the file that declares it, so a barrel never stands between two b
 barrel's own re-exports are edges too. The same pass lists each file's exports, its top-level
 declarations as their tokens without comments, the same-file declarations each one refers to,
 and its leading doc comment. When the programs cannot be built, the map is drawn without arrows,
-importers or exports, and the legend says why.
+importers, exports or API chips, and the legend says why.
 
 | File (`.claude/skills/risk-review/scripts/`) | Role |
 |---|---|
