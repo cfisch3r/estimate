@@ -566,6 +566,7 @@ describe('changeset map', () => {
     ],
     strips: [],
     offMap: 0,
+    imports: { status: 'ok', edges: [] },
   }
 
   it('places the map between Risk and Hot spots', () => {

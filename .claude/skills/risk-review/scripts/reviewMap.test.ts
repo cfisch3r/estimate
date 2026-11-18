@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { ChangedFile } from './changedDiff.ts'
+import type { ImportChange } from './reviewImports.ts'
 import {
   buildChangesetMap,
   parseMapConfig,
@@ -398,6 +399,78 @@ describe('buildChangesetMap', () => {
   })
 })
 
+describe('buildChangesetMap with imports', () => {
+  const imp = (
+    from: string,
+    to: string,
+    status: ImportChange['status'],
+  ): ImportChange => ({ from, to, status, names: ['x'] })
+  const ok = (...edges: ImportChange[]) => ({ status: 'ok' as const, edges })
+  const filesOf = (map: ChangesetMap) =>
+    map.layers.flatMap((l) => {
+      const walk = (f: Folder): ChangesetMap['layers'][number]['root']['files'] => [
+        ...f.files,
+        ...f.folders.flatMap(walk),
+      ]
+      return walk(l.root)
+    })
+
+  it('adds an unchanged file that an added or removed import points at', () => {
+    const map = buildChangesetMap(
+      [{ path: 'src/features/a.ts', status: 'modified' }],
+      config,
+      ok(
+        imp('src/features/a.ts', 'src/domain/new.ts', 'added'),
+        imp('src/features/a.ts', 'src/domain/old.ts', 'removed'),
+        imp('src/features/a.ts', 'src/domain/kept.ts', 'kept'),
+      ),
+    )
+    expect(filesOf(map)).toEqual([
+      { path: 'src/features/a.ts', status: 'changed' },
+      { path: 'src/domain/new.ts', status: 'context' },
+      { path: 'src/domain/old.ts', status: 'context' },
+    ])
+  })
+
+  it('does not count an unchanged file as changed', () => {
+    const map = buildChangesetMap(
+      [{ path: 'src/features/a.ts', status: 'modified' }],
+      config,
+      ok(imp('src/features/a.ts', 'src/domain/new.ts', 'added')),
+    )
+    expect(map.layers.find((l) => l.name === 'domain')?.root.changed).toBe(0)
+  })
+
+  it('keeps the edges from files on the map and drops those from files off it', () => {
+    const edges = [
+      imp('src/features/a.ts', 'src/domain/b.ts', 'added'),
+      imp('src/features/a.ts', 'src/domain/c.ts', 'kept'),
+      imp('src/features/a.test.ts', 'src/features/a.ts', 'added'),
+    ]
+    const map = buildChangesetMap(
+      [added('src/features/a.ts'), added('src/features/a.test.ts')],
+      config,
+      ok(...edges),
+    )
+    expect(map.imports).toEqual(ok(edges[0] as ImportChange, edges[1] as ImportChange))
+  })
+
+  it('adds no box for an off-map file an import points at', () => {
+    const map = buildChangesetMap(
+      [added('src/features/a.ts')],
+      config,
+      ok(imp('src/features/a.ts', 'src/features/a.test.ts', 'added')),
+    )
+    expect(filesOf(map).map((f) => f.path)).toEqual(['src/features/a.ts'])
+    expect(map.offMap).toBe(0)
+  })
+
+  it('passes on why the imports are not available', () => {
+    const reason = { status: 'not available' as const, reason: 'tsconfig.app.json not found' }
+    expect(buildChangesetMap([added('src/features/a.ts')], config, reason).imports).toEqual(reason)
+  })
+})
+
 describe('readChangesetMap', () => {
   it('reports a missing configuration as not available', () => {
     expect(readChangesetMap(() => [], '/nonexistent/changeset-map.yaml')).toEqual({
@@ -438,5 +511,32 @@ describe('readChangesetMap', () => {
       status: 'not available',
       reason: 'reading the changed files failed: fatal: bad revision',
     })
+  })
+
+  it('keeps the map when reading the imports fails', () => {
+    const result = readChangesetMap(
+      () => [added('src/domain/a.ts')],
+      new URL('../changeset-map.yaml', import.meta.url).pathname,
+      () => {
+        throw new Error('bad object abc')
+      },
+    )
+    expect(result.status === 'ok' && result.imports).toEqual({
+      status: 'not available',
+      reason: 'reading the imports failed: bad object abc',
+    })
+  })
+
+  it('hands the changed files to the import reader', () => {
+    const seen: ChangedFile[][] = []
+    readChangesetMap(
+      () => [added('src/domain/a.ts')],
+      new URL('../changeset-map.yaml', import.meta.url).pathname,
+      (files) => {
+        seen.push(files)
+        return []
+      },
+    )
+    expect(seen).toEqual([[added('src/domain/a.ts')]])
   })
 })

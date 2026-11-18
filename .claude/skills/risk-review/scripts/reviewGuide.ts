@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { readGitDiff, repoRoot } from './changedDiff.ts'
+import { mergeBase, readGitDiff, repoRoot } from './changedDiff.ts'
 import { renderMapSection } from './changesetMap.ts'
 import {
   currentCatalogueNames,
@@ -9,6 +9,7 @@ import {
   type Floor,
   type RiskLevel,
 } from './reviewFloor.ts'
+import { readImportChanges } from './reviewImports.ts'
 import { readChangesetMap, type ChangesetMap } from './reviewMap.ts'
 import type { Section } from './reviewSignals.ts'
 
@@ -499,9 +500,17 @@ function main() {
   const catalogueNames = currentCatalogueNames(floor.base, cwd)
 
   const repoUrl = originUrl(cwd)
+  // The map's files and its import arrows are read against the same commit.
+  const from = floor.since ?? mergeBase(cwd)
   const map = readChangesetMap(
-    () => readGitDiff({ cwd, ...(floor.since ? { from: floor.since } : {}) }).files,
+    () => readGitDiff({ cwd, from }).files,
     join(import.meta.dirname, '..', 'changeset-map.yaml'),
+    (files) =>
+      readImportChanges(
+        cwd,
+        from,
+        new Map(files.flatMap((f) => (f.oldPath ? [[f.oldPath, f.path] as const] : []))),
+      ),
   )
   const data = buildGuide({ covers, floor, signals, agent, catalogueNames, repoUrl, map })
   process.stdout.write(renderHtml(data, option('title')) + '\n')

@@ -62,6 +62,11 @@ export function baseRef(cwd: string): string {
   throw new Error('Neither origin/main nor main exists; fetch main first.')
 }
 
+/** The commit the branch started from: its merge base with the default branch. */
+export function mergeBase(cwd: string): string {
+  return git(cwd, ['merge-base', baseRef(cwd), 'HEAD']).trim()
+}
+
 const STATUS: Record<string, ChangeStatus> = {
   A: 'added',
   M: 'modified',
@@ -102,7 +107,7 @@ function parseNameStatus(raw: string): ChangedFile[] {
  */
 export function readGitDiff(options: { cwd?: string; from?: string } = {}): Diff {
   const cwd = options.cwd ?? process.cwd()
-  const from = options.from ?? git(cwd, ['merge-base', baseRef(cwd), 'HEAD']).trim()
+  const from = options.from ?? mergeBase(cwd)
 
   const tracked = parseNameStatus(git(cwd, ['diff', '--name-status', '-z', '-M', from]))
   const untracked = git(cwd, ['ls-files', '--others', '--exclude-standard', '-z'])
