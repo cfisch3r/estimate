@@ -629,6 +629,21 @@ describe('buildChangesetMap with exports', () => {
     expect(folder?.api).toEqual({ added: 2, removed: 1 })
   })
 
+  it('keeps the API chip of a folder folded into a chain', () => {
+    const map = buildChangesetMap(
+      [{ path: 'src/domain/e/model/b.ts', status: 'modified' }],
+      config,
+      code(
+        [],
+        {},
+        { barrels: { 'src/domain/e/index.ts': { added: ['x'], removed: [] } } },
+      ),
+    )
+    const folder = map.layers.find((l) => l.name === 'domain')?.root.folders[0]
+    expect(folder?.label).toBe('e/model')
+    expect(folder?.api).toEqual({ added: 1, removed: 0 })
+  })
+
   it("gives an importer its doc comment and no other file's", () => {
     const map = buildChangesetMap(
       [{ path: B, status: 'modified' }],

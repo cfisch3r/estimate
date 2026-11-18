@@ -306,10 +306,20 @@ function finish(
 ): Folder {
   let folder = raw
   let label = raw.name
+  // A folded folder's barrels still count, on the folder that stands for the chain.
+  const chain = [raw.path]
   while (depth > 0 && folder.files.length === 0 && folder.sub.size === 1) {
     folder = [...folder.sub.values()][0] as RawFolder
     label += `/${folder.name}`
+    chain.push(folder.path)
   }
+  const sums = chain.flatMap((path) => api.get(path) ?? [])
+  const chip = sums.length
+    ? {
+        added: sums.reduce((n, a) => n + a.added, 0),
+        removed: sums.reduce((n, a) => n + a.removed, 0),
+      }
+    : undefined
   const folders = [...folder.sub.values()]
     .map((f) => finish(f, depth + 1, sliceDepth, api))
     .sort(byName((f) => f.label))
@@ -327,7 +337,7 @@ function finish(
     changed,
     startsCollapsed: depth === sliceDepth && changed > COLLAPSE_ABOVE,
     collapsible: total > 1,
-    ...(api.has(folder.path) ? { api: api.get(folder.path) } : {}),
+    ...(chip ? { api: chip } : {}),
   }
 }
 

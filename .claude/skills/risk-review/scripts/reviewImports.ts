@@ -158,6 +158,8 @@ function declaredNames(statement: ts.Statement): string[] {
     ts.isEnumDeclaration(statement) ||
     ts.isModuleDeclaration(statement)
   ) {
+    if (statement.name && ts.isStringLiteral(statement.name))
+      return [`module "${statement.name.text}"`]
     return statement.name && ts.isIdentifier(statement.name)
       ? [statement.name.text]
       : ['default']
@@ -262,18 +264,11 @@ export function programFacts(tree: SourceTree, configPath: string): ProgramFacts
             )
           }
         } else if (bindings) {
-          // A namespace used only as a whole depends on the whole module.
-          const uses = namespaceUses(
-            source,
-            checker.getSymbolAtLocation(bindings.name),
-            (name, symbol) =>
-              add(
-                from,
-                declaredIn(symbol) ?? moduleFile(statement.moduleSpecifier),
-                name,
-              ),
+          // A namespace used as a whole depends on the whole module.
+          const whole = namespaceUses(source, bindings.name, (name, symbol) =>
+            add(from, declaredIn(symbol) ?? moduleFile(statement.moduleSpecifier), name),
           )
-          if (uses === 0) add(from, moduleFile(statement.moduleSpecifier), '*')
+          if (whole) add(from, moduleFile(statement.moduleSpecifier), '*')
         }
       } else if (ts.isExportDeclaration(statement) && statement.moduleSpecifier) {
         const clause = statement.exportClause
@@ -294,14 +289,30 @@ export function programFacts(tree: SourceTree, configPath: string): ProgramFacts
     }
   }
 
-  /** Each `ns.name` in the file, with the symbol it names; returns how many it found. */
+  /**
+   * Each `ns.name` in the file, with the symbol it names. Returns true when the namespace is
+   * also used as a whole (`f(ns)`), or not by member at all.
+   */
   function namespaceUses(
     source: ts.SourceFile,
-    namespace: ts.Symbol | undefined,
+    name: ts.Identifier,
     onUse: (name: string, symbol: ts.Symbol | undefined) => void,
-  ): number {
+  ): boolean {
+    const namespace = checker.getSymbolAtLocation(name)
     let found = 0
+    let whole = false
     const visit = (node: ts.Node) => {
+      if (
+        ts.isIdentifier(node) &&
+        node !== name &&
+        !(
+          ts.isPropertyAccessExpression(node.parent) && node.parent.expression === node
+        ) &&
+        !(ts.isQualifiedName(node.parent) && node.parent.left === node) &&
+        checker.getSymbolAtLocation(node) === namespace
+      ) {
+        whole = true
+      }
       const pair = ts.isPropertyAccessExpression(node)
         ? ([node.expression, node.name] as const)
         : ts.isQualifiedName(node)
@@ -318,7 +329,7 @@ export function programFacts(tree: SourceTree, configPath: string): ProgramFacts
       ts.forEachChild(node, visit)
     }
     ts.forEachChild(source, visit)
-    return found
+    return whole || found === 0
   }
 
   const files: Record<string, FileFacts> = {}
@@ -347,14 +358,19 @@ export function programFacts(tree: SourceTree, configPath: string): ProgramFacts
             declaration && declaration.getSourceFile() === source
               ? topLevel(declaration, source)
               : undefined
-          if (owner && owner !== statement && keyOf(owner) !== '') deps.add(keyOf(owner))
+          const ownerKey = owner ? keyOf(owner) : ''
+          if (owner && ownerKey !== '' && ownerKey !== key) deps.add(ownerKey)
         }
         ts.forEachChild(node, visit)
       }
       ts.forEachChild(statement, visit)
+      // Overloads, a const and a type of one name, merged interfaces: one entry for them all.
+      const known = declarations[key]
       declarations[key] = {
-        text: tokens(statement, source),
-        deps: [...deps].sort(),
+        text: known
+          ? `${known.text} ; ${tokens(statement, source)}`
+          : tokens(statement, source),
+        deps: [...new Set([...(known?.deps ?? []), ...deps])].sort(),
       }
     }
     const exports: Record<string, string | null> = {}

@@ -110,6 +110,15 @@ describe('importEdges', () => {
     ).toEqual([edge('src/a.ts', 'src/b.ts', '*')])
   })
 
+  it('counts a namespace used both as a whole and by member as a whole use', () => {
+    expect(
+      edgesOf({
+        'src/a.ts': "import * as b from './b.ts'\nexport const a = [b, b.x]",
+        'src/b.ts': 'export const x = 1',
+      }),
+    ).toEqual([edge('src/a.ts', 'src/b.ts', '*', 'x')])
+  })
+
   it('joins the names one file takes from another', () => {
     expect(
       edgesOf({

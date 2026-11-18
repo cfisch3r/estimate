@@ -98,6 +98,24 @@ describe('diffExports', () => {
     expect(exports).toEqual({ 'src/new/a.ts': [{ name: 'a' }] })
   })
 
+  it('sees a change to any of several statements that declare the same name', () => {
+    const { exports } = diff(
+      {
+        'src/a.ts':
+          'export function f(a: string): void\nexport function f(a: unknown) {}\nexport const S = { a: 1 } as const\nexport type S = typeof S',
+      },
+      {
+        'src/a.ts':
+          'export function f(a: number): void\nexport function f(a: unknown) {}\nexport const S = { a: 2 } as const\nexport type S = typeof S',
+      },
+      ['src/a.ts'],
+    )
+    expect(exports['src/a.ts']).toEqual([
+      { name: 'f', change: 'changed' },
+      { name: 'S', change: 'changed' },
+    ])
+  })
+
   it("diffs a barrel's re-exports and leaves out barrels that did not change", () => {
     const x = 'export const x = 1, y = 2'
     const { barrels, exports } = diff(
