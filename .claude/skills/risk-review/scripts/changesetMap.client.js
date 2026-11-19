@@ -257,6 +257,8 @@
   let hovered = null
   let focused = null
   let pinned = null
+  /** True from "Show on map" until the pointer moves: a hover then is only the scroll. */
+  let stillPointer = false
   const active = () => hovered ?? focused ?? pinned
   /** Box key (a file path, or a collapsed folder's path) → where it is drawn and its card. */
   let boxes = new Map()
@@ -583,6 +585,7 @@
   /** Pointer and keyboard focus each make a box active on their own. */
   function hover(e, key) {
     e.addEventListener('mouseenter', () => {
+      if (stillPointer) return
       hovered = key
       refresh()
     })
@@ -871,6 +874,9 @@
   // cannot be pinned; it gets focus and a short flash. The hot spot list comes after this
   // script, so one listener on the document serves every button.
   function showOnMap(path) {
+    // The scroll moves another box under a pointer that did not move; that is no hover.
+    stillPointer = true
+    hovered = null
     for (const folder of chainTo(path))
       if (folder.collapsible) toggled.set(folder.path, true)
     pinned = path
@@ -889,6 +895,9 @@
       target.classList.add('flash')
     }
   }
+  document.addEventListener('pointermove', () => {
+    stillPointer = false
+  })
   document.addEventListener('click', (e) => {
     const button = e.target.closest?.('.show-on-map[data-path]')
     if (button && section.isConnected) showOnMap(button.dataset.path)

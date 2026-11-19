@@ -887,6 +887,16 @@ describe('review marks', () => {
     expect(node(C).getAttribute('aria-pressed')).toBe('true')
   })
 
+  it('keeps the card of the shown box when the scroll puts another box under a still pointer', () => {
+    open(files, [], marks({ spots: { [C]: [1] } }))
+    showButton(C).click()
+    node(BUTTON).dispatchEvent(new MouseEvent('mouseenter'))
+    expect(card()?.textContent).toContain(C)
+    document.dispatchEvent(new MouseEvent('pointermove'))
+    node(BUTTON).dispatchEvent(new MouseEvent('mouseenter'))
+    expect(card()?.textContent).toContain(BUTTON)
+  })
+
   it('focuses a strip row on Show on map', () => {
     open(files, [], marks({ spots: { 'docs/a.md': [1] } }))
     showButton('docs/a.md').click()
