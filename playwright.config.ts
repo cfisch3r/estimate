@@ -13,6 +13,9 @@ const RELAY_PORT = 8971
 // would let one mode silently reuse the other mode's still-running build.
 const APP_PORT = REAL_WORLD ? 4174 : 4173
 const RELAY_URL = `ws://localhost:${RELAY_PORT}`
+/** The integration Test Level's harness page (`vite.harness.config.ts`). */
+const HARNESS_PORT = 4175
+const HARNESS_URL = `http://localhost:${HARNESS_PORT}`
 const BASE_URL = `http://localhost:${APP_PORT}`
 
 const webServerDefaults = {
@@ -45,6 +48,16 @@ const relayWebServer = {
   env: { TRYSTERO_RELAY_PORT: String(RELAY_PORT) },
 }
 
+/** The integration Test Level's harness server. `--strictPort` makes a busy port
+ *  fail loudly instead of quietly moving to another one. Local mode only: the
+ *  integration projects need the local relay, which real-world mode doesn't start. */
+const harnessWebServer = {
+  ...webServerDefaults,
+  command: `pnpm exec vite --config vite.harness.config.ts --port ${HARNESS_PORT} --strictPort`,
+  url: HARNESS_URL,
+  env: { VITE_TRYSTERO_RELAY_URL: RELAY_URL },
+}
+
 /** The fixture and the steps every concept's e2e specs share. */
 const sharedSteps = ['specs/shared/e2e/world.ts', 'specs/shared/e2e/steps.ts']
 
@@ -61,6 +74,17 @@ const sessionPersistenceBddDir = defineBddConfig({
   features: 'specs/session-persistence/e2e/*.feature',
   steps: ['specs/session-persistence/e2e/steps.ts', ...sharedSteps],
   outputDir: '.features-gen/session-persistence',
+})
+
+/** The integration Test Level (#230): adapters driven through their ports on a
+ *  harness page, not through the UI. */
+const sessionPersistenceIntegrationDir = defineBddConfig({
+  features: 'specs/session-persistence/integration/*.feature',
+  steps: [
+    'specs/session-persistence/integration/steps.ts',
+    'specs/shared/integration/world.ts',
+  ],
+  outputDir: '.features-gen/session-persistence-integration',
 })
 
 export default defineConfig({
@@ -80,7 +104,9 @@ export default defineConfig({
     baseURL: BASE_URL,
     trace: 'retain-on-failure',
   },
-  webServer: REAL_WORLD ? [appWebServer] : [relayWebServer, appWebServer],
+  webServer: REAL_WORLD
+    ? [appWebServer]
+    : [relayWebServer, appWebServer, harnessWebServer],
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     {
@@ -93,5 +119,10 @@ export default defineConfig({
       testDir: sessionPersistenceBddDir,
       use: { ...devices['Desktop Chrome'] },
     },
-  ],
+    {
+      name: 'session-persistence-integration',
+      testDir: sessionPersistenceIntegrationDir,
+      use: { ...devices['Desktop Chrome'], baseURL: HARNESS_URL },
+    },
+  ].filter((project) => !(REAL_WORLD && project.name.endsWith('-integration'))),
 })
