@@ -40,6 +40,13 @@
     folder.files.some(visible) || folder.folders.some(hasVisible)
   const usersOf = (path) => uses.filter((u) => u.to === path)
 
+  // The agent's answer on the map: hot spot numbers, skim-only files, responsibilities.
+  const marks = data.marks ?? { spots: {}, skim: {}, responsibilities: {} }
+  const spotsIn = (paths) =>
+    paths.flatMap((p) => marks.spots[p] ?? []).sort((a, b) => a - b)
+  const spotWords = (ns) => `hot spot${ns.length > 1 ? 's' : ''} ${ns.join(' and ')}`
+  const allSkim = (paths) => paths.length > 0 && paths.every((p) => marks.skim[p])
+
   /** Folder path → open, for folders the reader toggled. */
   const toggled = new Map()
   const isOpen = (f) =>
@@ -474,7 +481,18 @@
 
   function cardLines(key) {
     const box = boxes.get(key)
-    const lines = [el('code', '', box.path), el('div', '', box.status)]
+    const lines = [el('code', '', box.path)]
+    const paths = box.files.map((f) => f.path)
+    const said = box.collapsed ? undefined : marks.responsibilities[paths[0]]
+    if (said) lines.push(el('div', 'resp', said))
+    lines.push(el('div', '', box.status))
+    const ns = spotsIn(paths)
+    if (ns.length) lines.push(el('div', 'card-spot', `Hot spot ${ns.join(', ')}`))
+    if (allSkim(paths)) {
+      const entries = new Map(paths.map((p) => [marks.skim[p].entry, marks.skim[p].why]))
+      for (const [entry, why] of entries)
+        lines.push(el('div', 'skim-why', `Skim only (${entry}): ${why}`))
+    }
     for (const file of box.files)
       lines.push(...reachLines(file, box.collapsed ? `${baseName(file.path)}: ` : ''))
     // A uses arrow stands in only for a kept import, so only those leave the list.
@@ -618,6 +636,13 @@
     return chip
   }
 
+  /** A box's hot spot numbers on its top-right corner, outside the box; only seen. */
+  function spotBadge(ns, x, y) {
+    const badge = at(el('span', 'spot-n', ns.join(' ')), x + NW + 4, y - 9)
+    badge.setAttribute('aria-hidden', 'true')
+    return badge
+  }
+
   /** Every file in a folder and below. */
   const filesIn = (folder) => [...folder.files, ...folder.folders.flatMap(filesIn)]
 
@@ -709,7 +734,14 @@
           : ''
         if (file.reach) box.append(hidden(`↗${file.reach}`, 'reach'))
         box.title = file.path
-        box.setAttribute('aria-label', `${file.path}, ${describe(file)}${reach}`)
+        const ns = marks.spots[file.path] ?? []
+        const skim = marks.skim[file.path] ? ', skim only' : ''
+        if (skim) box.classList.add('skim')
+        box.setAttribute(
+          'aria-label',
+          `${file.path}, ${describe(file)}${reach}${ns.length ? `, ${spotWords(ns)}` : ''}${skim}`,
+        )
+        if (ns.length) add(spotBadge(ns, x, y))
         boxes.set(file.path, {
           x,
           y,
@@ -739,6 +771,18 @@
           words.push(apiWords(folder.api))
         }
         box.append(chips)
+        const inside = filesIn(folder)
+          .filter(visible)
+          .map((f) => f.path)
+        const ns = spotsIn(inside)
+        if (ns.length) {
+          words.push(spotWords(ns))
+          add(spotBadge(ns, x, y))
+        }
+        if (allSkim(inside)) {
+          box.classList.add('skim')
+          words.push('skim only')
+        }
         box.setAttribute('aria-label', `${folder.path}/, collapsed, ${words.join(', ')}`)
         const status = `${folder.changed} changed file${folder.changed === 1 ? '' : 's'}, collapsed`
         boxes.set(folder.path, {
@@ -785,7 +829,14 @@
             el('span', 'name', file.path.slice(cut)),
           )
           at(row, x, top + 26 + j * STRIP_ROW, STRIPW, 24)
-          row.title = `${file.path} · ${describe(file)}`
+          const skim = marks.skim[file.path]
+          row.title = `${file.path} · ${describe(file)}${skim ? ` · skim only: ${skim.why}` : ''}`
+          row.dataset.path = file.path
+          // Show on map moves focus here, so a reader knows where they landed.
+          row.tabIndex = -1
+          if (skim) row.classList.add('skim')
+          const ns = marks.spots[file.path]
+          if (ns) row.append(el('span', 'spot-n inline', ns.join(' ')))
           add(row)
         })
         bottom = Math.max(bottom, top + 26 + strip.files.length * STRIP_ROW)
@@ -797,6 +848,51 @@
     if (pinned !== null && !boxes.has(pinned)) pinned = null
     refresh()
   }
+
+  /** The folders from a layer down to the one that holds `path`; none when off the map. */
+  function chainTo(path) {
+    const walk = (folder) => {
+      if (folder.files.some((f) => f.path === path)) return [folder]
+      for (const sub of folder.folders) {
+        const found = walk(sub)
+        if (found) return [folder, ...found]
+      }
+      return null
+    }
+    for (const layer of data.layers) {
+      const found = walk(layer.root)
+      if (found) return found
+    }
+    return []
+  }
+
+  // A hot spot's "Show on map" opens the folders around its file, pins the box and moves
+  // focus there, so its card opens and a screen reader hears its summary. A strip row
+  // cannot be pinned; it gets focus and a short flash. The hot spot list comes after this
+  // script, so one listener on the document serves every button.
+  function showOnMap(path) {
+    for (const folder of chainTo(path))
+      if (folder.collapsible) toggled.set(folder.path, true)
+    pinned = path
+    render()
+    const target =
+      [...canvas.querySelectorAll('.node[data-key]')].find(
+        (e) => e.dataset.key === path,
+      ) ??
+      [...canvas.querySelectorAll('.strip-file')].find((e) => e.dataset.path === path)
+    if (!target) return
+    target.scrollIntoView?.({ block: 'center' })
+    target.focus({ preventScroll: true })
+    if (target.classList.contains('strip-file')) {
+      target.classList.remove('flash')
+      void target.offsetWidth
+      target.classList.add('flash')
+    }
+  }
+  document.addEventListener('click', (e) => {
+    const button = e.target.closest?.('.show-on-map[data-path]')
+    if (button && section.isConnected) showOnMap(button.dataset.path)
+  })
 
   render()
 })()

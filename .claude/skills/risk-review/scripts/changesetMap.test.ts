@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { ChangedFile } from './changedDiff.ts'
 import { renderMapSection } from './changesetMap.ts'
 import type { ImportChange } from './reviewImports.ts'
+import type { MapMarks } from './reviewMarks.ts'
 import { buildChangesetMap, type MapCode, type MapConfig } from './reviewMap.ts'
 import type { Section } from './reviewSignals.ts'
 
@@ -30,7 +31,11 @@ const added = (path: string): ChangedFile => ({ path, status: 'added' })
 
 // Inserted markup does not run its scripts, so each one is replaced by a fresh copy, the
 // way the browser runs them when it loads the page.
-function open(files: ChangedFile[], imports: ImportChange[] | Section<MapCode> = []) {
+function open(
+  files: ChangedFile[],
+  imports: ImportChange[] | Section<MapCode> = [],
+  marks?: MapMarks,
+) {
   const errors: string[] = []
   const onError = (e: ErrorEvent) => errors.push(e.message)
   window.addEventListener('error', onError)
@@ -38,7 +43,10 @@ function open(files: ChangedFile[], imports: ImportChange[] | Section<MapCode> =
   const section = Array.isArray(imports)
     ? { status: 'ok' as const, edges: imports }
     : imports
-  document.body.innerHTML = renderMapSection(buildChangesetMap(files, config, section))
+  document.body.innerHTML = renderMapSection(
+    buildChangesetMap(files, config, section),
+    marks,
+  )
   for (const old of document.body.querySelectorAll('script:not([type])')) {
     const fresh = document.createElement('script')
     fresh.textContent = old.textContent
@@ -746,5 +754,160 @@ describe('reach', () => {
     box('b.ts').click()
     importers(true)
     expect(box('b.ts').getAttribute('aria-pressed')).toBe('true')
+  })
+})
+
+describe('review marks', () => {
+  const BUTTON = 'src/features/save/ui/Button.tsx'
+  const C = 'src/features/busy/model/c.ts'
+  const files: ChangedFile[] = [
+    ...busySlice,
+    added(BUTTON),
+    added('src/features/save/ui/Label.tsx'),
+    added('docs/a.md'),
+    added('docs/b.md'),
+  ]
+  const marks = (m: Partial<MapMarks>): MapMarks => ({
+    spots: {},
+    skim: {},
+    responsibilities: {},
+    ...m,
+  })
+  const allBusy = Object.fromEntries(
+    busySlice.map((f) => [f.path, { entry: 'src/features/busy/', why: 'Styling only.' }]),
+  )
+  const node = (key: string) => {
+    const found = [
+      ...document.querySelectorAll<HTMLElement>('#changeset-map .node[data-key]'),
+    ].find((b) => b.dataset.key === key)
+    if (!found) throw new Error(`no box ${key}`)
+    return found
+  }
+  const row = (path: string) => {
+    const found = [...document.querySelectorAll<HTMLElement>('.strip-file')].find(
+      (r) => r.dataset.path === path,
+    )
+    if (!found) throw new Error(`no row ${path}`)
+    return found
+  }
+  const badges = () =>
+    [...document.querySelectorAll('#changeset-map .spot-n')].map((b) => b.textContent)
+  const card = () => document.getElementById('map-card')
+  const showButton = (path: string) => {
+    const button = document.createElement('button')
+    button.className = 'show-on-map'
+    button.dataset.path = path
+    document.body.append(button)
+    return button
+  }
+
+  it('puts the hot spot numbers on a box and tells a screen reader', () => {
+    const { errors } = open(files, [], marks({ spots: { [BUTTON]: [2, 5] } }))
+    expect(errors).toEqual([])
+    expect(badges()).toContain('2 5')
+    const badge = [...document.querySelectorAll('#changeset-map .spot-n')].find(
+      (b) => b.textContent === '2 5',
+    )
+    expect(badge?.getAttribute('aria-hidden')).toBe('true')
+    expect(node(BUTTON).getAttribute('aria-label')).toMatch(/, hot spots 2 and 5$/)
+  })
+
+  it('shows the numbers inside a collapsed folder on its box', () => {
+    open(files, [], marks({ spots: { [C]: [3] } }))
+    const busy = node('src/features/busy/model')
+    expect(busy.classList).toContain('collapsed')
+    expect(busy.getAttribute('aria-label')).toContain('hot spot 3')
+    expect(badges()).toEqual(['3'])
+  })
+
+  it('fades a skim-only box and a folder only when all of it is skim-only', () => {
+    open(files, [], marks({ skim: allBusy }))
+    const busy = node('src/features/busy/model')
+    expect(busy.classList).toContain('skim')
+    expect(busy.getAttribute('aria-label')).toMatch(/, skim only$/)
+
+    const { [C]: _left, ...partly } = allBusy
+    open(files, [], marks({ skim: partly }))
+    expect(node('src/features/busy/model').classList).not.toContain('skim')
+  })
+
+  it('fades a skim-only file box and says so', () => {
+    open(files, [], marks({ skim: { [BUTTON]: { entry: BUTTON, why: 'Moved.' } } }))
+    expect(node(BUTTON).classList).toContain('skim')
+    expect(node(BUTTON).getAttribute('aria-label')).toMatch(/, skim only$/)
+  })
+
+  it('shows the responsibility as text, the hot spots and the skim reason in the card', () => {
+    open(
+      files,
+      [],
+      marks({
+        spots: { [BUTTON]: [2, 5] },
+        responsibilities: { [BUTTON]: '<b>x</b> saves the session' },
+        skim: allBusy,
+      }),
+    )
+    node(BUTTON).dispatchEvent(new FocusEvent('focus'))
+    expect(card()?.hidden).toBe(false)
+    expect(card()?.querySelector('b')).toBeNull()
+    expect(card()?.querySelector('.resp')?.textContent).toBe('<b>x</b> saves the session')
+    expect(card()?.textContent).toContain('Hot spot 2, 5')
+
+    node('src/features/busy/model').dispatchEvent(new MouseEvent('mouseenter'))
+    expect(card()?.querySelector('.skim-why')?.textContent).toBe(
+      'Skim only (src/features/busy/): Styling only.',
+    )
+  })
+
+  it('marks strip rows with their number and the skim look', () => {
+    open(
+      files,
+      [],
+      marks({
+        spots: { 'docs/a.md': [1] },
+        skim: { 'docs/b.md': { entry: 'docs/', why: 'Docs.' } },
+      }),
+    )
+    expect(row('docs/a.md').querySelector('.spot-n')?.textContent).toBe('1')
+    expect(row('docs/a.md').classList).not.toContain('skim')
+    expect(row('docs/b.md').classList).toContain('skim')
+    expect(row('docs/b.md').title).toContain('skim only: Docs.')
+  })
+
+  it('opens the folders, pins and focuses the box on Show on map', () => {
+    const { errors } = open(files, [], marks({ spots: { [C]: [1] } }))
+    const button = showButton(C)
+    button.click()
+    expect(errors).toEqual([])
+    expect(document.querySelector('.node.collapsed')).toBeNull()
+    expect(node(C).getAttribute('aria-pressed')).toBe('true')
+    expect(document.activeElement).toBe(node(C))
+    expect(card()?.hidden).toBe(false)
+    button.click()
+    expect(node(C).getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('focuses a strip row on Show on map', () => {
+    open(files, [], marks({ spots: { 'docs/a.md': [1] } }))
+    showButton('docs/a.md').click()
+    expect(document.activeElement).toBe(row('docs/a.md'))
+    expect(row('docs/a.md').classList).toContain('flash')
+  })
+
+  it('keeps opened folders and marks when the importers checkbox redraws the map', () => {
+    open(files, [], marks({ spots: { [C]: [1] } }))
+    showButton(C).click()
+    const input = document.getElementById('show-importers') as HTMLInputElement
+    input.checked = true
+    input.dispatchEvent(new Event('change'))
+    expect(document.querySelector('.node.collapsed')).toBeNull()
+    expect(badges()).toEqual(['1'])
+  })
+
+  it('draws no marks without them', () => {
+    const { errors } = open(files)
+    expect(errors).toEqual([])
+    expect(badges()).toEqual([])
+    expect(document.querySelector('#changeset-map .skim:not(.sw)')).toBeNull()
   })
 })

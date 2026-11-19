@@ -476,3 +476,58 @@
   color: var(--muted);
   font-weight: 500;
 }
+#changeset-map .spot-n {
+  position: absolute;
+  z-index: 3;
+  transform: translateX(-100%);
+  pointer-events: none;
+  box-shadow: 0 0 0 2px var(--bg);
+}
+#changeset-map .spot-n.inline {
+  position: static;
+  transform: none;
+  margin-left: auto;
+  padding: 2px 6px;
+  font-size: 10px;
+  box-shadow: none;
+}
+#changeset-map .node.skim {
+  border-color: color-mix(in srgb, var(--frame) 60%, transparent);
+}
+#changeset-map .map-card .resp {
+  margin: 3px 0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+#changeset-map .map-card .card-spot {
+  margin-top: 4px;
+  font-weight: 700;
+  color: var(--chg);
+}
+#changeset-map .map-card .skim-why {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+#changeset-map .strip-file:focus {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+#changeset-map .strip-file.flash {
+  animation: map-flash 1.6s ease-out;
+}
+@keyframes map-flash {
+  0%,
+  40% {
+    box-shadow: 0 0 0 3px var(--focus);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #changeset-map .strip-file.flash {
+    animation: none;
+  }
+}
