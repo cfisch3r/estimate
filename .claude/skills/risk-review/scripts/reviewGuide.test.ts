@@ -639,7 +639,7 @@ describe('changeset map', () => {
     )
     expect(html.match(/class="show-on-map"/g)).toHaveLength(1)
     expect(html).toContain(
-      '<button type="button" class="show-on-map" data-path="src/domain/a.ts" aria-label="Show src/domain/a.ts on map">Show on map</button>',
+      '<button type="button" class="show-on-map" data-path="src/domain/a.ts">Show on map<span class="sr">: src/domain/a.ts</span></button>',
     )
   })
 

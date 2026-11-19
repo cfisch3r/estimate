@@ -917,8 +917,10 @@ describe('review marks', () => {
     expect(row('docs/a.md').querySelector('.spot-n')?.getAttribute('aria-hidden')).toBe(
       'true',
     )
-    expect(row('docs/a.md').querySelector('.sr')?.textContent).toBe(', hot spot 1')
-    expect(row('docs/b.md').querySelector('.sr')?.textContent).toBe(', skim only: Docs.')
+    expect(row('docs/a.md').querySelector('.sr')?.textContent).toBe(', added, hot spot 1')
+    expect(row('docs/b.md').querySelector('.sr')?.textContent).toBe(
+      ', added, skim only: Docs.',
+    )
     expect(row('docs/a.md').classList).not.toContain('skim')
     expect(row('docs/b.md').classList).toContain('skim')
     expect(row('docs/b.md').title).toContain('skim only: Docs.')
@@ -945,6 +947,30 @@ describe('review marks', () => {
     document.dispatchEvent(new MouseEvent('pointermove'))
     node(BUTTON).dispatchEvent(new MouseEvent('mouseenter'))
     expect(card()?.textContent).toContain(BUTTON)
+  })
+
+  it('puts each strip row in a list named by its strip title', () => {
+    open(files, [], marks({}))
+    expect(row('docs/a.md').getAttribute('role')).toBe('listitem')
+    const list = row('docs/a.md').parentElement
+    expect(list?.getAttribute('role')).toBe('list')
+    const title = document.getElementById(list?.getAttribute('aria-labelledby') ?? '')
+    expect(title?.textContent).toBe('Docs (2)')
+  })
+
+  it('returns focus to the Show on map button on Escape', () => {
+    open(files, [], marks({ spots: { [C]: [1], 'docs/a.md': [2] } }))
+    const toBox = showButton(C)
+    toBox.click()
+    expect(document.activeElement).toBe(node(C))
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(document.activeElement).toBe(toBox)
+
+    const toRow = showButton('docs/a.md')
+    toRow.click()
+    expect(document.activeElement).toBe(row('docs/a.md'))
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(document.activeElement).toBe(toRow)
   })
 
   it('focuses a strip row on Show on map', () => {

@@ -270,6 +270,8 @@
   let pinned = null
   /** True from "Show on map" until the pointer moves: a hover then is only the scroll. */
   let stillPointer = false
+  /** The "Show on map" button that moved focus into the map, and where it moved it. */
+  let shownFrom = null
   const active = () => hovered ?? focused ?? pinned
   /** Box key (a file path, or a collapsed folder's path) → where it is drawn and its card. */
   let boxes = new Map()
@@ -618,7 +620,20 @@
   // Escape closes the card, whether hover, focus or a pin opened it; it does nothing while
   // no card is open.
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape' || active() === null) return
+    if (e.key !== 'Escape') return
+    // Escape on what "Show on map" focused goes back to its button, so a reader can go on
+    // with the next hot spot without passing through the whole map.
+    const back = shownFrom
+    shownFrom = null
+    if (back && back.target === document.activeElement && back.button.isConnected) {
+      hovered = null
+      focused = null
+      pinned = null
+      refresh()
+      back.button.focus()
+      return
+    }
+    if (active() === null) return
     hovered = null
     focused = null
     pinned = null
@@ -831,7 +846,17 @@
       let bottom = top
       data.strips.forEach((strip, i) => {
         const x = i * (STRIPW + G)
-        add(at(el('div', 'strip-title', `${strip.name} (${strip.files.length})`), x, top))
+        const title = at(
+          el('div', 'strip-title', `${strip.name} (${strip.files.length})`),
+          x,
+          top,
+        )
+        title.id = `map-strip-${i}`
+        add(title)
+        // The rows are a list named by the strip's title; the list itself takes no place.
+        const list = add(el('div', 'strip-list'))
+        list.setAttribute('role', 'list')
+        list.setAttribute('aria-labelledby', title.id)
         strip.files.forEach((file, j) => {
           // The file name stays whole; a long folder path is shortened instead.
           const cut = file.path.lastIndexOf('/') + 1
@@ -854,10 +879,17 @@
             badge.setAttribute('aria-hidden', 'true')
             row.append(badge)
           }
-          // A row is no control, so what the badge and the stripes show is hidden text.
-          const spoken = `${ns ? `, ${spotWords(ns)}` : ''}${skim ? `, skim only: ${skim.why}` : ''}`
-          if (spoken) row.append(el('span', 'sr', spoken))
-          add(row)
+          // A row is no control, so its status and what the badge and the stripes show
+          // are hidden text.
+          row.setAttribute('role', 'listitem')
+          row.append(
+            el(
+              'span',
+              'sr',
+              `, ${describe(file)}${ns ? `, ${spotWords(ns)}` : ''}${skim ? `, skim only: ${skim.why}` : ''}`,
+            ),
+          )
+          list.append(row)
         })
         bottom = Math.max(bottom, top + 26 + strip.files.length * STRIP_ROW)
       })
@@ -890,7 +922,7 @@
   // focus there, so its card opens and a screen reader hears its summary. A strip row
   // cannot be pinned; it gets focus and a short flash. The hot spot list comes after this
   // script, so one listener on the document serves every button.
-  function showOnMap(path) {
+  function showOnMap(path, button) {
     // The scroll moves another box under a pointer that did not move; that is no hover.
     stillPointer = true
     hovered = null
@@ -906,6 +938,7 @@
     if (!target) return
     target.scrollIntoView?.({ block: 'center' })
     target.focus({ preventScroll: true })
+    shownFrom = { button, target }
     if (target.classList.contains('strip-file')) {
       target.classList.remove('flash')
       void target.offsetWidth
@@ -917,7 +950,7 @@
   })
   document.addEventListener('click', (e) => {
     const button = e.target.closest?.('.show-on-map[data-path]')
-    if (button && section.isConnected) showOnMap(button.dataset.path)
+    if (button && section.isConnected) showOnMap(button.dataset.path, button)
   })
 
   render()

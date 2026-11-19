@@ -471,7 +471,7 @@
   background-image: repeating-linear-gradient(
     135deg,
     transparent 0 4px,
-    var(--bg) 4px 7px
+    color-mix(in srgb, var(--frame) 35%, transparent) 4px 7px
   );
   color: var(--muted);
   font-weight: 500;
@@ -490,9 +490,6 @@
   padding: 2px 6px;
   font-size: 10px;
   box-shadow: none;
-}
-#changeset-map .node.skim {
-  border-color: color-mix(in srgb, var(--frame) 60%, transparent);
 }
 #changeset-map .map-card .resp {
   margin: 3px 0;
