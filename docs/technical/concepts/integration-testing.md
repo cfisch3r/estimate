@@ -74,14 +74,17 @@ flowchart TD
 | `remote.ts` | `Remote<Port>`, the type of a port as seen from Node (every operation async, `on…` callbacks left out); `Harness`, what `window.__harness` holds; `remote()`, the one generic forwarder |
 | `harness.ts` | Imports the real adapters and installs `window.__harness`, declared `satisfies Harness` |
 | `vite.harness.config.ts` | Serves the harness page in `--mode e2e`, so the network adapter picks the local relay ([ADR-007](../adr/007-e2e-dual-mode-signaling.md)) |
-| `playwright.config.ts` | Starts the harness server (local mode only, `--strictPort`) and runs the `*-integration` projects with the harness as `baseURL` |
+| `playwright.config.ts` | Starts the harness server (local mode only, never reused, `--strictPort`, so a busy port fails the run) and runs the `*-integration` projects with the harness as `baseURL` |
 
 ## Drivers follow the ports
 
 A driver is never written by hand. Its type is derived from the port type, and `remote()`
 forwards any operation to `window.__harness[entry]`. Because the harness object is declared
-`satisfies Harness`, renaming, removing or re-typing a port operation fails
-`pnpm typecheck` both in the harness and in every step that uses it.
+`satisfies Harness`, renaming or removing a port operation, or changing a parameter's type,
+fails `pnpm typecheck` both in the harness and in every step that uses it. A parameter
+added to the port is the one exception the harness side doesn't catch, because TypeScript
+accepts a function with fewer parameters: when a port gains a parameter, update its
+adapter in the same change.
 
 The one partly hand-written driver is the file driver: its parameters come from the port,
 but it also waits for Playwright's `download` event and returns the saved file's name and

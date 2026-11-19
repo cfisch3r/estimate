@@ -48,11 +48,15 @@ const relayWebServer = {
   env: { TRYSTERO_RELAY_PORT: String(RELAY_PORT) },
 }
 
-/** The integration Test Level's harness server. `--strictPort` makes a busy port
- *  fail loudly instead of quietly moving to another one. Local mode only: the
- *  integration projects need the local relay, which real-world mode doesn't start. */
+/** The integration Test Level's harness server. Never reused: a server already on
+ *  the port (another worktree's harness, say) would run the scenarios against the
+ *  wrong checkout. With `--strictPort` a busy port then fails loudly instead. A
+ *  Vite dev server starts in about a second, so reuse would save nothing. Local
+ *  mode only: the integration projects need the local relay, which real-world
+ *  mode doesn't start. */
 const harnessWebServer = {
   ...webServerDefaults,
+  reuseExistingServer: false,
   command: `pnpm exec vite --config vite.harness.config.ts --port ${HARNESS_PORT} --strictPort`,
   url: HARNESS_URL,
   env: { VITE_TRYSTERO_RELAY_URL: RELAY_URL },

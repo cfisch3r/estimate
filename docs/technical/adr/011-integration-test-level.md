@@ -39,8 +39,11 @@ replaces ADR-010's deferred `protocol` Test Level.
 - **Port drivers**<br>
   Steps never call `page.evaluate`. They call drivers whose types are derived from the
   port types (`Remote<Port>`: every operation async, `on…` callbacks left out), through one
-  generic forwarder. The harness object is declared `satisfies Harness`. A changed port
-  therefore fails `pnpm typecheck` in the harness and in every step that uses it.
+  generic forwarder. The harness object is declared `satisfies Harness`. Renaming or
+  removing a port operation, or changing a parameter's type, therefore fails
+  `pnpm typecheck` in the harness and in every step that uses it. A parameter added to
+  the port is the one exception the harness side doesn't catch: TypeScript accepts a
+  function with fewer parameters.
 - **Callbacks**<br>
   Callbacks can't cross from the page into Node. The harness appends each one to an
   in-page journal, which steps read and wait on with `expect.poll`. The journal arrives
@@ -71,7 +74,9 @@ replaces ADR-010's deferred `protocol` Test Level.
 ## Consequences
 
 - **A third web server** next to the relay and the app build: the harness dev server on
-  its own port, with `--strictPort`, so a stale server from an earlier run fails loudly.
+  its own port. It's never reused and starts with `--strictPort`, so a server already on
+  that port (another worktree's harness, for example) makes the run fail loudly instead
+  of testing the wrong checkout.
 - **Port interfaces live in React-free files** under `src/application/ports/outbound/`;
   the React contexts that provide them import those types. That keeps React out of the
   harness's dependency graph.
