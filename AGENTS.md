@@ -33,7 +33,7 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 
 - `docs/technical/architecture.md` — the technical architecture in arc42 form: context view, layer and component views, crosscutting concepts, risks. Start here for where code belongs
 - `docs/technical/architecture-rules.md` — the architecture rules with what enforces each; cite them by name in reviews
-- `docs/technical/pr-review-catalogue.md` — the PR review catalogue: named categories of change with a minimum risk each, so a review can cite them by name (`wire-contract`, `domain-math`); the data block is read by `pnpm review:floor`
+- `docs/technical/pr-review-catalogue.md` — the PR review catalogue: named categories of change with a minimum risk each, so a review can cite them by name (`wire-contract`, `domain-math`); the data block is read by `pnpm review:floor`; how the floor and the Review guide work is in the plugin's manual, `.claude/skills/pr-review-guide/docs/`
 - `docs/technical/adr/001-live-collaboration-architecture.md` — accepted decision on the peer-to-peer live-collaboration architecture
 - `docs/technical/adr/002-testing-strategy.md` — accepted decision on the layered test strategy: unit/component, plus a thin Playwright e2e layer since #26 landed the real browser-connection behaviour that was this ADR's own trigger — see that ADR's 2026-09-07 and 2026-09-30 updates, and ADR-007 for the e2e layer's own design
 - `docs/technical/adr/007-e2e-dual-mode-signaling.md` — accepted decision on dual-mode signaling for the Playwright e2e suite: a locally self-hosted relay by default (blocking CI), production Nostr relays in a separate nightly/manual job
@@ -166,7 +166,8 @@ merge (apart from scripts run through `pnpm`).
   never lower the floor, and replies with one JSON answer (risk, categories, hot spots,
   skim-only files, what each changed source file is for, what could not be verified). `pnpm review:guide` turns that into a page,
   which is published as a private artifact. Changes no code. Its plugin also holds the floor
-  hook after `gh pr create` and the scripts behind `pnpm review:*`.
+  hook after `gh pr create` and the scripts behind `pnpm review:*`, and its manual in
+  `.claude/skills/pr-review-guide/docs/` (start with its `README.md`).
 - **`/accessibility-review`** — read-only accessibility audit run in the
   `accessibility-review:reviewer` agent. Covers judgment calls oxlint's `jsx-a11y` plugin and
   the `jest-axe`/`@axe-core/playwright` scans can't make: ARIA pattern appropriateness,

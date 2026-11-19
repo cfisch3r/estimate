@@ -27,7 +27,7 @@ doc, add it here instead of guessing.
 
 ## Review
 
-The words for judging how closely a change needs to be read ([pr-review-catalogue.md](technical/pr-review-catalogue.md)).
+The words for judging how closely a change needs to be read ([pr-review-catalogue.md](technical/pr-review-catalogue.md), and the Review guide plugin's [manual](../.claude/skills/pr-review-guide/docs/README.md)).
 
 | Term | Meaning in this repo | Avoid |
 |---|---|---|
