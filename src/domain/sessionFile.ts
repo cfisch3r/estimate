@@ -25,6 +25,9 @@ const NOT_A_SESSION_FILE = "This isn't an EstiMate session file."
 /** The fallback slug for a session whose name has no usable characters. */
 const UNNAMED = 'estimate-session'
 
+/** The session file's MIME type: it is JSON (`writeSessionFile`). */
+export const SESSION_FILE_CONTENT_TYPE = 'application/json'
+
 /**
  * The download name for a saved session: the slugified session name plus the
  * save date, ending in `.estimate.json` — so saved files in one downloads

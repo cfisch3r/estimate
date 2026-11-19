@@ -18,5 +18,6 @@ Then('the browser saves a file named {string}', async ({ state }, fileName: stri
 })
 
 Then('the saved file contains exactly {string}', async ({ state }, text: string) => {
-  expect(requireState(state, 'savedFile').content).toBe(text)
+  // Bytes, not decoded text: a change of encoding must not pass unnoticed.
+  expect(requireState(state, 'savedFile').bytes).toEqual(Buffer.from(text, 'utf8'))
 })

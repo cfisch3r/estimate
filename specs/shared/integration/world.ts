@@ -6,7 +6,7 @@ import { remote } from './remote'
 import type { Remote } from './remote'
 
 /** A file the browser actually saved, as Playwright's `download` event saw it. */
-export type SavedFile = { suggestedName: string; content: string }
+export type SavedFile = { suggestedName: string; bytes: Buffer }
 
 /** The file adapter, driven through its port. Its parameters come from the
  *  port; only the result is hand-written, because besides calling the port it
@@ -39,7 +39,7 @@ export function requireState<K extends keyof ScenarioState>(
 }
 
 function fileDriver(page: Page): FileDriver {
-  const port = remote<FileDownloadApi>(page, 'file')
+  const port = remote(page, 'file')
   return {
     async download(...args) {
       const [download] = await Promise.all([
@@ -49,7 +49,7 @@ function fileDriver(page: Page): FileDriver {
       const path = await download.path()
       return {
         suggestedName: download.suggestedFilename(),
-        content: await readFile(path, 'utf8'),
+        bytes: await readFile(path),
       }
     },
   }

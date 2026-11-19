@@ -4,7 +4,9 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { quickpickle } from 'quickpickle'
 
-const { version } = JSON.parse(
+/** The app's version from package.json, shown in the UI as `__APP_VERSION__`.
+ *  `vite.harness.config.ts` reuses it. */
+export const { version } = JSON.parse(
   readFileSync(new URL('./package.json', import.meta.url), 'utf-8'),
 ) as { version: string }
 

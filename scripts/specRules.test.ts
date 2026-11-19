@@ -29,6 +29,8 @@ function write(file: string, source: string) {
 write('src/adapters/file/fileDownload.ts', 'export const download = 1\n')
 write('src/application/useCases/save.ts', 'export const save = 1\n')
 write('src/application/ports/outbound/fileDownload.ts', 'export type Port = 1\n')
+write('src/application/ports/fileDownloadContext.ts', 'export const context = 1\n')
+write('src/application/stores/session.ts', 'export type Store = 1\n')
 write('src/domain/value.ts', 'export const value = 1\n')
 
 const reported: Array<{ rule: string; file: string; source: string }> = [
@@ -37,6 +39,18 @@ const reported: Array<{ rule: string; file: string; source: string }> = [
     file: 'specs/shared/integration/harness/useCase.ts',
     source:
       "import { save } from '../../../../src/application/useCases/save'\nexport const x = save\n",
+  },
+  {
+    rule: 'specs-integration-harness-imports-adapters-ports-domain',
+    file: 'specs/shared/integration/harness/context.ts',
+    source:
+      "import { context } from '../../../../src/application/ports/fileDownloadContext'\nexport const x = context\n",
+  },
+  {
+    rule: 'specs-integration-only-port-and-domain-types',
+    file: 'specs/demo/integration/storeType.ts',
+    source:
+      "import type { Store } from '../../../src/application/stores/session'\nexport type X = Store\n",
   },
   {
     rule: 'specs-integration-type-only-src',
@@ -57,6 +71,11 @@ const allowed: Array<{ file: string; source: string }> = [
     file: 'specs/demo/integration/typeOnly.ts',
     source:
       "import type { Port } from '../../../src/application/ports/outbound/fileDownload'\nexport type X = Port\n",
+  },
+  {
+    file: 'specs/shared/integration/harness/port.ts',
+    source:
+      "import type { Port } from '../../../../src/application/ports/outbound/fileDownload'\nexport type X = Port\n",
   },
   {
     file: 'specs/shared/integration/harness/harness.ts',

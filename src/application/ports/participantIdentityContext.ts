@@ -2,7 +2,6 @@ import { createContext, useContext } from 'react'
 import type { ParticipantIdentityApi } from './outbound/participantIdentity'
 
 /** Provides the participant-identity port (`./outbound/participantIdentity`) to the join use case. */
-
 export const ParticipantIdentityContext = createContext<ParticipantIdentityApi | null>(
   null,
 )
