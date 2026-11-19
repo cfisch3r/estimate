@@ -168,6 +168,11 @@ function readText(cwd: string, path: string): string {
   }
 }
 
+/** The text of a file at a commit-ish by its exact path, or undefined when it has none. */
+export function fileAt(ref: string, path: string, cwd: string): string | undefined {
+  return gitOrUndefined(cwd, ['show', `${ref}:${path}`])
+}
+
 /** The text of a file at a commit-ish, for reading the catalogue from the base. Falls back
  * to `path`'s pre-rename location at `ref` when `path` has no blob there directly, so every
  * caller is rename-tolerant by construction rather than having to wire that in itself. */

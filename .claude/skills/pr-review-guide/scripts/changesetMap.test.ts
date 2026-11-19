@@ -232,7 +232,7 @@ describe('renderMapSection', () => {
 
   it('shows strips and empty layers for a branch outside src', () => {
     const { boxes, errors } = open([
-      added('.claude/skills/pr-review-guide/changeset-map.yaml'),
+      added('.claude/skills/pr-review-guide/SKILL.md'),
       added('docs/technical/pr-review-catalogue.md'),
     ])
     expect(errors).toEqual([])
@@ -244,7 +244,7 @@ describe('renderMapSection', () => {
       ),
     ).toEqual([
       'docs/technical/pr-review-catalogue.md',
-      '.claude/skills/pr-review-guide/changeset-map.yaml',
+      '.claude/skills/pr-review-guide/SKILL.md',
     ])
   })
 

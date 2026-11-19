@@ -6,7 +6,13 @@ import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import type { ChangedFile, Diff } from './changedDiff.ts'
 import { readGitDiff, renameSourceAt, repoRoot, showAt } from './changedDiff.ts'
-import { evaluateFloor, parseCatalogue, type Floor } from './reviewFloor.ts'
+import {
+  currentCatalogueNames,
+  evaluateFloor,
+  parseCatalogue,
+  readFloor,
+  type Floor,
+} from './reviewFloor.ts'
 
 // The floor decides the minimum risk of a pull request, and the agent may never go below
 // it. Each case plants one change and checks the category and the floor it produces, so a
@@ -56,6 +62,7 @@ describe('paths', () => {
     ['live-session-state', 'src/application/stores/round.ts', 'high'],
     ['wire-contract', 'src/adapters/network/wireParse.ts', 'high'],
     ['guardrail-weakened', '.oxlintrc.json', 'high'],
+    ['guardrail-weakened', 'pr-review-guide.yaml', 'high'],
     ['release-and-deploy', '.github/workflows/ci.yml', 'high'],
     ['dependencies', 'pnpm-lock.yaml', 'medium'],
   ])('puts a change to a %s file at its minimum risk', (name, path, risk) => {
@@ -507,5 +514,35 @@ describe('showAt', () => {
     expect(showAt(base, 'other.md', sandbox.dir)).toBe('unchanged\n')
     expect(showAt(base, 'renamed-catalogue.md', sandbox.dir)).toContain('minimum risk')
     expect(() => showAt(base, 'missing.md', sandbox.dir)).toThrow()
+  })
+})
+
+describe('readFloor', () => {
+  const sandbox = gitSandbox('review-floor-settings-')
+  afterAll(() => rmSync(sandbox.dir, { recursive: true, force: true }))
+  const { git, write } = sandbox
+
+  // The project's settings name the catalogue; the floor uses that one, read from the
+  // base branch, so the pull request below cannot swap in a catalogue without the category.
+  it('sets the floor from the catalogue the settings name on the base branch', () => {
+    git('init', '-q', '-b', 'main')
+    const catalogue = (risk: string) =>
+      '```yaml\n- name: notes\n  min-risk: ' + risk + "\n  paths: ['*.txt']\n```\n"
+    write('pr-review-guide.yaml', 'catalogue: risk/strict.md\n')
+    write('risk/strict.md', catalogue('high'))
+    write('risk/lenient.md', catalogue('low'))
+    git('add', '.')
+    git('commit', '-q', '-m', 'base')
+
+    git('checkout', '-q', '-b', 'feature')
+    write('pr-review-guide.yaml', 'catalogue: risk/lenient.md\n')
+    write('notes.txt', 'a note\n')
+    git('add', '.')
+    git('commit', '-q', '-m', 'change')
+
+    const floor = readFloor({ cwd: sandbox.dir })
+    expect(floor.categories.map((c) => c.name)).toEqual(['notes'])
+    expect(floor.floor).toBe('high')
+    expect(currentCatalogueNames(floor.base, sandbox.dir)).toEqual(['notes'])
   })
 })

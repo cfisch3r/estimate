@@ -8,10 +8,11 @@ import {
   type ChangedFile,
   type Diff,
 } from './changedDiff.ts'
+import { readSettings } from './reviewSettings.ts'
 
-// The review floor: the minimum risk of a change, set by the catalogue in
-// docs/technical/pr-review-catalogue.md. No model, no coverage run, no network. The `pr-review-guide:reviewer` agent may
-// raise the result and never lower it.
+// The review floor: the minimum risk of a change, set by the catalogue the project names in
+// `pr-review-guide.yaml`. No model, no coverage run, no network. The `pr-review-guide:reviewer`
+// agent may raise the result and never lower it.
 //
 //   pnpm review:floor              the branch against main
 //   pnpm review:floor <commit>     only what changed since <commit>
@@ -21,8 +22,6 @@ import {
 
 export const RISK_LEVELS = ['low', 'medium', 'high', 'critical'] as const
 export type RiskLevel = (typeof RISK_LEVELS)[number]
-
-const CATALOGUE_PATH = 'docs/technical/pr-review-catalogue.md'
 
 /** Each diff check returns the changed files that make it true. */
 const DIFF_CHECKS = {
@@ -67,18 +66,17 @@ function isStringArray(value: unknown): value is string[] {
 }
 
 /** Reads the one fenced `yaml` block of the catalogue and checks every entry. */
-export function parseCatalogue(markdown: string): Category[] {
+export function parseCatalogue(markdown: string, path = 'the catalogue'): Category[] {
   const blocks = [...markdown.matchAll(/^```yaml\n([\s\S]*?)^```/gm)]
   if (blocks.length !== 1) {
-    throw new Error(`${CATALOGUE_PATH}: expected one yaml block, found ${blocks.length}`)
+    throw new Error(`${path}: expected one yaml block, found ${blocks.length}`)
   }
   const data: unknown = parse(blocks[0]?.[1] ?? '')
-  if (!Array.isArray(data))
-    throw new Error(`${CATALOGUE_PATH}: the yaml block is not a list`)
+  if (!Array.isArray(data)) throw new Error(`${path}: the yaml block is not a list`)
 
   const names = new Set<string>()
   const categories = data.map((entry: unknown, index): Category => {
-    const where = `${CATALOGUE_PATH}: entry ${index + 1}`
+    const where = `${path}: entry ${index + 1}`
     if (typeof entry !== 'object' || entry === null || Array.isArray(entry)) {
       throw new Error(`${where} is not a mapping`)
     }
@@ -119,7 +117,7 @@ export function parseCatalogue(markdown: string): Category[] {
     }
   })
   if (categories.filter((c) => c.fallback).length > 1) {
-    throw new Error(`${CATALOGUE_PATH}: at most one category can be the fallback`)
+    throw new Error(`${path}: at most one category can be the fallback`)
   }
   return categories
 }
@@ -306,13 +304,19 @@ export function evaluateFloor(catalogue: Category[], diff: Diff): Omit<Floor, 'b
   }
 }
 
+/** The catalogue the settings at `base` name, read at `base` too (following a rename). */
+function readCatalogue(base: string, cwd: string): Category[] {
+  const { catalogue } = readSettings(base, cwd)
+  return parseCatalogue(showAt(base, catalogue, cwd), catalogue)
+}
+
 /** The floor of the working tree against the base branch, or against `since` (a commit). */
 export function readFloor(options: { cwd?: string; since?: string } = {}) {
   const cwd = options.cwd ?? repoRoot()
   const { since } = options
   if (since?.startsWith('-')) throw new Error(`Expected a commit, got "${since}"`)
   const base = baseRef(cwd)
-  const catalogue = parseCatalogue(showAt(base, CATALOGUE_PATH, cwd))
+  const catalogue = readCatalogue(base, cwd)
   const diff = readGitDiff(since ? { cwd, from: since } : { cwd })
   return { base, since: since ?? null, ...evaluateFloor(catalogue, diff) }
 }
@@ -321,7 +325,7 @@ export function readFloor(options: { cwd?: string; since?: string } = {}) {
  * has no `Diff` of its own. Takes `base` rather than re-deriving it, so a caller that
  * already has it (e.g. from a prior `readFloor()` result) doesn't re-shell to git for it. */
 export function currentCatalogueNames(base: string, cwd: string): string[] {
-  return parseCatalogue(showAt(base, CATALOGUE_PATH, cwd)).map((c) => c.name)
+  return readCatalogue(base, cwd).map((c) => c.name)
 }
 
 function main() {
