@@ -46,7 +46,7 @@ The words for executable specs ([ADR-010](technical/adr/010-spec-first-gherkin-s
 
 | Term | Meaning in this repo | Avoid |
 |---|---|---|
-| **Test Level** | What kind of thing a Gherkin scenario drives — `e2e` (real UI, real browsers), `domain` (the pure domain, called directly), and the deferred `protocol`. The second folder under `specs/<concept>/`. Each Test Level owns its own runner; there is no shared DSL across them. | "layer" (collides with the architecture/FSD layer above) |
+| **Test Level** | What kind of thing a Gherkin scenario drives — `e2e` (real UI, real browsers), `integration` (an outbound adapter through its port, on a real-browser harness page; [ADR-011](technical/adr/011-integration-test-level.md)), and `domain` (the pure domain, called directly). The second folder under `specs/<concept>/`. Each Test Level has its own runner setup and driver code; there is no shared DSL across them. | "layer" (collides with the architecture/FSD layer above) |
 | **Stereotype** | A named, valid default record for test data ("an estimated item"), which a scenario overrides only where it depends on a value. Lives in the concept folder (`specs/<concept>/stereotypes.ts`), where any of the concept's Test Levels can use it. Not the UML «stereotype» of the diagrams. | "fixture" (Playwright already uses it for its own injected objects) |
 | **Concept folder** | The first folder under `specs/`, one per feature area (for example `live-session`), parallel to the concept name shared by `docs/domain/concepts/` and `docs/technical/concepts/`. The one exception is `specs/shared/`, which holds driver code every concept uses, not a feature area. | |
 

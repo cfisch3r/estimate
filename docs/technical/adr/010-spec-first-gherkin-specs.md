@@ -4,6 +4,14 @@
 **Date:** 2026-11-09
 **Related:** [002-testing-strategy.md](002-testing-strategy.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md), [glossary.md](../../glossary.md), AGENTS.md
 
+> **Update 2026-11-19:** a third Test Level, `integration`, replaces the deferred
+> `protocol` Test Level, which is retired. It drives outbound adapters through their ports
+> on a real-browser harness page; its design is
+> [ADR-011](011-integration-test-level.md). `pnpm test:specs` now runs the `domain` Test
+> Level, then every `*-bdd` and `*-integration` project. Its two dependency-cruiser rules
+> come with a committed canary test (`scripts/specRules.test.ts`); the canary follow-up
+> below still applies to the three earlier rules.
+>
 > **Update 2026-11-13:** the session-persistence specs added a second Test Level, and with
 > it four changes to the decision below. The decision stands; where this update and the
 > text below differ, this update is current.

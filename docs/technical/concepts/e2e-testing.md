@@ -200,7 +200,8 @@ flowchart LR
 | `*-bdd` projects | `live-session-bdd`, `session-persistence-bdd`; `chromium`-based, sharing the relay/app `webServer` entries above |
 
 `pnpm test:e2e` runs `bddgen` first, so generation is never a manual step; `pnpm test:specs`
-runs only the Gherkin specs (the `domain` Test Level, then every `*-bdd` project).
+runs only the Gherkin specs (the `domain` Test Level, then every `*-bdd` and `*-integration`
+project; the `integration` Test Level is covered in [integration-testing.md](integration-testing.md)).
 Dependency-cruiser rules (`pnpm arch:specs`) keep `specs/*/e2e/**` and concept-level files
 such as `stereotypes.ts` free of `src/`.
 
