@@ -55,7 +55,7 @@ flowchart TD
 | **Floor script** | Reads the YAML block below from the base branch (`origin/main`, else `main`; never from the pull request being checked, also when given a commit to start from), matches the changed files against it and reports the matched categories and the highest minimum risk. |
 | **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
 | **`risk-review:reviewer` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
-| **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide page. It also reads the changed files itself (since the floor's commit, when the floor had one) and the imports and exports of the source files at that commit (else the merge base with the default branch) and now, and builds the changeset map from them (see [Changeset map](#changeset-map)). |
+| **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide page. It also reads the changed files itself (since the floor's commit, when the floor had one) and the imports and exports of the source files at that commit (else the merge base with the default branch) and now, and builds the changeset map from them (see [Changeset map](#changeset-map)), with the hot spots, skim-only files and responsibilities marked on it. |
 
 ## The agent's answer
 
@@ -67,7 +67,8 @@ runs both scripts itself, and a signal never makes a category or a hot spot on i
 | `risk` | A [risk level](#risk-levels), at least the floor |
 | `categories` | Names from the catalogue, including every category the floor found |
 | `hotSpots` | Up to eight places to read closely, most important first: a `title` (a headline of about ten words), a `body` (what the change is and what makes it a hot spot), `file` and `line` (a line the change added or changed) and a `rule` (architecture rule, ADR number or catalogue category) |
-| `skimOnly` | Files that can be skimmed, each with a `why` |
+| `skimOnly` | Files that can be skimmed, each with a `why`. A `file` ending in `/` is a folder, one with a wildcard a glob, any other a path |
+| `responsibilities` | For each changed source file that is not skim-only, a `file` and a `text`: one sentence on what the file is for in the app, not what changed; possibly empty |
 | `notVerified` | What a reader has to check by hand because the agent could not or did not: concrete, short, possibly empty |
 
 ## The review guide
@@ -95,6 +96,12 @@ diagram above. A script writes it, so the rules hold whatever the agent says:
   below it.
 - A hot spot links to its file and line at the commit the guide covers when the repository has a
   GitHub address (read from the `origin` remote); otherwise the reference is plain text.
+- Each hot spot is numbered in the order the agent gave. When the changeset map draws its file,
+  the same number sits on the file's box (or on the collapsed folder or strip row holding it), and
+  a "Show on map" button opens the folders around the file, pins its box and moves focus to it.
+- The map fades the files that fall under a skim-only entry, except a hot spot's file. It shows
+  a responsibility only for a changed file drawn as a box and not skim-only; the others are
+  dropped without a note.
 - The changeset map is optional. When it cannot be built (a missing or invalid
   `changeset-map.yaml`, or a failing read of the changed files), the page has no map and says why
   under "Not verified".
@@ -106,7 +113,7 @@ diagram above. A script writes it, so the rules hold whatever the agent says:
 | Marker | `Covers <commit>`, the commit the guide was written for, so a reader can see what it describes |
 | Risk | The level and the category names |
 | Changeset map | The branch's changed files placed in the app's structure (since the floor's commit, when it had one), with the imports the change added and removed drawn as arrows, and the unchanged files that use a changed export; tests, CSS and type declarations only counted. See [Changeset map](#changeset-map) |
-| Hot spots | A headline, what the change is and what makes it a hot spot, the reference (`file:line`, linked to the covered commit) with the rule or ADR, and facts from the signals |
+| Hot spots | The number, a headline, what the change is and what makes it a hot spot, the reference (`file:line`, linked to the covered commit) with the rule or ADR and a "Show on map" button when the map draws the file, and facts from the signals |
 | Skim only | Files a reader can skim, each with a reason |
 | Not verified | What a reader has to check by hand; the scripts' own findings are folded below it |
 
@@ -342,7 +349,7 @@ flowchart TB
 
 | Part | What it shows | `changeset-map.yaml` | Interaction |
 |---|---|---|---|
-| Legend | Three rows: **Boxes** (the statuses), **Show** (a checkbox each for added imports, removed imports and unchanged importers, with their counts), **Marks** (the reach badge, the API chip, the kept arrow); then how to use the map and the off-map count | | The importers checkbox starts cleared |
+| Legend | Three rows: **Boxes** (the statuses and the skim-only look), **Show** (a checkbox each for added imports, removed imports and unchanged importers, with their counts), **Marks** (the hot spot number, the reach badge, the API chip, the kept arrow); then how to use the map and the off-map count | | The importers checkbox starts cleared |
 | Layer row | The changed files of one layer, by slice and folder | `layers`, in drawing order | |
 | UI frame | The FSD layers `pages` to `shared`, drawn inside one frame | `group: ui` | |
 | Side column | `adapters`, at the right edge across every row | `side: true` | |
@@ -351,12 +358,14 @@ flowchart TB
 | File box | One changed file: status sign and name | | Becomes the active box on hover or focus: its card opens, its own arrows show and the rest fade; a click pins it until a second click or Esc |
 | Unchanged-file box | An unchanged file at either end of an added or removed import | | Like a file box |
 | Importer box | An importer | | Shown only while the importers checkbox is on; otherwise like a file box |
+| Hot spot number | The numbers of the file's hot spots, on the box's top-right corner; on a collapsed folder, the numbers of every file in it; inside a strip row at its end | | A screen reader hears "hot spot n" with the box |
+| Skim-only look | A box or strip row the agent marked skim-only: its status colour washed out with stripes, gray name. A collapsed folder only when all of its files are | | A screen reader hears "skim only" with the box; a strip row names the reason on hover |
 | Reach badge | `↗n` on a changed file box: its reach, with a box or not; none at 0 | | A screen reader hears "used by n unchanged files" |
 | API chip | `API +n −m`: the names the barrels in a folder added to and removed from their re-exports; beside an open folder's name, inside a collapsed folder's box | | A screen reader hears "public API: n added, m removed" |
-| Card | The box's path and status. **Changed file**: its exports, the changed ones bold, and its importers with the names they use. **Importer**: its leading doc comment and the changed exports it uses. **Collapsed folder**: each file's changed exports only. **Every box**: its imports added, removed and kept, each with its names. A file that has no box is marked "not on the map" | | Shown for the active box; Esc closes it. A screen reader hears a one-line summary of it, status and counts, as the box's description |
+| Card | The box's path, the agent's responsibility sentence for a changed file, and its status; its hot spot numbers; the skim-only entry and reason when all of the box is skim-only. **Changed file**: its exports, the changed ones bold, and its importers with the names they use. **Importer**: its leading doc comment and the changed exports it uses. **Collapsed folder**: each file's changed exports only. **Every box**: its imports added, removed and kept, each with its names. A file that has no box is marked "not on the map" | | Shown for the active box; Esc closes it. A screen reader hears a one-line summary of it, status and counts, as the box's description |
 | Import arrow | One arrow per kind between two boxes, with a count when it stands for several import edges; see [Which imports are drawn](#which-imports-are-drawn) | | |
 | Unplaced row | A file under `sourceRoot` in no layer folder | `sourceRoot` | |
-| Strip | Files outside `sourceRoot`, by full path; a long folder is shortened, the name kept whole | `strips`, first match wins, `Other` last | Path and status on hover |
+| Strip | Files outside `sourceRoot`, by full path; a long folder is shortened, the name kept whole | `strips`, first match wins, `Other` last | Path and status on hover; "Show on map" moves focus to the row and flashes it |
 | Off-map count | The number of files left off the map, in the legend | `offMap` | |
 
 | Status | Sign | Box |
