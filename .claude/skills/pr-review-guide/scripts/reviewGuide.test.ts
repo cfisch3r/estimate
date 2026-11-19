@@ -601,10 +601,15 @@ describe('changeset map', () => {
 
   it('notes an unavailable map under Not verified', () => {
     const html = page({
-      map: { status: 'not available', reason: 'changeset-map.yaml not found' },
+      map: {
+        status: 'not available',
+        reason: 'pr-review-guide.yaml has no map settings',
+      },
     })
     const [shown] = html.split('<details>')
-    expect(shown).toContain('<li>Changeset map: changeset-map.yaml not found</li>')
+    expect(shown).toContain(
+      '<li>Changeset map: pr-review-guide.yaml has no map settings</li>',
+    )
     expect(html).not.toContain('changeset-map-data')
   })
 

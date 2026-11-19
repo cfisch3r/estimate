@@ -1,4 +1,3 @@
-import { readFileSync } from 'node:fs'
 import { parse } from 'yaml'
 import type { ChangedFile } from './changedDiff.ts'
 import { matchesPattern } from './reviewFloor.ts'
@@ -8,8 +7,8 @@ import type { Section } from './reviewSignals.ts'
 
 // The changeset map of the Review guide: every changed file of a branch, placed in a layer
 // and slice of the app or in a side strip. The layers, strips and the files left off the
-// map come from the plugin's `changeset-map.yaml`, so nothing here is specific to this
-// repository. The guide script calls this module; it has no command of its own.
+// map come from the `map` part of the project's `pr-review-guide.yaml`, so nothing here is
+// specific to this repository. The guide script calls this module; it has no command of its own.
 
 export interface LayerConfig {
   name: string
@@ -59,22 +58,25 @@ function mapping(
   where: string,
   keys: Set<string>,
 ): Record<string, unknown> {
-  if (!isRecord(value)) throw new Error(`changeset-map.yaml: ${where} is not a mapping`)
+  // `where` is empty for the map settings themselves.
+  const at =
+    where === '' ? 'pr-review-guide.yaml: map' : `pr-review-guide.yaml: map: ${where}`
+  if (!isRecord(value)) throw new Error(`${at} is not a mapping`)
   for (const key of Object.keys(value)) {
-    if (!keys.has(key))
-      throw new Error(`changeset-map.yaml: ${where}: unknown key "${key}"`)
+    if (!keys.has(key)) throw new Error(`${at}: unknown key "${key}"`)
   }
   return value
 }
 
 function list(value: unknown, where: string): unknown[] {
-  if (!Array.isArray(value)) throw new Error(`changeset-map.yaml: ${where} is not a list`)
+  if (!Array.isArray(value))
+    throw new Error(`pr-review-guide.yaml: map: ${where} is not a list`)
   return value
 }
 
 function text(value: unknown, where: string): string {
   if (typeof value !== 'string' || value === '') {
-    throw new Error(`changeset-map.yaml: ${where} must be a non-empty string`)
+    throw new Error(`pr-review-guide.yaml: map: ${where} must be a non-empty string`)
   }
   return value
 }
@@ -82,7 +84,7 @@ function text(value: unknown, where: string): string {
 function flag(value: unknown, where: string): boolean | undefined {
   if (value === undefined) return undefined
   if (typeof value !== 'boolean')
-    throw new Error(`changeset-map.yaml: ${where} must be true or false`)
+    throw new Error(`pr-review-guide.yaml: map: ${where} must be true or false`)
   return value
 }
 
@@ -90,14 +92,19 @@ function flag(value: unknown, where: string): boolean | undefined {
 function checkNames(names: string[], kind: string, reserved: string) {
   names.forEach((name, i) => {
     if (name === reserved || names.indexOf(name) < i) {
-      throw new Error(`changeset-map.yaml: ${kind}[${i}].name "${name}" is taken`)
+      throw new Error(`pr-review-guide.yaml: map: ${kind}[${i}].name "${name}" is taken`)
     }
   })
 }
 
-/** The map configuration, checked; an error names the faulty field. */
+/** The map configuration from YAML text, checked; an error names the faulty field. */
 export function parseMapConfig(source: string): MapConfig {
-  const top = mapping(parse(source), 'the file', TOP_KEYS)
+  return mapConfigOf(parse(source))
+}
+
+/** The map configuration from the settings file's `map` part, checked. */
+export function mapConfigOf(value: unknown): MapConfig {
+  const top = mapping(value, '', TOP_KEYS)
 
   const layers = list(top.layers, 'layers').map((entry, i): LayerConfig => {
     const where = `layers[${i}]`
@@ -105,7 +112,7 @@ export function parseMapConfig(source: string): MapConfig {
     const layer: LayerConfig = { name: text(row.name, `${where}.name`) }
     if (row.group !== undefined) {
       if (typeof row.group !== 'string' || !GROUPS.has(row.group)) {
-        throw new Error(`changeset-map.yaml: ${where}.group must be "ui"`)
+        throw new Error(`pr-review-guide.yaml: map: ${where}.group must be "ui"`)
       }
       layer.group = 'ui'
     }
@@ -119,14 +126,14 @@ export function parseMapConfig(source: string): MapConfig {
     UNPLACED,
   )
   if (layers.filter((l) => l.side).length > 1) {
-    throw new Error('changeset-map.yaml: at most one layer can have side: true')
+    throw new Error('pr-review-guide.yaml: map: at most one layer can have side: true')
   }
 
   const strips = list(top.strips, 'strips').map((entry, i): StripConfig => {
     const where = `strips[${i}]`
     const row = mapping(entry, where, STRIP_KEYS)
     if (!isStringList(row.paths)) {
-      throw new Error(`changeset-map.yaml: ${where}.paths must be a list of globs`)
+      throw new Error(`pr-review-guide.yaml: map: ${where}.paths must be a list of globs`)
     }
     return { name: text(row.name, `${where}.name`), paths: row.paths }
   })
@@ -137,7 +144,7 @@ export function parseMapConfig(source: string): MapConfig {
   )
 
   if (!isStringList(top.offMap)) {
-    throw new Error('changeset-map.yaml: offMap must be a list of globs')
+    throw new Error('pr-review-guide.yaml: map: offMap must be a list of globs')
   }
   return {
     sourceRoot: text(top.sourceRoot, 'sourceRoot'),
@@ -519,26 +526,22 @@ function apiByFolder(
 }
 
 /**
- * The map, or why it is not available: a missing or invalid configuration file, or a
+ * The map, or why it is not available: missing or invalid map settings, or a
  * failing read of the changed files. Either way only the map is lost, not the guide.
  */
 export function readChangesetMap(
   readChanged: () => ChangedFile[],
-  configPath: string,
+  mapSettings: unknown,
   readCode: (changed: ChangedFile[]) => MapCode = () => ({ edges: [] }),
 ): Section<ChangesetMap> {
   const notAvailable = (reason: string) => ({ status: 'not available' as const, reason })
   const message = (error: unknown) =>
     error instanceof Error ? error.message : String(error)
-  let source: string
-  try {
-    source = readFileSync(configPath, 'utf8')
-  } catch {
-    return notAvailable('changeset-map.yaml not found')
-  }
+  if (mapSettings === undefined)
+    return notAvailable('pr-review-guide.yaml has no map settings')
   let config: MapConfig
   try {
-    config = parseMapConfig(source)
+    config = mapConfigOf(mapSettings)
   } catch (error) {
     return notAvailable(message(error))
   }

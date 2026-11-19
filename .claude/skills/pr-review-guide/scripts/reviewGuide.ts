@@ -11,6 +11,7 @@ import {
   type RiskLevel,
 } from './reviewFloor.ts'
 import { readCodeChanges } from './reviewImports.ts'
+import { readSettings } from './reviewSettings.ts'
 import { readChangesetMap, type ChangesetMap } from './reviewMap.ts'
 import { mapMarks, type MapMarks, type Responsibility } from './reviewMarks.ts'
 import type { Section } from './reviewSignals.ts'
@@ -25,7 +26,8 @@ import type { Section } from './reviewSignals.ts'
 //
 // Prints the HTML page. The inputs are the outputs of `pnpm review:floor`,
 // `pnpm review:signals` and the `pr-review-guide:reviewer` agent. The script also reads the
-// branch's diff itself for the changeset map, placed by the plugin's `changeset-map.yaml`.
+// branch's diff itself for the changeset map, placed by the `map` part of the project's
+// `pr-review-guide.yaml`.
 
 export interface HotSpot {
   file: string
@@ -536,7 +538,7 @@ function main() {
   const from = floor.since ?? mergeBase(cwd)
   const map = readChangesetMap(
     () => readGitDiff({ cwd, from }).files,
-    join(import.meta.dirname, '..', 'changeset-map.yaml'),
+    readSettings(floor.base, cwd).map,
     (files) =>
       readCodeChanges(
         cwd,

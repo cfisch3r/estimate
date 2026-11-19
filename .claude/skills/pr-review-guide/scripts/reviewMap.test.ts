@@ -1,13 +1,13 @@
 // @vitest-environment node
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import type { ChangedFile } from './changedDiff.ts'
+import { repoRoot, type ChangedFile } from './changedDiff.ts'
 import type { ExportInfo } from './reviewExports.ts'
 import type { ImportChange } from './reviewImports.ts'
 import {
   buildChangesetMap,
+  mapConfigOf,
   parseMapConfig,
   placeFile,
   readChangesetMap,
@@ -16,13 +16,16 @@ import {
   type MapConfig,
   type MapFile,
 } from './reviewMap.ts'
+import { SETTINGS_PATH, parseSettings } from './reviewSettings.ts'
 
 // The changeset map places every changed file of a branch: in a layer and slice of the
 // app, in one of the side strips for files outside the source root, or off the map. All
 // of this repo's specifics come from the plugin's configuration file.
 
-const REPO_CONFIG = new URL('../changeset-map.yaml', import.meta.url)
-const repoConfig = () => parseMapConfig(readFileSync(REPO_CONFIG, 'utf8'))
+const repoMapSettings = () =>
+  parseSettings(readFileSync(join(repoRoot(import.meta.dirname), SETTINGS_PATH), 'utf8'))
+    .map
+const repoConfig = () => mapConfigOf(repoMapSettings())
 
 const config: MapConfig = {
   sourceRoot: 'src',
@@ -35,7 +38,7 @@ const config: MapConfig = {
 }
 
 describe('parseMapConfig', () => {
-  it("parses the repo's changeset-map.yaml", () => {
+  it("parses the repo's map settings", () => {
     const parsed = repoConfig()
     expect(parsed.layers.map((l) => l.name)).toEqual([
       'app',
@@ -658,41 +661,40 @@ describe('buildChangesetMap with exports', () => {
 })
 
 describe('readChangesetMap', () => {
-  it('reports a missing configuration as not available', () => {
-    expect(readChangesetMap(() => [], '/nonexistent/changeset-map.yaml')).toEqual({
+  it('reports missing map settings as not available', () => {
+    expect(readChangesetMap(() => [], undefined)).toEqual({
       status: 'not available',
-      reason: 'changeset-map.yaml not found',
+      reason: 'pr-review-guide.yaml has no map settings',
     })
   })
 
-  it('reports an invalid configuration as not available with the field', () => {
-    const dir = mkdtempSync(join(tmpdir(), 'changeset-map-'))
-    try {
-      const path = join(dir, 'changeset-map.yaml')
-      writeFileSync(path, 'sourceRoot: src\nlayers: 3\nstrips: []\noffMap: []\n')
-      const result = readChangesetMap(() => [], path)
-      expect(result.status).toBe('not available')
-      expect(result.status === 'not available' && result.reason).toMatch(/layers/)
-    } finally {
-      rmSync(dir, { recursive: true, force: true })
-    }
+  it('names the map settings when they are not a mapping', () => {
+    expect(readChangesetMap(() => [], 3)).toEqual({
+      status: 'not available',
+      reason: 'pr-review-guide.yaml: map is not a mapping',
+    })
+  })
+
+  it('reports invalid map settings as not available with the field', () => {
+    const result = readChangesetMap(() => [], {
+      sourceRoot: 'src',
+      layers: 3,
+      strips: [],
+      offMap: [],
+    })
+    expect(result.status).toBe('not available')
+    expect(result.status === 'not available' && result.reason).toMatch(/map: layers/)
   })
 
   it("builds the map with the repo's configuration", () => {
-    const result = readChangesetMap(
-      () => [added('src/domain/a.ts')],
-      new URL('../changeset-map.yaml', import.meta.url).pathname,
-    )
+    const result = readChangesetMap(() => [added('src/domain/a.ts')], repoMapSettings())
     expect(result.status).toBe('ok')
   })
 
   it('reports a failing read of the changed files as not available', () => {
-    const result = readChangesetMap(
-      () => {
-        throw new Error('fatal: bad revision')
-      },
-      new URL('../changeset-map.yaml', import.meta.url).pathname,
-    )
+    const result = readChangesetMap(() => {
+      throw new Error('fatal: bad revision')
+    }, repoMapSettings())
     expect(result).toEqual({
       status: 'not available',
       reason: 'reading the changed files failed: fatal: bad revision',
@@ -702,7 +704,7 @@ describe('readChangesetMap', () => {
   it('keeps the map when reading the imports fails', () => {
     const result = readChangesetMap(
       () => [added('src/domain/a.ts')],
-      new URL('../changeset-map.yaml', import.meta.url).pathname,
+      repoMapSettings(),
       () => {
         throw new Error('bad object abc')
       },
@@ -717,7 +719,7 @@ describe('readChangesetMap', () => {
     const seen: ChangedFile[][] = []
     readChangesetMap(
       () => [added('src/domain/a.ts')],
-      new URL('../changeset-map.yaml', import.meta.url).pathname,
+      repoMapSettings(),
       (files) => {
         seen.push(files)
         return { edges: [] }

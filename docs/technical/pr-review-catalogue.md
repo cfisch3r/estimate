@@ -25,11 +25,12 @@ flowchart TD
   Sig["Signals script<br/>[script]"]
   Agent["pr-review-guide:reviewer agent<br/>[model, read-only]"]
   Guide["Guide script<br/>[script]"]
-  MapCfg["changeset-map.yaml<br/>[YAML file, plugin]"]
+  MapCfg["pr-review-guide.yaml on main<br/>[YAML file, project settings]"]
   Src["Source files at the base and now<br/>[TypeScript sources, git and working tree]"]
   Page["Review guide<br/>[HTML page, artifact]"]
 
   Cat["Catalogue on main<br/>[YAML block]"]
+  MapCfg -.->|"catalogue path"| Floor
   Cat -.->|"categories, paths"| Floor
   Diff -->|"changed files"| Floor
   Diff -->|"changed files"| Sig
@@ -39,7 +40,7 @@ flowchart TD
   Floor -->|"floor"| Guide
   Agent -->|"risk, categories, hot spots"| Guide
   Diff -->|"changed files"| Guide
-  MapCfg -.->|"map rules"| Guide
+  MapCfg -.->|"map settings"| Guide
   Src -.->|"imports, exports"| Guide
   Guide -->|"rendered guide"| Page
 
@@ -54,7 +55,7 @@ flowchart TD
 
 | Step | Role |
 |---|---|
-| **Floor script** | Reads the YAML block below from the base branch (`origin/main`, else `main`; never from the pull request being checked, also when given a commit to start from), matches the changed files against it and reports the matched categories and the highest minimum risk. |
+| **Floor script** | Reads the **project settings** `pr-review-guide.yaml` from the base branch (`origin/main`, else `main`), never from the pull request being checked, also when given a commit to start from. Then reads the **catalogue** the settings name from the base branch too. Today that is this file's YAML block below, which is also the default when there is no settings file or no `catalogue` key. Settings that are malformed or name a catalogue the base branch lacks stop the floor with an error. It matches the changed files against **the catalogue** and reports the matched categories and the highest minimum risk. |
 | **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
 | **`pr-review-guide:reviewer` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
 | **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide page. It also reads the changed files itself (since the floor's commit, when the floor had one) and the imports and exports of the source files at that commit (else the merge base with the default branch) and now, and builds the changeset map from them (see [Changeset map](#changeset-map)), with the hot spots, skim-only files and responsibilities marked on it. |
@@ -105,9 +106,9 @@ diagram above. A script writes it, so the rules hold whatever the agent says:
   spot's file, and shows a responsibility only for a changed file drawn as a box and not
   skim-only; the other responsibilities are dropped without a note. See
   [What the page shows](#what-the-page-shows).
-- The changeset map is optional. When it cannot be built (a missing or invalid
-  `changeset-map.yaml`, or a failing read of the changed files), the page has no map and says why
-  under "Not verified".
+- The changeset map is optional. When it cannot be built (missing or invalid `map` settings in
+  `pr-review-guide.yaml`, or a failing read of the changed files), the page has no map and says why
+  under "Not verified". Settings that are malformed as a whole stop the floor, and with it the guide.
 - The page describes the commit it names. After new commits, run the command again; it
   publishes over the earlier artifact of the same pull request and nothing compares the two.
 
@@ -174,8 +175,9 @@ flowchart TD
   class OffMap off
 ```
 
-The checks and their patterns come from the plugin's
-`.claude/skills/pr-review-guide/changeset-map.yaml` (`offMap`, `sourceRoot`, `layers`, `strips`). A
+The checks and their patterns come from the `map` settings in the project settings
+`pr-review-guide.yaml` at the repository root (`offMap`, `sourceRoot`, `layers`, `strips`), read from
+the base branch like the catalogue, so a change to them shows on the map of later pull requests. A
 moved file is placed by its new path; its old place gets a ghost only when both places are on the
 map.
 
@@ -350,7 +352,7 @@ flowchart TB
   style STRIPS fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
 ```
 
-| Part | What it shows | `changeset-map.yaml` | Interaction |
+| Part | What it shows | `map` settings | Interaction |
 |---|---|---|---|
 | Legend | Three rows: **Boxes** (the statuses and the skim-only look), **Show** (a checkbox each for added imports, removed imports and unchanged importers, with their counts), **Marks** (the hot spot number, the reach badge, the API chip, the kept arrow); then how to use the map and the off-map count | | The importers checkbox starts cleared |
 | Layer row | The changed files of one layer, by slice and folder | `layers`, in drawing order | |
@@ -392,12 +394,13 @@ Legend: solid line = data passed on, dotted line = file read; numbers give the o
 
 ```mermaid
 flowchart LR
-  Cfg["changeset-map.yaml<br/>[YAML file, plugin]"]
+  Cfg["pr-review-guide.yaml on main<br/>[YAML file, project settings]"]
   Changed["Changed files<br/>[read by the guide script]"]
   Src["Source files at the base and now<br/>[TypeScript sources, git and working tree]"]
   Css["changesetMap.css<br/>[stylesheet]"]
   subgraph NODE["GUIDE SCRIPT, NODE"]
     direction LR
+    Settings["reviewSettings.ts<br/>[module]"]
     Imports["reviewImports.ts<br/>[module]"]
     Exports["reviewExports.ts<br/>[module]"]
     Place["reviewMap.ts<br/>[module]"]
@@ -406,7 +409,8 @@ flowchart LR
   subgraph BROWSER["GUIDE PAGE, BROWSER"]
     Client["changesetMap.client.js<br/>[page script]"]
   end
-  Cfg -.->|"1 map rules"| Place
+  Cfg -.->|"1 settings"| Settings
+  Settings -->|"map settings"| Place
   Changed -->|"2 files"| Place
   Changed -->|"3 moved, changed files"| Imports
   Src -.->|"4 sources"| Imports
@@ -420,7 +424,7 @@ flowchart LR
   classDef script fill:#BFDBFE,stroke:#2563EB,color:#0B2545
   classDef data fill:#E2E8F0,stroke:#64748B,color:#0F172A
 
-  class Imports,Exports,Place,Render,Client script
+  class Settings,Imports,Exports,Place,Render,Client script
   class Cfg,Changed,Src,Css data
   style NODE fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
   style BROWSER fill:#F8FAFC,stroke:#94A3B8,color:#0F172A
@@ -436,6 +440,7 @@ importers, exports or API chips, and the legend says why.
 
 | File (`.claude/skills/pr-review-guide/scripts/`) | Role |
 |---|---|
+| `reviewSettings.ts` | Reads the project settings `pr-review-guide.yaml` from the base branch by its exact path: the catalogue path for the floor and the `map` settings for the map |
 | `reviewImports.ts` | Builds the two TypeScript programs once, reads their import edges and export facts, and compares the edges |
 | `reviewExports.ts` | Compares the two sides' export facts: the added, removed and changed exports of each changed file, and each barrel's added and removed re-exports |
 | `reviewMap.ts` | Checks the configuration, places the changed files, adds the unchanged files at either end of an added or removed import and the importers, counts the reach and the API chips, and keeps the edges whose importing file has a box |
@@ -520,6 +525,7 @@ a duplicate `name`, more than one `fallback`, and so on.
     - '.githooks/**'
     - 'docs/technical/architecture-rules.md'
     - 'docs/technical/pr-review-catalogue.md'
+    - 'pr-review-guide.yaml'
     - '.worktreeinclude'
   diff-checks: [coverageThresholdLowered, testsRemovedOrSkipped, strictnessLoosened, architectureExceptionAdded]
 
@@ -552,7 +558,7 @@ a duplicate `name`, more than one `fallback`, and so on.
 | `domain-math` | The estimation rules (aggregation, the `Estimate` invariant, bias guards) produce plausible numbers when they are wrong. Nothing crashes, and the domain keeps 100% coverage so a gap in tests is itself a warning sign (`pure-domain`). |
 | `live-session-state` | Who owns the round, what a reconnect restores and when a submission is acknowledged are easy to break without a visible error. They follow [ADR-003](adr/003-session-reliability-model.md) and the store split in [ADR-005](adr/005-session-store-decomposition.md). The category covers the stores, the use cases, the ports and the adapters that hold per-connection state. |
 | `wire-contract` | Peers may run different builds, so a change to what is sent or accepted between them must stay compatible. This is the repository's one-way door: once a build is out, its messages cannot be recalled. It covers peer message parsing, the action definitions, the signaling contract and the session snapshot that the facilitator sends. The snapshot files are in `src/domain`, so they match `domain-math` as well. |
-| `guardrail-weakened` | A change that loosens a check makes every later change less safe: type strictness, lint and architecture rules, coverage thresholds, removed or skipped tests, the verbatim design-system stylesheet, and the instructions and hooks that guide the agents. The catalogue and the architecture rules are in this category too, so a change cannot lower its own floor without being flagged. |
+| `guardrail-weakened` | A change that loosens a check makes every later change less safe: type strictness, lint and architecture rules, coverage thresholds, removed or skipped tests, the verbatim design-system stylesheet, and the instructions and hooks that guide the agents. The catalogue, the settings file `pr-review-guide.yaml` that names it, and the architecture rules are in this category too, so a change cannot lower its own floor without being flagged. |
 | `release-and-deploy` | Merging to `main` ships to production. Workflows, release configuration and the runbook decide what ships and how. |
 | `dependencies` | Supply chain, bundle size and behaviour drift. Any change to the lockfile or to the dependency fields of `package.json` counts; the version bump of the package itself, written by the release tooling, does not. |
 | `mechanical` | Documentation changes and pure renames. Skim only. |
@@ -586,11 +592,13 @@ evidence for the agent that may be missing and never sets a category.
    category, so `pureRename` never lowers the floor of the renamed file.
 4. A change that matches no category has the floor `low`. The agent still assesses it and may raise
    it.
-5. A change to this file is `guardrail-weakened` by rule, because the file lists itself.
+5. A change to this file or to `pr-review-guide.yaml` is `guardrail-weakened` by rule, because this
+   file's YAML block lists both paths.
 
 ## Changing the catalogue
 
 Add or change a category in a pull request, and explain the reason in the description. Because the
-floor script reads the catalogue from `main`, a change applies to later pull requests only.
+floor script reads the catalogue and `pr-review-guide.yaml` from `main`, a change applies to later
+pull requests only.
 Keep the prose in "Why each category exists" and the YAML block in step with each other; the block
 is the only place that lists paths, so nothing else has to be updated.
