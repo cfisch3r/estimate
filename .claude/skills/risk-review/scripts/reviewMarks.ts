@@ -60,8 +60,11 @@ export function mapMarks(
   })
 
   // Only changed files are skim-only: an unchanged box only shows where a change reaches.
+  const changedBoxes = new Set(
+    boxes.filter((f) => !NOT_CHANGED.has(f.status)).map((f) => f.path),
+  )
   const changed = new Set([
-    ...boxes.filter((f) => !NOT_CHANGED.has(f.status)).map((f) => f.path),
+    ...changedBoxes,
     ...map.strips.flatMap((s) => s.files.map((f) => f.path)),
   ])
   const faded: MapMarks['skim'] = {}
@@ -73,13 +76,7 @@ export function mapMarks(
 
   const said: MapMarks['responsibilities'] = {}
   for (const { file, text } of responsibilities) {
-    if (
-      changed.has(file) &&
-      boxes.some((f) => f.path === file) &&
-      !faded[file] &&
-      !(file in said)
-    )
-      said[file] = text
+    if (changedBoxes.has(file) && !faded[file] && !(file in said)) said[file] = text
   }
   return { spots, skim: faded, responsibilities: said }
 }

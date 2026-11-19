@@ -786,15 +786,13 @@
           words.push(apiWords(folder.api))
         }
         box.append(chips)
-        const inside = filesIn(folder)
-          .filter(visible)
-          .map((f) => f.path)
-        const ns = spotsIn(inside)
+        const shown = filesIn(folder).filter(visible)
+        const ns = spotsIn(shown.map((f) => f.path))
         if (ns.length) {
           words.push(spotWords(ns))
           add(spotBadge(ns, x, y))
         }
-        if (allSkim(changedPaths(filesIn(folder).filter(visible)))) {
+        if (allSkim(changedPaths(shown))) {
           box.classList.add('skim')
           words.push('skim only')
         }
