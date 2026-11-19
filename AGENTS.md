@@ -115,7 +115,7 @@ pnpm deadcode             # knip — unused exports/files/dependencies
 pnpm metrics              # advisory complexity/size hotspots in the diff (`pnpm metrics all` for src/); never gates
 pnpm review:floor         # minimum review risk of the branch plus working tree from docs/technical/pr-review-catalogue.md (`pnpm review:floor <commit>` for changes since a commit); prints JSON
 pnpm review:guide         # render the Review guide page from the floor, signals and `pr-review-guide:reviewer` answer files (`--floor`, `--signals`, `--agent`; optional `--covers`, `--title`), plus the branch diff, the import edges it adds and removes and the exports it changes, which it reads itself for the changeset map; prints HTML
-pnpm review:signals       # evidence for the risk review of the branch plus working tree: file history, metrics, changed-line coverage (runs the unit tests), dependency diff and audit; each section may say "not available"; prints JSON
+pnpm review:signals       # evidence for the Review guide's risk reviewer on the branch plus working tree: file history, metrics, changed-line coverage (runs the unit tests), dependency diff and audit; each section may say "not available"; prints JSON
 ```
 
 Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm arch:specs`, `pnpm specs:no-pending`, `pnpm format:check`,
@@ -126,7 +126,7 @@ also run as required checks in CI (`.github/workflows/ci.yml`) on every PR and p
 `main` — running them locally first is a courtesy that catches failures before you push,
 not the only gate.
 
-Project-owned Claude Code tooling lives in `.claude/` (versioned). The doc, risk and
+Project-owned Claude Code tooling lives in `.claude/` (versioned). The doc, PR review guide and
 accessibility reviews below are skills-directory plugins, one folder each in
 `.claude/skills/<name>/` holding the skill(s), reviewer agent(s), and any hooks, scripts,
 or shared reference files. Claude Code loads each as `<name>@skills-dir` without an install

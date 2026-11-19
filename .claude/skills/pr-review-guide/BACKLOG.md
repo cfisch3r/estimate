@@ -2,7 +2,7 @@
 
 Ideas for the Review guide plugin that are not planned yet. Each was a GitHub issue, now closed as "not planned"; the link keeps its full text and discussion. To pick one up, reopen the issue or open a new one, and remove the entry here.
 
-## Risk review of a pull request that is not checked out
+## Review guide for a pull request that is not checked out
 
 `/pr-review-guide <n>` builds the guide for pull request `n` in a temporary worktree at its head commit, without touching the Developer's checkout. The issue has a manual recipe that was tried on #199, and two open questions: which base branch to use, and whether to reuse `node_modules`. ([#218](https://github.com/cfisch3r/estimate/issues/218))
 

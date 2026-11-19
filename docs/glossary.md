@@ -31,6 +31,7 @@ The words for judging how closely a change needs to be read ([pr-review-catalogu
 
 | Term | Meaning in this repo | Avoid |
 |---|---|---|
+| **PR review catalogue** | The doc that lists the risk categories, their path patterns and diff checks, and so sets the floor ([pr-review-catalogue.md](technical/pr-review-catalogue.md)). | "review risk catalogue", "risk catalogue" |
 | **Risk category** | A named kind of change in the PR review catalogue, such as `wire-contract` or `domain-math`, with a minimum risk level. A file can belong to several. | "category", "tag" |
 | **Floor** | The minimum risk a change gets from the catalogue's path patterns and diff checks. A reviewer or an agent may raise the risk above it and never lower it. | "baseline" |
 | **Diff check** | A fixed, deterministic check on the content of a diff that a path pattern cannot express (for example, a coverage threshold went down). It can set the floor. | "heuristic", "signal" |
