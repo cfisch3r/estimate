@@ -30,6 +30,27 @@ module.exports = {
       from: { path: '^specs/[^/]+/domain/' },
       to: { path: '^src/', pathNot: '^src/domain/' },
     },
+    {
+      // The `integration` Test Level's harness page runs the real adapters, so
+      // it may import them, the ports they implement and the domain types they
+      // carry, but nothing that would let a scenario bypass the port (ADR-011).
+      name: 'specs-integration-harness-imports-adapters-ports-domain',
+      severity: 'error',
+      from: { path: '^specs/shared/integration/harness/' },
+      to: { path: '^src/', pathNot: '^src/(adapters|application/ports|domain)/' },
+    },
+    {
+      // Integration steps, drivers and the world fixture run in Node and reach
+      // the adapters only through the harness page; from src/ they take types
+      // only, such as the port types their drivers are derived from (ADR-011).
+      name: 'specs-integration-type-only-src',
+      severity: 'error',
+      from: {
+        path: '^specs/[^/]+/integration/',
+        pathNot: '^specs/shared/integration/harness/',
+      },
+      to: { path: '^src/', dependencyTypesNot: ['type-only'] },
+    },
   ],
   options: {
     ...sharedOptions,

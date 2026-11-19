@@ -7,6 +7,11 @@
     "scripts/**/*.test.ts",
     ".claude/skills/*/scripts/**/*.test.ts"
   ],
-  "entry": ["steiger.config.ts", "e2e/relay-server.mjs", "specs/**/{steps,world}.ts"],
+  "entry": [
+    "steiger.config.ts",
+    "e2e/relay-server.mjs",
+    "specs/**/{steps,world}.ts",
+    "specs/shared/integration/harness/harness.ts"
+  ],
   "ignoreDependencies": ["fta-cli"]
 }

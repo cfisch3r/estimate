@@ -8,7 +8,7 @@ type Operations<Port> = {
 }
 
 /** What the harness installs for a port: the adapter's own operations. */
-export type HarnessEntry<Port> = Operations<Port>
+type HarnessEntry<Port> = Operations<Port>
 
 /** A port as the steps see it from Node: every operation async, because each
  *  call is a round trip into the page. Derived from the port type, so a port
