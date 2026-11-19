@@ -53,8 +53,13 @@ describe('useSaveSession', () => {
     act(() => result.current())
 
     expect(download).toHaveBeenCalledTimes(1)
-    const [fileName, text] = download.mock.calls[0] as [string, string]
+    const [fileName, text, contentType] = download.mock.calls[0] as [
+      string,
+      string,
+      string,
+    ]
     expect(fileName).toBe('checkout-rework-2026-11-12.estimate.json')
+    expect(contentType).toBe('application/json')
     const read = readSessionFile(text)
     expect(read.ok && read.value.items.map((item) => item.title)).toEqual([
       'Payment provider switch',

@@ -19,7 +19,7 @@ export function useSaveSession(): () => string {
     const { sessionName, unit, items, markSaved } = useSessionStore.getState()
     const file = writeSessionFile({ sessionName, unit, items })
     const fileName = sessionFileName(sessionName, today())
-    download(fileName, file)
+    download(fileName, file, 'application/json')
     markSaved(file)
     return fileName
   }

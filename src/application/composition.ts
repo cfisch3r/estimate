@@ -7,9 +7,8 @@ export {
 } from './useCases/liveSessionController'
 export { LiveSessionContext, type LiveSessionApi } from './useCases/liveSessionContext'
 export { useLiveSession } from './useCases/useLiveSession'
-export {
-  ParticipantIdentityContext,
-  type ParticipantIdentityApi,
-} from './ports/participantIdentityContext'
-export { FileDownloadContext, type FileDownloadApi } from './ports/fileDownloadContext'
+export { ParticipantIdentityContext } from './ports/participantIdentityContext'
+export type { ParticipantIdentityApi } from './ports/outbound/participantIdentity'
+export { FileDownloadContext } from './ports/fileDownloadContext'
+export type { FileDownloadApi } from './ports/outbound/fileDownload'
 export type { ConnectionState, JoinSession } from './ports/outbound/networkTransport'

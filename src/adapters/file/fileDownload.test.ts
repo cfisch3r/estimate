@@ -7,7 +7,7 @@ describe('downloadTextFile', () => {
     vi.useRealTimers()
   })
 
-  it('clicks a download link for a JSON blob and releases its URL later', async () => {
+  it('clicks a download link for a blob of the given type and releases its URL later', async () => {
     vi.useFakeTimers()
     // jsdom has no object URLs, so stand them in.
     const createObjectURL = vi.fn((_blob: Blob) => 'blob:session')
@@ -16,16 +16,16 @@ describe('downloadTextFile', () => {
     const click = vi
       .spyOn(HTMLAnchorElement.prototype, 'click')
       .mockImplementation(function (this: HTMLAnchorElement) {
-        expect(this.download).toBe('s.estimate.json')
+        expect(this.download).toBe('r.txt')
         expect(this.href).toBe('blob:session')
       })
 
-    downloadTextFile('s.estimate.json', '{"version":1}')
+    downloadTextFile('r.txt', 'line ✓', 'text/plain')
 
     expect(click).toHaveBeenCalledTimes(1)
     const blob = createObjectURL.mock.calls[0]?.[0]
-    expect(blob?.type).toBe('application/json')
-    expect(await blob?.text()).toBe('{"version":1}')
+    expect(blob?.type).toBe('text/plain')
+    expect(await blob?.text()).toBe('line ✓')
     // Not at once: the download may start only after click() returns.
     expect(revokeObjectURL).not.toHaveBeenCalled()
     vi.advanceTimersByTime(60_000)
