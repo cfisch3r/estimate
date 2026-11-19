@@ -401,17 +401,21 @@ const encodePath = (path: string) =>
 // The page styles, inlined so the page stays self-contained.
 const STYLE = readFileSync(join(import.meta.dirname, 'reviewGuide.css'), 'utf8')
 
-function htmlSpot(s: HotSpot, data: GuideData): string {
+function htmlSpot(s: HotSpot, data: GuideData, n: number): string {
   const place = code(`${s.file}:${s.line}`)
   const reference =
     data.repoUrl && FULL_SHA.test(data.covers)
       ? `<a href="${esc(`${data.repoUrl}/blob/${data.covers}/${encodePath(s.file)}#L${s.line}`)}">${place}</a>`
       : place
+  // A hot spot on a file the map draws gets a button that shows its box there.
+  const show = data.marks?.spots[s.file]
+    ? ` · <button type="button" class="show-on-map" data-path="${esc(s.file)}">Show on map</button>`
+    : ''
   return [
-    '<li class="spot">',
+    `<li class="spot"><span class="spot-num" aria-hidden="true">${n}</span>`,
     `<p class="title">${esc(s.title)}</p>`,
     `<p>${esc(s.body)}</p>`,
-    `<p>${reference} · ${esc(s.rule)}</p>`,
+    `<p>${reference} · ${esc(s.rule)}${show}</p>`,
     ...(s.facts.length > 0
       ? [`<p class="facts">Facts: ${s.facts.map(esc).join(' · ')}</p>`]
       : []),
@@ -443,11 +447,11 @@ export function renderHtml(data: GuideData, title = 'Review guide'): string {
     `<p class="muted">Covers ${code(data.covers.slice(0, 7))}</p>`,
     '<h2>Risk</h2>',
     `<p><span class="badge risk-${data.risk}">${data.risk}</span>${esc(raised)} — ${names}</p>`,
-    ...(data.map?.status === 'ok' ? [renderMapSection(data.map)] : []),
+    ...(data.map?.status === 'ok' ? [renderMapSection(data.map, data.marks)] : []),
     '<h2>Hot spots</h2>',
     data.hotSpots.length === 0
       ? '<p class="muted">None.</p>'
-      : `<ol class="spots">\n${data.hotSpots.map((s) => htmlSpot(s, data)).join('\n')}\n</ol>`,
+      : `<ol class="spots">\n${data.hotSpots.map((s, i) => htmlSpot(s, data, i + 1)).join('\n')}\n</ol>`,
     '<h2>Skim only</h2>',
     list(
       data.skimOnly.map((s) => `${code(s.file)} — ${esc(s.why)}`),

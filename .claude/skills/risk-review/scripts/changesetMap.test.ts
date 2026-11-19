@@ -601,6 +601,17 @@ describe('reach', () => {
     expect(rows[1]?.textContent).toContain('unchanged importers (2)')
   })
 
+  it('shows the hot spot number and skim only in the legend', () => {
+    open(files, code)
+    const rows = [...document.querySelectorAll('#changeset-map .legend .lg-row')]
+    expect(rows[0]?.querySelector('.sw.skim')?.parentElement?.textContent).toBe(
+      'skim only',
+    )
+    const sample = rows[2]?.querySelector('.spot-sample')
+    expect(sample?.getAttribute('aria-hidden')).toBe('true')
+    expect(sample?.parentElement?.textContent).toBe('nhot spot n')
+  })
+
   it('starts with the importer boxes hidden and shows them with the checkbox', () => {
     const { errors } = open(files, code)
     expect(document.querySelectorAll('#changeset-map .node.importer')).toHaveLength(0)

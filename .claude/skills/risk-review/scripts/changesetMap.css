@@ -454,3 +454,25 @@
 #changeset-map .node:has(.reach) {
   padding-right: 40px;
 }
+/* The agent's answer on the map: hot spot numbers and the skim-only look. */
+#changeset-map .spot-n,
+#changeset-map .spot-sample {
+  font:
+    700 10.5px/1 ui-monospace,
+    monospace;
+  color: var(--bg);
+  background: var(--chg);
+  border-radius: 9px;
+  padding: 3px 6px;
+}
+#changeset-map .node.skim,
+#changeset-map .sw.skim,
+#changeset-map .strip-file.skim {
+  background-image: repeating-linear-gradient(
+    135deg,
+    transparent 0 4px,
+    var(--bg) 4px 7px
+  );
+  color: var(--muted);
+  font-weight: 500;
+}
