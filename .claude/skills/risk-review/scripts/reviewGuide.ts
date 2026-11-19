@@ -12,6 +12,7 @@ import {
 } from './reviewFloor.ts'
 import { readCodeChanges } from './reviewImports.ts'
 import { readChangesetMap, type ChangesetMap } from './reviewMap.ts'
+import { mapMarks, type MapMarks, type Responsibility } from './reviewMarks.ts'
 import type { Section } from './reviewSignals.ts'
 
 // The Review guide, built on request while reviewing a branch. A script writes it, not the
@@ -62,8 +63,12 @@ export interface GuideData {
   categories: string[]
   hotSpots: HotSpot[]
   skimOnly: SkimItem[]
+  /** What each changed file is for, in the agent's words; valid entries only. */
+  responsibilities: Responsibility[]
   evidence: EvidenceItem[]
   map?: Section<ChangesetMap>
+  /** The agent's answer as marks on the map; only with a map. */
+  marks?: MapMarks
 }
 
 export interface AgentAnswer {
@@ -71,6 +76,7 @@ export interface AgentAnswer {
   categories?: unknown
   hotSpots?: unknown
   skimOnly?: unknown
+  responsibilities?: unknown
   notVerified?: unknown
 }
 
@@ -324,6 +330,24 @@ export function buildGuide(input: GuideInput): GuideData {
     }
   }
 
+  const responsibilities: Responsibility[] = []
+  const raw = Array.isArray(agent.responsibilities)
+    ? (agent.responsibilities as unknown[])
+    : []
+  for (const entry of raw) {
+    const item = (typeof entry === 'object' && entry !== null ? entry : {}) as Record<
+      string,
+      unknown
+    >
+    if (
+      isText(item.file) &&
+      isText(item.text) &&
+      !responsibilities.some((r) => r.file === item.file)
+    ) {
+      responsibilities.push({ file: item.file, text: oneLine(item.text) })
+    }
+  }
+
   const gaps = Array.isArray(agent.notVerified) ? (agent.notVerified as unknown[]) : []
   for (const text of gaps) {
     if (isText(text)) evidence.push({ kind: 'reviewer', text: oneLine(text) })
@@ -337,8 +361,19 @@ export function buildGuide(input: GuideInput): GuideData {
     categories,
     hotSpots: spots.slice(0, MAX_HOT_SPOTS),
     skimOnly: skim,
+    responsibilities,
     evidence,
     ...(input.map ? { map: input.map } : {}),
+    ...(input.map?.status === 'ok'
+      ? {
+          marks: mapMarks(
+            input.map,
+            spots.slice(0, MAX_HOT_SPOTS),
+            skim,
+            responsibilities,
+          ),
+        }
+      : {}),
   }
   return data
 }
@@ -366,17 +401,21 @@ const encodePath = (path: string) =>
 // The page styles, inlined so the page stays self-contained.
 const STYLE = readFileSync(join(import.meta.dirname, 'reviewGuide.css'), 'utf8')
 
-function htmlSpot(s: HotSpot, data: GuideData): string {
+function htmlSpot(s: HotSpot, data: GuideData, n: number): string {
   const place = code(`${s.file}:${s.line}`)
   const reference =
     data.repoUrl && FULL_SHA.test(data.covers)
       ? `<a href="${esc(`${data.repoUrl}/blob/${data.covers}/${encodePath(s.file)}#L${s.line}`)}">${place}</a>`
       : place
+  // A hot spot on a file the map draws gets a button that shows its box there.
+  const show = data.marks?.spots[s.file]
+    ? ` · <button type="button" class="show-on-map" data-path="${esc(s.file)}">Show on map<span class="sr">: ${esc(s.file)}</span></button>`
+    : ''
   return [
-    '<li class="spot">',
+    `<li class="spot"><span class="spot-num"><span class="sr">Hot spot </span>${n}</span>`,
     `<p class="title">${esc(s.title)}</p>`,
     `<p>${esc(s.body)}</p>`,
-    `<p>${reference} · ${esc(s.rule)}</p>`,
+    `<p>${reference} · ${esc(s.rule)}${show}</p>`,
     ...(s.facts.length > 0
       ? [`<p class="facts">Facts: ${s.facts.map(esc).join(' · ')}</p>`]
       : []),
@@ -408,11 +447,11 @@ export function renderHtml(data: GuideData, title = 'Review guide'): string {
     `<p class="muted">Covers ${code(data.covers.slice(0, 7))}</p>`,
     '<h2>Risk</h2>',
     `<p><span class="badge risk-${data.risk}">${data.risk}</span>${esc(raised)} — ${names}</p>`,
-    ...(data.map?.status === 'ok' ? [renderMapSection(data.map)] : []),
+    ...(data.map?.status === 'ok' ? [renderMapSection(data.map, data.marks)] : []),
     '<h2>Hot spots</h2>',
     data.hotSpots.length === 0
       ? '<p class="muted">None.</p>'
-      : `<ol class="spots">\n${data.hotSpots.map((s) => htmlSpot(s, data)).join('\n')}\n</ol>`,
+      : `<ol class="spots">\n${data.hotSpots.map((s, i) => htmlSpot(s, data, i + 1)).join('\n')}\n</ol>`,
     '<h2>Skim only</h2>',
     list(
       data.skimOnly.map((s) => `${code(s.file)} — ${esc(s.why)}`),

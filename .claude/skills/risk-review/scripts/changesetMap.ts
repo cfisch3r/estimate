@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { escapeUTF8 as esc } from 'entities'
 import type { ChangesetMap, Folder } from './reviewMap.ts'
+import type { MapMarks } from './reviewMarks.ts'
 
 // The changeset map section of the Review guide. The map data goes into the page as a JSON
 // block; a small script (changesetMap.client.js, inlined) lays it out in the browser and
@@ -21,6 +22,7 @@ const SWATCHES: Array<[string, string]> = [
   ['ghost', '⇠ moved away'],
   ['context', '· unchanged, at a changed import'],
   ['importer', '◦ unchanged, uses a changed export'],
+  ['changed skim', 'skim only'],
 ]
 
 /** A short line in an arrow's own stroke, for the legend. */
@@ -72,16 +74,20 @@ function showRow(map: ChangesetMap): string {
 }
 
 const MARKS = [
+  '<span><b class="spot-sample" aria-hidden="true">n</b>hot spot n</span>',
   '<span><b class="reach-sample" aria-hidden="true">↗n</b>used by n unchanged files</span>',
   '<span><b class="api-sample" aria-hidden="true">API +n −m</b>barrel exports added, removed</span>',
   `<span>${arrowSample('kept')}kept imports of the active box</span>`,
 ].join('')
 
 /** The map data as JSON that cannot end the script block it sits in (`</script`, `<!--`). */
-const embed = (map: ChangesetMap) => JSON.stringify(map).replace(/</g, '\\u003c')
+const embed = (data: ChangesetMap & { marks: MapMarks }) =>
+  JSON.stringify(data).replace(/</g, '\\u003c')
 
-/** The changeset map section: its heading, legend, data, canvas and script. */
-export function renderMapSection(map: ChangesetMap): string {
+const NO_MARKS: MapMarks = { spots: {}, skim: {}, responsibilities: {} }
+
+/** The changeset map section: its heading, legend, data with the marks, canvas and script. */
+export function renderMapSection(map: ChangesetMap, marks: MapMarks = NO_MARKS): string {
   const offMap =
     map.offMap > 0
       ? ` ${map.offMap} file${map.offMap === 1 ? '' : 's'} left off the map (tests, CSS, type declarations).`
@@ -100,7 +106,7 @@ export function renderMapSection(map: ChangesetMap): string {
     '<h2 id="changeset-map-title">Changeset map</h2>',
     `<style>${STYLE}</style>`,
     `<div class="legend">${legend}</div>`,
-    `<script type="application/json" id="changeset-map-data">${embed(map)}</script>`,
+    `<script type="application/json" id="changeset-map-data">${embed({ ...map, marks })}</script>`,
     '<div class="scroll"><div class="map-canvas"><div id="map-card" class="map-card" hidden></div><span id="map-card-summary" class="sr"></span></div></div>',
     `<script>${CLIENT}</script>`,
     '</section>',

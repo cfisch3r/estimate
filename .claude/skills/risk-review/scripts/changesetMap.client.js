@@ -40,6 +40,24 @@
     folder.files.some(visible) || folder.folders.some(hasVisible)
   const usersOf = (path) => uses.filter((u) => u.to === path)
 
+  // The agent's answer on the map: hot spot numbers, skim-only files, responsibilities.
+  const marks = data.marks ?? { spots: {}, skim: {}, responsibilities: {} }
+  const spotsIn = (paths) =>
+    paths.flatMap((p) => marks.spots[p] ?? []).sort((a, b) => a - b)
+  const spotWords = (ns) => `hot spot${ns.length > 1 ? 's' : ''} ${ns.join(' and ')}`
+  /** The changed files among some files: unchanged boxes and ghosts are never skim-only. */
+  const changedPaths = (files) =>
+    files
+      .filter((f) => !['context', 'importer', 'ghost'].includes(f.status))
+      .map((f) => f.path)
+  const allSkim = (paths) => paths.length > 0 && paths.every((p) => marks.skim[p])
+  /** The skim-only entries of a box whose changed files are all skim-only, by entry. */
+  function skimReasons(files) {
+    const paths = changedPaths(files)
+    if (!allSkim(paths)) return []
+    return [...new Map(paths.map((p) => [marks.skim[p].entry, marks.skim[p].why]))]
+  }
+
   /** Folder path → open, for folders the reader toggled. */
   const toggled = new Map()
   const isOpen = (f) =>
@@ -250,6 +268,10 @@
   let hovered = null
   let focused = null
   let pinned = null
+  /** True from "Show on map" until the pointer moves: a hover then is only the scroll. */
+  let stillPointer = false
+  /** The "Show on map" button that moved focus into the map, and where it moved it. */
+  let shownFrom = null
   const active = () => hovered ?? focused ?? pinned
   /** Box key (a file path, or a collapsed folder's path) → where it is drawn and its card. */
   let boxes = new Map()
@@ -474,7 +496,15 @@
 
   function cardLines(key) {
     const box = boxes.get(key)
-    const lines = [el('code', '', box.path), el('div', '', box.status)]
+    const lines = [el('code', '', box.path)]
+    const paths = box.files.map((f) => f.path)
+    const said = box.collapsed ? undefined : marks.responsibilities[paths[0]]
+    if (said) lines.push(el('div', 'resp', said))
+    lines.push(el('div', '', box.status))
+    const ns = spotsIn(paths)
+    if (ns.length) lines.push(el('div', 'card-spot', `Hot spot ${ns.join(', ')}`))
+    for (const [entry, why] of skimReasons(box.files))
+      lines.push(el('div', 'skim-why', `Skim only (${entry}): ${why}`))
     for (const file of box.files)
       lines.push(...reachLines(file, box.collapsed ? `${baseName(file.path)}: ` : ''))
     // A uses arrow stands in only for a kept import, so only those leave the list.
@@ -518,6 +548,10 @@
   function summary(key) {
     const box = boxes.get(key)
     const parts = [box.status]
+    // The card's sentences, which the eye reads there, are said here too.
+    const said = box.collapsed ? undefined : marks.responsibilities[box.files[0].path]
+    if (said) parts.unshift(said)
+    for (const [, why] of skimReasons(box.files)) parts.push(`skim only: ${why}`)
     if (!box.collapsed) {
       const file = box.files[0]
       const exports = file.exports ?? []
@@ -565,6 +599,7 @@
   /** Pointer and keyboard focus each make a box active on their own. */
   function hover(e, key) {
     e.addEventListener('mouseenter', () => {
+      if (stillPointer) return
       hovered = key
       refresh()
     })
@@ -585,7 +620,20 @@
   // Escape closes the card, whether hover, focus or a pin opened it; it does nothing while
   // no card is open.
   document.addEventListener('keydown', (e) => {
-    if (e.key !== 'Escape' || active() === null) return
+    if (e.key !== 'Escape') return
+    // Escape on what "Show on map" focused goes back to its button, so a reader can go on
+    // with the next hot spot without passing through the whole map.
+    const back = shownFrom
+    shownFrom = null
+    if (back && back.target === document.activeElement && back.button.isConnected) {
+      hovered = null
+      focused = null
+      pinned = null
+      refresh()
+      back.button.focus()
+      return
+    }
+    if (active() === null) return
     hovered = null
     focused = null
     pinned = null
@@ -616,6 +664,13 @@
     if (spoken) chip.append(el('span', 'sr', ` ${apiWords(folder.api)}`))
     chip.title = 'Re-exports the folder’s barrels added and removed'
     return chip
+  }
+
+  /** A box's hot spot numbers on its top-right corner, outside the box; only seen. */
+  function spotBadge(ns, x, y) {
+    const badge = at(el('span', 'spot-n', ns.join(' ')), x + NW + 4, y - 9)
+    badge.setAttribute('aria-hidden', 'true')
+    return badge
   }
 
   /** Every file in a folder and below. */
@@ -709,7 +764,14 @@
           : ''
         if (file.reach) box.append(hidden(`↗${file.reach}`, 'reach'))
         box.title = file.path
-        box.setAttribute('aria-label', `${file.path}, ${describe(file)}${reach}`)
+        const ns = marks.spots[file.path] ?? []
+        const skim = marks.skim[file.path] ? ', skim only' : ''
+        if (skim) box.classList.add('skim')
+        box.setAttribute(
+          'aria-label',
+          `${file.path}, ${describe(file)}${reach}${ns.length ? `, ${spotWords(ns)}` : ''}${skim}`,
+        )
+        if (ns.length) add(spotBadge(ns, x, y))
         boxes.set(file.path, {
           x,
           y,
@@ -739,6 +801,16 @@
           words.push(apiWords(folder.api))
         }
         box.append(chips)
+        const shown = filesIn(folder).filter(visible)
+        const ns = spotsIn(shown.map((f) => f.path))
+        if (ns.length) {
+          words.push(spotWords(ns))
+          add(spotBadge(ns, x, y))
+        }
+        if (allSkim(changedPaths(shown))) {
+          box.classList.add('skim')
+          words.push('skim only')
+        }
         box.setAttribute('aria-label', `${folder.path}/, collapsed, ${words.join(', ')}`)
         const status = `${folder.changed} changed file${folder.changed === 1 ? '' : 's'}, collapsed`
         boxes.set(folder.path, {
@@ -774,7 +846,17 @@
       let bottom = top
       data.strips.forEach((strip, i) => {
         const x = i * (STRIPW + G)
-        add(at(el('div', 'strip-title', `${strip.name} (${strip.files.length})`), x, top))
+        const title = at(
+          el('div', 'strip-title', `${strip.name} (${strip.files.length})`),
+          x,
+          top,
+        )
+        title.id = `map-strip-${i}`
+        add(title)
+        // The rows are a list named by the strip's title; the list itself takes no place.
+        const list = add(el('div', 'strip-list'))
+        list.setAttribute('role', 'list')
+        list.setAttribute('aria-labelledby', title.id)
         strip.files.forEach((file, j) => {
           // The file name stays whole; a long folder path is shortened instead.
           const cut = file.path.lastIndexOf('/') + 1
@@ -785,8 +867,29 @@
             el('span', 'name', file.path.slice(cut)),
           )
           at(row, x, top + 26 + j * STRIP_ROW, STRIPW, 24)
-          row.title = `${file.path} · ${describe(file)}`
-          add(row)
+          const skim = marks.skim[file.path]
+          row.title = `${file.path} · ${describe(file)}${skim ? ` · skim only: ${skim.why}` : ''}`
+          row.dataset.path = file.path
+          // Show on map moves focus here, so a reader knows where they landed.
+          row.tabIndex = -1
+          if (skim) row.classList.add('skim')
+          const ns = marks.spots[file.path]
+          if (ns) {
+            const badge = el('span', 'spot-n inline', ns.join(' '))
+            badge.setAttribute('aria-hidden', 'true')
+            row.append(badge)
+          }
+          // A row is no control, so its status and what the badge and the stripes show
+          // are hidden text.
+          row.setAttribute('role', 'listitem')
+          row.append(
+            el(
+              'span',
+              'sr',
+              `, ${describe(file)}${ns ? `, ${spotWords(ns)}` : ''}${skim ? `, skim only: ${skim.why}` : ''}`,
+            ),
+          )
+          list.append(row)
         })
         bottom = Math.max(bottom, top + 26 + strip.files.length * STRIP_ROW)
       })
@@ -797,6 +900,58 @@
     if (pinned !== null && !boxes.has(pinned)) pinned = null
     refresh()
   }
+
+  /** The folders from a layer down to the one that holds `path`; none when off the map. */
+  function chainTo(path) {
+    const walk = (folder) => {
+      if (folder.files.some((f) => f.path === path)) return [folder]
+      for (const sub of folder.folders) {
+        const found = walk(sub)
+        if (found) return [folder, ...found]
+      }
+      return null
+    }
+    for (const layer of data.layers) {
+      const found = walk(layer.root)
+      if (found) return found
+    }
+    return []
+  }
+
+  // A hot spot's "Show on map" opens the folders around its file, pins the box and moves
+  // focus there, so its card opens and a screen reader hears its summary. A strip row
+  // cannot be pinned; it gets focus and a short flash. The hot spot list comes after this
+  // script, so one listener on the document serves every button.
+  function showOnMap(path, button) {
+    // The scroll moves another box under a pointer that did not move; that is no hover.
+    stillPointer = true
+    hovered = null
+    for (const folder of chainTo(path))
+      if (folder.collapsible) toggled.set(folder.path, true)
+    pinned = path
+    render()
+    const target =
+      [...canvas.querySelectorAll('.node[data-key]')].find(
+        (e) => e.dataset.key === path,
+      ) ??
+      [...canvas.querySelectorAll('.strip-file')].find((e) => e.dataset.path === path)
+    if (!target) return
+    target.scrollIntoView?.({ block: 'center' })
+    target.focus({ preventScroll: true })
+    shownFrom = { button, target }
+    if (target.classList.contains('strip-file')) {
+      target.classList.remove('flash')
+      void target.offsetWidth
+      target.classList.add('flash')
+    }
+  }
+  document.addEventListener('pointermove', () => {
+    stillPointer = false
+  })
+  document.addEventListener('click', (e) => {
+    const button = e.target.closest?.('.show-on-map[data-path]')
+    if (button && section.isConnected) showOnMap(button.dataset.path, button)
+  })
 
   render()
 })()

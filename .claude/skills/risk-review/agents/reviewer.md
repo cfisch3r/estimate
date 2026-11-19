@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Read-only reviewer that rates the risk of a branch for its Review guide. Starts from the deterministic floor (docs/technical/review-risk.md), may raise the risk and add categories but never lower the floor, names the hot spots with file:line, and lists what can be skimmed and what could not be verified. Reports one JSON answer; never edits files. Started by the /risk-review skill.
+description: Read-only reviewer that rates the risk of a branch for its Review guide. Starts from the deterministic floor (docs/technical/review-risk.md), may raise the risk and add categories but never lower the floor, names the hot spots with file:line, and lists what can be skimmed, what each changed source file is for and what could not be verified. Reports one JSON answer; never edits files. Started by the /risk-review skill.
 tools: Read, Grep, Glob, Bash
 model: claude-opus-5-5
 ---
@@ -79,7 +79,14 @@ spot; the guide script adds them (no test runs the line, fix commits of the file
 
 **Skim only.** Files or groups of files a person can skim: mechanical changes such as renames,
 formatting, generated or lockfile noise, test fixtures that follow a change, documentation.
-Give each a short reason.
+Give each a short reason. A `file` ending in `/` covers a folder, one with a wildcard is a glob
+(`**/*.css`), any other is one file or a folder written without the slash.
+
+**Responsibilities.** For each changed file under `src/` that is not a test, a stylesheet or a
+type declaration, and not skim-only: one plain sentence on what the file is for in the app, in
+the glossary's words. Say its role, not what the change did to it; the hot spots carry the
+change. The guide shows the sentence when a reader points at the file on the changeset map, so
+it has to make sense without the diff.
 
 **Not verified.** Only what a reader has to check by hand, because you could not or did not:
 for example "Behaviour with an older peer is untested", "Did not read the e2e specs", "The
@@ -105,12 +112,15 @@ Reply with **exactly one fenced `json` block and nothing else**:
     }
   ],
   "skimOnly": [{ "file": "docs/technical/concepts/collaboration-mode.md", "why": "Text follows the code change." }],
+  "responsibilities": [
+    { "file": "src/adapters/network/wireParse.ts", "text": "Checks every message a peer sends and turns it into a typed action, or rejects it." }
+  ],
   "notVerified": ["Behaviour with a peer on an older build is untested."]
 }
 ```
 
 - `risk` is at least the floor. `categories` contains every category the floor found.
-- `hotSpots`, `skimOnly` and `notVerified` can be empty lists. An empty diff gives `low`, no
+- `hotSpots`, `skimOnly`, `responsibilities` and `notVerified` can be empty lists. An empty diff gives `low`, no
   categories and no hot spots.
 - No prose before or after the block, no severity labels, no fix suggestions: the caller turns
   your answer into the Review guide. Put things you noticed, such as a stale comment or a test

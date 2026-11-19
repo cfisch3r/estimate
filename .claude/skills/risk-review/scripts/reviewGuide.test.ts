@@ -168,6 +168,29 @@ describe('skim only and agent notes', () => {
   })
 })
 
+describe('responsibilities', () => {
+  it('keeps valid entries on one line and drops the rest', () => {
+    const data = build({
+      agent: {
+        risk: 'high',
+        responsibilities: [
+          { file: 'a.ts', text: 'Line\nnext' },
+          { file: '', text: 'x' },
+          { file: 'b.ts' },
+          'nope',
+          { file: 'a.ts', text: 'second' },
+        ],
+      },
+    })
+    expect(data.responsibilities).toEqual([{ file: 'a.ts', text: 'Line next' }])
+  })
+
+  it('gives none when the field is missing or not a list', () => {
+    expect(build().responsibilities).toEqual([])
+    expect(build({ agent: { responsibilities: 'x' } }).responsibilities).toEqual([])
+  })
+})
+
 describe('evidence from the signals', () => {
   it('reports what ran and what did not', () => {
     const evidence = evidenceFromSignals({
@@ -587,5 +610,62 @@ describe('changeset map', () => {
 
   it('renders as before without a map', () => {
     expect(page()).not.toContain('changeset-map')
+  })
+
+  const withA: ChangesetMap = {
+    ...map,
+    layers: [
+      {
+        name: 'domain',
+        root: {
+          ...map.layers[0]!.root,
+          files: [{ path: 'src/domain/a.ts', status: 'changed' }],
+          changed: 1,
+        },
+      },
+    ],
+  }
+
+  it('numbers the hot spots and links those on the map', () => {
+    const html = page({
+      map: { status: 'ok', ...withA },
+      agent: { risk: 'high', hotSpots: [spot, { ...spot, file: 'docs/x.md', line: 3 }] },
+    })
+    expect(html).toContain(
+      '<span class="spot-num"><span class="sr">Hot spot </span>1</span>',
+    )
+    expect(html).toContain(
+      '<span class="spot-num"><span class="sr">Hot spot </span>2</span>',
+    )
+    expect(html.match(/class="show-on-map"/g)).toHaveLength(1)
+    expect(html).toContain(
+      '<button type="button" class="show-on-map" data-path="src/domain/a.ts">Show on map<span class="sr">: src/domain/a.ts</span></button>',
+    )
+  })
+
+  it('embeds the marks with the map data', () => {
+    const html = page({ map: { status: 'ok', ...withA } })
+    expect(html).toContain('"marks":{"spots":{"src/domain/a.ts":[1]}')
+  })
+
+  it('escapes a responsibility in the data block', () => {
+    const html = page({
+      map: { status: 'ok', ...withA },
+      agent: {
+        risk: 'high',
+        responsibilities: [{ file: 'src/domain/a.ts', text: '</script><b>x' }],
+      },
+    })
+    expect(html).toContain('\\u003c/script>\\u003cb>x')
+    expect(html).not.toContain('</script><b>')
+  })
+
+  it('builds marks only with a map', () => {
+    expect(build().marks).toBeUndefined()
+    expect(build({ map: { status: 'ok', ...map } }).marks).toEqual({
+      spots: {},
+      skim: {},
+      responsibilities: {},
+    })
   })
 })
