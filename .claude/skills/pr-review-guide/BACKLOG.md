@@ -51,4 +51,4 @@ Two small cleanups can ride along: the subtree file count in `reviewMap.ts`, and
 
 ## A manual without this project's tools
 
-The manual in `docs/` still names tools of the project it came from: `pnpm metrics` and `pnpm audit` in the signals, `pnpm review:floor` in the flow, and `vite.config.ts` and `tsconfig` files in the diff checks. They match the plugin's scripts today. A portable plugin would read them from the project settings, and the manual would describe them in general terms.
+The plugin's manual (`.claude/skills/pr-review-guide/docs/`) still names files and tools of the project it came from, for example `pnpm metrics` and `pnpm audit` in the signals, `pnpm review:floor` in the flow, `vite.config.ts` and `tsconfig` files in the diff checks, `tsconfig.app.json` for the import edges, this project's layers and strips on the changeset map, `src/` in the agent's `responsibilities`, and the catalogue's path. They match the plugin's scripts today. A portable plugin would read them from the project settings, and the manual would describe them in general terms.

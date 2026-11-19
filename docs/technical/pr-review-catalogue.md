@@ -8,13 +8,8 @@ uncommitted changes, also before the pull request is opened.
 
 ## Plugin manual
 
-The rules that read this catalogue, and the Review guide built from it, are described in the
-Review guide plugin's manual in `.claude/skills/pr-review-guide/docs/`:
-
-- [README.md](../../.claude/skills/pr-review-guide/docs/README.md): how the plugin is used.
-- [catalogue-format.md](../../.claude/skills/pr-review-guide/docs/catalogue-format.md): the risk levels, the fields below, the diff checks and the matching rules.
-- [review-guide.md](../../.claude/skills/pr-review-guide/docs/review-guide.md): the agent's answer and the Review guide page.
-- [changeset-map.md](../../.claude/skills/pr-review-guide/docs/changeset-map.md): the changeset map.
+How the floor, the Review guide and its changeset map work is described in the Review guide
+plugin's [manual](../../.claude/skills/pr-review-guide/docs/README.md).
 
 ## Catalogue data
 
@@ -111,6 +106,13 @@ The one fenced `yaml` block in this file is the data the floor script reads. Its
 | `mechanical` | Documentation changes and pure renames. Skim only. |
 
 ## Changing the catalogue
+
+How a change to the catalogue takes effect is described in the plugin's
+[Changing the catalogue](../../.claude/skills/pr-review-guide/docs/catalogue-format.md#changing-the-catalogue):
+in a pull request with the reason, and for later pull requests only.
+
+A change to this file or to `pr-review-guide.yaml` is `guardrail-weakened` by rule, because this
+file's YAML block lists both paths.
 
 Keep the prose in "Why each category exists" and the YAML block in step with each other; the block
 is the only place that lists paths, so nothing else has to be updated.

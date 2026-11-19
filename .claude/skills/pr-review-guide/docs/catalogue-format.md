@@ -1,5 +1,7 @@
 # Catalogue format
 
+What a project's PR review catalogue holds and how the floor script turns it into the floor of a change.
+
 ## Risk levels
 
 | Level | Meaning |
@@ -55,8 +57,6 @@ evidence for the agent that may be missing and never sets a category.
    category, so `pureRename` never lowers the floor of the renamed file.
 4. A change that matches no category has the floor `low`. The agent still assesses it and may raise
    it.
-5. A change to the project's catalogue (`docs/technical/pr-review-catalogue.md`) or to `pr-review-guide.yaml` is
-   `guardrail-weakened` by rule, because the catalogue's YAML block lists both paths.
 
 ## Changing the catalogue
 

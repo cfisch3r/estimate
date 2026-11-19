@@ -1,5 +1,7 @@
 # Review guide
 
+What the `pr-review-guide:reviewer` agent answers, and how the guide script turns the floor, the signals and that answer into the Review guide page.
+
 ## The agent's answer
 
 The `pr-review-guide:reviewer` agent replies with one JSON object, which the guide script reads. The agent
@@ -63,7 +65,7 @@ carries no guide. `pnpm review:guide` renders one self-contained HTML page from 
 
 Do not edit the page by hand; run the command again.
 
-When a pull request opens, the agent reports the minimum risk and categories first in its answer. A `PostToolUse` hook on `gh pr create`
+When a pull request opens, the coding agent that opened it reports the minimum risk and categories first in its answer. A `PostToolUse` hook on `gh pr create`
 (`.claude/skills/pr-review-guide/hooks/posttooluse-floor.sh`) also shows the floor to the maintainer, so the report does not
 depend on the agent. That costs seconds and no model, and it is the only automatic signal: the
 guide itself exists only when the maintainer asks for it.

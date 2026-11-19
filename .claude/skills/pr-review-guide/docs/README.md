@@ -1,13 +1,19 @@
 # Review guide plugin
 
+The plugin builds a **Review guide** for a branch on request: a private page that names the minimum
+risk of the change, the places to read closely, the files to skim and what could not be verified,
+with a changeset map of where the change sits in the app. The project supplies a **PR review
+catalogue**, a YAML block of risk categories with path patterns, and names it in
+`pr-review-guide.yaml` at the repository root.
+
 The catalogue exists because a reader of an agent's pull request should know where to spend
 attention. A model can judge a diff, but its worst mistake is calling a dangerous change low
 risk. So the rules in the [catalogue format](catalogue-format.md) set a **floor** by path patterns and diff checks, and the model may only raise the
 risk above it.
 
-The manual has four parts:
+This page shows how the plugin is used, with the flow from the changed files to the Review guide.
+The other parts of the manual:
 
-- [README.md](README.md): how the plugin is used, with the flow from the changed files to the Review guide.
 - [catalogue-format.md](catalogue-format.md): the risk levels, the catalogue's fields, the diff checks and the matching rules.
 - [review-guide.md](review-guide.md): the agent's answer and the Review guide page.
 - [changeset-map.md](changeset-map.md): the changeset map on the guide page.
