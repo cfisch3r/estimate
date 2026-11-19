@@ -1,8 +1,10 @@
-# Review risk catalogue
+# PR review catalogue
 
 The named categories of change that deserve a closer look when reviewing a branch, and the minimum risk
 each one carries. Each category has a short name so that a review guide, a review or a discussion
 can cite it ("this is `wire-contract`"). The words follow the [glossary](../glossary.md).
+"PR" in the name means a pull request's branch: what is reviewed is that branch with any
+uncommitted changes, also before the pull request is opened.
 
 The catalogue exists because a reader of an agent's pull request should know where to spend
 attention. A model can judge a diff, but its worst mistake is calling a dangerous change low
@@ -11,8 +13,8 @@ risk above it.
 
 ## How it is used
 
-`/risk-review` runs this flow when the maintainer reviews a branch; only the floor script runs
-when a PR opens, through the risk-review plugin's hook (without the plugin, run `pnpm review:floor`). The guide describes the commit it names: run the command again after new commits.
+`/pr-review-guide` runs this flow when the maintainer reviews a branch; only the floor script runs
+when a PR opens, through the pr-review-guide plugin's hook (without the plugin, run `pnpm review:floor`). The guide describes the commit it names: run the command again after new commits.
 
 Legend: solid line = data passed on, dotted line = file read. Scripts are deterministic; the agent is the only model step.
 
@@ -21,7 +23,7 @@ flowchart TD
   Diff["Changed files and diff<br/>[Git diff]"]
   Floor["Floor script<br/>[script]"]
   Sig["Signals script<br/>[script]"]
-  Agent["risk-review:reviewer agent<br/>[model, read-only]"]
+  Agent["pr-review-guide:reviewer agent<br/>[model, read-only]"]
   Guide["Guide script<br/>[script]"]
   MapCfg["changeset-map.yaml<br/>[YAML file, plugin]"]
   Src["Source files at the base and now<br/>[TypeScript sources, git and working tree]"]
@@ -54,12 +56,12 @@ flowchart TD
 |---|---|
 | **Floor script** | Reads the YAML block below from the base branch (`origin/main`, else `main`; never from the pull request being checked, also when given a commit to start from), matches the changed files against it and reports the matched categories and the highest minimum risk. |
 | **Signals script** | Gathers evidence for the agent: git history (changes and `fix:` commits per file over the last six months, the ten files with most fixes first), the `pnpm metrics` hotspots, changed-line coverage (it runs the unit tests itself, within two minutes) and the dependency diff with the `pnpm audit` advisories that hit a version the change added (audit needs network access). It prints `history`, `metrics`, `coverage` and `dependencies`. A section that cannot run says "not available". A signal may be missing and never sets a category. |
-| **`risk-review:reviewer` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
+| **`pr-review-guide:reviewer` agent** | Receives the floor and the evidence. It may raise the risk, add categories and name hot spots. It may never go below the floor. |
 | **Guide script** | Takes the higher of the floor and the agent's risk, keeps the floor's categories plus the catalogue names the agent added, drops hot spots that are not a changed line, adds the signal facts to the hot spots, turns the rest of the signals into the "Not verified" section and renders the guide page. It also reads the changed files itself (since the floor's commit, when the floor had one) and the imports and exports of the source files at that commit (else the merge base with the default branch) and now, and builds the changeset map from them (see [Changeset map](#changeset-map)), with the hot spots, skim-only files and responsibilities marked on it. |
 
 ## The agent's answer
 
-The `risk-review:reviewer` agent replies with one JSON object, which the guide script reads. The agent
+The `pr-review-guide:reviewer` agent replies with one JSON object, which the guide script reads. The agent
 runs both scripts itself, and a signal never makes a category or a hot spot on its own.
 
 | Field | Content |
@@ -73,7 +75,7 @@ runs both scripts itself, and a signal never makes a category or a hot spot on i
 
 ## The review guide
 
-The guide is built on request, when the maintainer reviews a branch: `/risk-review` runs the
+The guide is built on request, when the maintainer reviews a branch: `/pr-review-guide` runs the
 scripts and the agent and publishes the result as a private artifact. The pull request body
 carries no guide. `pnpm review:guide` renders one self-contained HTML page from the inputs in the
 diagram above. A script writes it, so the rules hold whatever the agent says:
@@ -121,7 +123,7 @@ diagram above. A script writes it, so the rules hold whatever the agent says:
 Do not edit the page by hand; run the command again.
 
 When a pull request opens, the agent reports the minimum risk and categories first in its answer. A `PostToolUse` hook on `gh pr create`
-(`.claude/skills/risk-review/hooks/posttooluse-floor.sh`) also shows the floor to the maintainer, so the report does not
+(`.claude/skills/pr-review-guide/hooks/posttooluse-floor.sh`) also shows the floor to the maintainer, so the report does not
 depend on the agent. That costs seconds and no model, and it is the only automatic signal: the
 guide itself exists only when the maintainer asks for it.
 
@@ -173,7 +175,7 @@ flowchart TD
 ```
 
 The checks and their patterns come from the plugin's
-`.claude/skills/risk-review/changeset-map.yaml` (`offMap`, `sourceRoot`, `layers`, `strips`). A
+`.claude/skills/pr-review-guide/changeset-map.yaml` (`offMap`, `sourceRoot`, `layers`, `strips`). A
 moved file is placed by its new path; its old place gets a ghost only when both places are on the
 map.
 
@@ -432,7 +434,7 @@ declarations as their tokens without comments, the same-file declarations each o
 and its leading doc comment. When the programs cannot be built, the map is drawn without arrows,
 importers, exports or API chips, and the legend says why.
 
-| File (`.claude/skills/risk-review/scripts/`) | Role |
+| File (`.claude/skills/pr-review-guide/scripts/`) | Role |
 |---|---|
 | `reviewImports.ts` | Builds the two TypeScript programs once, reads their import edges and export facts, and compares the edges |
 | `reviewExports.ts` | Compares the two sides' export facts: the added, removed and changed exports of each changed file, and each barrel's added and removed re-exports |
@@ -517,7 +519,7 @@ a duplicate `name`, more than one `fallback`, and so on.
     - '.claude/skills/**'
     - '.githooks/**'
     - 'docs/technical/architecture-rules.md'
-    - 'docs/technical/review-risk.md'
+    - 'docs/technical/pr-review-catalogue.md'
     - '.worktreeinclude'
   diff-checks: [coverageThresholdLowered, testsRemovedOrSkipped, strictnessLoosened, architectureExceptionAdded]
 

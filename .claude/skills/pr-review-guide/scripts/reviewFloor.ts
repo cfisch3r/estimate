@@ -10,7 +10,7 @@ import {
 } from './changedDiff.ts'
 
 // The review floor: the minimum risk of a change, set by the catalogue in
-// docs/technical/review-risk.md. No model, no coverage run, no network. The `risk-review:reviewer` agent may
+// docs/technical/pr-review-catalogue.md. No model, no coverage run, no network. The `pr-review-guide:reviewer` agent may
 // raise the result and never lower it.
 //
 //   pnpm review:floor              the branch against main
@@ -22,7 +22,7 @@ import {
 export const RISK_LEVELS = ['low', 'medium', 'high', 'critical'] as const
 export type RiskLevel = (typeof RISK_LEVELS)[number]
 
-const CATALOGUE_PATH = 'docs/technical/review-risk.md'
+const CATALOGUE_PATH = 'docs/technical/pr-review-catalogue.md'
 
 /** Each diff check returns the changed files that make it true. */
 const DIFF_CHECKS = {

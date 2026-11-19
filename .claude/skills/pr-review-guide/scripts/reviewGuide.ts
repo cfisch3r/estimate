@@ -24,7 +24,7 @@ import type { Section } from './reviewSignals.ts'
 //     [--covers <commit>] [--title <page title>]
 //
 // Prints the HTML page. The inputs are the outputs of `pnpm review:floor`,
-// `pnpm review:signals` and the `risk-review:reviewer` agent. The script also reads the
+// `pnpm review:signals` and the `pr-review-guide:reviewer` agent. The script also reads the
 // branch's diff itself for the changeset map, placed by the plugin's `changeset-map.yaml`.
 
 export interface HotSpot {

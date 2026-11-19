@@ -25,7 +25,7 @@ floor=$(node "$scripts/reviewFloor.ts" 2>/dev/null) || { echo '{}'; exit 0; }
 message=$(printf '%s' "$floor" | jq -r '
   "Review floor of this pull request: \(.floor) — " +
   (if (.categories | length) > 0 then ([.categories[].name] | join(", ")) else "no category matched" end) +
-  ". Ask for /risk-review to get the Review guide."') || { echo '{}'; exit 0; }
+  ". Ask for /pr-review-guide to get the Review guide."') || { echo '{}'; exit 0; }
 
 printf '{"systemMessage":%s,"hookSpecificOutput":{"hookEventName":"PostToolUse","additionalContext":%s}}' \
   "$(printf '%s' "$message" | jq -Rs .)" "$(printf '%s' "$message" | jq -Rs .)"

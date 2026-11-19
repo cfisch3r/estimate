@@ -27,14 +27,15 @@ doc, add it here instead of guessing.
 
 ## Review
 
-The words for judging how closely a change needs to be read ([review-risk.md](technical/review-risk.md)).
+The words for judging how closely a change needs to be read ([pr-review-catalogue.md](technical/pr-review-catalogue.md)).
 
 | Term | Meaning in this repo | Avoid |
 |---|---|---|
-| **Risk category** | A named kind of change in the review risk catalogue, such as `wire-contract` or `domain-math`, with a minimum risk level. A file can belong to several. | "category", "tag" |
+| **PR review catalogue** | The doc that lists the risk categories, their path patterns and diff checks, and so sets the floor ([pr-review-catalogue.md](technical/pr-review-catalogue.md)). | "review risk catalogue", "risk catalogue" |
+| **Risk category** | A named kind of change in the PR review catalogue, such as `wire-contract` or `domain-math`, with a minimum risk level. A file can belong to several. | "category", "tag" |
 | **Floor** | The minimum risk a change gets from the catalogue's path patterns and diff checks. A reviewer or an agent may raise the risk above it and never lower it. | "baseline" |
 | **Diff check** | A fixed, deterministic check on the content of a diff that a path pattern cannot express (for example, a coverage threshold went down). It can set the floor. | "heuristic", "signal" |
-| **Signal** | Evidence gathered for the risk reviewer (`risk-review:reviewer`) (git history, changed-line coverage, dependency diff). It may be missing and never sets a category or the floor. | "diff check" |
+| **Signal** | Evidence gathered for the risk reviewer (`pr-review-guide:reviewer`) (git history, changed-line coverage, dependency diff). It may be missing and never sets a category or the floor. | "diff check" |
 | **Hot spot** | A place in a diff, named by file and line, that needs a reader's judgment: a headline, what the change is and what makes it a hot spot, and the facts the signals say about it. | |
 | **Responsibility** | One sentence from the risk reviewer on what a changed source file is for in the app, independent of the change. The Review guide shows it in the file's card on the changeset map. | |
 | **Review guide** | A page built on request while reviewing a branch and published as a private artifact: the risk and categories, the hot spots, what can be skimmed, and what could not be verified, with the changeset map marked with the hot spots, the skim-only files and the responsibilities. | "summary" |

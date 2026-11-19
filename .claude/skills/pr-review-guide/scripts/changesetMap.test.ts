@@ -232,8 +232,8 @@ describe('renderMapSection', () => {
 
   it('shows strips and empty layers for a branch outside src', () => {
     const { boxes, errors } = open([
-      added('.claude/skills/risk-review/changeset-map.yaml'),
-      added('docs/technical/review-risk.md'),
+      added('.claude/skills/pr-review-guide/changeset-map.yaml'),
+      added('docs/technical/pr-review-catalogue.md'),
     ])
     expect(errors).toEqual([])
     expect(boxes()).toHaveLength(0)
@@ -243,8 +243,8 @@ describe('renderMapSection', () => {
           `${f.querySelector('.dir')?.textContent}${f.querySelector('.name')?.textContent}`,
       ),
     ).toEqual([
-      'docs/technical/review-risk.md',
-      '.claude/skills/risk-review/changeset-map.yaml',
+      'docs/technical/pr-review-catalogue.md',
+      '.claude/skills/pr-review-guide/changeset-map.yaml',
     ])
   })
 
