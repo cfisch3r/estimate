@@ -168,6 +168,29 @@ describe('skim only and agent notes', () => {
   })
 })
 
+describe('responsibilities', () => {
+  it('keeps valid entries on one line and drops the rest', () => {
+    const data = build({
+      agent: {
+        risk: 'high',
+        responsibilities: [
+          { file: 'a.ts', text: 'Line\nnext' },
+          { file: '', text: 'x' },
+          { file: 'b.ts' },
+          'nope',
+          { file: 'a.ts', text: 'second' },
+        ],
+      },
+    })
+    expect(data.responsibilities).toEqual([{ file: 'a.ts', text: 'Line next' }])
+  })
+
+  it('gives none when the field is missing or not a list', () => {
+    expect(build().responsibilities).toEqual([])
+    expect(build({ agent: { responsibilities: 'x' } }).responsibilities).toEqual([])
+  })
+})
+
 describe('evidence from the signals', () => {
   it('reports what ran and what did not', () => {
     const evidence = evidenceFromSignals({
@@ -587,5 +610,14 @@ describe('changeset map', () => {
 
   it('renders as before without a map', () => {
     expect(page()).not.toContain('changeset-map')
+  })
+
+  it('builds marks only with a map', () => {
+    expect(build().marks).toBeUndefined()
+    expect(build({ map: { status: 'ok', ...map } }).marks).toEqual({
+      spots: {},
+      skim: {},
+      responsibilities: {},
+    })
   })
 })

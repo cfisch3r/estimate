@@ -12,6 +12,7 @@ import {
 } from './reviewFloor.ts'
 import { readCodeChanges } from './reviewImports.ts'
 import { readChangesetMap, type ChangesetMap } from './reviewMap.ts'
+import { mapMarks, type MapMarks, type Responsibility } from './reviewMarks.ts'
 import type { Section } from './reviewSignals.ts'
 
 // The Review guide, built on request while reviewing a branch. A script writes it, not the
@@ -62,8 +63,12 @@ export interface GuideData {
   categories: string[]
   hotSpots: HotSpot[]
   skimOnly: SkimItem[]
+  /** What each changed file is for, in the agent's words; valid entries only. */
+  responsibilities: Responsibility[]
   evidence: EvidenceItem[]
   map?: Section<ChangesetMap>
+  /** The agent's answer as marks on the map; only with a map. */
+  marks?: MapMarks
 }
 
 export interface AgentAnswer {
@@ -71,6 +76,7 @@ export interface AgentAnswer {
   categories?: unknown
   hotSpots?: unknown
   skimOnly?: unknown
+  responsibilities?: unknown
   notVerified?: unknown
 }
 
@@ -324,6 +330,24 @@ export function buildGuide(input: GuideInput): GuideData {
     }
   }
 
+  const responsibilities: Responsibility[] = []
+  const raw = Array.isArray(agent.responsibilities)
+    ? (agent.responsibilities as unknown[])
+    : []
+  for (const entry of raw) {
+    const item = (typeof entry === 'object' && entry !== null ? entry : {}) as Record<
+      string,
+      unknown
+    >
+    if (
+      isText(item.file) &&
+      isText(item.text) &&
+      !responsibilities.some((r) => r.file === item.file)
+    ) {
+      responsibilities.push({ file: item.file, text: oneLine(item.text) })
+    }
+  }
+
   const gaps = Array.isArray(agent.notVerified) ? (agent.notVerified as unknown[]) : []
   for (const text of gaps) {
     if (isText(text)) evidence.push({ kind: 'reviewer', text: oneLine(text) })
@@ -337,8 +361,19 @@ export function buildGuide(input: GuideInput): GuideData {
     categories,
     hotSpots: spots.slice(0, MAX_HOT_SPOTS),
     skimOnly: skim,
+    responsibilities,
     evidence,
     ...(input.map ? { map: input.map } : {}),
+    ...(input.map?.status === 'ok'
+      ? {
+          marks: mapMarks(
+            input.map,
+            spots.slice(0, MAX_HOT_SPOTS),
+            skim,
+            responsibilities,
+          ),
+        }
+      : {}),
   }
   return data
 }
