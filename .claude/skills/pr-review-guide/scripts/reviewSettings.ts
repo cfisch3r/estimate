@@ -16,6 +16,8 @@ export interface Settings {
   catalogue: string
   /** The changeset map's settings as written; `reviewMap.ts` checks them. */
   map: unknown
+  /** Whether the base branch has a settings file, or the defaults apply. */
+  fromFile: boolean
 }
 
 const KEYS = new Set(['catalogue', 'map'])
@@ -30,11 +32,11 @@ export function parseSettings(source: string): Settings {
   for (const key of Object.keys(top)) {
     if (!KEYS.has(key)) throw new Error(`${SETTINGS_PATH}: unknown key "${key}"`)
   }
-  const catalogue = top.catalogue ?? DEFAULT_CATALOGUE
+  const catalogue = 'catalogue' in top ? top.catalogue : DEFAULT_CATALOGUE
   if (typeof catalogue !== 'string' || catalogue.trim() === '') {
     throw new Error(`${SETTINGS_PATH}: catalogue must be a path`)
   }
-  return { catalogue, map: top.map }
+  return { catalogue, map: top.map, fromFile: true }
 }
 
 /**
@@ -45,6 +47,6 @@ export function parseSettings(source: string): Settings {
 export function readSettings(base: string, cwd: string): Settings {
   const source = fileAt(base, SETTINGS_PATH, cwd)
   return source === undefined
-    ? { catalogue: DEFAULT_CATALOGUE, map: undefined }
+    ? { catalogue: DEFAULT_CATALOGUE, map: undefined, fromFile: false }
     : parseSettings(source)
 }

@@ -668,6 +668,13 @@ describe('readChangesetMap', () => {
     })
   })
 
+  it('names the map settings when they are not a mapping', () => {
+    expect(readChangesetMap(() => [], 3)).toEqual({
+      status: 'not available',
+      reason: 'pr-review-guide.yaml: map is not a mapping',
+    })
+  })
+
   it('reports invalid map settings as not available with the field', () => {
     const result = readChangesetMap(() => [], {
       sourceRoot: 'src',

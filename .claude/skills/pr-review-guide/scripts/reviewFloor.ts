@@ -2,13 +2,14 @@ import { matchesGlob } from 'node:path'
 import { parse } from 'yaml'
 import {
   baseRef,
+  fileAt,
   readGitDiff,
   repoRoot,
   showAt,
   type ChangedFile,
   type Diff,
 } from './changedDiff.ts'
-import { readSettings } from './reviewSettings.ts'
+import { SETTINGS_PATH, readSettings } from './reviewSettings.ts'
 
 // The review floor: the minimum risk of a change, set by the catalogue the project names in
 // `pr-review-guide.yaml`. No model, no coverage run, no network. The `pr-review-guide:reviewer`
@@ -304,10 +305,19 @@ export function evaluateFloor(catalogue: Category[], diff: Diff): Omit<Floor, 'b
   }
 }
 
-/** The catalogue the settings at `base` name, read at `base` too (following a rename). */
+/**
+ * The catalogue the settings at `base` name, read at `base` by that exact path; a path the
+ * base branch lacks stops the floor. Only the default path follows a rename, so a pull
+ * request that moves the default catalogue still finds it on the base branch.
+ */
 function readCatalogue(base: string, cwd: string): Category[] {
-  const { catalogue } = readSettings(base, cwd)
-  return parseCatalogue(showAt(base, catalogue, cwd), catalogue)
+  const { catalogue, fromFile } = readSettings(base, cwd)
+  if (!fromFile) return parseCatalogue(showAt(base, catalogue, cwd), catalogue)
+  const text = fileAt(base, catalogue, cwd)
+  if (text === undefined) {
+    throw new Error(`${SETTINGS_PATH} names ${catalogue}, which ${base} does not have`)
+  }
+  return parseCatalogue(text, catalogue)
 }
 
 /** The floor of the working tree against the base branch, or against `since` (a commit). */

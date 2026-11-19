@@ -20,11 +20,19 @@ import {
 describe('parseSettings', () => {
   it('reads the catalogue path and keeps the map part as it is', () => {
     const settings = parseSettings('catalogue: risk.md\nmap:\n  sourceRoot: src\n')
-    expect(settings).toEqual({ catalogue: 'risk.md', map: { sourceRoot: 'src' } })
+    expect(settings).toEqual({
+      catalogue: 'risk.md',
+      map: { sourceRoot: 'src' },
+      fromFile: true,
+    })
   })
 
   it('uses the default catalogue and no map when the file names neither', () => {
-    expect(parseSettings('{}')).toEqual({ catalogue: DEFAULT_CATALOGUE, map: undefined })
+    expect(parseSettings('{}')).toEqual({
+      catalogue: DEFAULT_CATALOGUE,
+      map: undefined,
+      fromFile: true,
+    })
   })
 
   it.each([
@@ -32,6 +40,7 @@ describe('parseSettings', () => {
     ['an unknown key', 'catalogue: risk.md\ncatalog: x\n', /unknown key "catalog"/],
     ['a catalogue that is not a path', 'catalogue: [a]\n', /catalogue must be a path/],
     ['an empty catalogue', "catalogue: ''\n", /catalogue must be a path/],
+    ['a catalogue key without a value', 'catalogue:\n', /catalogue must be a path/],
   ])('rejects %s', (_label, source, message) => {
     expect(() => parseSettings(source)).toThrow(message)
   })
@@ -64,6 +73,7 @@ describe('readSettings', () => {
     expect(readSettings(base, dir)).toEqual({
       catalogue: DEFAULT_CATALOGUE,
       map: undefined,
+      fromFile: false,
     })
   })
 
@@ -86,6 +96,7 @@ describe('readSettings', () => {
     expect(readSettings(base, dir)).toEqual({
       catalogue: DEFAULT_CATALOGUE,
       map: undefined,
+      fromFile: false,
     })
   })
 

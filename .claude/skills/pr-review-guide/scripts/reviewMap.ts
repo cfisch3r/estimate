@@ -58,11 +58,12 @@ function mapping(
   where: string,
   keys: Set<string>,
 ): Record<string, unknown> {
-  if (!isRecord(value))
-    throw new Error(`pr-review-guide.yaml: map: ${where} is not a mapping`)
+  // `where` is empty for the map settings themselves.
+  const at =
+    where === '' ? 'pr-review-guide.yaml: map' : `pr-review-guide.yaml: map: ${where}`
+  if (!isRecord(value)) throw new Error(`${at} is not a mapping`)
   for (const key of Object.keys(value)) {
-    if (!keys.has(key))
-      throw new Error(`pr-review-guide.yaml: map: ${where}: unknown key "${key}"`)
+    if (!keys.has(key)) throw new Error(`${at}: unknown key "${key}"`)
   }
   return value
 }
@@ -103,7 +104,7 @@ export function parseMapConfig(source: string): MapConfig {
 
 /** The map configuration from the settings file's `map` part, checked. */
 export function mapConfigOf(value: unknown): MapConfig {
-  const top = mapping(value, 'the map settings', TOP_KEYS)
+  const top = mapping(value, '', TOP_KEYS)
 
   const layers = list(top.layers, 'layers').map((entry, i): LayerConfig => {
     const where = `layers[${i}]`

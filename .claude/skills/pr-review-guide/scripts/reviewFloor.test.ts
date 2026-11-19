@@ -545,4 +545,15 @@ describe('readFloor', () => {
     expect(floor.floor).toBe('high')
     expect(currentCatalogueNames(floor.base, sandbox.dir)).toEqual(['notes'])
   })
+
+  it('stops when the settings on the base branch name a catalogue the base branch lacks', () => {
+    git('checkout', '-q', 'main')
+    write('pr-review-guide.yaml', 'catalogue: risk/typo.md\n')
+    git('commit', '-q', '-am', 'typo')
+    git('checkout', '-q', 'feature')
+    git('mv', 'notes.txt', 'risk/typo.md')
+    expect(() => readFloor({ cwd: sandbox.dir })).toThrow(
+      /pr-review-guide\.yaml names risk\/typo\.md, which main does not have/,
+    )
+  })
 })
