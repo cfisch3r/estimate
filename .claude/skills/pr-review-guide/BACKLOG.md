@@ -4,7 +4,7 @@ Ideas for the Review guide plugin that are not planned yet. Each was a GitHub is
 
 ## Risk review of a pull request that is not checked out
 
-`/risk-review <n>` builds the guide for pull request `n` in a temporary worktree at its head commit, without touching the Developer's checkout. The issue has a manual recipe that was tried on #199, and two open questions: which base branch to use, and whether to reuse `node_modules`. ([#218](https://github.com/cfisch3r/estimate/issues/218))
+`/pr-review-guide <n>` builds the guide for pull request `n` in a temporary worktree at its head commit, without touching the Developer's checkout. The issue has a manual recipe that was tried on #199, and two open questions: which base branch to use, and whether to reuse `node_modules`. ([#218](https://github.com/cfisch3r/estimate/issues/218))
 
 ## Accessibility scan of the guide page, and three doc parts in scannable form
 

@@ -26,7 +26,7 @@ mechanism: read that section before you start.
 
 A changed doc file in the diff — under `docs/domain/` or `docs/technical/`, or `AGENTS.md`
 or `README.md` at the repo root — that is a **prose** file (a PRD, a concept doc, an ADR,
-or an instructions file like `AGENTS.md` — not a tabular/data file like `review-risk.md`),
+or an instructions file like `AGENTS.md` — not a tabular/data file like `pr-review-catalogue.md`),
 with a hunk that **removes or rewrites existing prose**.
 
 Any hunk that deletes or replaces existing lines of prose qualifies, whether it removes

@@ -14,7 +14,7 @@ import {
   type CoverageReport,
 } from './reviewSignals.ts'
 
-// The signals are evidence for the risk-review agent. Each section must degrade to
+// The signals are evidence for the pr-review-guide agent. Each section must degrade to
 // "not available" instead of throwing, and must report only what it measured.
 interface Change {
   path: string

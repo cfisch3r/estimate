@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { afterAll, describe, expect, it } from 'vitest'
 import type { ChangedFile, Diff } from './changedDiff.ts'
-import { readGitDiff, renameSourceAt, repoRoot } from './changedDiff.ts'
+import { readGitDiff, renameSourceAt, repoRoot, showAt } from './changedDiff.ts'
 import { evaluateFloor, parseCatalogue, type Floor } from './reviewFloor.ts'
 
 // The floor decides the minimum risk of a pull request, and the agent may never go below
@@ -15,7 +15,7 @@ import { evaluateFloor, parseCatalogue, type Floor } from './reviewFloor.ts'
 // block fails in CI.
 const root = repoRoot(import.meta.dirname)
 const catalogue = parseCatalogue(
-  readFileSync(join(root, 'docs/technical/review-risk.md'), 'utf8'),
+  readFileSync(join(root, 'docs/technical/pr-review-catalogue.md'), 'utf8'),
 )
 
 interface Change {
@@ -77,15 +77,15 @@ describe('paths', () => {
   })
 
   it('treats a change to the catalogue itself as guardrail-weakened', () => {
-    expect(namesOf(floorOf({ path: 'docs/technical/review-risk.md' }))).toEqual([
+    expect(namesOf(floorOf({ path: 'docs/technical/pr-review-catalogue.md' }))).toEqual([
       'guardrail-weakened',
     ])
   })
 
   it.each([
-    '.claude/skills/risk-review/scripts/reviewFloor.ts',
-    '.claude/skills/risk-review/hooks/hooks.json',
-    '.claude/skills/risk-review/agents/reviewer.md',
+    '.claude/skills/pr-review-guide/scripts/reviewFloor.ts',
+    '.claude/skills/pr-review-guide/hooks/hooks.json',
+    '.claude/skills/pr-review-guide/agents/reviewer.md',
     '.claude/skills/product-documentation/agents/consistency-reviewer.md',
     '.claude/skills/accessibility-review/.claude-plugin/plugin.json',
   ])('treats a change to a review plugin (%s) as guardrail-weakened', (path) => {
@@ -94,7 +94,7 @@ describe('paths', () => {
 
   it.each([
     '.claude/hooks/.guard-config',
-    '.claude/skills/risk-review/scripts/.fixtures/floor.json',
+    '.claude/skills/pr-review-guide/scripts/.fixtures/floor.json',
   ])('matches a dot file or dot folder below a folder/** pattern (%s)', (path) => {
     expect(namesOf(floorOf({ path }))).toEqual(['guardrail-weakened'])
   })
@@ -482,5 +482,30 @@ describe('renameSourceAt', () => {
 
     expect(renameSourceAt(base, 'new-name.ts', sandbox.dir)).toBe('old-name.ts')
     expect(renameSourceAt(base, 'later.ts', sandbox.dir)).toBeUndefined()
+  })
+})
+
+describe('showAt', () => {
+  const sandbox = gitSandbox('review-floor-show-')
+  afterAll(() => rmSync(sandbox.dir, { recursive: true, force: true }))
+  const { git, write } = sandbox
+
+  // The floor reads the catalogue from the base branch. A pull request that renames the
+  // catalogue must still find it there under its old name, or its own floor fails.
+  it('reads a file at `base` by its path, or by its old path when the branch renamed it', () => {
+    git('init', '-q', '-b', 'main')
+    write('catalogue.md', 'categories\nof change\nwith a minimum risk each\n')
+    write('other.md', 'unchanged\n')
+    git('add', '.')
+    git('commit', '-q', '-m', 'base')
+    const base = git('rev-parse', 'HEAD').trim()
+
+    git('checkout', '-q', '-b', 'feature')
+    git('mv', 'catalogue.md', 'renamed-catalogue.md')
+    git('commit', '-q', '-m', 'rename')
+
+    expect(showAt(base, 'other.md', sandbox.dir)).toBe('unchanged\n')
+    expect(showAt(base, 'renamed-catalogue.md', sandbox.dir)).toContain('minimum risk')
+    expect(() => showAt(base, 'missing.md', sandbox.dir)).toThrow()
   })
 })
