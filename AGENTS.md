@@ -102,17 +102,17 @@ pnpm preview              # serve the production build locally
 pnpm lint                 # oxlint
 pnpm arch                 # steiger (FSD inside the UI) and dependency-cruiser (layer rules, `pnpm arch:layers`)
 pnpm specs:no-pending     # fails while any spec still carries @fail (ADR-010); runs in CI, not in the Stop hook
-pnpm arch:specs           # dependency-cruiser on specs/ (e2e driver code may not import src/, domain driver code only src/domain, ADR-010); separate from `pnpm arch`, but runs in CI and the Stop hook
+pnpm arch:specs           # dependency-cruiser on specs/ (e2e driver code may not import src/, domain driver code only src/domain, ADR-010; the integration harness only adapters, outbound ports and domain, other integration code only port and domain types, ADR-011); separate from `pnpm arch`, but runs in CI and the Stop hook
 pnpm format               # prettier --write
 pnpm format:check         # prettier --check
 pnpm test                 # vitest run, summary output; includes the `domain` Gherkin specs
 pnpm test:watch           # vitest in watch mode
 pnpm test:verbose         # vitest run, every individual test name and result
 pnpm test:coverage        # vitest run --coverage; also enforces the `src/domain` 100% threshold below; includes the `domain` Gherkin specs
-pnpm test:e2e             # bddgen (ADR-010), then Playwright, real WebRTC via a local self-hosted relay (ADR-007)
+pnpm test:e2e             # bddgen (ADR-010), then Playwright, real WebRTC via a local self-hosted relay (ADR-007); includes the integration Test Level (ADR-011)
 pnpm test:e2e:real-world  # same specs against production signaling (public Nostr relays)
 pnpm test:e2e:ui          # Playwright UI mode, for local debugging
-pnpm test:integration    # bddgen, then the integration Test Level only (Playwright projects `*-integration`, ADR-011)
+pnpm test:integration     # bddgen, then the integration Test Level only (Playwright projects `*-integration`, ADR-011)
 pnpm test:specs           # every executable Gherkin spec (ADR-010): the domain level in Vitest, then the e2e and integration levels (Playwright projects `*-bdd` and `*-integration`); runs both runners even if the first fails
 pnpm deadcode             # knip — unused exports/files/dependencies
 pnpm metrics              # advisory complexity/size hotspots in the diff (`pnpm metrics all` for src/); never gates

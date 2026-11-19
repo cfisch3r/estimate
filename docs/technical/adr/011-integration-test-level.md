@@ -10,10 +10,12 @@ ADR-010 set up two Test Levels: `e2e`, which clicks the real UI in real browsers
 `domain`, which calls the pure domain directly. Neither reaches the outbound adapters
 (ADR-009) on their own terms:
 
-- **`e2e` sees an adapter only through a screen.** It can check one user path per
-  behaviour, but not what an adapter reports, records or hands to the browser in detail.
-- **The adapters' unit tests replace what matters.** They mock Trystero, `localStorage` and
-  object URLs, so they can't show how the real browser APIs behave.
+- **`e2e` sees screens**<br>
+  It sees an adapter only through a screen. It can check one user path per behaviour, but
+  not what an adapter reports, records or hands to the browser in detail.
+- **Unit tests mock the boundary**<br>
+  The adapters' unit tests mock Trystero, `localStorage` and object URLs, so they can't
+  show how the real browser APIs behave.
 
 Every outbound adapter wraps a browser API: WebRTC through Trystero, `localStorage`, Blob
 downloads. Node has none of them, and jsdom fakes the parts that matter. Trystero also
@@ -33,66 +35,71 @@ replaces ADR-010's deferred `protocol` Test Level.
   driver code in `specs/shared/integration/`.
 - **Harness page**<br>
   A test-only Vite page (`specs/shared/integration/harness/`, served by
-  `vite.harness.config.ts` in `--mode e2e`) imports the real adapters and installs one
-  global, `window.__harness`, with one entry per port. Each peer or browser is its own
-  Playwright browser context; tabs of the same browser share one.
+  `vite.harness.config.ts`, which sets Vite's mode to `e2e`) imports the real adapters and
+  installs one global, `window.__harness`, with one entry per port. Each peer or browser
+  is its own Playwright browser context; tabs of the same browser share one.
 - **Port drivers**<br>
-  Steps never call `page.evaluate`. They call drivers whose types are derived from the
-  port types (`Remote<Port>`: every operation async, `on…` callbacks left out), through one
-  generic forwarder. The harness object is declared `satisfies Harness`. Renaming or
-  removing a port operation, or changing a parameter's type, therefore fails
-  `pnpm typecheck` in the harness and in every step that uses it. A parameter added to
-  the port is the one exception the harness side doesn't catch: TypeScript accepts a
-  function with fewer parameters.
+  Steps never call `page.evaluate`. They call port drivers whose types are derived from
+  the harness entry's port type (`Remote<Port>`: every operation async, `on…` callbacks
+  left out), through one generic forwarder. The harness object is declared
+  `satisfies Harness`. Renaming or removing a port operation, or changing a parameter's
+  type, therefore fails `pnpm typecheck` in the harness and in every step that uses it. A
+  parameter added to the port is the one exception the harness side doesn't catch:
+  TypeScript accepts a function with fewer parameters.
 - **Callbacks**<br>
-  Callbacks can't cross from the page into Node. The harness appends each one to an
-  in-page journal, which steps read and wait on with `expect.poll`. The journal arrives
-  with the first port that has callbacks.
+  Callbacks can't cross from the page into Node. The harness will append each one to an
+  in-page journal, which steps read and wait on with `expect.poll`. The journal is built
+  together with the first port that has callbacks.
 - **Faults**<br>
   Faults are injected only through the browser or Playwright (going offline, an init
   script that makes `localStorage.setItem` throw), or through a real configuration the
   adapter honours anyway. Adapter internals and Trystero are never stubbed. A fault is
   added only when a scenario needs it.
 - **Import rules**<br>
-  Harness code may import `src/adapters`, `src/application/ports` and `src/domain`.
-  Integration steps, drivers and the world fixture may take types only from `src/`. Both
-  rules are dependency-cruiser rules with a canary test.
+  Harness code may import `src/adapters`, `src/application/ports/outbound` and
+  `src/domain`. Integration steps, drivers and the world fixture may take types only from
+  `src/`, and only port and domain types. All three are dependency-cruiser rules with a
+  canary test.
 - **Signaling**<br>
   The integration projects run in local mode only, against the local relay (ADR-007).
   Real-world mode leaves them out, because it starts neither the relay nor the harness.
 
 ## Rationale
 
-- **Playwright can observe what only the browser knows**: a real `download` event, a
-  reload, a second tab sharing storage, going offline. That's why one runner covers every
-  adapter, not only the network one.
-- **Deriving drivers from ports** removes the one maintenance cost a driver layer adds: a
+- **The browser is observable**<br>
+  Playwright can observe what only the browser knows: a real `download` event, a reload, a
+  second tab sharing storage, going offline. That's why one runner covers every adapter,
+  not only the network one.
+- **Drivers follow ports**<br>
+  Deriving port drivers from ports removes the one maintenance cost drivers add: a
   hand-kept method list that drifts from the port.
-- **A journal instead of pushing events to Node** keeps events ordered and needs no
-  teardown of exposed functions.
+- **A journal, not push**<br>
+  A journal instead of pushing events to Node keeps events ordered and needs no teardown
+  of exposed functions.
 
 ## Consequences
 
-- **A third web server** next to the relay and the app build: the harness dev server on
-  its own port. It's never reused and starts with `--strictPort`, so a server already on
-  that port (another worktree's harness, for example) makes the run fail loudly instead
-  of testing the wrong checkout.
-- **Port interfaces live in React-free files** under `src/application/ports/outbound/`;
-  the React contexts that provide them import those types. That keeps React out of the
+- **A third web server**<br>
+  The harness dev server runs on its own port, next to the relay and the app build. It's
+  never reused and starts with `--strictPort`, so a server already on that port (another
+  worktree's harness, for example) makes the run fail loudly instead of testing the wrong
+  checkout.
+- **React-free port files**<br>
+  Port interfaces live in React-free files under `src/application/ports/outbound/`; the
+  React contexts that provide them import those types. That keeps React out of the
   harness's dependency graph.
-- **Two runners share playwright-bdd.** `e2e` and `integration` stay separate Test Levels
-  with their own fixtures and driver code. ADR-010's "one scenario, one Test Level" and "no
-  shared DSL across Test Levels" still hold.
-- **The mocked adapter unit tests stay** for the adapters' own logic. How much overlap to
+- **One runner, two Test Levels**<br>
+  `e2e` and `integration` share playwright-bdd but stay separate Test Levels, with their
+  own Playwright projects, fixtures and driver code. ADR-010's "one scenario, one Test
+  Level" and "no shared DSL across Test Levels" still hold.
+- **Unit tests stay**<br>
+  The mocked adapter unit tests stay for the adapters' own logic. How much overlap to
   remove between them and the integration scenarios is an open follow-up.
 
 ## Alternatives considered (summary)
 
-- **Vitest browser mode with quickpickle.** Steps could call ports directly and fully
-  typed, but one test file runs in one page, so several peers would need iframes with
-  separate module instances. Rejected as new and awkward infrastructure.
-- **Node with a WebRTC polyfill passed to Trystero.** Not the browser's own WebRTC stack,
-  which is what the network scenarios need to observe, and peers in one process still
-  share Trystero's state. Rejected.
-- **Reading Trystero's open connections from the app.** Sees only connections that came
-  up, not the failures this level exists to check. Rejected.
+| Option | Rejected because |
+|---|---|
+| Vitest browser mode with quickpickle | One test file runs in one page, so several peers would need iframes with separate module instances: new and awkward infrastructure, even though steps could call ports directly and fully typed |
+| Node with a WebRTC polyfill passed to Trystero | Not the browser's own WebRTC stack, which is what the network scenarios need to observe, and peers in one process still share Trystero's state |
+| Reading Trystero's open connections from the app | Sees only connections that came up, not the failures this level exists to check |
