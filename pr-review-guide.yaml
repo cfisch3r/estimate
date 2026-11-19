@@ -1,7 +1,8 @@
 # This project's settings for the pr-review-guide plugin (.claude/skills/pr-review-guide/).
 # Everything specific to this repository lives here, not in the plugin. The plugin reads
 # this file from the base branch (origin/main, else main), like the catalogue, so a change
-# here applies to later pull requests only.
+# here applies to later pull requests only. Read and checked by
+# .claude/skills/pr-review-guide/scripts/reviewSettings.ts; the map part by reviewMap.ts.
 
 # The catalogue the floor is set from, relative to the repository root.
 catalogue: docs/technical/pr-review-catalogue.md
@@ -13,9 +14,9 @@ map:
 
   # The layers in drawing order, top to bottom. The first folder below sourceRoot names the
   # layer, the folder below that the slice.
-  #   group: ui        drawn together inside one "UI" frame
-  #   side: true       drawn as a column at the right edge, spanning every row (at most one)
-  #   wholeSlice: true the whole layer is one slice
+  #   group: ui          drawn together inside one "UI" frame
+  #   side: true         drawn as a column at the right edge, spanning every row (at most one)
+  #   wholeSlice: true   the whole layer is one slice
   # A file below sourceRoot whose folder is in no layer is drawn in an "Unplaced" row.
   layers:
     - name: app
