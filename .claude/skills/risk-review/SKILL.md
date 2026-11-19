@@ -1,6 +1,6 @@
 ---
 name: risk-review
-description: Build the Review guide of the current branch as a private artifact — the deterministic floor from the risk catalogue, then a read-only review that may raise it and names hot spots and skim-only files and says what it could not verify. Changes no code.
+description: Build the Review guide of the current branch as a private artifact — the deterministic floor from the risk catalogue, then a read-only review that may raise it and names hot spots and skim-only files, says what each changed source file is for and what it could not verify. Changes no code.
 ---
 
 Build the Review guide for the branch the user is reviewing. The guide describes the branch as

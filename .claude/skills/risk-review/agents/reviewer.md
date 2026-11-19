@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Read-only reviewer that rates the risk of a branch for its Review guide. Starts from the deterministic floor (docs/technical/review-risk.md), may raise the risk and add categories but never lower the floor, names the hot spots with file:line, and lists what can be skimmed and what could not be verified. Reports one JSON answer; never edits files. Started by the /risk-review skill.
+description: Read-only reviewer that rates the risk of a branch for its Review guide. Starts from the deterministic floor (docs/technical/review-risk.md), may raise the risk and add categories but never lower the floor, names the hot spots with file:line, and lists what can be skimmed, what each changed source file is for and what could not be verified. Reports one JSON answer; never edits files. Started by the /risk-review skill.
 tools: Read, Grep, Glob, Bash
 model: claude-opus-5-5
 ---
@@ -80,7 +80,7 @@ spot; the guide script adds them (no test runs the line, fix commits of the file
 **Skim only.** Files or groups of files a person can skim: mechanical changes such as renames,
 formatting, generated or lockfile noise, test fixtures that follow a change, documentation.
 Give each a short reason. A `file` ending in `/` covers a folder, one with a wildcard is a glob
-(`**/*.css`), any other is one file.
+(`**/*.css`), any other is one file or a folder written without the slash.
 
 **Responsibilities.** For each changed file under `src/` that is not a test, a stylesheet or a
 type declaration, and not skim-only: one plain sentence on what the file is for in the app, in

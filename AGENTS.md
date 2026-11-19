@@ -164,7 +164,7 @@ merge (apart from scripts run through `pnpm`).
   wants to know where to look. The `risk-review:reviewer` agent starts from the deterministic floor
   (`pnpm review:floor`, see `docs/technical/review-risk.md`), may raise the risk and name hot spots but
   never lower the floor, and replies with one JSON answer (risk, categories, hot spots,
-  skim-only files, what could not be verified). `pnpm review:guide` turns that into a page,
+  skim-only files, what each changed source file is for, what could not be verified). `pnpm review:guide` turns that into a page,
   which is published as a private artifact. Changes no code. Its plugin also holds the floor
   hook after `gh pr create` and the scripts behind `pnpm review:*`.
 - **`/accessibility-review`** — read-only accessibility audit run in the

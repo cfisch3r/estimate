@@ -67,8 +67,8 @@ runs both scripts itself, and a signal never makes a category or a hot spot on i
 | `risk` | A [risk level](#risk-levels), at least the floor |
 | `categories` | Names from the catalogue, including every category the floor found |
 | `hotSpots` | Up to eight places to read closely, most important first: a `title` (a headline of about ten words), a `body` (what the change is and what makes it a hot spot), `file` and `line` (a line the change added or changed) and a `rule` (architecture rule, ADR number or catalogue category) |
-| `skimOnly` | Files that can be skimmed, each with a `why`. A `file` ending in `/` is a folder, one with a wildcard a glob, any other a path |
-| `responsibilities` | For each changed source file that is not skim-only, a `file` and a `text`: one sentence on what the file is for in the app, not what changed; possibly empty |
+| `skimOnly` | Files that can be skimmed, each with a `why`. A `file` ending in `/` is a folder, one with a wildcard a glob, any other a file or a folder written without the slash |
+| `responsibilities` | For each changed file under `src/` that is not a test, a stylesheet, a type declaration or skim-only, a `file` and a [responsibility](../glossary.md) `text`: one sentence on what the file is for in the app, not what changed; possibly empty |
 | `notVerified` | What a reader has to check by hand because the agent could not or did not: concrete, short, possibly empty |
 
 ## The review guide
@@ -99,9 +99,10 @@ diagram above. A script writes it, so the rules hold whatever the agent says:
 - Each hot spot is numbered in the order the agent gave. When the changeset map draws its file,
   the same number sits on the file's box (or on the collapsed folder or strip row holding it), and
   a "Show on map" button opens the folders around the file, pins its box and moves focus to it.
-- The map fades the changed files that fall under a skim-only entry, except a hot spot's file. It shows
-  a responsibility only for a changed file drawn as a box and not skim-only; the others are
-  dropped without a note.
+- The map draws the changed files under a skim-only entry in the skim-only look, except a hot
+  spot's file, and shows a responsibility only for a changed file drawn as a box and not
+  skim-only; the other responsibilities are dropped without a note. See
+  [What the page shows](#what-the-page-shows).
 - The changeset map is optional. When it cannot be built (a missing or invalid
   `changeset-map.yaml`, or a failing read of the changed files), the page has no map and says why
   under "Not verified".
@@ -359,10 +360,10 @@ flowchart TB
 | Unchanged-file box | An unchanged file at either end of an added or removed import | | Like a file box |
 | Importer box | An importer | | Shown only while the importers checkbox is on; otherwise like a file box |
 | Hot spot number | The numbers of the file's hot spots, on the box's top-right corner; on a collapsed folder, the numbers of every file in it; inside a strip row at its end | | A screen reader hears "hot spot n" with the box or row |
-| Skim-only look | A box or strip row the agent marked skim-only: its status colour washed out with stripes, gray name. Only changed files are skim-only; a collapsed folder fades when all of its changed files are | | A screen reader hears "skim only" with the box, and the reason with a strip row; the row names it on hover too |
+| Skim-only look | A box or strip row the agent marked skim-only: its status colour washed out with stripes, gray name. Only changed files are skim-only; a collapsed folder takes the look when all of its changed files are skim-only | | A screen reader hears "skim only" with the box, and the reason with a strip row; a strip row also shows the reason on hover |
 | Reach badge | `↗n` on a changed file box: its reach, with a box or not; none at 0 | | A screen reader hears "used by n unchanged files" |
 | API chip | `API +n −m`: the names the barrels in a folder added to and removed from their re-exports; beside an open folder's name, inside a collapsed folder's box | | A screen reader hears "public API: n added, m removed" |
-| Card | The box's path, the agent's responsibility sentence for a changed file, and its status; its hot spot numbers; the skim-only entry and reason when all of the box is skim-only. **Changed file**: its exports, the changed ones bold, and its importers with the names they use. **Importer**: its leading doc comment and the changed exports it uses. **Collapsed folder**: each file's changed exports only. **Every box**: its imports added, removed and kept, each with its names. A file that has no box is marked "not on the map" | | Shown for the active box; Esc closes it. A screen reader hears a one-line summary of it as the box's description: the responsibility, the status, the skim-only reason and the counts |
+| Card | **Every card**: the box's path, the responsibility (a changed file drawn as a box and not skim-only), the status, the hot spot numbers, and the skim-only entry and reason when all of the box is skim-only. **Changed file**: its exports, the changed ones bold, and its importers with the names they use. **Importer**: its leading doc comment and the changed exports it uses. **Collapsed folder**: each file's changed exports only. **Every box**: its imports added, removed and kept, each with its names. A file that has no box is marked "not on the map" | | Shown for the active box; Esc closes it. A screen reader hears a one-line summary of it as the box's description: the responsibility, the status, the skim-only reason and the counts |
 | Import arrow | One arrow per kind between two boxes, with a count when it stands for several import edges; see [Which imports are drawn](#which-imports-are-drawn) | | |
 | Unplaced row | A file under `sourceRoot` in no layer folder | `sourceRoot` | |
 | Strip | Files outside `sourceRoot`, by full path; a long folder is shortened, the name kept whole | `strips`, first match wins, `Other` last | Path and status on hover; "Show on map" moves focus to the row and flashes it |
