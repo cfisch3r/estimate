@@ -831,6 +831,51 @@ describe('review marks', () => {
     expect(node('src/features/busy/model').classList).not.toContain('skim')
   })
 
+  it('fades a collapsed folder that holds the old place of a moved file', () => {
+    const moved: ChangedFile = {
+      path: 'src/features/busy/model/f.ts',
+      oldPath: 'src/features/busy/model/old.ts',
+      status: 'renamed',
+    }
+    open(
+      [...files, moved],
+      [],
+      marks({
+        skim: {
+          ...allBusy,
+          [moved.path]: { entry: 'src/features/busy/', why: 'Styling only.' },
+        },
+      }),
+    )
+    const busy = node('src/features/busy/model')
+    expect(busy.classList).toContain('skim')
+    busy.dispatchEvent(new MouseEvent('mouseenter'))
+    expect(card()?.querySelector('.skim-why')?.textContent).toBe(
+      'Skim only (src/features/busy/): Styling only.',
+    )
+  })
+
+  it('tells a screen reader the responsibility and the skim reason in the summary', () => {
+    open(
+      files,
+      [],
+      marks({
+        responsibilities: { [BUTTON]: 'Saves the session.' },
+        skim: {
+          'src/features/save/ui/Label.tsx': {
+            entry: 'src/features/save/ui/Label.tsx',
+            why: 'Renamed.',
+          },
+        },
+      }),
+    )
+    const summary = () => document.getElementById('map-card-summary')?.textContent
+    node(BUTTON).dispatchEvent(new FocusEvent('focus'))
+    expect(summary()).toContain('Saves the session.')
+    node('src/features/save/ui/Label.tsx').dispatchEvent(new FocusEvent('focus'))
+    expect(summary()).toContain('skim only: Renamed.')
+  })
+
   it('fades a skim-only file box and says so', () => {
     open(files, [], marks({ skim: { [BUTTON]: { entry: BUTTON, why: 'Moved.' } } }))
     expect(node(BUTTON).classList).toContain('skim')
@@ -869,6 +914,11 @@ describe('review marks', () => {
       }),
     )
     expect(row('docs/a.md').querySelector('.spot-n')?.textContent).toBe('1')
+    expect(row('docs/a.md').querySelector('.spot-n')?.getAttribute('aria-hidden')).toBe(
+      'true',
+    )
+    expect(row('docs/a.md').querySelector('.sr')?.textContent).toBe(', hot spot 1')
+    expect(row('docs/b.md').querySelector('.sr')?.textContent).toBe(', skim only: Docs.')
     expect(row('docs/a.md').classList).not.toContain('skim')
     expect(row('docs/b.md').classList).toContain('skim')
     expect(row('docs/b.md').title).toContain('skim only: Docs.')

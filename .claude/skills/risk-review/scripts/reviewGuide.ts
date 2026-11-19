@@ -409,10 +409,10 @@ function htmlSpot(s: HotSpot, data: GuideData, n: number): string {
       : place
   // A hot spot on a file the map draws gets a button that shows its box there.
   const show = data.marks?.spots[s.file]
-    ? ` · <button type="button" class="show-on-map" data-path="${esc(s.file)}">Show on map</button>`
+    ? ` · <button type="button" class="show-on-map" data-path="${esc(s.file)}" aria-label="Show ${esc(s.file)} on map">Show on map</button>`
     : ''
   return [
-    `<li class="spot"><span class="spot-num" aria-hidden="true">${n}</span>`,
+    `<li class="spot"><span class="spot-num"><span class="sr">Hot spot </span>${n}</span>`,
     `<p class="title">${esc(s.title)}</p>`,
     `<p>${esc(s.body)}</p>`,
     `<p>${reference} · ${esc(s.rule)}${show}</p>`,

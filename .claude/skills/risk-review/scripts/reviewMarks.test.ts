@@ -97,6 +97,11 @@ describe('mapMarks', () => {
     })
   })
 
+  it('fades only changed files, not the unchanged boxes under a skim-only folder', () => {
+    const marks = mapMarks(map, [], [{ file: 'src/pages/', why: 'Pages.' }], [])
+    expect(Object.keys(marks.skim)).toEqual(['src/pages/session-history/index.ts'])
+  })
+
   it('fades strip rows under a skim-only folder', () => {
     const marks = mapMarks(map, [], [{ file: 'docs/', why: 'Docs.' }], [])
     expect(Object.keys(marks.skim)).toEqual(['docs/a.md'])

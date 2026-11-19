@@ -15,7 +15,7 @@ export interface Responsibility {
 export interface MapMarks {
   /** Path → the numbers of its hot spots, as the guide lists them (1-based). */
   spots: Record<string, number[]>
-  /** Path → the skim-only entry it falls under; hot spot files are never skim-only. */
+  /** Changed path → the skim-only entry it falls under; hot spot files are never skim-only. */
   skim: Record<string, { entry: string; why: string }>
   /** Path → what the file is for; only changed files drawn as boxes, not skim-only. */
   responsibilities: Record<string, string>
@@ -59,19 +59,27 @@ export function mapMarks(
     if (drawn.has(spot.file)) (spots[spot.file] ??= []).push(i + 1)
   })
 
+  // Only changed files are skim-only: an unchanged box only shows where a change reaches.
+  const changed = new Set([
+    ...boxes.filter((f) => !NOT_CHANGED.has(f.status)).map((f) => f.path),
+    ...map.strips.flatMap((s) => s.files.map((f) => f.path)),
+  ])
   const faded: MapMarks['skim'] = {}
-  for (const path of drawn) {
+  for (const path of changed) {
     if (spots[path]) continue
     const item = skimEntryFor(path, skim)
     if (item) faded[path] = { entry: item.file, why: item.why }
   }
 
-  const changedBoxes = new Set(
-    boxes.filter((f) => !NOT_CHANGED.has(f.status)).map((f) => f.path),
-  )
   const said: MapMarks['responsibilities'] = {}
   for (const { file, text } of responsibilities) {
-    if (changedBoxes.has(file) && !faded[file] && !(file in said)) said[file] = text
+    if (
+      changed.has(file) &&
+      boxes.some((f) => f.path === file) &&
+      !faded[file] &&
+      !(file in said)
+    )
+      said[file] = text
   }
   return { spots, skim: faded, responsibilities: said }
 }

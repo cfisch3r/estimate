@@ -45,7 +45,18 @@
   const spotsIn = (paths) =>
     paths.flatMap((p) => marks.spots[p] ?? []).sort((a, b) => a - b)
   const spotWords = (ns) => `hot spot${ns.length > 1 ? 's' : ''} ${ns.join(' and ')}`
+  /** The changed files among some files: unchanged boxes and ghosts are never skim-only. */
+  const changedPaths = (files) =>
+    files
+      .filter((f) => !['context', 'importer', 'ghost'].includes(f.status))
+      .map((f) => f.path)
   const allSkim = (paths) => paths.length > 0 && paths.every((p) => marks.skim[p])
+  /** The skim-only entries of a box whose changed files are all skim-only, by entry. */
+  function skimReasons(files) {
+    const paths = changedPaths(files)
+    if (!allSkim(paths)) return []
+    return [...new Map(paths.map((p) => [marks.skim[p].entry, marks.skim[p].why]))]
+  }
 
   /** Folder path → open, for folders the reader toggled. */
   const toggled = new Map()
@@ -490,11 +501,8 @@
     lines.push(el('div', '', box.status))
     const ns = spotsIn(paths)
     if (ns.length) lines.push(el('div', 'card-spot', `Hot spot ${ns.join(', ')}`))
-    if (allSkim(paths)) {
-      const entries = new Map(paths.map((p) => [marks.skim[p].entry, marks.skim[p].why]))
-      for (const [entry, why] of entries)
-        lines.push(el('div', 'skim-why', `Skim only (${entry}): ${why}`))
-    }
+    for (const [entry, why] of skimReasons(box.files))
+      lines.push(el('div', 'skim-why', `Skim only (${entry}): ${why}`))
     for (const file of box.files)
       lines.push(...reachLines(file, box.collapsed ? `${baseName(file.path)}: ` : ''))
     // A uses arrow stands in only for a kept import, so only those leave the list.
@@ -538,6 +546,10 @@
   function summary(key) {
     const box = boxes.get(key)
     const parts = [box.status]
+    // The card's sentences, which the eye reads there, are said here too.
+    const said = box.collapsed ? undefined : marks.responsibilities[box.files[0].path]
+    if (said) parts.unshift(said)
+    for (const [, why] of skimReasons(box.files)) parts.push(`skim only: ${why}`)
     if (!box.collapsed) {
       const file = box.files[0]
       const exports = file.exports ?? []
@@ -782,7 +794,7 @@
           words.push(spotWords(ns))
           add(spotBadge(ns, x, y))
         }
-        if (allSkim(inside)) {
+        if (allSkim(changedPaths(filesIn(folder).filter(visible)))) {
           box.classList.add('skim')
           words.push('skim only')
         }
@@ -839,7 +851,14 @@
           row.tabIndex = -1
           if (skim) row.classList.add('skim')
           const ns = marks.spots[file.path]
-          if (ns) row.append(el('span', 'spot-n inline', ns.join(' ')))
+          if (ns) {
+            const badge = el('span', 'spot-n inline', ns.join(' '))
+            badge.setAttribute('aria-hidden', 'true')
+            row.append(badge)
+          }
+          // A row is no control, so what the badge and the stripes show is hidden text.
+          const spoken = `${ns ? `, ${spotWords(ns)}` : ''}${skim ? `, skim only: ${skim.why}` : ''}`
+          if (spoken) row.append(el('span', 'sr', spoken))
           add(row)
         })
         bottom = Math.max(bottom, top + 26 + strip.files.length * STRIP_ROW)

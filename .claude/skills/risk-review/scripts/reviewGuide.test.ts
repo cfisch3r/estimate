@@ -631,11 +631,15 @@ describe('changeset map', () => {
       map: { status: 'ok', ...withA },
       agent: { risk: 'high', hotSpots: [spot, { ...spot, file: 'docs/x.md', line: 3 }] },
     })
-    expect(html).toContain('<span class="spot-num" aria-hidden="true">1</span>')
-    expect(html).toContain('<span class="spot-num" aria-hidden="true">2</span>')
+    expect(html).toContain(
+      '<span class="spot-num"><span class="sr">Hot spot </span>1</span>',
+    )
+    expect(html).toContain(
+      '<span class="spot-num"><span class="sr">Hot spot </span>2</span>',
+    )
     expect(html.match(/class="show-on-map"/g)).toHaveLength(1)
     expect(html).toContain(
-      '<button type="button" class="show-on-map" data-path="src/domain/a.ts">Show on map</button>',
+      '<button type="button" class="show-on-map" data-path="src/domain/a.ts" aria-label="Show src/domain/a.ts on map">Show on map</button>',
     )
   })
 

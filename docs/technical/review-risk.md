@@ -99,7 +99,7 @@ diagram above. A script writes it, so the rules hold whatever the agent says:
 - Each hot spot is numbered in the order the agent gave. When the changeset map draws its file,
   the same number sits on the file's box (or on the collapsed folder or strip row holding it), and
   a "Show on map" button opens the folders around the file, pins its box and moves focus to it.
-- The map fades the files that fall under a skim-only entry, except a hot spot's file. It shows
+- The map fades the changed files that fall under a skim-only entry, except a hot spot's file. It shows
   a responsibility only for a changed file drawn as a box and not skim-only; the others are
   dropped without a note.
 - The changeset map is optional. When it cannot be built (a missing or invalid
@@ -358,11 +358,11 @@ flowchart TB
 | File box | One changed file: status sign and name | | Becomes the active box on hover or focus: its card opens, its own arrows show and the rest fade; a click pins it until a second click or Esc |
 | Unchanged-file box | An unchanged file at either end of an added or removed import | | Like a file box |
 | Importer box | An importer | | Shown only while the importers checkbox is on; otherwise like a file box |
-| Hot spot number | The numbers of the file's hot spots, on the box's top-right corner; on a collapsed folder, the numbers of every file in it; inside a strip row at its end | | A screen reader hears "hot spot n" with the box |
-| Skim-only look | A box or strip row the agent marked skim-only: its status colour washed out with stripes, gray name. A collapsed folder only when all of its files are | | A screen reader hears "skim only" with the box; a strip row names the reason on hover |
+| Hot spot number | The numbers of the file's hot spots, on the box's top-right corner; on a collapsed folder, the numbers of every file in it; inside a strip row at its end | | A screen reader hears "hot spot n" with the box or row |
+| Skim-only look | A box or strip row the agent marked skim-only: its status colour washed out with stripes, gray name. Only changed files are skim-only; a collapsed folder fades when all of its changed files are | | A screen reader hears "skim only" with the box, and the reason with a strip row; the row names it on hover too |
 | Reach badge | `↗n` on a changed file box: its reach, with a box or not; none at 0 | | A screen reader hears "used by n unchanged files" |
 | API chip | `API +n −m`: the names the barrels in a folder added to and removed from their re-exports; beside an open folder's name, inside a collapsed folder's box | | A screen reader hears "public API: n added, m removed" |
-| Card | The box's path, the agent's responsibility sentence for a changed file, and its status; its hot spot numbers; the skim-only entry and reason when all of the box is skim-only. **Changed file**: its exports, the changed ones bold, and its importers with the names they use. **Importer**: its leading doc comment and the changed exports it uses. **Collapsed folder**: each file's changed exports only. **Every box**: its imports added, removed and kept, each with its names. A file that has no box is marked "not on the map" | | Shown for the active box; Esc closes it. A screen reader hears a one-line summary of it, status and counts, as the box's description |
+| Card | The box's path, the agent's responsibility sentence for a changed file, and its status; its hot spot numbers; the skim-only entry and reason when all of the box is skim-only. **Changed file**: its exports, the changed ones bold, and its importers with the names they use. **Importer**: its leading doc comment and the changed exports it uses. **Collapsed folder**: each file's changed exports only. **Every box**: its imports added, removed and kept, each with its names. A file that has no box is marked "not on the map" | | Shown for the active box; Esc closes it. A screen reader hears a one-line summary of it as the box's description: the responsibility, the status, the skim-only reason and the counts |
 | Import arrow | One arrow per kind between two boxes, with a count when it stands for several import edges; see [Which imports are drawn](#which-imports-are-drawn) | | |
 | Unplaced row | A file under `sourceRoot` in no layer folder | `sourceRoot` | |
 | Strip | Files outside `sourceRoot`, by full path; a long folder is shortened, the name kept whole | `strips`, first match wins, `Other` last | Path and status on hover; "Show on map" moves focus to the row and flashes it |
