@@ -3,6 +3,8 @@
 The named categories of change that deserve a closer look when reviewing a branch, and the minimum risk
 each one carries. Each category has a short name so that a review guide, a review or a discussion
 can cite it ("this is `wire-contract`"). The words follow the [glossary](../glossary.md).
+"PR" in the name means a pull request's branch: what is reviewed is that branch with any
+uncommitted changes, also before the pull request is opened.
 
 The catalogue exists because a reader of an agent's pull request should know where to spend
 attention. A model can judge a diff, but its worst mistake is calling a dangerous change low
