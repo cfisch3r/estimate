@@ -3,7 +3,6 @@ import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import {
   Button,
   Card,
-  DiagnosisLink,
   CardKicker,
   Field,
   FieldLabel,
@@ -11,6 +10,7 @@ import {
   Input,
   LiveRegion,
 } from '../../../shared/ui'
+import { DiagnosisLink } from '../../../features/open-diagnosis'
 import {
   useJoinFlow,
   useLeaveLiveSession,

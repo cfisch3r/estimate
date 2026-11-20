@@ -23,6 +23,18 @@ describe('LiveSessionStrip', () => {
     expect(screen.getByRole('link', { name: /Show diagnosis/ })).toBeInTheDocument()
   })
 
+  it('reads the status before the actions that fix it, Reconnect first', () => {
+    renderStrip('disconnected')
+
+    const status = screen.getByText('Disconnected')
+    const reconnect = screen.getByRole('button', { name: 'Reconnect' })
+    const diagnosis = screen.getByRole('link', { name: /Show diagnosis/ })
+    const follows = (a: Element, b: Element) =>
+      Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+    expect(follows(status, reconnect)).toBe(true)
+    expect(follows(reconnect, diagnosis)).toBe(true)
+  })
+
   it.each([
     ['waiting for participants', 'connecting' as const, false],
     ['after everyone left', 'connecting' as const, true],

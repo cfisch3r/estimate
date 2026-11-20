@@ -1,5 +1,6 @@
 import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
-import { Button, DiagnosisLink, GuardNote, LiveRegion } from '../../../shared/ui'
+import { Button, GuardNote, LiveRegion } from '../../../shared/ui'
+import { DiagnosisLink } from '../../../features/open-diagnosis'
 import type { ConnectionPhase } from '../../../shared/lib/useConnectionPhase'
 
 interface ConnectionNoticesProps {

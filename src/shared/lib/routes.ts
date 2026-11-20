@@ -7,6 +7,7 @@ export const ROUTES = {
   estimate: '/estimate',
   workspace: '/workspace',
   summary: '/summary',
-  /** The connection diagnosis: a technical tool reached by URL (issue #229). */
+  /** The connection diagnosis: a technical page outside the screen flow, opened
+   *  from the problem notices' "Show diagnosis" link or by URL. */
   diagnosis: '/diagnosis',
 } as const

@@ -1,5 +1,6 @@
 import { CopyIcon } from '@phosphor-icons/react/dist/csr/Copy'
-import { Button, DiagnosisLink, LiveRegion, Tag } from '../../../shared/ui'
+import { Button, LiveRegion, Tag } from '../../../shared/ui'
+import { DiagnosisLink } from '../../../features/open-diagnosis'
 import type { LiveConnectionStatus } from '../../../domain/types'
 
 interface LiveSessionStripProps {
@@ -50,17 +51,19 @@ export function LiveSessionStrip({
         <CopyIcon size={16} />
       </Button>
       <span style={{ flex: 1 }} />
-      {connectionStatus === 'disconnected' && (
-        <>
-          <DiagnosisLink />
-          <Button variant="ghost" onClick={onReconnect}>
-            Reconnect
-          </Button>
-        </>
-      )}
+      {/* The status comes first, so a screen reader hears the problem before
+          the actions that fix it. */}
       <LiveRegion>
         <Tag variant={statusTag.variant}>{statusTag.label}</Tag>
       </LiveRegion>
+      {connectionStatus === 'disconnected' && (
+        <>
+          <Button variant="ghost" onClick={onReconnect}>
+            Reconnect
+          </Button>
+          <DiagnosisLink />
+        </>
+      )}
     </div>
   )
 }
