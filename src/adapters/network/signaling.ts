@@ -12,7 +12,11 @@ export function joinSignalingRoom(
   sessionId: string,
   options: JoinSignalingRoomOptions = {},
 ): SignalingRoom {
-  return joinRoom({ appId: APP_ID, password: options.password }, sessionId, {
-    onJoinError: options.onJoinError,
-  }) as unknown as SignalingRoom
+  return joinRoom(
+    { appId: APP_ID, password: options.password, rtcPolyfill: options.rtcPolyfill },
+    sessionId,
+    {
+      onJoinError: options.onJoinError,
+    },
+  ) as unknown as SignalingRoom
 }

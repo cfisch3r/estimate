@@ -6,6 +6,7 @@ import {
 import { LiveSessionProvider } from './LiveSessionProvider'
 import { getOrCreateParticipantId } from '../adapters/storage/participantIdentity'
 import { downloadTextFile } from '../adapters/file/fileDownload'
+import { createDiagnosticsLog } from '../adapters/storage/diagnosticsLog'
 import { ROUTES } from '../shared/lib/routes'
 import { Header } from './Header'
 import { useWarnBeforeUnload } from '../features/session-persistence'
@@ -18,6 +19,9 @@ import { ParticipantEstimateView } from '../pages/participant-estimate'
 // Composition point: the one place that wires an adapter to an application-owned port.
 const participantIdentity = { getOrCreateParticipantId }
 const fileDownload = { download: downloadTextFile }
+// One log per tab, shared by the live session (recording) and, later, the
+// diagnosis page (reading).
+const diagnosticsLog = createDiagnosticsLog()
 
 function App() {
   useWarnBeforeUnload()
@@ -26,7 +30,7 @@ function App() {
     <BrowserRouter>
       <ParticipantIdentityContext.Provider value={participantIdentity}>
         <FileDownloadContext.Provider value={fileDownload}>
-          <LiveSessionProvider>
+          <LiveSessionProvider diagnostics={diagnosticsLog}>
             <a href="#main-content" className="skip-link">
               Skip to main content
             </a>

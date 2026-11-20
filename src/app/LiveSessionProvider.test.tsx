@@ -26,7 +26,15 @@ const { joinSessionMock, fakeSession } = vi.hoisted(() => {
   return { joinSessionMock: vi.fn(() => fakeSession), fakeSession }
 })
 
-vi.mock('../adapters/network/session', () => ({ joinSession: joinSessionMock }))
+vi.mock('../adapters/network/session', () => ({
+  createJoinSession: () => joinSessionMock,
+}))
+
+const diagnostics = {
+  record: vi.fn(),
+  read: () => ({ available: true, entries: [], userAgent: '' }),
+  clear: vi.fn(),
+}
 
 function Consumer() {
   const { connect } = useLiveSession()
@@ -47,7 +55,7 @@ describe('LiveSessionProvider', () => {
   it('joins the room and primes connection state on connect', async () => {
     const user = userEvent.setup()
     render(
-      <LiveSessionProvider>
+      <LiveSessionProvider diagnostics={diagnostics}>
         <Consumer />
       </LiveSessionProvider>,
     )
@@ -61,7 +69,7 @@ describe('LiveSessionProvider', () => {
   it('leaves the room when the provider unmounts', async () => {
     const user = userEvent.setup()
     const { unmount } = render(
-      <LiveSessionProvider>
+      <LiveSessionProvider diagnostics={diagnostics}>
         <Consumer />
       </LiveSessionProvider>,
     )

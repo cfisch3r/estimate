@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { joinSession } from './session'
+import { createJoinSession, joinSession } from './session'
+import type { DiagnosticsLog } from '../../application/ports/outbound/diagnosticsLog'
+import type { DiagnosticEvent } from '../../domain/diagnosis/types'
 import { createEstimate } from '../../domain/estimate'
 
 const { joinRoomMock, fakeRoom } = vi.hoisted(() => {
@@ -28,9 +30,20 @@ const { joinRoomMock, fakeRoom } = vi.hoisted(() => {
   }
   const joinRoomMock = vi.fn(
     (
-      _config: { appId: string; password?: string },
+      _config: {
+        appId: string
+        password?: string
+        rtcPolyfill?: typeof RTCPeerConnection
+      },
       _roomId: string,
-      _callbacks: { onJoinError: () => void },
+      _callbacks: {
+        onJoinError: (details: {
+          error: string
+          appId: string
+          roomId: string
+          peerId: string
+        }) => void
+      },
     ) => fakeRoom,
   )
   return { joinRoomMock, fakeRoom }
@@ -96,7 +109,12 @@ describe('joinSession', () => {
     const session = joinSession('session-other')
     const onJoinErrorForSession = joinRoomMock.mock.calls[1]?.[2].onJoinError
     if (!onJoinErrorForSession) throw new Error('expected onJoinError callback')
-    onJoinErrorForSession()
+    onJoinErrorForSession({
+      error: 'incorrect password',
+      appId: 'estimate-app-v1',
+      roomId: 'session-other',
+      peerId: 'peer-1',
+    })
 
     expect(session.getConnectionState().status).toBe('disconnected')
     expect(typeof onJoinError).toBe('function')
@@ -191,5 +209,98 @@ describe('joinSession', () => {
     onMessage({ participantId: 'p-2', name: '  Jordan  ' }, { peerId: 'peer-2' })
 
     expect(cb).toHaveBeenCalledWith({ participantId: 'p-2', name: 'Jordan' }, 'peer-2')
+  })
+})
+
+/** A diagnostics log that keeps what it's given, for asserting on. */
+function fakeDiagnostics() {
+  const events: DiagnosticEvent[] = []
+  const diagnostics: DiagnosticsLog = {
+    record: (event) => events.push(event),
+    read: () => ({ available: true, entries: [], userAgent: '' }),
+    clear: () => {},
+  }
+  return { events, diagnostics }
+}
+
+describe('createJoinSession', () => {
+  it('records peers joining and leaving by a shortened peer id', () => {
+    const { events, diagnostics } = fakeDiagnostics()
+    createJoinSession({ diagnostics })('session-abc')
+
+    fakeRoom.onPeerJoin?.('abcdefghijklmnop')
+    fakeRoom.onPeerLeave?.('abcdefghijklmnop')
+
+    expect(events).toEqual([
+      { kind: 'peer-join', peer: 'abcdef' },
+      { kind: 'peer-leave', peer: 'abcdef' },
+    ])
+  })
+
+  it("records Trystero's join error with the peer id shortened, and still disconnects", () => {
+    const { events, diagnostics } = fakeDiagnostics()
+    const session = createJoinSession({ diagnostics })('session-abc')
+    const onJoinError = joinRoomMock.mock.calls[0]?.[2].onJoinError
+    if (!onJoinError) throw new Error('expected onJoinError callback')
+
+    onJoinError({
+      error: 'incorrect password for overlapping room (abcdefghijklmnop)',
+      appId: 'estimate-app-v1',
+      roomId: 'session-abc',
+      peerId: 'abcdefghijklmnop',
+    })
+
+    expect(events).toEqual([
+      {
+        kind: 'join-error',
+        error: 'incorrect password for overlapping room (abcdef)',
+        peer: 'abcdef',
+      },
+    ])
+    expect(session.getConnectionState().status).toBe('disconnected')
+  })
+
+  it('records a join error that names no peer without one', () => {
+    const { events, diagnostics } = fakeDiagnostics()
+    createJoinSession({ diagnostics })('session-abc')
+    const onJoinError = joinRoomMock.mock.calls[0]?.[2].onJoinError
+    if (!onJoinError) throw new Error('expected onJoinError callback')
+
+    onJoinError({
+      error: 'relay refused',
+      appId: 'estimate-app-v1',
+      roomId: 'session-abc',
+      peerId: '',
+    })
+
+    expect(events).toEqual([{ kind: 'join-error', error: 'relay refused' }])
+  })
+
+  it('hands Trystero a recording RTCPeerConnection that records into the log', () => {
+    class BrowserPeerConnection extends EventTarget {}
+    vi.stubGlobal('RTCPeerConnection', BrowserPeerConnection)
+    try {
+      const { diagnostics } = fakeDiagnostics()
+      createJoinSession({ diagnostics })('session-abc')
+
+      const polyfill = joinRoomMock.mock.calls[0]?.[0].rtcPolyfill
+      expect(polyfill && new polyfill()).toBeInstanceOf(BrowserPeerConnection)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  it('keeps the live session working when recording throws', () => {
+    const diagnostics: DiagnosticsLog = {
+      record: () => {
+        throw new Error('storage is gone')
+      },
+      read: () => ({ available: false, entries: [], userAgent: '' }),
+      clear: () => {},
+    }
+    const session = createJoinSession({ diagnostics })('session-abc')
+
+    expect(() => fakeRoom.onPeerJoin?.('peer-1')).not.toThrow()
+    expect(session.getConnectionState().status).toBe('connected')
   })
 })
