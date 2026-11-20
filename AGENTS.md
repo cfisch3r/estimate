@@ -69,16 +69,19 @@ Developer which one — never guess from issue order, labels, or the board.
 
 When told to start an issue, **fetch it and stop**: summarise the issue body, flag
 ambiguities, superseding design handoffs, and scope questions, then wait for an explicit
-go-ahead. Do not move to a design artifact, a spec, a plan, a todo list, a branch, or edits
-until then.
+go-ahead. Do not move to an implementation design artifact, a spec, a plan, a todo list, a
+branch, or edits until then.
 
 Once the go-ahead is given, two further steps are each **offered — asked explicitly every
 time, never assumed, both optional** — before planning and implementation start
 ([ADR-010](docs/technical/adr/010-spec-first-gherkin-specs.md)):
 
-1. **A design artifact**, published with the Artifact tool, before any branch exists. It's
-   ephemeral — scoped to this one story, never committed as a file. Fold anything worth
-   keeping into the permanent docs once the story ships, then let the artifact go.
+1. **An implementation design artifact**, published with the Artifact tool, before any
+   branch exists: how the change is built in code — the layers and files it touches, type
+   and wire-contract changes, the data flow, and the test plan. It is not a screen design;
+   offer one of those separately, and only when the story has new UI. It's ephemeral —
+   scoped to this one story, never committed as a file. Fold anything worth keeping into
+   the permanent docs once the story ships, then let the artifact go.
 2. **A failing executable spec**, after the branch is created, before planning or
    implementation. Write the scenario as a `.feature` file plus driver code at the
    appropriate **Test Level** (`docs/glossary.md`) under `specs/<concept>/<test level>/`,

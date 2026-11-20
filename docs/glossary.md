@@ -40,6 +40,15 @@ The words for judging how closely a change needs to be read ([pr-review-catalogu
 | **Responsibility** | One sentence from the risk reviewer on what a changed source file is for in the app, independent of the change. The Review guide shows it in the file's card on the changeset map. | |
 | **Review guide** | A page built on request while reviewing a branch and published as a private artifact: the risk and categories, the hot spots, what can be skimmed, and what could not be verified, with the changeset map marked with the hot spots, the skim-only files and the responsibilities. | "summary" |
 
+## Story workflow
+
+The words for the steps between picking an issue and planning it ([ADR-010](technical/adr/010-spec-first-gherkin-specs.md), AGENTS.md's "Picking the next task").
+
+| Term | Meaning in this repo | Avoid |
+|---|---|---|
+| **Implementation design artifact** | The optional first step after the go-ahead, before branching: a private, ephemeral artifact showing how the change is built in code — the layers and files it touches, type and wire-contract changes, the data flow, and the test plan. Never committed; anything worth keeping is folded into the permanent docs once the story ships. | "design artifact" alone (reads as a screen design) |
+| **Screen design** | A mockup of new or changed UI states. Separate from the implementation design artifact, and offered only when a story has new UI. Superseded by a design handoff where one exists. | "design artifact" |
+
 ## Testing
 
 The words for executable specs ([ADR-010](technical/adr/010-spec-first-gherkin-specs.md), [ADR-011](technical/adr/011-integration-test-level.md)).
