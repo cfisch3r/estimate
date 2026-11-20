@@ -4,6 +4,13 @@ title: '[Feedback]: '
 labels:
   - feedback
 body:
+  - type: markdown
+    attributes:
+      value: >-
+        **Something went wrong in a live session?** In the EstiMate tab, add
+        `/diagnosis` to the end of the address in your browser's address bar,
+        download the report there and send the file to the organiser directly.
+        Don't attach it here: this form is public.
   - type: textarea
     id: feedback
     attributes:
