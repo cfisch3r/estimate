@@ -44,7 +44,7 @@ Then(
 
 /** The page on which `name` opened the connection diagnosis. */
 function diagnosisPageOf(state: ScenarioState, name: string): Page {
-  const page = state.diagnosisPages?.[name]
+  const page = requireState(state, 'diagnosisPages')[name]
   if (!page) throw new Error(`${name} has not opened the connection diagnosis`)
   return page
 }
@@ -73,17 +73,18 @@ When(
   '{word} follows {string} on the problem notice',
   async ({ actor, state }, name: string, link: string) => {
     const from = await actor(name)
+    const fromUrl = from.url()
     const opened = await followLinkToNewTab(from, link)
-    state.followedLink = { from, opened }
+    state.followedLink = { from, fromUrl, opened }
     state.diagnosisPages = { ...state.diagnosisPages, [name]: opened }
   },
 )
 
 Then('the connection diagnosis opens in a new tab', async ({ state }) => {
-  const { from, opened } = requireState(state, 'followedLink')
+  const { from, fromUrl, opened } = requireState(state, 'followedLink')
   expect(new URL(opened.url()).pathname).toBe('/diagnosis')
   // The page the link was followed from stays where it was.
-  expect(new URL(from.url()).pathname).not.toBe('/diagnosis')
+  expect(from.url()).toBe(fromUrl)
 })
 
 Then(

@@ -21,8 +21,9 @@ export type ScenarioState = {
   leavePageWarning?: boolean
   /** Each actor's page showing the connection diagnosis, once opened. */
   diagnosisPages?: Record<string, Page>
-  /** The page a followed link opened, and the page it was followed from. */
-  followedLink?: { from: Page; opened: Page }
+  /** The page a followed link opened, the page it was followed from, and that
+   *  page's address when the link was followed. */
+  followedLink?: { from: Page; fromUrl: string; opened: Page }
 }
 
 /** Reads a required state field, failing with a clear message (rather than a
