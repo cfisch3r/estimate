@@ -38,11 +38,12 @@ Then(
 )
 
 /** The report text on the diagnosis page (`/diagnosis`), read from the
- *  read-only block the page labels "Diagnosis report". */
+ *  read-only field the page labels "Diagnosis report". `inputValue()`, not
+ *  `innerText()`: a textarea's text node holds only its initial content. */
 async function diagnosisReport(page: Page): Promise<string> {
   const report = page.getByLabel('Diagnosis report')
   await expect(report).toBeVisible()
-  return report.innerText()
+  return report.inputValue()
 }
 
 When('{word} opens the connection diagnosis', async ({ actor }, name: string) => {
@@ -51,18 +52,18 @@ When('{word} opens the connection diagnosis', async ({ actor }, name: string) =>
 })
 
 Then(
-  "{word}'s diagnosis report shows the session as connected",
-  async ({ actor }, name: string) => {
+  "{word}'s diagnosis report shows the session as {string}",
+  async ({ actor }, name: string, status: string) => {
     const report = await diagnosisReport(await actor(name))
-    expect(report).toMatch(/status\s+connected\b/)
+    expect(report).toMatch(new RegExp(`status\\s+${status}\\b`))
   },
 )
 
 Then(
-  "{word}'s diagnosis report lists the candidate types of a WebRTC connection",
-  async ({ actor }, name: string) => {
+  "{word}'s diagnosis report lists a {string} candidate",
+  async ({ actor }, name: string, type: string) => {
     const report = await diagnosisReport(await actor(name))
-    expect(report).toMatch(/\b(host|srflx|prflx|relay)\/(udp|tcp)\b/)
+    expect(report).toMatch(new RegExp(`\\b${type}/(udp|tcp)\\b`))
   },
 )
 

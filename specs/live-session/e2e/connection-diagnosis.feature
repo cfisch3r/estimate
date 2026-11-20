@@ -6,6 +6,6 @@ Feature: A tester can report how their live session connected
     And the item "Checkout redesign" is active
     And Imogen has joined the session
     When Imogen opens the connection diagnosis
-    Then Imogen's diagnosis report shows the session as connected
-    And Imogen's diagnosis report lists the candidate types of a WebRTC connection
+    Then Imogen's diagnosis report shows the session as "connected"
+    And Imogen's diagnosis report lists a "host" candidate
     And Imogen's diagnosis report does not mention "Imogen" or "Checkout redesign"

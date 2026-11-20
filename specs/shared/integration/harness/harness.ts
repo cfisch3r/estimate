@@ -5,8 +5,11 @@
 import { downloadTextFile } from '../../../../src/adapters/file/fileDownload'
 import type { Harness } from '../remote'
 
+// Spec first (#229): the `diagnostics` and `network` entries arrive with their
+// adapters, and this goes back to `satisfies Harness` then. Until they do, their
+// scenarios fail with "window.__harness.… is not installed".
 const harness = {
   file: { download: downloadTextFile },
-} satisfies Harness
+} satisfies Pick<Harness, 'file'>
 
-;(globalThis as unknown as { __harness: Harness }).__harness = harness
+;(globalThis as unknown as { __harness: Partial<Harness> }).__harness = harness
