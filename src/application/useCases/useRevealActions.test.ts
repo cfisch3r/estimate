@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { createEstimate } from '../../domain/estimate'
+import { livePhaseOf } from '../../domain/item'
+import { aggregateOf } from '../../domain/testFixtures'
 import { useRevealActions } from './useRevealActions'
 import { useRoundStore, useSessionStore } from '../stores'
 
@@ -60,5 +62,59 @@ describe('useRevealActions', () => {
     const { result } = renderHook(() => useRevealActions(itemId()))
 
     expect(result.current.finalize().ok).toBe(false)
+  })
+
+  // livePhaseOf reads "finalized but not revealed" as "finalized before the
+  // load". These pin the invariant that makes that safe: a live round never
+  // reaches that state by itself, and a reopen always leaves it.
+  describe('the finalized-before-the-load invariant', () => {
+    function item() {
+      const found = useSessionStore.getState().items[0]
+      if (!found) throw new Error('no item')
+      return found
+    }
+
+    it('keeps an item finalized live in the revealed phase', () => {
+      const id = itemId()
+      const { result } = renderHook(() => useRevealActions(id))
+      const estimate = createEstimate({
+        participantId: 'p1',
+        best: 1,
+        likely: 2,
+        worst: 3,
+      })
+      if (!estimate.ok) throw new Error('bad fixture')
+      useSessionStore.setState((s) => ({
+        items: s.items.map((i) => ({ ...i, submissions: [estimate.value] })),
+      }))
+
+      act(() => result.current.reveal())
+      act(() => {
+        result.current.finalize()
+      })
+
+      expect(item().finalResult).not.toBeNull()
+      expect(livePhaseOf(item()).phase).toBe('revealed')
+    })
+
+    it.each([
+      ['finalized live', { revealed: true }],
+      ['finalized before the load', { revealed: false }],
+    ])('reopens an item %s into an open round', (_label, state) => {
+      const id = itemId()
+      useSessionStore.setState((s) => ({
+        items: s.items.map((i) => ({
+          ...i,
+          ...state,
+          finalResult: aggregateOf(1, 2, 3),
+        })),
+      }))
+      const { result } = renderHook(() => useRevealActions(id))
+
+      act(() => result.current.retry())
+
+      expect(item().finalResult).toBeNull()
+      expect(livePhaseOf(item()).phase).toBe('open')
+    })
   })
 })
