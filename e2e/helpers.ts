@@ -87,10 +87,9 @@ export async function tryJoinUnreachableSession(
 
 /** Follows the link named `name` and returns the tab it opened. */
 export async function followLinkToNewTab(page: Page, name: string): Promise<Page> {
-  const [opened] = await Promise.all([
-    page.context().waitForEvent('page'),
-    page.getByRole('link', { name }).click(),
-  ])
+  const link = page.getByRole('link', { name })
+  await expect(link).toBeVisible()
+  const [opened] = await Promise.all([page.context().waitForEvent('page'), link.click()])
   await opened.waitForLoadState()
   return opened
 }
