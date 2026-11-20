@@ -456,10 +456,16 @@ connects." Two things go wrong in practice:
 Every browser records what happens to its live-session connections, so a tester can
 hand the organiser (the Developer) the exact facts after something went wrong. The
 **diagnostics log** lives in browser storage, survives a reload, and is shown at
-`/diagnosis`, a technical page reached by URL. The tester downloads the report there and
-sends the file to the organiser directly, never through the public feedback form.
+`/diagnosis`, a technical page outside the screen flow. The tester downloads the report
+there and sends the file to the organiser directly, never through the public feedback form.
 Recording is always on and never changes connection behaviour: the log catches every
 storage access, and a log whose storage fails stops recording and says so.
+
+| Way in | Where |
+|---|---|
+| "Show diagnosis" link (`DiagnosisLink` in `shared/ui`) | The join screen's "Couldn't reach the session" banner, the participant's "Session connection lost" banner, and the facilitator's strip while it shows "Disconnected". Opens a new tab, so the screen with the problem, and a running session, stay where they are; the new tab reads the same browser storage |
+| The feedback form's note (`.github/ISSUE_TEMPLATE/feedback.yml`) | Tells a tester to add `/diagnosis` to the app's address and send the report directly. Covers failures no notice shows, such as both sides reading connected while nothing syncs |
+| The URL | `/diagnosis`, typed in |
 
 Lines: **solid** = synchronous call, **dotted** = asynchronous callback / event / read.
 As in the component view above, a dotted `implements` line joins an adapter to its port.
