@@ -1,9 +1,9 @@
 # Glossary
 
-The words we use for architecture in this repo, and what they mean here. It is not a
-general dictionary: where a word has several meanings in the wider world (layer, entity,
-model), this page says which one we use. When you meet a new word in a discussion or a
-doc, add it here instead of guessing.
+The words we use for architecture, review, testing and the story workflow in this repo,
+and what they mean here. It is not a general dictionary: where a word has several meanings
+in the wider world (layer, entity, model), this page says which one we use. When you meet a
+new word in a discussion or a doc, add it here instead of guessing.
 
 ## Structure
 
