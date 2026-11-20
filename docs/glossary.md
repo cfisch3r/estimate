@@ -1,9 +1,10 @@
 # Glossary
 
-The words we use for architecture in this repo, and what they mean here. It is not a
-general dictionary: where a word has several meanings in the wider world (layer, entity,
-model), this page says which one we use. When you meet a new word in a discussion or a
-doc, add it here instead of guessing.
+The words we use for architecture, review, testing, the story workflow and the domain
+concepts in this repo, and what they mean here. It is not a general dictionary: where a
+word has several meanings in the wider world (layer, entity, model), this page says which
+one we use. When you meet a new word in a discussion or a doc, add it here instead of
+guessing.
 
 ## Structure
 
@@ -39,6 +40,16 @@ The words for judging how closely a change needs to be read ([pr-review-catalogu
 | **Hot spot** | A place in a diff, named by file and line, that needs a reader's judgment: a headline, what the change is and what makes it a hot spot, and the facts the signals say about it. | |
 | **Responsibility** | One sentence from the risk reviewer on what a changed source file is for in the app, independent of the change. The Review guide shows it in the file's card on the changeset map. | |
 | **Review guide** | A page built on request while reviewing a branch and published as a private artifact: the risk and categories, the hot spots, what can be skimmed, and what could not be verified, with the changeset map marked with the hot spots, the skim-only files and the responsibilities. | "summary" |
+
+## Story workflow
+
+The words for the steps between picking an issue and planning it ([ADR-010](technical/adr/010-spec-first-gherkin-specs.md), AGENTS.md's "Picking the next task").
+
+| Term | Meaning in this repo | Avoid |
+|---|---|---|
+| **Implementation design artifact** | The optional first step after the go-ahead, before branching: a private, ephemeral artifact showing how the change is built in code — the layers and files it touches, type and wire-contract changes, the data flow, and the test plan. Never committed; anything worth keeping is folded into the permanent docs once the story ships. | "design artifact" alone (reads as a screen design) |
+| **Screen design** | A mockup of new or changed UI states, published and kept like the implementation design artifact. Separate from it, and offered only when a story has new UI. A design handoff that covers the screen takes precedence. | "design artifact" |
+| **Design handoff** | A committed design reference from the design system's side (`design_handoff_estimate_app/`, `design_handoffs/`): screens and flows to build from, not production code to copy. A later handoff can supersede part of an earlier one. | |
 
 ## Testing
 
