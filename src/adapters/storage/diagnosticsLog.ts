@@ -2,11 +2,16 @@ import type {
   DiagnosticsLog,
   DiagnosticsReading,
 } from '../../application/ports/outbound/diagnosticsLog'
-import { DIAGNOSTICS_CAP, mergeByTime, trimToCap } from '../../domain/diagnosis/log'
+import {
+  DIAGNOSTICS_CAP,
+  keepNewest,
+  mergeByTime,
+  staleTabs,
+} from '../../domain/diagnosis/log'
 import type { DiagnosticEntry } from '../../domain/diagnosis/types'
 
 /** Each tab writes only under its own key, so two tabs never overwrite each
- *  other's latest entry; reading merges every key. */
+ *  other's entries; reading merges every key. */
 const KEY_PREFIX = 'estimate.diagnostics.'
 /** Outside the prefix, so a read never mistakes it for a tab. */
 const PROBE_KEY = 'estimate.diagnosticsProbe'
@@ -26,10 +31,12 @@ function isEntryList(value: unknown): value is DiagnosticEntry[] {
   return Array.isArray(value)
 }
 
-/** The connection diagnosis's log in browser storage (issue #229). Recording
- *  must never get in the way of the live session: every storage access is
- *  caught, and after the first failure the log stops recording and reports
- *  itself unavailable. */
+/** The diagnostics log in browser storage (issue #229). Recording must never get
+ *  in the way of the live session: every storage access is caught, and after
+ *  the first failure the log stops recording and reports itself unavailable.
+ *  A tab keeps at most 500 entries under its own key and a read keeps the
+ *  newest 500 across tabs; a new tab removes the keys of tabs none of whose
+ *  entries a read would keep, so old tabs don't fill the storage. */
 export function createDiagnosticsLog(
   options: DiagnosticsLogOptions = {},
 ): DiagnosticsLog {
@@ -39,6 +46,7 @@ export function createDiagnosticsLog(
   const userAgent = options.userAgent ?? globalThis.navigator?.userAgent ?? ''
 
   let available = probe()
+  if (available) removeStaleTabs()
 
   function probe(): boolean {
     try {
@@ -56,43 +64,46 @@ export function createDiagnosticsLog(
     )
   }
 
-  /** Every tab's entries, skipping a value that isn't a list of entries. */
-  function readAll(store: Storage): Record<string, DiagnosticEntry[]> {
-    const perTab: Record<string, DiagnosticEntry[]> = {}
-    for (const key of diagnosticsKeys(store)) {
-      try {
-        const value: unknown = JSON.parse(store.getItem(key) ?? '[]')
-        if (isEntryList(value)) perTab[key] = value
-      } catch {
-        // A corrupt value is left out of the report, not allowed to break it.
-      }
+  /** The entries under `key`, or none for a value that isn't a list of them. */
+  function readKey(store: Storage, key: string): DiagnosticEntry[] {
+    try {
+      const value: unknown = JSON.parse(store.getItem(key) ?? '[]')
+      return isEntryList(value) ? value : []
+    } catch {
+      // A corrupt value is left out of the report, not allowed to break it.
+      return []
     }
-    return perTab
   }
 
+  /** Every tab's entries, by key. */
+  function readAll(store: Storage): Record<string, DiagnosticEntry[]> {
+    return Object.fromEntries(
+      diagnosticsKeys(store).map((key) => [key, readKey(store, key)]),
+    )
+  }
+
+  function removeStaleTabs(): void {
+    try {
+      const store = storage()
+      for (const key of staleTabs(readAll(store), DIAGNOSTICS_CAP)) store.removeItem(key)
+    } catch {
+      available = false
+    }
+  }
+
+  const ownKey = `${KEY_PREFIX}${tabId}`
+
   return {
-    record(event, role) {
+    record(event) {
       if (!available) return
       try {
         const store = storage()
-        const entry: DiagnosticEntry = {
-          ...event,
-          at: now(),
-          tab: tabId,
-          ...(role ? { role } : {}),
-        }
-        const perTab = readAll(store)
-        const ownKey = `${KEY_PREFIX}${tabId}`
-        perTab[ownKey] = [...(perTab[ownKey] ?? []), entry]
-        const before = Object.fromEntries(
-          Object.entries(perTab).map(([key, entries]) => [key, entries.length]),
+        const entry: DiagnosticEntry = { ...event, at: now(), tab: tabId }
+        const own = readKey(store, ownKey)
+        store.setItem(
+          ownKey,
+          JSON.stringify(keepNewest([...own, entry], DIAGNOSTICS_CAP)),
         )
-        for (const [key, entries] of Object.entries(trimToCap(perTab, DIAGNOSTICS_CAP))) {
-          if (entries.length === 0) store.removeItem(key)
-          else if (key === ownKey || entries.length !== before[key]) {
-            store.setItem(key, JSON.stringify(entries))
-          }
-        }
       } catch {
         available = false
       }
@@ -103,7 +114,7 @@ export function createDiagnosticsLog(
         try {
           return {
             available: true,
-            entries: mergeByTime(readAll(storage())),
+            entries: keepNewest(mergeByTime(readAll(storage())), DIAGNOSTICS_CAP),
             userAgent,
           }
         } catch {

@@ -1,4 +1,3 @@
-import type { SessionRole } from '../../../domain/types'
 import type { DiagnosticEntry, DiagnosticEvent } from '../../../domain/diagnosis/types'
 
 // The port through which the live session and the network adapter record what
@@ -19,7 +18,7 @@ export interface DiagnosticsReading {
 export interface DiagnosticsLog {
   /** Records `event` for this tab. Never throws, and does nothing when storage
    *  is unavailable. */
-  record: (event: DiagnosticEvent, role?: SessionRole) => void
+  record: (event: DiagnosticEvent) => void
   read: () => DiagnosticsReading
   /** Removes every tab's entries. */
   clear: () => void

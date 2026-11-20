@@ -27,6 +27,9 @@ export interface JoinSessionOptions {
   password?: string
   /** Where the connection diagnosis records Trystero's facts (issue #229). */
   diagnostics?: DiagnosticsLog
+  /** The connection class Trystero builds its WebRTC connections from; the
+   *  browser's own when unset. */
+  rtcPolyfill?: typeof RTCPeerConnection
 }
 
 /** Joins the Trystero room for a session. roomId = sessionId, the 6-char code from
@@ -38,14 +41,8 @@ export function joinSession(
   options: JoinSessionOptions = {},
 ): TransportSession {
   const connection = createConnectionTracker()
-  // Recording is never worth a broken session: a failing log is ignored.
-  const record = (event: DiagnosticEvent) => {
-    try {
-      options.diagnostics?.record(event)
-    } catch {
-      // Nothing to do: the diagnosis just misses this fact.
-    }
-  }
+  // The port promises never to throw.
+  const record = (event: DiagnosticEvent) => options.diagnostics?.record(event)
 
   const room = joinSignalingRoom(sessionId, {
     password: options.password,
@@ -57,13 +54,16 @@ export function joinSession(
       })
       connection.handleJoinError()
     },
-    rtcPolyfill: options.diagnostics ? createRecordingPeerConnection(record) : undefined,
+    rtcPolyfill: options.rtcPolyfill,
   })
 
   const actions = createTypedActions(room)
 
   room.onPeerJoin = (peerId) => {
-    record({ kind: 'peer-join', peer: shortPeerId(peerId) })
+    // Trystero may report a peer it already reported; the tracker ignores that.
+    if (!connection.getState().peerIds.includes(peerId)) {
+      record({ kind: 'peer-join', peer: shortPeerId(peerId) })
+    }
     connection.handlePeerJoin(peerId)
   }
   room.onPeerLeave = (peerId) => {
@@ -89,7 +89,10 @@ export function joinSession(
 }
 
 /** The `JoinSession` port, recording into `diagnostics`: what the composition
- *  root provides to the live session. */
+ *  root provides to the live session. Every join shares one recording class, so
+ *  a tab numbers its WebRTC attempts across reconnects. */
 export function createJoinSession(deps: { diagnostics: DiagnosticsLog }): JoinSession {
-  return (sessionId) => joinSession(sessionId, { diagnostics: deps.diagnostics })
+  const { diagnostics } = deps
+  const rtcPolyfill = createRecordingPeerConnection((event) => diagnostics.record(event))
+  return (sessionId) => joinSession(sessionId, { diagnostics, rtcPolyfill })
 }

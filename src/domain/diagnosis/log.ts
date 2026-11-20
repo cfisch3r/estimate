@@ -13,18 +13,19 @@ export function mergeByTime(
     .sort((a, b) => a.at.localeCompare(b.at))
 }
 
-/** Each tab's entries with the oldest dropped, across all tabs, until at most
- *  `cap` remain. */
-export function trimToCap(
+/** The newest `cap` entries of a list in time order. */
+export function keepNewest(entries: DiagnosticEntry[], cap: number): DiagnosticEntry[] {
+  return entries.slice(Math.max(0, entries.length - cap))
+}
+
+/** The tabs none of whose entries are among the newest `cap` across all tabs:
+ *  what a new tab may remove, so old tabs don't fill the storage. */
+export function staleTabs(
   entriesPerTab: Record<string, DiagnosticEntry[]>,
   cap: number,
-): Record<string, DiagnosticEntry[]> {
-  const merged = mergeByTime(entriesPerTab)
-  const kept = new Set(merged.slice(Math.max(0, merged.length - cap)))
-  return Object.fromEntries(
-    Object.entries(entriesPerTab).map(([tab, entries]) => [
-      tab,
-      entries.filter((entry) => kept.has(entry)),
-    ]),
-  )
+): string[] {
+  const kept = new Set(keepNewest(mergeByTime(entriesPerTab), cap))
+  return Object.entries(entriesPerTab)
+    .filter(([, entries]) => !entries.some((entry) => kept.has(entry)))
+    .map(([tab]) => tab)
 }

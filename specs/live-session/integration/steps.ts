@@ -232,14 +232,13 @@ Then(
               entry.kind === kind && 'peer' in entry && entry.peer ? [entry.peer] : [],
             )
           const later = peersWith(PEER_EVENT[second])
-          return peersWith(PEER_EVENT[first]).find((peer) => later.includes(peer))
+          // The peer both lines name: what the next step checks.
+          state.peer = peersWith(PEER_EVENT[first]).find((peer) => later.includes(peer))
+          return state.peer
         },
         { timeout: CONNECT_TIMEOUT },
       )
       .toBeDefined()
-    const entries = await entriesOf(tab, browser)
-    const joined = entries.find((entry) => entry.kind === PEER_EVENT[first])
-    state.peer = joined && 'peer' in joined ? joined.peer : undefined
   },
 )
 

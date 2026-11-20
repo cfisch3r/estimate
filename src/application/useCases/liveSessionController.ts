@@ -45,17 +45,12 @@ export function createLiveSessionController(deps: {
   let live: TransportSession | null = null
   let unsubscribe: (() => void) | null = null
 
-  // The diagnosis is never worth a broken session: a failing log is ignored.
-  const record = (event: DiagnosticEvent) => {
-    try {
-      deps.diagnostics.record(event, useConnectionStore.getState().role)
-    } catch {
-      // Nothing to do: the diagnosis just misses this fact.
-    }
-  }
+  // The port promises never to throw.
+  const record = (event: DiagnosticEvent) => deps.diagnostics.record(event)
 
   // The status line the diagnosis shows is the one the user saw, so it records
-  // the derived status, and only when that changes.
+  // the derived status, and only when that changes. Null until a live session
+  // started, so ending a session that never went live records nothing.
   let lastRecordedStatus: LiveConnectionStatus | null = null
   const recordStatus = (status: LiveConnectionStatus) => {
     if (status === lastRecordedStatus) return
@@ -277,7 +272,7 @@ export function createLiveSessionController(deps: {
       const { setConnectionStatus, setPeerCount } = useConnectionStore.getState()
       setConnectionStatus('idle')
       setPeerCount(0)
-      recordStatus('idle')
+      if (lastRecordedStatus !== null) recordStatus('idle')
     },
     sendEstimate: (itemId, estimate, round) => {
       const { role } = useConnectionStore.getState()

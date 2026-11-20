@@ -45,6 +45,4 @@ export type DiagnosticEntry = DiagnosticEvent & {
   at: string
   /** A short random id of the browser tab that recorded it. */
   tab: string
-  /** The tab's role in its session, once a session has started. */
-  role?: SessionRole
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { candidatesInSdp, parseCandidate } from './candidates'
+import { candidateKind, candidatesInSdp, parseCandidate } from './candidates'
 
 const HOST_V4 =
   'candidate:842163049 1 udp 1677729535 192.168.1.5 54321 typ host generation 0'
@@ -7,6 +7,20 @@ const SRFLX_V6 =
   'candidate:1 1 UDP 1686052607 2001:db8::7 61665 typ srflx raddr fe80::1 rport 61665'
 const HOST_MDNS_TCP =
   'candidate:3 1 tcp 1518280447 4f1c2b0e-7a2d-4d1e-9c11-0d6b1f3e2a90.local 9 typ host tcptype active'
+
+describe('candidateKind', () => {
+  it('reads a known type and protocol', () => {
+    expect(candidateKind('relay', 'tcp')).toEqual({ type: 'relay', protocol: 'tcp' })
+  })
+
+  it.each([
+    ['an unknown type', 'magic', 'udp'],
+    ['an unknown protocol', 'host', 'sctp'],
+    ['values that are no text', 1, undefined],
+  ])('returns null for %s', (_name, type, protocol) => {
+    expect(candidateKind(type, protocol)).toBeNull()
+  })
+})
 
 describe('parseCandidate', () => {
   it('reads the type and protocol of a host candidate', () => {

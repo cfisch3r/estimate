@@ -246,6 +246,45 @@ describe('createRecordingPeerConnection', () => {
     expect(events).toEqual([])
   })
 
+  it.each([
+    ['selected', { selected: true }],
+    ['nominated and succeeded', { nominated: true, state: 'succeeded' }],
+  ])(
+    "finds the selected pair in Firefox's stats, which mark the pair %s",
+    async (_name, mark) => {
+      const { events, open } = recorder()
+      const connection = open()
+      connection.stats = new Map([
+        ['T1', { type: 'transport' }],
+        [
+          'P0',
+          { type: 'candidate-pair', localCandidateId: 'R1', remoteCandidateId: 'R1' },
+        ],
+        [
+          'P1',
+          {
+            type: 'candidate-pair',
+            localCandidateId: 'L1',
+            remoteCandidateId: 'R1',
+            ...mark,
+          },
+        ],
+        ...[...connection.stats].filter(([id]) => id === 'L1' || id === 'R1'),
+      ])
+      connection.receiveRemote()
+
+      connection.moveTo('connected')
+      await settle()
+
+      expect(events).toContainEqual({
+        kind: 'rtc-selected',
+        attempt: 1,
+        local: { type: 'host', protocol: 'udp' },
+        remote: { type: 'srflx', protocol: 'udp' },
+      })
+    },
+  )
+
   it('records no selected pair when the stats name none', async () => {
     const { events, open } = recorder()
     const connection = open()

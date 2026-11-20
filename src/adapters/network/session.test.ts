@@ -290,17 +290,31 @@ describe('createJoinSession', () => {
     }
   })
 
-  it('keeps the live session working when recording throws', () => {
-    const diagnostics: DiagnosticsLog = {
-      record: () => {
-        throw new Error('storage is gone')
-      },
-      read: () => ({ available: false, entries: [], userAgent: '' }),
-      clear: () => {},
-    }
-    const session = createJoinSession({ diagnostics })('session-abc')
+  it('records a peer that Trystero reports twice only once', () => {
+    const { events, diagnostics } = fakeDiagnostics()
+    createJoinSession({ diagnostics })('session-abc')
 
-    expect(() => fakeRoom.onPeerJoin?.('peer-1')).not.toThrow()
-    expect(session.getConnectionState().status).toBe('connected')
+    fakeRoom.onPeerJoin?.('abcdefghijklmnop')
+    fakeRoom.onPeerJoin?.('abcdefghijklmnop')
+
+    expect(events).toEqual([{ kind: 'peer-join', peer: 'abcdef' }])
+  })
+
+  it('hands every join the same recording class, so attempts are numbered across rejoins', () => {
+    vi.stubGlobal('RTCPeerConnection', class extends EventTarget {})
+    try {
+      const { diagnostics } = fakeDiagnostics()
+      const join = createJoinSession({ diagnostics })
+      join('session-abc')
+      join('session-abc')
+
+      const [first, second] = joinRoomMock.mock.calls.map(
+        ([config]) => config.rtcPolyfill,
+      )
+      expect(first).toBeDefined()
+      expect(second).toBe(first)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 })

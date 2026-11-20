@@ -140,11 +140,11 @@ async function flushMicrotasks() {
 
 let controller: LiveSessionController
 
-/** What the controller recorded, with the role it gave each event. */
-let recorded: { event: DiagnosticEvent; role?: SessionRole }[] = []
+/** What the controller recorded. */
+let recorded: DiagnosticEvent[] = []
 const diagnostics: DiagnosticsLog = {
-  record: (event, role) => {
-    recorded.push(role ? { event, role } : { event })
+  record: (event) => {
+    recorded.push(event)
   },
   read: () => ({ available: true, entries: [], userAgent: '' }),
   clear: () => {},
@@ -970,21 +970,17 @@ describe('createLiveSessionController', () => {
 
 describe('the connection diagnosis', () => {
   const statuses = () =>
-    recorded.flatMap(({ event }) => (event.kind === 'status' ? [event.status] : []))
+    recorded.flatMap((event) => (event.kind === 'status' ? [event.status] : []))
 
   it('records the session start with the code and role', () => {
     setSessionState({ mode: 'live', role: 'participant', sessionId: 'K7F9Q2' })
 
     controller.api.connect('K7F9Q2')
 
-    expect(recorded[0]).toEqual({
-      event: { kind: 'session-start', sessionCode: 'K7F9Q2', role: 'participant' },
-      role: 'participant',
-    })
-    expect(recorded[1]).toEqual({
-      event: { kind: 'status', status: 'connecting' },
-      role: 'participant',
-    })
+    expect(recorded).toEqual([
+      { kind: 'session-start', sessionCode: 'K7F9Q2', role: 'participant' },
+      { kind: 'status', status: 'connecting' },
+    ])
   })
 
   it('records the status a participant sees, not the raw link', () => {
@@ -1022,22 +1018,11 @@ describe('the connection diagnosis', () => {
     expect(statuses()).toEqual(['connecting', 'idle'])
   })
 
-  it('keeps the stores right when recording throws', () => {
-    const failing = createLiveSessionController({
-      joinSession: joinSessionMock as unknown as JoinSession,
-      diagnostics: {
-        ...diagnostics,
-        record: () => {
-          throw new Error('storage is gone')
-        },
-      },
-    })
-    setSessionState({ mode: 'live', role: 'facilitator', sessionId: 'K7F9Q2' })
+  it('records nothing when a session that never went live ends', () => {
+    setSessionState({ mode: 'manual', role: 'facilitator' })
 
-    expect(() => failing.api.connect('K7F9Q2')).not.toThrow()
-    emitState({ status: 'connected', peerIds: ['p1'] })
+    controller.api.disconnect()
 
-    expect(useConnectionStore.getState().connectionStatus).toBe('connected')
-    failing.dispose()
+    expect(recorded).toEqual([])
   })
 })

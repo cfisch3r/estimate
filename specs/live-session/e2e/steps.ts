@@ -4,9 +4,10 @@ import {
   submitEstimate,
   expectItemVisible,
   expectSubmittedCount,
+  openDiagnosis,
+  readDiagnosisReport,
 } from '../../../e2e/helpers'
 import { expect } from '@playwright/test'
-import type { Page } from '@playwright/test'
 import { Given, When, Then } from '../../shared/e2e/world'
 
 Given('a facilitator has started a collaborative session', async ({ actor, state }) => {
@@ -37,24 +38,15 @@ Then(
   },
 )
 
-/** The report text on the diagnosis page (`/diagnosis`), read from the
- *  read-only field the page labels "Diagnosis report". `inputValue()`, not
- *  `innerText()`: a textarea's text node holds only its initial content. */
-async function diagnosisReport(page: Page): Promise<string> {
-  const report = page.getByLabel('Diagnosis report')
-  await expect(report).toBeVisible()
-  return report.inputValue()
-}
-
 When('{word} opens the connection diagnosis', async ({ actor }, name: string) => {
   const page = await actor(name)
-  await page.goto('/diagnosis')
+  await openDiagnosis(page)
 })
 
 Then(
   "{word}'s diagnosis report shows the session as {string}",
   async ({ actor }, name: string, status: string) => {
-    const report = await diagnosisReport(await actor(name))
+    const report = await readDiagnosisReport(await actor(name))
     expect(report).toMatch(new RegExp(`status\\s+${status}\\b`))
   },
 )
@@ -62,7 +54,7 @@ Then(
 Then(
   "{word}'s diagnosis report lists a {string} candidate",
   async ({ actor }, name: string, type: string) => {
-    const report = await diagnosisReport(await actor(name))
+    const report = await readDiagnosisReport(await actor(name))
     expect(report).toMatch(new RegExp(`\\b${type}/(udp|tcp)\\b`))
   },
 )
@@ -70,7 +62,7 @@ Then(
 Then(
   "{word}'s diagnosis report does not mention {string} or {string}",
   async ({ actor }, name: string, first: string, second: string) => {
-    const report = await diagnosisReport(await actor(name))
+    const report = await readDiagnosisReport(await actor(name))
     expect(report).not.toContain(first)
     expect(report).not.toContain(second)
   },

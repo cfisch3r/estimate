@@ -1,3 +1,4 @@
+import type { SessionRole } from '../types'
 import type { CandidateKind, DiagnosticEntry } from './types'
 import { mergeByTime } from './log'
 
@@ -62,8 +63,8 @@ function describe(entry: DiagnosticEntry): string {
 }
 
 /** The plain-text report a tester downloads: what was used, then one line per
- *  entry, every tab merged in time order and labelled with its tab (and role,
- *  once known). Holds only what the entries hold: no names, values or
+ *  entry, every tab merged in time order and labelled with its tab and, from
+ *  the tab's first session start on, the role of its latest one. Holds only what the entries hold: no names, values or
  *  addresses. */
 export function formatDiagnosisReport(input: {
   entries: DiagnosticEntry[]
@@ -79,8 +80,11 @@ export function formatDiagnosisReport(input: {
     `Browser: ${browser} on ${os}`,
     '',
   ]
+  const roles = new Map<string, SessionRole>()
   const lines = mergeByTime({ all: input.entries }).map((entry) => {
-    const label = entry.role ? `${entry.tab} ${entry.role}` : entry.tab
+    if (entry.kind === 'session-start') roles.set(entry.tab, entry.role)
+    const role = roles.get(entry.tab)
+    const label = role ? `${entry.tab} ${role}` : entry.tab
     return `${entry.at} [${label}] ${describe(entry)}`
   })
   return [

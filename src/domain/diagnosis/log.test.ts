@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DIAGNOSTICS_CAP, mergeByTime, trimToCap } from './log'
+import { DIAGNOSTICS_CAP, keepNewest, mergeByTime, staleTabs } from './log'
 import type { DiagnosticEntry } from './types'
 
 const status = (at: string, tab: string): DiagnosticEntry => ({
@@ -35,38 +35,42 @@ describe('mergeByTime', () => {
   })
 })
 
-describe('trimToCap', () => {
-  it('drops the oldest entries across all tabs', () => {
-    const trimmed = trimToCap(
-      {
-        a: [
-          status('2026-11-20T10:00:00.000Z', 'a'),
-          status('2026-11-20T10:00:03.000Z', 'a'),
-        ],
-        b: [
-          status('2026-11-20T10:00:01.000Z', 'b'),
-          status('2026-11-20T10:00:02.000Z', 'b'),
-          status('2026-11-20T10:00:04.000Z', 'b'),
-        ],
-      },
-      3,
+describe('keepNewest', () => {
+  it('keeps the newest entries of a list, oldest first', () => {
+    const entries = ['00', '01', '02'].map((second) =>
+      status(`2026-11-20T10:00:${second}.000Z`, 'a'),
     )
-    expect(trimmed).toEqual({
-      a: [status('2026-11-20T10:00:03.000Z', 'a')],
-      b: [
-        status('2026-11-20T10:00:02.000Z', 'b'),
-        status('2026-11-20T10:00:04.000Z', 'b'),
-      ],
-    })
-  })
-
-  it('keeps everything under the cap, and keeps a tab whose entries all went', () => {
-    const entries = { a: [status('2026-11-20T10:00:00.000Z', 'a')] }
-    expect(trimToCap(entries, 5)).toEqual(entries)
-    expect(trimToCap(entries, 0)).toEqual({ a: [] })
+    expect(keepNewest(entries, 2)).toEqual(entries.slice(1))
+    expect(keepNewest(entries, 5)).toEqual(entries)
+    expect(keepNewest(entries, 0)).toEqual([])
   })
 
   it('caps at 500 entries by default', () => {
     expect(DIAGNOSTICS_CAP).toBe(500)
+  })
+})
+
+describe('staleTabs', () => {
+  const perTab = {
+    a: [status('2026-11-20T10:00:00.000Z', 'a'), status('2026-11-20T10:00:01.000Z', 'a')],
+    b: [status('2026-11-20T10:00:02.000Z', 'b'), status('2026-11-20T10:00:04.000Z', 'b')],
+    c: [status('2026-11-20T10:00:03.000Z', 'c')],
+  }
+
+  it('names the tabs none of whose entries are among the newest', () => {
+    expect(staleTabs(perTab, 3)).toEqual(['a'])
+  })
+
+  it('names no tab while every entry fits', () => {
+    expect(staleTabs(perTab, 5)).toEqual([])
+  })
+
+  it('keeps a tab with at least one newest entry', () => {
+    expect(staleTabs(perTab, 2)).toEqual(['a'])
+    expect(staleTabs(perTab, 1)).toEqual(['a', 'c'])
+  })
+
+  it('names an empty tab as stale', () => {
+    expect(staleTabs({ a: [] }, 5)).toEqual(['a'])
   })
 })

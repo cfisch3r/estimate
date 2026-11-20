@@ -48,7 +48,7 @@ describe('formatDiagnosisReport', () => {
   }
 
   const entries: DiagnosticEntry[] = [
-    { kind: 'status', status: 'connected', at: at(3), tab: 'f1', role: 'facilitator' },
+    { kind: 'status', status: 'connected', at: at(3), tab: 'f1' },
     {
       kind: 'session-start',
       sessionCode: 'QX7K2M',
@@ -56,15 +56,14 @@ describe('formatDiagnosisReport', () => {
       at: at(0),
       tab: 'p1',
     },
-    { kind: 'status', status: 'connecting', at: at(1), tab: 'p1', role: 'participant' },
-    { kind: 'peer-join', peer: 'abcdef', at: at(2), tab: 'p1', role: 'participant' },
+    { kind: 'status', status: 'connecting', at: at(1), tab: 'p1' },
+    { kind: 'peer-join', peer: 'abcdef', at: at(2), tab: 'p1' },
     {
       kind: 'join-error',
       error: 'incorrect password (abcdef)',
       peer: 'abcdef',
       at: at(4),
       tab: 'p1',
-      role: 'participant',
     },
     { kind: 'join-error', error: 'handshake timed out', at: at(5), tab: 'p1' },
     {
@@ -119,15 +118,52 @@ describe('formatDiagnosisReport', () => {
       '2026-11-20T10:00:00.000Z [p1 participant] session start  code QX7K2M  role participant',
       '2026-11-20T10:00:01.000Z [p1 participant] status  connecting',
       '2026-11-20T10:00:02.000Z [p1 participant] peer joined  abcdef',
-      '2026-11-20T10:00:03.000Z [f1 facilitator] status  connected',
+      '2026-11-20T10:00:03.000Z [f1] status  connected',
       '2026-11-20T10:00:04.000Z [p1 participant] join error  incorrect password (abcdef)  peer abcdef',
-      '2026-11-20T10:00:05.000Z [p1] join error  handshake timed out',
-      '2026-11-20T10:00:06.000Z [p1] attempt 1  local candidates  host/udp, host/tcp',
-      '2026-11-20T10:00:07.000Z [p1] attempt 1  remote candidates  none',
-      '2026-11-20T10:00:08.000Z [p1] attempt 1  connection connected  ice connected',
-      '2026-11-20T10:00:09.000Z [p1] attempt 1  selected pair  host/udp to srflx/udp',
-      '2026-11-20T10:00:10.000Z [p1] peer left  abcdef',
-      '2026-11-20T10:00:11.000Z [p1] status  idle',
+      '2026-11-20T10:00:05.000Z [p1 participant] join error  handshake timed out',
+      '2026-11-20T10:00:06.000Z [p1 participant] attempt 1  local candidates  host/udp, host/tcp',
+      '2026-11-20T10:00:07.000Z [p1 participant] attempt 1  remote candidates  none',
+      '2026-11-20T10:00:08.000Z [p1 participant] attempt 1  connection connected  ice connected',
+      '2026-11-20T10:00:09.000Z [p1 participant] attempt 1  selected pair  host/udp to srflx/udp',
+      '2026-11-20T10:00:10.000Z [p1 participant] peer left  abcdef',
+      '2026-11-20T10:00:11.000Z [p1 participant] status  idle',
+    ])
+  })
+
+  it("labels each tab's lines with the role of its latest session start", () => {
+    const lines = formatDiagnosisReport({
+      ...header,
+      entries: [
+        { kind: 'status', status: 'connecting', at: at(0), tab: 't1' },
+        {
+          kind: 'session-start',
+          sessionCode: 'AAAAAA',
+          role: 'facilitator',
+          at: at(1),
+          tab: 't1',
+        },
+        { kind: 'status', status: 'connected', at: at(2), tab: 't1' },
+        { kind: 'status', status: 'connected', at: at(3), tab: 't2' },
+        {
+          kind: 'session-start',
+          sessionCode: 'BBBBBB',
+          role: 'participant',
+          at: at(4),
+          tab: 't1',
+        },
+        { kind: 'status', status: 'connecting', at: at(5), tab: 't1' },
+      ],
+    })
+      .split('\n')
+      .slice(5)
+      .map((line) => line.slice(25, line.indexOf(']') + 1))
+    expect(lines).toEqual([
+      '[t1]',
+      '[t1 facilitator]',
+      '[t1 facilitator]',
+      '[t2]',
+      '[t1 participant]',
+      '[t1 participant]',
     ])
   })
 

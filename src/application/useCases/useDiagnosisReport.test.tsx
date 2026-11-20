@@ -14,7 +14,6 @@ const ENTRY: DiagnosticEntry = {
   status: 'connected',
   at: '2026-11-20T09:30:00.000Z',
   tab: 'ab12',
-  role: 'participant',
 }
 
 let entries: DiagnosticEntry[]
@@ -59,7 +58,7 @@ describe('useDiagnosisReport', () => {
     expect(result.current.available).toBe(true)
     expect(result.current.report).toContain('App version: 0.9.0')
     expect(result.current.report).toContain('Browser: Firefox 133')
-    expect(result.current.report).toContain('[ab12 participant] status  connected')
+    expect(result.current.report).toContain('[ab12] status  connected')
   })
 
   it('says when recording is unavailable', () => {

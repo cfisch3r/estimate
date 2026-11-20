@@ -1,19 +1,31 @@
-import { candidatesInSdp } from '../../domain/diagnosis/candidates'
+import { candidateKind, candidatesInSdp } from '../../domain/diagnosis/candidates'
 import type { CandidateKind, DiagnosticEvent } from '../../domain/diagnosis/types'
 
-/** States after which a connection's candidates are final. */
-const SETTLED: ReadonlySet<string> = new Set(['connected', 'failed', 'closed'])
+/** States after which a connection's candidates are final. `closed` is not one:
+ *  only `close()` reaches it, and that fires no event (see `close` below). */
+const SETTLED: ReadonlySet<string> = new Set(['connected', 'failed'])
 
 type StatsRecord = Record<string, unknown>
 
 /** The kind of a candidate as `getStats()` reports it, or undefined. */
 function kindOf(stat: StatsRecord | undefined): CandidateKind | undefined {
-  const type = stat?.['candidateType']
-  const protocol = stat?.['protocol']
-  return (type === 'host' || type === 'srflx' || type === 'prflx' || type === 'relay') &&
-    (protocol === 'udp' || protocol === 'tcp')
-    ? { type, protocol }
-    : undefined
+  return candidateKind(stat?.['candidateType'], stat?.['protocol']) ?? undefined
+}
+
+/** The pair the transport names (Chromium, Safari), or else the pair marked
+ *  selected, or nominated and succeeded (Firefox, which names none). */
+function selectedPairStat(stats: Map<string, StatsRecord>): StatsRecord | undefined {
+  const all = [...stats.values()]
+  const pairId = all.find((stat) => stat['type'] === 'transport')?.[
+    'selectedCandidatePairId'
+  ]
+  if (typeof pairId === 'string') return stats.get(pairId)
+  return all.find(
+    (stat) =>
+      stat['type'] === 'candidate-pair' &&
+      (stat['selected'] === true ||
+        (stat['nominated'] === true && stat['state'] === 'succeeded')),
+  )
 }
 
 /** The candidate pair the connection is using, by kind only. */
@@ -24,10 +36,7 @@ async function selectedPair(
   ;(await connection.getStats()).forEach((stat: StatsRecord, id: string) =>
     stats.set(id, stat),
   )
-  const pairId = [...stats.values()].find((stat) => stat['type'] === 'transport')?.[
-    'selectedCandidatePairId'
-  ]
-  const pair = typeof pairId === 'string' ? stats.get(pairId) : undefined
+  const pair = selectedPairStat(stats)
   const local = kindOf(stats.get(String(pair?.['localCandidateId'])))
   const remote = kindOf(stats.get(String(pair?.['remoteCandidateId'])))
   return local && remote ? { local, remote } : undefined
@@ -36,8 +45,9 @@ async function selectedPair(
 /** An `RTCPeerConnection` that records what happens to it, for Trystero's
  *  `rtcPolyfill` option (issue #229). It records only once it has a remote
  *  description, because Trystero keeps spare offer connections that may never
- *  be used; it numbers those attempts in the order they begin. Every recording
- *  is wrapped, so a failing `record` never reaches the connection. Returns
+ *  be used; it numbers those attempts in the order they begin, across every
+ *  connection built from the returned class. Every recording is wrapped, so a
+ *  failing `record` never reaches the connection, which runs inside Trystero. Returns
  *  undefined where the browser has no `RTCPeerConnection`, so Trystero falls
  *  back to its own default. */
 export function createRecordingPeerConnection(

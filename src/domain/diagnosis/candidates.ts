@@ -3,10 +3,16 @@ import type { CandidateKind, CandidateProtocol, CandidateType } from './types'
 const TYPES: readonly CandidateType[] = ['host', 'srflx', 'prflx', 'relay']
 const PROTOCOLS: readonly CandidateProtocol[] = ['udp', 'tcp']
 
-const isType = (token: string | undefined): token is CandidateType =>
-  TYPES.includes(token as CandidateType)
-const isProtocol = (token: string | undefined): token is CandidateProtocol =>
-  PROTOCOLS.includes(token as CandidateProtocol)
+const isType = (value: unknown): value is CandidateType =>
+  TYPES.includes(value as CandidateType)
+const isProtocol = (value: unknown): value is CandidateProtocol =>
+  PROTOCOLS.includes(value as CandidateProtocol)
+
+/** A candidate's kind from its type and protocol, or null if either is unknown.
+ *  Takes `unknown`, because `getStats()` reports them as untyped values. */
+export function candidateKind(type: unknown, protocol: unknown): CandidateKind | null {
+  return isType(type) && isProtocol(protocol) ? { type, protocol } : null
+}
 
 /** The type and protocol of an ICE candidate line (RFC 8839:
  *  `candidate:<foundation> <component> <protocol> <priority> <address> <port>
@@ -16,10 +22,8 @@ const isProtocol = (token: string | undefined): token is CandidateProtocol =>
 export function parseCandidate(line: string): CandidateKind | null {
   const tokens = line.trim().replace(/^a=/, '').split(/\s+/)
   if (!tokens[0]?.startsWith('candidate:')) return null
-  const protocol = tokens[2]?.toLowerCase()
-  const type = tokens[tokens.indexOf('typ') + 1]
-  if (!tokens.includes('typ') || !isType(type) || !isProtocol(protocol)) return null
-  return { type, protocol }
+  if (!tokens.includes('typ')) return null
+  return candidateKind(tokens[tokens.indexOf('typ') + 1], tokens[2]?.toLowerCase())
 }
 
 /** The kinds of every candidate a session description (SDP) carries. */

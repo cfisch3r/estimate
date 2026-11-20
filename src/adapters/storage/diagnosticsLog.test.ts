@@ -13,10 +13,10 @@ beforeEach(() => localStorage.clear())
 afterEach(() => vi.restoreAllMocks())
 
 describe('createDiagnosticsLog', () => {
-  it('reads back what it recorded, with time, tab and role', () => {
+  it('reads back what it recorded, with time and tab', () => {
     const log = createDiagnosticsLog({ tabId: 'tab1', now: clock(), userAgent: 'UA' })
 
-    log.record({ kind: 'status', status: 'connecting' }, 'participant')
+    log.record({ kind: 'status', status: 'connecting' })
 
     expect(log.read()).toEqual({
       available: true,
@@ -27,16 +27,9 @@ describe('createDiagnosticsLog', () => {
           status: 'connecting',
           at: '2026-11-20T10:00:00.000Z',
           tab: 'tab1',
-          role: 'participant',
         },
       ],
     })
-  })
-
-  it('leaves the role out until one is given', () => {
-    const log = createDiagnosticsLog({ tabId: 'tab1', now: clock() })
-    log.record({ kind: 'peer-join', peer: 'abcdef' })
-    expect(log.read().entries[0]).not.toHaveProperty('role')
   })
 
   it('keeps each tab under its own key, and reads every tab in time order', () => {
@@ -54,7 +47,7 @@ describe('createDiagnosticsLog', () => {
     expect(tabs(second)).toEqual(['one', 'two', 'one'])
   })
 
-  it('drops the oldest entries across tabs beyond 500', () => {
+  it('reads only the newest 500 entries across tabs', () => {
     const now = clock()
     const other = createDiagnosticsLog({ tabId: 'other', now })
     other.record({ kind: 'peer-join', peer: 'oldest' })
@@ -64,7 +57,40 @@ describe('createDiagnosticsLog', () => {
     const { entries } = log.read()
     expect(entries).toHaveLength(500)
     expect(entries.some((entry) => entry.tab === 'other')).toBe(false)
-    expect(localStorage.getItem(`${PREFIX}other`)).toBeNull()
+  })
+
+  it("never writes another tab's key while recording", () => {
+    const now = clock()
+    const other = createDiagnosticsLog({ tabId: 'other', now })
+    other.record({ kind: 'peer-join', peer: 'oldest' })
+    const log = createDiagnosticsLog({ tabId: 'mine', now })
+    const setItem = vi.spyOn(Storage.prototype, 'setItem')
+    const removeItem = vi.spyOn(Storage.prototype, 'removeItem')
+
+    for (let i = 0; i < 501; i++) log.record({ kind: 'status', status: 'connected' })
+
+    const touched = [...setItem.mock.calls, ...removeItem.mock.calls].map(([key]) => key)
+    expect(new Set(touched)).toEqual(new Set([`${PREFIX}mine`]))
+    expect(localStorage.getItem(`${PREFIX}other`)).not.toBeNull()
+  })
+
+  it('keeps at most 500 entries under its own key', () => {
+    const log = createDiagnosticsLog({ tabId: 'mine', now: clock() })
+    for (let i = 0; i < 501; i++) log.record({ kind: 'status', status: 'connected' })
+
+    expect(JSON.parse(localStorage.getItem(`${PREFIX}mine`) ?? '[]')).toHaveLength(500)
+  })
+
+  it('removes, when a tab opens, the tabs whose entries are all too old to be read', () => {
+    const now = clock()
+    createDiagnosticsLog({ tabId: 'old', now }).record({ kind: 'peer-join', peer: 'old' })
+    const busy = createDiagnosticsLog({ tabId: 'busy', now })
+    for (let i = 0; i < 500; i++) busy.record({ kind: 'status', status: 'connected' })
+
+    createDiagnosticsLog({ tabId: 'new', now })
+
+    expect(localStorage.getItem(`${PREFIX}old`)).toBeNull()
+    expect(localStorage.getItem(`${PREFIX}busy`)).not.toBeNull()
   })
 
   it('clears every tab and nothing else', () => {
