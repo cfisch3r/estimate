@@ -6,10 +6,24 @@ import { AggregatedRange } from './AggregatedRange'
 const noop = vi.fn()
 
 describe('AggregatedRange', () => {
+  it("labels a revealed round's range as aggregated", () => {
+    render(
+      <AggregatedRange
+        kind="aggregated"
+        range={aggregateOf(2, 4, 10)}
+        unit="days"
+        infoOpen={false}
+        onInfoOpen={noop}
+        onInfoClose={noop}
+      />,
+    )
+    expect(screen.getByText('Range (aggregated)')).toBeInTheDocument()
+  })
+
   it('shows the labelled range in the unit', () => {
     render(
       <AggregatedRange
-        label="Range (finalized)"
+        kind="finalized"
         range={aggregateOf(2, 4, 10)}
         unit="days"
         infoOpen={false}

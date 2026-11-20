@@ -1,9 +1,9 @@
 import { Card, CardBody } from '../../../shared/ui'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import { EstimateTriple } from '../../../entities/estimate'
+import { AggregatedRange } from '../../../features/reveal-results'
 import { aggregateEstimates, type EstimationUnit } from '../../../domain/estimate'
 import type { LiveRound } from '../../../domain/types'
-import { AggregatedRange } from '../../../features/reveal-results'
 import { buildRevealedRows } from '../model/buildRevealedRows'
 import { RoundCardHeader } from './RoundCardHeader'
 
@@ -36,7 +36,7 @@ export function RevealedPanel({
 
       {round.submissions.length > 0 ? (
         <AggregatedRange
-          label="Range (aggregated)"
+          kind="aggregated"
           range={aggregateEstimates(round.submissions)}
           unit={unit}
           infoOpen={infoOpen === 'range'}

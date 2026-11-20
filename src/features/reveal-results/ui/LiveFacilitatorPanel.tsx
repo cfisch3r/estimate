@@ -3,12 +3,12 @@ import { GroupBox, LiveRegion, Tag, VisuallyHidden } from '../../../shared/ui'
 import { PARTICIPANT_ESTIMATES_INFO } from '../../../shared/copy'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import { EstimateTriple } from '../../../entities/estimate'
+import { AggregatedRange } from './AggregatedRange'
 import { aggregateEstimates, type EstimationUnit } from '../../../domain/estimate'
-import { isFinalized } from '../../../domain/item'
+import { isFinalized, livePhaseOf } from '../../../domain/item'
 import { ItemDetailShell } from '../../../entities/item'
 import type { Item } from '../../../domain/types'
 import { useRevealRound } from '../model/useRevealRound'
-import { AggregatedRange } from './AggregatedRange'
 import {
   FinalizedFooter,
   PreRevealFooter,
@@ -40,17 +40,16 @@ export function LiveFacilitatorPanel({
 }: LiveFacilitatorPanelProps) {
   const { roster, reveal, retry, finalize } = useRevealRound(item)
   const submittedCount = item.submissions.length
-  // Finalized with no round revealed in this session: only a loaded session
-  // file gets here, since finalizing live always follows a reveal.
-  const resumedFinal = !item.revealed && isFinalized(item) ? item.finalResult : null
-  // No round is open on a resumed finalized item, so nobody is "waiting" and
+  const live = livePhaseOf(item)
+  // No round is open on an item finalized earlier, so nobody is "waiting" and
   // there is no submitted count to announce.
-  const roundOpen = !item.revealed && !resumedFinal
-  const range = item.revealed
-    ? submittedCount > 0
-      ? { label: 'Range (aggregated)', values: aggregateEstimates(item.submissions) }
-      : null
-    : resumedFinal && { label: 'Range (finalized)', values: resumedFinal }
+  const roundOpen = live.phase === 'open'
+  const range =
+    live.phase === 'finalizedEarlier'
+      ? { kind: 'finalized' as const, values: live.finalResult }
+      : live.phase === 'revealed' && submittedCount > 0
+        ? { kind: 'aggregated' as const, values: aggregateEstimates(item.submissions) }
+        : null
   const {
     openKey: infoOpen,
     open: openInfo,
@@ -60,16 +59,18 @@ export function LiveFacilitatorPanel({
   // Reopen / Retry unmount the footer button that had focus (the footer swaps
   // for the pre-reveal one, whose Reveal button is disabled with no
   // submissions), which would drop focus to <body>. Hand it to the participants
-  // group's label, which is on screen in every state.
+  // group's label, which is on screen in every state. Both start a new round,
+  // so a bumped round on the same item is the signal — which also covers
+  // reopening an item finalized in an earlier session, never revealed here.
   const participantsRef = useRef<HTMLSpanElement>(null)
-  const previous = useRef({ itemId: item.id, revealed: item.revealed })
+  const previous = useRef({ itemId: item.id, round: item.round })
   useEffect(() => {
     const was = previous.current
-    previous.current = { itemId: item.id, revealed: item.revealed }
-    if (was.itemId === item.id && was.revealed && !item.revealed) {
+    previous.current = { itemId: item.id, round: item.round }
+    if (was.itemId === item.id && was.round !== item.round) {
       participantsRef.current?.focus()
     }
-  }, [item.id, item.revealed])
+  }, [item.id, item.round])
 
   function handleFinalizeAndAdvance() {
     if (finalize().ok) onAdvance()
@@ -142,7 +143,7 @@ export function LiveFacilitatorPanel({
 
       {range && (
         <AggregatedRange
-          label={range.label}
+          kind={range.kind}
           range={range.values}
           unit={unit}
           infoOpen={infoOpen === 'range'}
@@ -151,7 +152,7 @@ export function LiveFacilitatorPanel({
         />
       )}
 
-      {resumedFinal ? (
+      {live.phase === 'finalizedEarlier' ? (
         <ResumedFinalizedFooter
           isFirst={isFirst}
           isLast={isLast}

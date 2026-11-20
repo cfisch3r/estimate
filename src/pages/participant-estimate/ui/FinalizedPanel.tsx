@@ -31,7 +31,7 @@ export function FinalizedPanel({
       <RoundCardHeader kicker={kicker} item={round.item} />
 
       <AggregatedRange
-        label="Range (finalized)"
+        kind="finalized"
         range={finalResult}
         unit={unit}
         infoOpen={infoOpen === 'range'}

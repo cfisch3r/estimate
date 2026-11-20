@@ -640,7 +640,22 @@ describe('ParticipantEstimateView', () => {
       })
 
       expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
-      expect(screen.getByText('Item already estimated.')).toBeInTheDocument()
+      expect(screen.getByText(`${item.title} is already estimated.`)).toBeInTheDocument()
+    })
+
+    it('announces each finalized item the facilitator moves on to', () => {
+      const finalized = { ...estimating, finalResult: aggregateOf(2, 3, 6) }
+      useRoundStore.setState({ liveRound: estimating })
+      renderView()
+
+      act(() => useRoundStore.setState({ liveRound: finalized }))
+      act(() =>
+        useRoundStore.setState({
+          liveRound: { ...finalized, item: { ...item, id: 'item-2', title: 'Search' } },
+        }),
+      )
+
+      expect(screen.getByText('Search is already estimated.')).toBeInTheDocument()
     })
 
     it('hands focus to the first input when revising, and back to Revise after updating', async () => {

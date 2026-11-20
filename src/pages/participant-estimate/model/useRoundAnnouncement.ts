@@ -7,10 +7,12 @@ import type { RoundView } from './useParticipantRound'
 function announcementFor(
   view: RoundView,
   connectionStatus: LiveConnectionStatus,
+  itemTitle: string,
 ): string {
   if (view === 'waiting') return 'Estimate submitted.'
   if (view === 'revealed') return 'Estimates revealed.'
-  if (view === 'finalized') return 'Item already estimated.'
+  // Names the item, so moving between two finalized items is still news.
+  if (view === 'finalized') return `${itemTitle} is already estimated.`
   if (view === 'lobby' && connectionStatus === 'connected') {
     return 'Connected. Waiting for the facilitator to start the first item.'
   }
@@ -23,16 +25,22 @@ function announcementFor(
 export function useRoundAnnouncement(
   view: RoundView,
   connectionStatus: LiveConnectionStatus,
+  itemTitle = '',
 ): string {
-  const key = view === 'lobby' ? `lobby:${connectionStatus}` : view
+  const key =
+    view === 'lobby'
+      ? `lobby:${connectionStatus}`
+      : view === 'finalized'
+        ? `finalized:${itemTitle}`
+        : view
   const previousKey = useRef(key)
   const [announcement, setAnnouncement] = useState('')
 
   useEffect(() => {
     if (previousKey.current === key) return
     previousKey.current = key
-    setAnnouncement(announcementFor(view, connectionStatus))
-  }, [key, view, connectionStatus])
+    setAnnouncement(announcementFor(view, connectionStatus, itemTitle))
+  }, [key, view, connectionStatus, itemTitle])
 
   return announcement
 }

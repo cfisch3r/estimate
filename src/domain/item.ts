@@ -7,6 +7,29 @@ export function isFinalized(item: Item): item is Item & { finalResult: Aggregate
   return item.finalResult !== null
 }
 
+/** Where an item stands in a live session, from its round state:
+ *  - `revealed`: this session's round is revealed (finalized or not);
+ *  - `finalizedEarlier`: finalized with no round revealed. Finalizing live
+ *    always follows a reveal, so only an item finalized before the session
+ *    started (a loaded session file) gets here; a submission would be dropped;
+ *  - `open`: a round is open for estimates.
+ *  Works on a facilitator's `Item` and a participant's `LiveRound` alike. */
+export type LivePhase =
+  | { phase: 'revealed' }
+  | { phase: 'finalizedEarlier'; finalResult: AggregateResult }
+  | { phase: 'open' }
+
+export function livePhaseOf(state: {
+  revealed: boolean
+  finalResult: AggregateResult | null
+}): LivePhase {
+  if (state.revealed) return { phase: 'revealed' }
+  if (state.finalResult !== null) {
+    return { phase: 'finalizedEarlier', finalResult: state.finalResult }
+  }
+  return { phase: 'open' }
+}
+
 /** The id of the first item that still needs an estimate, or null if none. */
 export function firstPendingItemId(items: Item[]): string | null {
   const pending = items.find((item) => !isFinalized(item))

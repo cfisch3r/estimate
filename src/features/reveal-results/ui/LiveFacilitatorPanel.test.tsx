@@ -156,6 +156,7 @@ describe('LiveFacilitatorPanel', () => {
         round: 1,
       })
       expect(screen.getByRole('button', { name: /Reveal estimates/ })).toBeInTheDocument()
+      expect(screen.getByText('Participants')).toHaveFocus()
     })
 
     it('has no axe violations', async () => {

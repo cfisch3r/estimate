@@ -7,10 +7,15 @@ import {
 } from '../../../domain/estimate'
 import { RangeBar } from '../../../entities/estimate'
 
+const LABEL = {
+  aggregated: 'Range (aggregated)',
+  finalized: 'Range (finalized)',
+} as const
+
 interface AggregatedRangeProps {
-  /** "Range (aggregated)" for a revealed round, "Range (finalized)" for an
+  /** `aggregated` for a revealed round's submissions, `finalized` for an
    *  item's saved result. */
-  label: string
+  kind: keyof typeof LABEL
   range: AggregateValues
   unit: EstimationUnit
   infoOpen: boolean
@@ -22,7 +27,7 @@ interface AggregatedRangeProps {
  *  panel and the participant's revealed and finalized views. Callers decide
  *  which range to show, and what to say when there is none. */
 export function AggregatedRange({
-  label,
+  kind,
   range,
   unit,
   infoOpen,
@@ -31,7 +36,7 @@ export function AggregatedRange({
 }: AggregatedRangeProps) {
   return (
     <GroupBox
-      label={label}
+      label={LABEL[kind]}
       info={RANGE_INFO}
       infoOpen={infoOpen}
       onInfoOpen={onInfoOpen}
