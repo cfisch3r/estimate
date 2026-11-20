@@ -110,6 +110,7 @@ describe('ParticipantEstimateView', () => {
       expect(screen.getByText('Session connection lost')).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Reconnect' })).toBeInTheDocument()
       expect(screen.getByRole('button', { name: 'Leave session' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: /Show diagnosis/ })).toBeInTheDocument()
     } finally {
       vi.useRealTimers()
     }

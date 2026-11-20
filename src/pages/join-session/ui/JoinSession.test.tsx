@@ -116,6 +116,7 @@ describe('JoinSession', () => {
 
     expect(screen.getByText(/Couldn.t reach the session/)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /Show diagnosis/ })).toBeInTheDocument()
   })
 
   // #9: a participant's connectionStatus now stays 'connecting' until the

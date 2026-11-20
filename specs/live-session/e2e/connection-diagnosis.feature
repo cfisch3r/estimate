@@ -9,7 +9,6 @@ Feature: A tester can report how their live session connected
     And Imogen's diagnosis report lists a "host" candidate
     And Imogen's diagnosis report does not mention "Imogen" or "Checkout redesign"
 
-  @fail
   Scenario: A participant who couldn't join opens the diagnosis from the problem notice
     Given Imogen has tried to join a session nobody is running
     When Imogen follows "Show diagnosis" on the problem notice
