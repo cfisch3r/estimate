@@ -9,6 +9,8 @@ import {
   expectAtModeSelection,
   expectInLiveSessionAsParticipant,
   expectFinalizedEstimate,
+  expectLiveFinalizedItem,
+  expectParticipantSeesFinalizedItem,
   expectItemList,
   expectLeaveConfirmationForUnsavedChanges,
   expectLeaveConfirmationForUnsavedChangesInLiveSession,
@@ -20,6 +22,7 @@ import {
   leaveSession,
   loadSessionFile,
   saveSession,
+  selectItem,
   setSessionName,
   startCollaborativeEstimation,
   startSingleUserSession,
@@ -175,6 +178,10 @@ When('{word} starts a collaborative session', async ({ actor, state }, name: str
   state.sessionCode = await startCollaborativeEstimation(await actor(name))
 })
 
+When('{word} opens {string}', async ({ actor }, name: string, title: string) => {
+  await selectItem(await actor(name), title)
+})
+
 When('{word} goes back in the browser', async ({ actor }, name: string) => {
   await goBackInBrowser(await actor(name))
 })
@@ -203,6 +210,24 @@ Then(
     for (const { title, estimate } of estimatesFrom(table)) {
       await expectFinalizedEstimate(page, title, estimate)
     }
+  },
+)
+
+Then(
+  '{word} sees {string} finalized at {int} to {int} days',
+  async ({ actor }, name: string, title: string, min: number, max: number) => {
+    await expectLiveFinalizedItem(await actor(name), title, { min, max, unitSuffix: 'd' })
+  },
+)
+
+Then(
+  '{word} sees {string} already estimated at {int} to {int} days',
+  async ({ actor }, name: string, title: string, min: number, max: number) => {
+    await expectParticipantSeesFinalizedItem(await actor(name), title, {
+      min,
+      max,
+      unitSuffix: 'd',
+    })
   },
 )
 
