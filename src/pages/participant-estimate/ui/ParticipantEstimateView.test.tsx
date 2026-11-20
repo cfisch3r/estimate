@@ -658,6 +658,27 @@ describe('ParticipantEstimateView', () => {
       expect(screen.getByText('Search is already estimated.')).toBeInTheDocument()
     })
 
+    it('announces a second finalized item even when it has the same title', async () => {
+      const finalized = { ...estimating, finalResult: aggregateOf(2, 3, 6) }
+      useRoundStore.setState({ liveRound: estimating })
+      renderView()
+
+      act(() => useRoundStore.setState({ liveRound: finalized }))
+      expect(screen.getByText(`${item.title} is already estimated.`)).toBeInTheDocument()
+
+      act(() =>
+        useRoundStore.setState({
+          liveRound: { ...finalized, item: { ...item, id: 'item-2' } },
+        }),
+      )
+      // The region empties, then says the same words again, so a screen
+      // reader reads them a second time.
+      expect(screen.queryByText(`${item.title} is already estimated.`)).toBeNull()
+      expect(
+        await screen.findByText(`${item.title} is already estimated.`),
+      ).toBeInTheDocument()
+    })
+
     it('hands focus to the first input when revising, and back to Revise after updating', async () => {
       const user = userEvent.setup()
       useRoundStore.setState({ liveRound: waiting })

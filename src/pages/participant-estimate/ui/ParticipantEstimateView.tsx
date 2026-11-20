@@ -85,7 +85,7 @@ export function ParticipantEstimateView() {
   const announcement = useRoundAnnouncement(
     round.view,
     round.connectionStatus,
-    round.liveRound?.item.title,
+    round.liveRound?.item ?? null,
   )
 
   return (
