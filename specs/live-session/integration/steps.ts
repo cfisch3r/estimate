@@ -59,10 +59,26 @@ function candidatesOf(
 }
 
 /** "lists candidates X, Y" means each of X and Y is among the recorded kinds:
- *  a browser may offer more (TCP host candidates, for example). */
+ *  a browser may offer more (TCP host candidates, for example). "none" means
+ *  exactly none. */
 function expectListed(recorded: string[], expected: string): void {
+  if (expected === 'none') {
+    expect(recorded).toEqual([])
+    return
+  }
   for (const kind of expected.split(',').map((text) => text.trim())) {
     expect(recorded).toContain(kind)
+  }
+}
+
+/** Waits until each browser's session reports a connected peer. */
+async function expectConnected(state: ScenarioState, ...browsers: string[]) {
+  for (const browser of browsers) {
+    await expect
+      .poll(async () => (await sessionOf(state, browser).getConnectionState()).status, {
+        timeout: CONNECT_TIMEOUT,
+      })
+      .toBe('connected')
   }
 }
 
@@ -71,6 +87,8 @@ Given(
   async ({ tab, state }, first: string, second: string) => {
     await join(tab, state, first, 'the same')
     await join(tab, state, second, 'the same')
+    // "Have joined" means the two are connected, not merely that both asked to.
+    await expectConnected(state, first, second)
   },
 )
 
@@ -122,8 +140,7 @@ When('browser {string} leaves the session', async ({ state }, browser: string) =
 })
 
 When('browser {string} reloads the page', async ({ tab }, browser: string) => {
-  const { page } = await tab(browser, '1')
-  await page.reload()
+  await (await tab(browser, '1')).reload()
 })
 
 Then(
@@ -271,13 +288,7 @@ Then(
 Then(
   'browsers {string} and {string} are connected to each other',
   async ({ state }, first: string, second: string) => {
-    for (const browser of [first, second]) {
-      await expect
-        .poll(async () => (await sessionOf(state, browser).getConnectionState()).status, {
-          timeout: CONNECT_TIMEOUT,
-        })
-        .toBe('connected')
-    }
+    await expectConnected(state, first, second)
   },
 )
 
@@ -286,5 +297,20 @@ Then(
   async ({ tab }, browser: string) => {
     const { diagnostics } = await tab(browser, '1')
     expect((await diagnostics.read()).available).toBe(false)
+  },
+)
+
+Then(
+  'browser {string} records the join error {string}',
+  async ({ tab }, browser: string, error: string) => {
+    await expect
+      .poll(
+        async () =>
+          (await entriesOf(tab, browser)).some(
+            (entry) => entry.kind === 'join-error' && entry.error.includes(error),
+          ),
+        { timeout: CONNECT_TIMEOUT },
+      )
+      .toBe(true)
   },
 )

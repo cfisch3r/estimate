@@ -55,48 +55,70 @@ export function createRecordingPeerConnection(
   }
 
   return class RecordingPeerConnection extends Base {
+    #attempt: number | undefined
+    #candidatesRecorded = false
+
     constructor(...args: ConstructorParameters<typeof RTCPeerConnection>) {
       super(...args)
-      let attempt: number | undefined
-      let candidatesRecorded = false
-
       this.addEventListener('signalingstatechange', () => {
-        if (attempt === undefined && this.remoteDescription) attempt = ++attempts
+        if (this.#attempt === undefined && this.remoteDescription) {
+          this.#attempt = ++attempts
+        }
       })
-
       this.addEventListener('connectionstatechange', () => {
+        const attempt = this.#attempt
         if (attempt === undefined) return
-        const number = attempt
         safely({
           kind: 'rtc-state',
-          attempt: number,
+          attempt,
           connectionState: this.connectionState,
           iceConnectionState: this.iceConnectionState,
         })
-        if (SETTLED.has(this.connectionState) && !candidatesRecorded) {
-          candidatesRecorded = true
-          for (const [side, description] of [
-            ['local', this.localDescription],
-            ['remote', this.remoteDescription],
-          ] as const) {
-            safely({
-              kind: 'rtc-candidates',
-              attempt: number,
-              side,
-              candidates: candidatesInSdp(description?.sdp ?? ''),
-            })
-          }
-        }
+        if (SETTLED.has(this.connectionState)) this.#recordCandidates(attempt)
         if (this.connectionState === 'connected') {
           selectedPair(this)
             .then((pair) => {
-              if (pair) safely({ kind: 'rtc-selected', attempt: number, ...pair })
+              if (pair) safely({ kind: 'rtc-selected', attempt, ...pair })
             })
             .catch(() => {
               // Stats can't be read once the connection closes; the pair stays unknown.
             })
         }
       })
+    }
+
+    /** Trystero closes an attempt that never connected, often before it changed
+     *  state at all, and `close()` fires no event. So the attempt is recorded
+     *  here: its candidates, if not yet, and how far it got (the ICE state). */
+    override close(): void {
+      const attempt = this.#attempt
+      if (attempt !== undefined && this.connectionState !== 'closed') {
+        this.#recordCandidates(attempt)
+        safely({
+          kind: 'rtc-state',
+          attempt,
+          connectionState: 'closed',
+          iceConnectionState: this.iceConnectionState,
+        })
+      }
+      super.close()
+    }
+
+    /** Both sides' candidate kinds, once: they're final when the attempt settles. */
+    #recordCandidates(attempt: number): void {
+      if (this.#candidatesRecorded) return
+      this.#candidatesRecorded = true
+      for (const [side, description] of [
+        ['local', this.localDescription],
+        ['remote', this.remoteDescription],
+      ] as const) {
+        safely({
+          kind: 'rtc-candidates',
+          attempt,
+          side,
+          candidates: candidatesInSdp(description?.sdp ?? ''),
+        })
+      }
     }
   }
 }

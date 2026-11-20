@@ -31,6 +31,8 @@ export type NetworkDriver = {
  *  share storage), different browsers never do. */
 export type Tab = {
   page: Page
+  /** Reloads the page and waits until the harness is installed again. */
+  reload: () => Promise<void>
   files: FileDriver
   diagnostics: Remote<DiagnosticsLog>
   network: NetworkDriver
@@ -96,6 +98,12 @@ function fileDriver(page: Page): FileDriver {
   }
 }
 
+/** The harness installs `window.__harness` once its module has loaded, which
+ *  can be after the `load` event that `goto` waits for. */
+async function waitForHarness(page: Page): Promise<void> {
+  await page.waitForFunction(() => '__harness' in globalThis)
+}
+
 function networkDriver(page: Page): NetworkDriver {
   return {
     async join(...args) {
@@ -148,8 +156,13 @@ export const test = base.extend<Fixtures>({
       const page = await context.newPage()
       // The project's `baseURL` is the harness page (playwright.config.ts).
       await page.goto('/')
+      await waitForHarness(page)
       const created = {
         page,
+        reload: async () => {
+          await page.reload()
+          await waitForHarness(page)
+        },
         files: fileDriver(page),
         diagnostics: remote(page, 'diagnostics'),
         network: networkDriver(page),

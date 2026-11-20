@@ -1,4 +1,3 @@
-@fail
 Feature: The network adapter records how a live session connected
 
   Rule: An attempt is recorded by candidate type and protocol, never by address
@@ -10,12 +9,12 @@ Feature: The network adapter records how a live session connected
       And that attempt's selected pair is "host/udp" to "host/udp"
       And browser "A"'s diagnostics contain no IP address and no host name
 
-    Scenario: A browser that can't open direct connections records a failed attempt
+    Scenario: A browser that can't open direct connections records why it couldn't connect
       Given browser "A" has joined a session
       And browser "B" has joined the same session without direct connections
-      Then browser "B" records a WebRTC attempt that ended "failed"
-      # The expected value is set once the Chromium flag has been tried (plan, Task 6).
-      And that attempt lists local candidates "<from the spike>"
+      Then browser "B" records a WebRTC attempt that ended "closed"
+      And that attempt lists local candidates "none"
+      And browser "B" records the join error "could not connect to peer"
 
   Rule: Peers are recorded by a shortened id
 

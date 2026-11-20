@@ -53,6 +53,12 @@ class FakePeerConnection extends EventTarget {
     return this.stats
   }
 
+  /** Like the browser's: the state becomes closed, but no event fires. */
+  close() {
+    this.connectionState = 'closed'
+    this.iceConnectionState = 'closed'
+  }
+
   receiveRemote(sdp = REMOTE_SDP) {
     this.remoteDescription = { sdp }
     this.dispatchEvent(new Event('signalingstatechange'))
@@ -180,6 +186,64 @@ describe('createRecordingPeerConnection', () => {
       'rtc-state',
     ])
     expect(events[1]).toMatchObject({ side: 'local', candidates: [] })
+  })
+
+  it('records an attempt that is closed before it ever changed state', () => {
+    const { events, open } = recorder()
+    const connection = open()
+    connection.localDescription = null
+    connection.receiveRemote()
+
+    connection.close()
+    connection.close()
+
+    expect(events).toEqual([
+      {
+        kind: 'rtc-candidates',
+        attempt: 1,
+        side: 'local',
+        candidates: [],
+      },
+      {
+        kind: 'rtc-candidates',
+        attempt: 1,
+        side: 'remote',
+        candidates: [
+          { type: 'host', protocol: 'udp' },
+          { type: 'srflx', protocol: 'udp' },
+        ],
+      },
+      {
+        kind: 'rtc-state',
+        attempt: 1,
+        connectionState: 'closed',
+        iceConnectionState: 'new',
+      },
+    ])
+  })
+
+  it('records only the closing state of an attempt whose candidates are known', async () => {
+    const { events, open } = recorder()
+    const connection = open()
+    connection.receiveRemote()
+    connection.moveTo('connected')
+    await settle()
+
+    connection.close()
+
+    expect(events.at(-1)).toEqual({
+      kind: 'rtc-state',
+      attempt: 1,
+      connectionState: 'closed',
+      iceConnectionState: 'connected',
+    })
+    expect(events.filter((event) => event.kind === 'rtc-candidates')).toHaveLength(2)
+  })
+
+  it('records nothing when an unused connection is closed', () => {
+    const { events, open } = recorder()
+    open().close()
+    expect(events).toEqual([])
   })
 
   it('records no selected pair when the stats name none', async () => {
