@@ -45,10 +45,10 @@ stateDiagram-v2
         state "Revealed<br/>«Screen State»" as Revealed
         state "Already estimated<br/>«Screen State»" as AlreadyEstimated
 
-        [*] --> Submitting
+        [*] --> Submitting : item open
         Submitting --> Waiting : submit
         Waiting --> Revealed : facilitator reveals round
-        [*] --> AlreadyEstimated : item finalized in an earlier session
+        [*] --> AlreadyEstimated : finalized before the load
         AlreadyEstimated --> Submitting : facilitator reopens item
     }
 
@@ -61,7 +61,7 @@ stateDiagram-v2
 | Screen | Manual mode | Live mode | Layout & content | Live mode adds | Key actions |
 |---|---|---|---|---|---|
 | **Mode selection** | ✓ | ✓ | Entry screen; no new session is set up here, but a saved one can be loaded. States shown in the diagram above: **Loaded** previews the session (name, item and finalized counts, unit) and hides Join and Load; **Rejected** says why the file can't be loaded. | — | "Start single-user" (Manual mode) · "Start collaborative" (Live mode, generates a session code) · Join via code · Load a saved session · Discard a loaded one |
-| **Workspace** | ✓ | ✓ *(facilitator view)* | **Left:** editable session name, estimation unit, item list. **Right:** the active item's **estimation widget**, or an "add an item" prompt when nothing is selected. | A session-code strip above; the facilitator sees **participant submission status** and a **reveal control** instead of direct inputs; reveal shows the `AggregateResult` plus each participant's values. | Add / remove / reorder items (any time) · Rename item inline · Reveal round · Finalize item · Retry round · Save session |
+| **Workspace** | ✓ | ✓ *(facilitator view)* | **Left:** editable session name, estimation unit, item list. **Right:** the active item's **estimation widget**, or an "add an item" prompt when nothing is selected. | A session-code strip above; the facilitator sees **participant submission status** and a **reveal control** instead of direct inputs; reveal shows the `AggregateResult` plus each participant's values. | Add / remove / reorder items (any time) · Rename item inline · Reveal round · Finalize item · Retry round · Reopen item · Save session |
 | **Join Session** | – | ✓ | **Name field**, connecting indicator while the peer connection establishes; a failed connection is reported and offers a retry. | — | Enter name · Join via code · Retry |
-| **Participant Estimate View** | – | ✓ | **Read-only item detail**; three number inputs (**Best/Likely/Worst**); its states are in the diagram above. Once revealed it mirrors the facilitator's `AggregateResult` (no finalize/retry controls). An item finalized in an earlier session shows its saved `AggregateResult` and no inputs. | — | Submit |
+| **Participant Estimate View** | – | ✓ | **Read-only item detail**; three number inputs (**Best/Likely/Worst**); its states are in the diagram above. Once revealed it mirrors the facilitator's `AggregateResult` (no finalize/retry controls). **Already estimated** shows the saved `AggregateResult` and no inputs. | — | Submit |
 | **Session Summary / Report** | ✓ | ✓ | Every finalized item with its **min, expected and max** — same layout regardless of mode. | — | Save session |
