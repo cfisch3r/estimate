@@ -45,7 +45,7 @@ vocabulary used on both sides.
 
 | Doc | What it covers |
 |---|---|
-| [glossary.md](glossary.md) | Architecture vocabulary: layer, type, aggregate, entity, value object, inbound/outbound adapter, port, and the FSD-only terms slice and segment; the testing terms Test Level, stereotype and concept folder; the story-workflow terms implementation design artifact and screen design; with the words to avoid. |
+| [glossary.md](glossary.md) | The repo's vocabulary, with the words to avoid: architecture (layer, type, aggregate, entity, value object, inbound/outbound adapter, port, FSD slice and segment), review (floor, risk category, Review guide), testing (Test Level, stereotype, harness page, port driver), the story workflow (implementation design artifact, screen design, design handoff) and the domain concepts (session, round, roster, snapshot). |
 
 ## Specs
 

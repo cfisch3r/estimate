@@ -1,9 +1,10 @@
 # Glossary
 
-The words we use for architecture, review, testing and the story workflow in this repo,
-and what they mean here. It is not a general dictionary: where a word has several meanings
-in the wider world (layer, entity, model), this page says which one we use. When you meet a
-new word in a discussion or a doc, add it here instead of guessing.
+The words we use for architecture, review, testing, the story workflow and the domain
+concepts in this repo, and what they mean here. It is not a general dictionary: where a
+word has several meanings in the wider world (layer, entity, model), this page says which
+one we use. When you meet a new word in a discussion or a doc, add it here instead of
+guessing.
 
 ## Structure
 
@@ -47,7 +48,8 @@ The words for the steps between picking an issue and planning it ([ADR-010](tech
 | Term | Meaning in this repo | Avoid |
 |---|---|---|
 | **Implementation design artifact** | The optional first step after the go-ahead, before branching: a private, ephemeral artifact showing how the change is built in code — the layers and files it touches, type and wire-contract changes, the data flow, and the test plan. Never committed; anything worth keeping is folded into the permanent docs once the story ships. | "design artifact" alone (reads as a screen design) |
-| **Screen design** | A mockup of new or changed UI states. Separate from the implementation design artifact, and offered only when a story has new UI. Superseded by a design handoff where one exists. | "design artifact" |
+| **Screen design** | A mockup of new or changed UI states, published and kept like the implementation design artifact. Separate from it, and offered only when a story has new UI. A design handoff that covers the screen takes precedence. | "design artifact" |
+| **Design handoff** | A committed design reference from the design system's side (`design_handoff_estimate_app/`, `design_handoffs/`): screens and flows to build from, not production code to copy. A later handoff can supersede part of an earlier one. | |
 
 ## Testing
 

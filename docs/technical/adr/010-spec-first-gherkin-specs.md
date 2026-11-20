@@ -5,11 +5,10 @@
 **Related:** [002-testing-strategy.md](002-testing-strategy.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md), [glossary.md](../../glossary.md), AGENTS.md
 
 > **Update 2026-11-20:** the "design artifact" of the first workflow step below is an
-> **implementation design artifact**: how the change is built in code — the layers and
-> files it touches, type and wire-contract changes, the data flow, and the test plan. A
-> screen design is a separate thing, offered only when a story has new UI. Read every
-> "design artifact" below in that sense.
-
+> [implementation design artifact](../../glossary.md#story-workflow). A screen design is a
+> separate step, offered only when a story has new UI. Where this update and the text below
+> differ, this update is current.
+>
 > **Update 2026-11-19:** a third Test Level, with three changes to the decision below.
 > Where this update and the text below differ, this update is current.
 >

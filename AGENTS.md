@@ -53,7 +53,7 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 
 **Shared**
 
-- `docs/glossary.md` — the architecture vocabulary (layer, type, aggregate, entity, value object, inbound/outbound adapter, port, FSD slice/segment) and which words to avoid; use these terms and add new ones there
+- `docs/glossary.md` — the vocabulary for architecture (layer, type, aggregate, entity, value object, inbound/outbound adapter, port, FSD slice/segment), review, testing, the story workflow and the domain concepts, and which words to avoid; use these terms and add new ones there
 - `design_handoff_estimate_app/` — the original design reference (Nocturne design system, clickable HTML prototype). Not production code to copy directly.
 - `design_handoffs/epic-0010-screen-design-review/` — the Epic-0010 redesign handoff; **supersedes the entry flow** of the original handoff (mode-selection screen + unified Workspace) and is the source of truth for the participant estimating and facilitator reveal flows.
 - `design_handoffs/design_handoff_uncertainty_range/` — the Phase Picker + guidance-aware Range Bar handoff for PRD §5's cone-of-uncertainty guard; high-fidelity design reference, not literal production code (see its README for known implementation deviations).
@@ -69,8 +69,8 @@ Developer which one — never guess from issue order, labels, or the board.
 
 When told to start an issue, **fetch it and stop**: summarise the issue body, flag
 ambiguities, superseding design handoffs, and scope questions, then wait for an explicit
-go-ahead. Do not move to an implementation design artifact, a spec, a plan, a todo list, a
-branch, or edits until then.
+go-ahead. Do not move to an implementation design artifact, a screen design, a spec, a
+plan, a todo list, a branch, or edits until then.
 
 Once the go-ahead is given, two further steps are each **offered — asked explicitly every
 time, never assumed, both optional** — before planning and implementation start
@@ -78,10 +78,12 @@ time, never assumed, both optional** — before planning and implementation star
 
 1. **An implementation design artifact**, published with the Artifact tool, before any
    branch exists: how the change is built in code — the layers and files it touches, type
-   and wire-contract changes, the data flow, and the test plan. It is not a screen design;
-   offer one of those separately, and only when the story has new UI. It's ephemeral —
-   scoped to this one story, never committed as a file. Fold anything worth keeping into
-   the permanent docs once the story ships, then let the artifact go.
+   and wire-contract changes, the data flow, and the test plan
+   ([glossary](docs/glossary.md#story-workflow)). It's ephemeral — scoped to this one
+   story, never committed as a file. Fold anything worth keeping into the permanent docs
+   once the story ships, then let the artifact go. A **screen design** is a separate
+   artifact, offered the same way and under the same rules, and only when the story has
+   new UI.
 2. **A failing executable spec**, after the branch is created, before planning or
    implementation. Write the scenario as a `.feature` file plus driver code at the
    appropriate **Test Level** (`docs/glossary.md`) under `specs/<concept>/<test level>/`,
