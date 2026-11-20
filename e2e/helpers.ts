@@ -319,6 +319,26 @@ export async function expectParticipantSeesFinalizedItem(
   await expect(page.getByLabel(/^Best case/)).toHaveCount(0)
 }
 
+/** Live Workspace, facilitator: reopens the active finalized item, confirming
+ *  the armed second click. */
+export async function reopenActiveItem(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Reopen item' }).click()
+  await page.getByRole('button', { name: 'Click again to reopen' }).click()
+}
+
+/** Participant estimate view: `title` is active and its estimate form is
+ *  back, with no finalized range left over. */
+export async function expectParticipantCanEstimate(
+  page: Page,
+  title: string,
+): Promise<void> {
+  await expectActiveItem(page, title)
+  await expect(page.getByLabel(/^Best case/)).toBeVisible()
+  await expect(
+    page.locator('.group-box').filter({ hasText: 'Range (finalized)' }),
+  ).toHaveCount(0)
+}
+
 /** Closes the tab with `beforeunload` handlers run; reports whether the
  *  browser raised its leave-page warning, and dismisses it if so. */
 export async function closeTabAndCheckLeaveWarning(page: Page): Promise<boolean> {

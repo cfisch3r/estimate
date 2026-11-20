@@ -10,6 +10,7 @@ import {
   expectInLiveSessionAsParticipant,
   expectFinalizedEstimate,
   expectLiveFinalizedItem,
+  expectParticipantCanEstimate,
   expectParticipantSeesFinalizedItem,
   expectItemList,
   expectLeaveConfirmationForUnsavedChanges,
@@ -21,6 +22,7 @@ import {
   goBackInBrowser,
   leaveSession,
   loadSessionFile,
+  reopenActiveItem,
   saveSession,
   selectItem,
   setSessionName,
@@ -182,6 +184,12 @@ When('{word} opens {string}', async ({ actor }, name: string, title: string) => 
   await selectItem(await actor(name), title)
 })
 
+When('{word} reopens {string}', async ({ actor }, name: string, title: string) => {
+  const page = await actor(name)
+  await expectActiveItem(page, title)
+  await reopenActiveItem(page)
+})
+
 When('{word} goes back in the browser', async ({ actor }, name: string) => {
   await goBackInBrowser(await actor(name))
 })
@@ -230,6 +238,10 @@ Then(
     })
   },
 )
+
+Then('{word} can estimate {string}', async ({ actor }, name: string, title: string) => {
+  await expectParticipantCanEstimate(await actor(name), title)
+})
 
 Then('{word} sees the items', async ({ actor }, name: string, table: DataTable) => {
   await expectItemList(
