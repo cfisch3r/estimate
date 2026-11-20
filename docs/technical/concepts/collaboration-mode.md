@@ -451,6 +451,105 @@ connects." Two things go wrong in practice:
    "connection loss". A TURN relay (point 1) remains the fix for peers who cannot
    connect *at all*.
 
+## Connection diagnosis
+
+Every browser records what happens to its live-session connections, so a tester can
+hand the Developer the exact facts after something went wrong. The record lives in
+browser storage, survives a reload, and is shown at `/diagnosis`, a technical page reached
+by URL. The tester downloads the report there and sends the file directly, never through
+the public feedback form. Recording is always on and never changes connection behaviour:
+every write is caught, and a log whose storage fails stops recording and says so.
+
+Lines: **solid** = synchronous call, **dotted** = implements a port or crosses into the
+browser's own systems.
+
+```mermaid
+flowchart TD
+  subgraph pageslane["PAGES LANE · pages/diagnosis"]
+    Page["Diagnosis<br/>[React Component]"]
+  end
+
+  subgraph applane["APPLICATION LANE · src/application"]
+    direction LR
+    Report["useDiagnosisReport<br/>[Use Case Hook]"]
+    Ctrl["liveSessionController<br/>[Factory Function]"]
+    LogPort["DiagnosticsLog<br/>[Port Interface]"]
+    Clip["ClipboardApi<br/>[Port Interface]"]
+  end
+
+  subgraph adapterlane["ADAPTERS LANE · src/adapters"]
+    direction LR
+    Session["createJoinSession<br/>[Network Adapter]"]
+    Recorder["RecordingPeerConnection<br/>[RTCPeerConnection Subclass]"]
+    Store["createDiagnosticsLog<br/>[Storage Adapter]"]
+  end
+
+  Trystero["Trystero<br/>[P2P Library]"]
+  Storage["localStorage<br/>[Browser Storage]"]
+
+  Page -->|"report, download,<br/>copy, clear"| Report
+  Report -->|"read, clear"| LogPort
+  Report -->|"writeText"| Clip
+  Ctrl -->|"record"| LogPort
+  Session -->|"record"| LogPort
+  Session -->|"rtcPolyfill"| Trystero
+  Trystero -.->|"builds connections from"| Recorder
+  Recorder -->|"record"| Session
+  Store -.->|"implements"| LogPort
+  Store -.->|"one key per tab"| Storage
+
+  classDef page fill:#DDD6FE,stroke:#7C3AED,color:#2E1065
+  classDef app  fill:#DBEAFE,stroke:#2563EB,color:#172554
+  classDef adp  fill:#99F6E4,stroke:#0D9488,color:#042F2A
+  classDef ext  fill:#FFEDD5,stroke:#EA580C,color:#3F1D0B,stroke-dasharray:5 4
+
+  class Page page
+  class Report,Ctrl,LogPort,Clip app
+  class Session,Recorder,Store adp
+  class Trystero,Storage ext
+
+  style pageslane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
+  style applane fill:#EFF6FF,stroke:#2563EB,stroke-width:2px,color:#14171f
+  style adapterlane fill:#F0FDFA,stroke:#0D9488,stroke-width:2px,color:#14171f
+```
+
+| Component | Responsibility |
+|---|---|
+| `liveSessionController` | Records the session start (code and role) and the connection **status the user saw**: the derived one, so a participant reads `connecting` until the facilitator announces itself. Records a status only when it changes, and `idle` on leave |
+| `createJoinSession` | Builds the `JoinSession` port so that it records peers joining and leaving and Trystero's join errors, and hands Trystero the recording class as its `rtcPolyfill` |
+| `RecordingPeerConnection` | Numbers a WebRTC connection as an **attempt** once it has a remote description: Trystero keeps spare offer connections that may never be used. Records each state change; when the attempt settles, both sides' candidate kinds from their session descriptions; if it connected, the selected pair from `getStats()`. Trystero closes an attempt that never left the `new` state, and `close()` fires no event, so a closed attempt records its candidates and its last ICE state too |
+| `createDiagnosticsLog` | Implements `DiagnosticsLog` in `localStorage`, one key per tab so two tabs never overwrite each other's latest entry. A read merges every tab in time order; the cap of 500 entries drops the oldest across tabs. Checks storage once at start; a failing storage turns the log off |
+| `useDiagnosisReport` | Formats the report (`formatDiagnosisReport` in `domain/diagnosis`), downloads it as `estimate-diagnosis-<date>-<time>.txt` through the file-download port, copies it through `ClipboardApi`, and clears the log |
+
+What each entry kind holds (`DiagnosticEvent` in `src/domain/diagnosis/types.ts`); every
+entry also carries its time (`at`), its tab's short random id (`tab`) and, once a session
+has started, the tab's `role`:
+
+| `kind` | Recorded by | Holds |
+|---|---|---|
+| `session-start` | Controller | `sessionCode`, `role` |
+| `status` | Controller | `status`: `connecting`, `connected`, `disconnected` or `idle` |
+| `peer-join`, `peer-leave` | Network adapter | `peer`: the first 6 characters of the Trystero peer id |
+| `join-error` | Network adapter | `error`: Trystero's text, peer ids in it shortened; `peer` when Trystero names one |
+| `rtc-candidates` | Recording class | `attempt`, `side` (`local` or `remote`), `candidates`: type (`host`, `srflx`, `prflx`, `relay`) and protocol (`udp`, `tcp`) only |
+| `rtc-state` | Recording class | `attempt`, `connectionState`, `iceConnectionState` |
+| `rtc-selected` | Recording class | `attempt`, the `local` and `remote` candidate kinds of the pair in use |
+
+**Never recorded**<br>
+Names, estimate values, item titles, notes and addresses. A candidate is parsed for its
+`typ` and protocol tokens only (`parseCandidate`), so no IP address, port or mDNS host name
+reaches storage, and a tester can forward the file without reading it.
+
+**Not tied to a peer**<br>
+Trystero creates a connection without telling it which peer it's for, so an attempt is
+only numbered. The reader matches attempts to the neighbouring peer and join-error lines
+by time.
+
+**What a failed connection looks like**<br>
+Between peers that can't reach each other directly (no TURN server is configured), the
+attempt typically ends `closed` with ICE still `new`, next to Trystero's join error
+"could not connect to peer … after exchanging SDP; configure TURN servers …".
+
 ## Store additions
 
 Split three ways per [ADR-005](../adr/005-session-store-decomposition.md): session domain

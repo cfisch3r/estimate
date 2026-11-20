@@ -76,10 +76,10 @@ flowchart TD
 | Component | Responsibility |
 |---|---|
 | Concept steps | Gherkin step definitions for one concept, calling port drivers only, never `page.evaluate` |
-| `world.ts` | The `tab(browser, tab)` fixture: one browser context per browser name, one page per tab, opened on the harness page; builds the port drivers for a tab |
-| `remote.ts` | `Remote<Port>`, the type of a port as seen from Node (every operation async, `on…` callbacks left out); `Harness`, what `window.__harness` holds; `remote()`, the one generic forwarder |
-| `harness.ts` | Imports the real adapters and installs `window.__harness`, declared `satisfies Harness` |
-| `vite.harness.config.ts` | Serves the harness page with Vite's mode set to `e2e`, so the network adapter picks the local relay ([ADR-007](../adr/007-e2e-dual-mode-signaling.md)) |
+| `world.ts` | The `tab(browser, tab, options)` fixture: one browser context per browser name, one page per tab, opened on the harness page once `window.__harness` is installed; builds the port drivers for a tab. A browser's options set its faults when its first tab opens |
+| `remote.ts` | `Remote<Port>`, the type of a port as seen from Node (every operation async, `on…` callbacks left out); `Harness`, what `window.__harness` holds; `remote()`, the generic forwarder to a harness entry, and `remoteHandle()`, the same forwarder to an object that stays in the page |
+| `harness.ts` | Imports the real adapters, composed as `App.tsx` composes them (the network adapter records into the page's diagnostics log), and installs `window.__harness`, declared `satisfies Harness` |
+| `vite.harness.config.ts` | Serves the harness page with Vite's mode set to `e2e`, so the network adapter picks the local relay ([ADR-007](../adr/007-e2e-dual-mode-signaling.md)). Pre-bundles Trystero: found only on first load, it would make Vite re-optimise and reload the page under a running scenario |
 | `playwright.config.ts` | Starts the harness server (local mode only, never reused, `--strictPort`, so a busy port fails the run) and runs the `*-integration` projects with the harness as `baseURL` |
 
 ## One step call
@@ -172,6 +172,13 @@ The one partly hand-written driver is the file driver: its parameters come from 
 but it also waits for Playwright's `download` event and returns the saved file's name and
 bytes.
 
+**A port that returns a session.** The network port, `JoinSession`, is a function that
+returns a `TransportSession`, an object full of functions that can't cross into Node. Its
+harness entry is `{ join }`. The network driver calls it with `page.evaluateHandle`, which
+keeps the session in the page and hands Node a typed `JSHandle<TransportSession>`;
+`remoteHandle()` turns that handle into a driver whose operations are typed from
+`TransportSession`, so it follows the port like any other.
+
 ## Adding a port
 
 1. **Harness type**<br>
@@ -181,10 +188,16 @@ bytes.
    `src/adapters`, `src/application/ports/outbound` and `src/domain` only.
 3. **Driver**<br>
    Build it in `world.ts` with `remote(page, '<name>')`; its type follows from the entry.
-4. **Callbacks**<br>
-   If the port has `on…` callbacks, this is also when the in-page journal gets built: the
-   harness subscribes to each callback and appends it to the journal, and steps read the
-   journal and wait on it with `expect.poll`. No port with callbacks is wired yet.
+4. **A session-returning port**<br>
+   If the port is a function that returns an object, install it as `{ <operation> }` and
+   reach the result with `page.evaluateHandle` and `remoteHandle()`, as the network driver
+   does.
+5. **Callbacks**<br>
+   A port's `on…` callbacks can't reach Node. Where an adapter records what it sees, steps
+   wait on that record instead: the network scenarios poll the diagnostics log with
+   `expect.poll`. The first scenario that needs a port callback itself also builds the
+   in-page journal: the harness subscribes to each callback and appends it to the journal,
+   and steps read the journal and wait on it.
 
 ## Adding a fault
 
@@ -192,6 +205,11 @@ Inject a fault only through the browser or Playwright (for example `context.setO
 or an init script that makes `localStorage.setItem` throw), or through a real configuration
 the adapter honours anyway. Never stub adapter internals or Trystero, and add a fault only
 when a scenario needs it.
+
+| Fault | How | Set by |
+|---|---|---|
+| **No direct connections** | A separately launched Chromium with `--force-webrtc-ip-handling-policy=disable_non_proxied_udp`: it offers no candidates, so a WebRTC attempt with it can't connect | `{ directConnections: false }` |
+| **Storage refuses writes** | An init script on the browser context that makes `Storage.prototype.setItem` throw a `QuotaExceededError` | `{ storage: 'refuses-writes' }` |
 
 ## Import rules
 

@@ -4,6 +4,24 @@
 **Date:** 2026-11-19
 **Related:** [010-spec-first-gherkin-specs.md](010-spec-first-gherkin-specs.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md), [009-architecture-style-fsd-vs-hexagonal-core.md](009-architecture-style-fsd-vs-hexagonal-core.md), [integration-testing.md](../concepts/integration-testing.md), [glossary.md](../../glossary.md)
 
+> **Update 2026-11-20:** the network adapter's scenarios, the first to drive a port with
+> callbacks, refined three points of the decision below. Where this update and the text
+> below differ, this update is current.
+>
+> - **Session-returning ports**<br>
+>   A port that is a function returning an object (the network's `JoinSession`) is
+>   installed as `{ join }`. Its driver keeps the returned session in the page with
+>   `page.evaluateHandle` and reaches it through a typed `JSHandle`, so the session's
+>   driver is still derived from its port type (`remoteHandle()`).
+> - **Callbacks**<br>
+>   Steps wait on what an adapter records where it records what they need: the network
+>   scenarios poll the diagnostics log. The journal is built with the first scenario
+>   that needs a port callback itself, not with the first port that has callbacks.
+> - **First faults**<br>
+>   Two faults are in use, both through the browser: a Chromium launched without direct
+>   (non-proxied UDP) connections, and an init script that makes `localStorage.setItem`
+>   throw. [integration-testing.md](../concepts/integration-testing.md) lists them.
+
 ## Context
 
 ADR-010 set up two Test Levels: `e2e`, which clicks the real UI in real browsers, and
