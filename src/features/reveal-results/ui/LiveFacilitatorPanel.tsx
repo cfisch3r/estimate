@@ -43,6 +43,14 @@ export function LiveFacilitatorPanel({
   // Finalized with no round revealed in this session: only a loaded session
   // file gets here, since finalizing live always follows a reveal.
   const resumedFinal = !item.revealed && isFinalized(item) ? item.finalResult : null
+  // No round is open on a resumed finalized item, so nobody is "waiting" and
+  // there is no submitted count to announce.
+  const roundOpen = !item.revealed && !resumedFinal
+  const range = item.revealed
+    ? submittedCount > 0
+      ? { label: 'Range (aggregated)', values: aggregateEstimates(item.submissions) }
+      : null
+    : resumedFinal && { label: 'Range (finalized)', values: resumedFinal }
   const {
     openKey: infoOpen,
     open: openInfo,
@@ -84,7 +92,7 @@ export function LiveFacilitatorPanel({
       >
         <LiveRegion>
           <VisuallyHidden>
-            {item.revealed || roster.length === 0
+            {!roundOpen || roster.length === 0
               ? ''
               : `${submittedCount} of ${roster.length} submitted`}
           </VisuallyHidden>
@@ -121,31 +129,21 @@ export function LiveFacilitatorPanel({
                       'No response'
                     )}
                   </span>
-                ) : (
+                ) : roundOpen ? (
                   <Tag variant={row.submission ? 'accent' : 'neutral'}>
                     {row.submission ? 'Submitted' : 'Waiting'}
                   </Tag>
-                )}
+                ) : null}
               </li>
             ))}
           </ul>
         )}
       </GroupBox>
 
-      {item.revealed && submittedCount > 0 && (
+      {range && (
         <AggregatedRange
-          label="Range (aggregated)"
-          range={aggregateEstimates(item.submissions)}
-          unit={unit}
-          infoOpen={infoOpen === 'range'}
-          onInfoOpen={() => openInfo('range')}
-          onInfoClose={closeInfo}
-        />
-      )}
-      {resumedFinal && (
-        <AggregatedRange
-          label="Range (finalized)"
-          range={resumedFinal}
+          label={range.label}
+          range={range.values}
           unit={unit}
           infoOpen={infoOpen === 'range'}
           onInfoOpen={() => openInfo('range')}

@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { computeCI90 } from '../../domain/estimate'
 import { parseWireEstimate, parseWireFinalResult, parseWireUnit } from './wireParse'
 
@@ -64,6 +64,22 @@ describe('parseWireFinalResult', () => {
     ['a field that is not a number', { ...valid, max: '6' }],
     ['a range that breaks a rule', { ...valid, min: 9 }],
   ])('treats a final result that is %s as none', (_label, input) => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     expect(parseWireFinalResult(input)).toBeNull()
+    warn.mockRestore()
+  })
+
+  it('says why it drops a malformed final result, but not a missing one', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    parseWireFinalResult(undefined)
+    parseWireFinalResult(null)
+    expect(warn).not.toHaveBeenCalled()
+    parseWireFinalResult({ ...valid, min: 9 })
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith(
+      'Dropping malformed final result in incoming snapshot:',
+      expect.stringContaining('minimum is above the maximum'),
+    )
+    warn.mockRestore()
   })
 })

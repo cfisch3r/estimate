@@ -135,6 +135,9 @@ describe('LiveFacilitatorPanel', () => {
       expect(screen.getByText('3d')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /Reveal estimates/ })).toBeNull()
       expect(screen.queryByRole('button', { name: /^Update/ })).toBeNull()
+      expect(screen.getByText('Ada')).toBeInTheDocument()
+      expect(screen.queryByText('Waiting')).toBeNull()
+      expect(screen.queryByText(/submitted/)).toBeNull()
     })
 
     it('moves on once on the primary button', async () => {
