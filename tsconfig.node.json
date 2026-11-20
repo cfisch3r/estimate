@@ -21,7 +21,9 @@
   },
   "include": [
     "vite.config.ts",
+    "vite.harness.config.ts",
     "scripts/layerRules.test.ts",
+    "scripts/specRules.test.ts",
     ".claude/skills/*/scripts/**/*.test.ts"
   ]
 }

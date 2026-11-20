@@ -1,4 +1,8 @@
-import { sessionFileName, writeSessionFile } from '../../domain/sessionFile'
+import {
+  SESSION_FILE_CONTENT_TYPE,
+  sessionFileName,
+  writeSessionFile,
+} from '../../domain/sessionFile'
 import type { LocalDate } from '../../domain/sessionFile'
 import { useFileDownload } from '../ports/fileDownloadContext'
 import { useSessionStore } from '../stores'
@@ -19,7 +23,7 @@ export function useSaveSession(): () => string {
     const { sessionName, unit, items, markSaved } = useSessionStore.getState()
     const file = writeSessionFile({ sessionName, unit, items })
     const fileName = sessionFileName(sessionName, today())
-    download(fileName, file)
+    download(fileName, file, SESSION_FILE_CONTENT_TYPE)
     markSaved(file)
     return fileName
   }

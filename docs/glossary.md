@@ -15,7 +15,7 @@ doc, add it here instead of guessing.
 | **Adapter** | Code that connects the application to something outside it. Lives in `src/adapters/` (`network/`, `storage/`, `file/`; ADR-009 stage 2); dependency-cruiser keeps it free of React, Zustand and the UI layers. | |
 | **Inbound adapter** | An adapter that calls into the application, such as an incoming peer message. It needs no port. | "driving adapter" |
 | **Outbound adapter** | An adapter the application calls out to, such as the peer transport or storage. It implements a port. | "driven adapter" |
-| **Port** | An interface owned by the application layer. The peer transport (`src/application/ports/outbound/networkTransport.ts`) is implemented by an outbound adapter, and so are the participant-identity port and the file-download port (`src/application/ports/fileDownloadContext.ts`). Ports exist only at external boundaries. | "port" for an interface between two parts of the application (see Handle) |
+| **Port** | An interface owned by the application layer. The peer transport, participant-identity and file-download ports (`src/application/ports/outbound/`) are each implemented by an outbound adapter; the React contexts that hand two of them to the use cases sit next to that folder, in `src/application/ports/`. Ports exist only at external boundaries. | "port" for an interface between two parts of the application (see Handle) |
 | **Handle** | An interface the application passes between its own parts. `LiveSessionApi` (`connect`, `disconnect`, `sendEstimate`; `useCases/liveSessionContext.ts`) is the live-session controller's face for the use-case hooks. The composition root creates the controller and fills a React context, and the hooks read it through `useLiveSession`, because a hook cannot import an object that only exists at runtime. Unlike a port it implements nothing outside the application. | "port" |
 | **Live-session controller** | A framework-free function, `createLiveSessionController(deps)` in `src/application/useCases`, that owns the live peer session: connect, disconnect, sendEstimate and all per-connection state. It receives the transport as a parameter and is tested with a fake. `app/LiveSessionProvider.tsx` is the thin React shell around it. | |
 | **Composition time** | The moment the app is wired together (ADR-009): the place that picks which adapter implements which port. Not runtime logic. | |
@@ -42,12 +42,14 @@ The words for judging how closely a change needs to be read ([pr-review-catalogu
 
 ## Testing
 
-The words for executable specs ([ADR-010](technical/adr/010-spec-first-gherkin-specs.md)).
+The words for executable specs ([ADR-010](technical/adr/010-spec-first-gherkin-specs.md), [ADR-011](technical/adr/011-integration-test-level.md)).
 
 | Term | Meaning in this repo | Avoid |
 |---|---|---|
-| **Test Level** | What kind of thing a Gherkin scenario drives — `e2e` (real UI, real browsers), `domain` (the pure domain, called directly), and the deferred `protocol`. The second folder under `specs/<concept>/`. Each Test Level owns its own runner; there is no shared DSL across them. | "layer" (collides with the architecture/FSD layer above) |
+| **Test Level** | What kind of thing a Gherkin scenario drives — `e2e` (real UI, real browsers), `integration` (an outbound adapter through its port, on a real-browser harness page; [ADR-011](technical/adr/011-integration-test-level.md)), and `domain` (the pure domain, called directly). The second folder under `specs/<concept>/`. Each Test Level has its own runner setup and driver code; there is no shared DSL across them. | "layer" (collides with the architecture/FSD layer above) |
 | **Stereotype** | A named, valid default record for test data ("an estimated item"), which a scenario overrides only where it depends on a value. Lives in the concept folder (`specs/<concept>/stereotypes.ts`), where any of the concept's Test Levels can use it. Not the UML «stereotype» of the diagrams. | "fixture" (Playwright already uses it for its own injected objects) |
+| **Harness page** | The `integration` Test Level's test-only page (`specs/shared/integration/harness/`): it imports the real adapters and installs them on `window.__harness`, one entry per port, for the port drivers to call. | "harness" alone for its dev server; say harness server |
+| **Port driver** | The Node-side object an `integration` step calls instead of `page.evaluate`: one per port, its type derived from the port type (`Remote<Port>` in `specs/shared/integration/remote.ts`). | "driver layer" (collides with layer) |
 | **Concept folder** | The first folder under `specs/`, one per feature area (for example `live-session`), parallel to the concept name shared by `docs/domain/concepts/` and `docs/technical/concepts/`. The one exception is `specs/shared/`, which holds driver code every concept uses, not a feature area. | |
 
 ## Feature-Sliced Design

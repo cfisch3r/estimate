@@ -20,5 +20,5 @@
     "noFallthroughCasesInSwitch": true
   },
   "include": ["e2e", "playwright.config.ts", "specs"],
-  "exclude": [".features-gen"]
+  "exclude": [".features-gen", "specs/shared/integration/harness"]
 }

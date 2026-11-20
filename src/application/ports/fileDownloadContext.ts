@@ -1,11 +1,7 @@
 import { createContext, useContext } from 'react'
+import type { FileDownloadApi } from './outbound/fileDownload'
 
-/** The port through which the save use case hands a finished file to the
- *  user. The file adapter implements it; `app/` provides it. */
-export interface FileDownloadApi {
-  download: (fileName: string, text: string) => void
-}
-
+/** Provides the file-download port (`./outbound/fileDownload`) to the save use case. */
 export const FileDownloadContext = createContext<FileDownloadApi | null>(null)
 
 export function useFileDownload(): FileDownloadApi {

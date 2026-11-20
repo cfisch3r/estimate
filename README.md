@@ -36,10 +36,11 @@ pnpm test                 # vitest run, summary output
 pnpm test:watch           # vitest in watch mode
 pnpm test:verbose         # vitest run, every individual test name and result
 pnpm test:coverage        # vitest run --coverage
-pnpm test:e2e             # Playwright, real WebRTC via a local self-hosted relay (ADR-007)
+pnpm test:e2e             # Playwright, real WebRTC via a local self-hosted relay (ADR-007); includes the integration Test Level (ADR-011)
 pnpm test:e2e:real-world  # same specs against production signaling (public Nostr relays)
 pnpm test:e2e:ui          # Playwright UI mode, for local debugging
-pnpm test:specs           # every executable Gherkin spec (domain, then e2e)
+pnpm test:integration     # the integration Test Level only (ADR-011)
+pnpm test:specs           # every executable Gherkin spec (domain, then e2e and integration)
 pnpm deadcode             # knip — unused exports/files/dependencies
 ```
 

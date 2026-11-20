@@ -40,3 +40,4 @@ test-results/
 
 # Throwaway project created by scripts/layerRules.test.ts
 .layer-canary-*
+.spec-rules-canary-*

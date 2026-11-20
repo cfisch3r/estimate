@@ -3,11 +3,16 @@
  *  revoked; a minute is far longer than any start takes. */
 const REVOKE_AFTER_MS = 60_000
 
-/** Hands `text` to the browser as a download named `fileName`: a JSON blob
- *  behind a temporary object URL, clicked through a detached `<a download>`.
- *  Implements `FileDownloadApi` (`application/ports/fileDownloadContext.ts`). */
-export function downloadTextFile(fileName: string, text: string): void {
-  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }))
+/** Hands `text` to the browser as a download named `fileName`: a blob typed
+ *  `contentType` behind a temporary object URL, clicked through a detached
+ *  `<a download>`. Implements `FileDownloadApi`
+ *  (`application/ports/outbound/fileDownload.ts`). */
+export function downloadTextFile(
+  fileName: string,
+  text: string,
+  contentType: string,
+): void {
+  const url = URL.createObjectURL(new Blob([text], { type: contentType }))
   const link = document.createElement('a')
   link.href = url
   link.download = fileName

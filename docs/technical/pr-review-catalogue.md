@@ -48,6 +48,7 @@ The one fenced `yaml` block in this file is the data the floor script reads. Its
   paths:
     - 'tsconfig*.json'
     - 'vite.config.ts'
+    - 'vite.harness.config.ts'
     - 'playwright.config.ts'
     - '.oxlintrc*.json'
     - 'steiger.config.ts'
@@ -60,6 +61,7 @@ The one fenced `yaml` block in this file is the data the floor script reads. Its
     - 'src/design/nocturne.css'
     - 'src/viMockPaths.test.ts'
     - 'scripts/layerRules.test.ts'
+    - 'scripts/specRules.test.ts'
     - 'AGENTS.md'
     - '.claude/hooks/**'
     - '.claude/settings.json'
