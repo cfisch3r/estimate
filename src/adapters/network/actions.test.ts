@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createTypedActions, MAX_ANNOUNCE_NAME_LENGTH, type ActionRoom } from './actions'
-import { createEstimate } from '../../domain/estimate'
+import { computeCI90, createEstimate } from '../../domain/estimate'
 
 function makeFakeAction() {
   return {
@@ -190,6 +190,7 @@ describe('createTypedActions', () => {
       roster: [{ participantId: 'a', submitted: false, connected: true }],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     }
 
     actions.sendSyncState(snapshot)
@@ -213,6 +214,7 @@ describe('createTypedActions', () => {
           { participantId: 'b', best: 9, likely: 2, worst: 3 },
         ],
         finalizedItemIds: ['item-0'],
+        finalResult: null,
       },
       { peerId: 'peer-1' },
     )
@@ -227,6 +229,7 @@ describe('createTypedActions', () => {
         roster: [],
         submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
+        finalResult: null,
       },
       'peer-1',
     )
@@ -245,6 +248,7 @@ describe('createTypedActions', () => {
         round: 1,
         submissions: [null, { participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
+        finalResult: null,
       },
       { peerId: 'peer-1' },
     )
@@ -259,6 +263,7 @@ describe('createTypedActions', () => {
         roster: [],
         submissions: [{ participantId: 'a', best: 1, likely: 2, worst: 3 }],
         finalizedItemIds: ['item-0'],
+        finalResult: null,
       },
       'peer-1',
     )
@@ -282,6 +287,7 @@ describe('createTypedActions', () => {
         ],
         submissions: [],
         finalizedItemIds: [],
+        finalResult: null,
       },
       { peerId: 'peer-1' },
     )
@@ -307,11 +313,47 @@ describe('createTypedActions', () => {
         revealed: true,
         submissions: [],
         finalizedItemIds: [],
+        finalResult: null,
       },
       { peerId: 'peer-1' },
     )
 
     expect(cb).toHaveBeenCalledWith(expect.objectContaining({ revealed: true }), 'peer-1')
+  })
+
+  it('forwards a valid final result and treats a missing one as none', () => {
+    const { room, actionsByName } = makeFakeRoom()
+    const actions = createTypedActions(room)
+    const cb = vi.fn()
+    actions.onSyncState(cb)
+    const finalResult = { min: 2, expected: 3, max: 6, ci90: computeCI90(3, 2, 6) }
+
+    actionsByName.syncState!.onMessage?.(
+      {
+        currentItem: item,
+        unit: 'days',
+        submissions: [],
+        finalizedItemIds: [],
+        finalResult,
+      },
+      { peerId: 'peer-1' },
+    )
+    actionsByName.syncState!.onMessage?.(
+      { currentItem: item, unit: 'days', submissions: [], finalizedItemIds: [] },
+      { peerId: 'peer-2' },
+    )
+
+    expect(cb).toHaveBeenCalledTimes(2)
+    expect(cb).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({ finalResult }),
+      'peer-1',
+    )
+    expect(cb).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({ currentItem: item, finalResult: null }),
+      'peer-2',
+    )
   })
 
   it('falls back to 0 when an incoming snapshot has a missing or non-number round', () => {
@@ -331,6 +373,7 @@ describe('createTypedActions', () => {
         round: 'two',
         submissions: [],
         finalizedItemIds: [],
+        finalResult: null,
       },
       { peerId: 'peer-2' },
     )
@@ -400,6 +443,7 @@ describe('createTypedActions', () => {
         roster: [],
         submissions: [],
         finalizedItemIds: [],
+        finalResult: null,
       },
       'peer-1',
     )
@@ -431,6 +475,7 @@ describe('createTypedActions', () => {
         roster: [],
         submissions: [],
         finalizedItemIds: [],
+        finalResult: null,
       },
       'peer-1',
     )
@@ -445,6 +490,7 @@ describe('createTypedActions', () => {
         roster: [],
         submissions: [],
         finalizedItemIds: [],
+        finalResult: null,
       },
       'peer-2',
     )
@@ -462,6 +508,7 @@ describe('createTypedActions', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     }
     requestActionsByName.requestSnapshot!.request.mockResolvedValue(snapshot)
 
@@ -488,6 +535,7 @@ describe('createTypedActions', () => {
       ],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
 
     const result = await actions.requestSnapshot('facilitator-peer')
@@ -503,6 +551,7 @@ describe('createTypedActions', () => {
     requestActionsByName.requestSnapshot!.request.mockResolvedValue({
       currentItem: { id: 42 },
       finalizedItemIds: 'oops',
+      finalResult: null,
     })
 
     await expect(actions.requestSnapshot('facilitator-peer')).rejects.toThrow()
@@ -520,6 +569,7 @@ describe('createTypedActions', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     }
     const respond = vi.fn(() => snapshot)
 

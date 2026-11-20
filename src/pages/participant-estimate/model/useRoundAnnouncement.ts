@@ -10,6 +10,7 @@ function announcementFor(
 ): string {
   if (view === 'waiting') return 'Estimate submitted.'
   if (view === 'revealed') return 'Estimates revealed.'
+  if (view === 'finalized') return 'Item already estimated.'
   if (view === 'lobby' && connectionStatus === 'connected') {
     return 'Connected. Waiting for the facilitator to start the first item.'
   }

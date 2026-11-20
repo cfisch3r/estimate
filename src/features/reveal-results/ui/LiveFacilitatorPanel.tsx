@@ -3,13 +3,18 @@ import { GroupBox, LiveRegion, Tag, VisuallyHidden } from '../../../shared/ui'
 import { PARTICIPANT_ESTIMATES_INFO } from '../../../shared/copy'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import { EstimateTriple } from '../../../entities/estimate'
-import type { EstimationUnit } from '../../../domain/estimate'
+import { aggregateEstimates, type EstimationUnit } from '../../../domain/estimate'
 import { isFinalized } from '../../../domain/item'
 import { ItemDetailShell } from '../../../entities/item'
 import type { Item } from '../../../domain/types'
 import { useRevealRound } from '../model/useRevealRound'
 import { AggregatedRange } from './AggregatedRange'
-import { FinalizedFooter, PreRevealFooter, ReviewFooter } from './RevealFooters'
+import {
+  FinalizedFooter,
+  PreRevealFooter,
+  ResumedFinalizedFooter,
+  ReviewFooter,
+} from './RevealFooters'
 
 interface LiveFacilitatorPanelProps {
   item: Item
@@ -21,8 +26,10 @@ interface LiveFacilitatorPanelProps {
 }
 
 /** Live mode, facilitator side: Workspace states 1c (waiting for estimates) and
- *  1d (revealed). The facilitator never types estimate values — the range comes
- *  from aggregating participants' submissions. */
+ *  1d (revealed), plus an item finalized before this session started (a loaded
+ *  session file), which has a saved range but no round. The facilitator never
+ *  types estimate values — the range comes from aggregating participants'
+ *  submissions, or is the saved one. */
 export function LiveFacilitatorPanel({
   item,
   unit,
@@ -33,6 +40,9 @@ export function LiveFacilitatorPanel({
 }: LiveFacilitatorPanelProps) {
   const { roster, reveal, retry, finalize } = useRevealRound(item)
   const submittedCount = item.submissions.length
+  // Finalized with no round revealed in this session: only a loaded session
+  // file gets here, since finalizing live always follows a reveal.
+  const resumedFinal = !item.revealed && isFinalized(item) ? item.finalResult : null
   const {
     openKey: infoOpen,
     open: openInfo,
@@ -122,9 +132,20 @@ export function LiveFacilitatorPanel({
         )}
       </GroupBox>
 
-      {item.revealed && (
+      {item.revealed && submittedCount > 0 && (
         <AggregatedRange
-          submissions={item.submissions}
+          label="Range (aggregated)"
+          range={aggregateEstimates(item.submissions)}
+          unit={unit}
+          infoOpen={infoOpen === 'range'}
+          onInfoOpen={() => openInfo('range')}
+          onInfoClose={closeInfo}
+        />
+      )}
+      {resumedFinal && (
+        <AggregatedRange
+          label="Range (finalized)"
+          range={resumedFinal}
           unit={unit}
           infoOpen={infoOpen === 'range'}
           onInfoOpen={() => openInfo('range')}
@@ -132,7 +153,15 @@ export function LiveFacilitatorPanel({
         />
       )}
 
-      {!item.revealed ? (
+      {resumedFinal ? (
+        <ResumedFinalizedFooter
+          isFirst={isFirst}
+          isLast={isLast}
+          onNavigatePrev={onNavigatePrev}
+          onAdvance={onAdvance}
+          onReopen={retry}
+        />
+      ) : !item.revealed ? (
         <PreRevealFooter submittedCount={submittedCount} onReveal={reveal} />
       ) : isFinalized(item) ? (
         <FinalizedFooter

@@ -17,6 +17,7 @@ function round(overrides: Partial<LiveRound> = {}): LiveRound {
     round: 0,
     roster: [{ participantId: 'me', submitted: false, connected: true }],
     mySubmission: mine(1, 2, 3),
+    finalResult: null,
     ...overrides,
   }
 }
@@ -53,6 +54,7 @@ describe('roundKey', () => {
       round: 2,
       roster: [],
       mySubmission: null,
+      finalResult: null,
     }
     expect(roundKey(round)).toBe('i1:2')
     expect(roundKey({ ...round, round: 3 })).not.toBe(roundKey(round))

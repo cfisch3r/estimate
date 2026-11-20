@@ -214,6 +214,7 @@ describe('submitEstimate', () => {
         round: 0,
         roster: [],
         mySubmission: null,
+        finalResult: null,
       },
     })
   })
@@ -265,6 +266,7 @@ describe('clearRound', () => {
         round: 0,
         roster: [],
         mySubmission: null,
+        finalResult: null,
       },
     })
 

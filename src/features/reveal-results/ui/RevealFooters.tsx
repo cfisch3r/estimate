@@ -69,12 +69,6 @@ export function FinalizedFooter({
   onUpdate,
   onReopen,
 }: FinalizedFooterProps) {
-  const {
-    armed: reopenArmed,
-    handleClick: armAndReopen,
-    ref: reopenRef,
-  } = useConfirmArm<HTMLButtonElement>(onReopen)
-
   return (
     <>
       <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
@@ -85,23 +79,68 @@ export function FinalizedFooter({
         <Button variant="primary" style={{ flex: 1 }} onClick={onUpdate}>
           {isLast ? 'Update & view summary' : 'Update & next →'}
         </Button>
-        <Button
-          ref={reopenRef}
-          variant="ghost"
-          style={{
-            flex: 'none',
-            color: reopenArmed ? 'var(--color-warning)' : undefined,
-          }}
-          onClick={armAndReopen}
-        >
-          {reopenArmed ? 'Click again to reopen' : 'Reopen item'}
-        </Button>
-        <LiveRegion>
-          <VisuallyHidden>
-            {reopenArmed ? 'Click Reopen item again to confirm.' : ''}
-          </VisuallyHidden>
-        </LiveRegion>
+        <ReopenButton onReopen={onReopen} />
       </NavRow>
+    </>
+  )
+}
+
+interface ResumedFinalizedFooterProps extends NavFooterProps {
+  onAdvance: () => void
+  onReopen: () => void
+}
+
+/** Footer for an item finalized before this live session started (a loaded
+ *  session file): there are no submissions to update the range from, so the
+ *  only actions are moving on and reopening the item to re-estimate it. */
+export function ResumedFinalizedFooter({
+  isFirst,
+  isLast,
+  onNavigatePrev,
+  onAdvance,
+  onReopen,
+}: ResumedFinalizedFooterProps) {
+  return (
+    <>
+      <p className="text-muted" style={{ margin: 0, fontSize: 13 }}>
+        Finalized in an earlier session. To re-estimate, reopen the item.
+      </p>
+      <NavRow isFirst={isFirst} onNavigatePrev={onNavigatePrev}>
+        <Button variant="primary" style={{ flex: 1 }} onClick={onAdvance}>
+          {isLast ? 'View summary' : 'Next →'}
+        </Button>
+        <ReopenButton onReopen={onReopen} />
+      </NavRow>
+    </>
+  )
+}
+
+/** Reopen, armed by a confirming second click, with the prompt announced. */
+function ReopenButton({ onReopen }: { onReopen: () => void }) {
+  const {
+    armed: reopenArmed,
+    handleClick: armAndReopen,
+    ref: reopenRef,
+  } = useConfirmArm<HTMLButtonElement>(onReopen)
+
+  return (
+    <>
+      <Button
+        ref={reopenRef}
+        variant="ghost"
+        style={{
+          flex: 'none',
+          color: reopenArmed ? 'var(--color-warning)' : undefined,
+        }}
+        onClick={armAndReopen}
+      >
+        {reopenArmed ? 'Click again to reopen' : 'Reopen item'}
+      </Button>
+      <LiveRegion>
+        <VisuallyHidden>
+          {reopenArmed ? 'Click Reopen item again to confirm.' : ''}
+        </VisuallyHidden>
+      </LiveRegion>
     </>
   )
 }

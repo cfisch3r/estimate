@@ -38,6 +38,8 @@ export interface LiveRound {
   /** This participant's own most recent submitted estimate (already validated),
    *  or null before submitting. Kept whole so a resend can send it as-is. */
   mySubmission: Estimate | null
+  /** The item's agreed result, mirrored from the snapshot; null while pending. */
+  finalResult: AggregateResult | null
 }
 
 /** A values-free roster row for the current round (ADR-003, "Single owner").
@@ -87,6 +89,11 @@ export interface SessionSnapshot {
    *  before the reveal (ADR-003). */
   submissions: Estimate[]
   finalizedItemIds: string[]
+  /** The active item's agreed result, or null while it is pending (or nothing
+   *  is active). It is the group's result, never one person's values, so it
+   *  may reach participants before any reveal — an item finalized in an
+   *  earlier session has no round to reveal. */
+  finalResult: AggregateResult | null
 }
 
 export type SessionMode = 'manual' | 'live'

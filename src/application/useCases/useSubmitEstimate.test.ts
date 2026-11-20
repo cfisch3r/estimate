@@ -19,6 +19,7 @@ function setRound(submitted: boolean) {
       round: 1,
       revealed: false,
       mySubmission: null,
+      finalResult: null,
       submissions: [],
       roster: [{ participantId: 'me', connected: true, submitted }],
     },

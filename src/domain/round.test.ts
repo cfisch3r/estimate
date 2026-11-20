@@ -6,7 +6,7 @@ import {
   retryRoundPatch,
   upsertByParticipant,
 } from './round'
-import { estimateOf, finalizedItemOf, itemOf } from './testFixtures'
+import { aggregateOf, estimateOf, finalizedItemOf, itemOf } from './testFixtures'
 import type { LiveRound, SessionSnapshot } from './types'
 
 describe('upsertByParticipant', () => {
@@ -110,6 +110,7 @@ describe('recordOwnSubmission', () => {
     round: 0,
     roster: [],
     mySubmission: null,
+    finalResult: null,
   }
 
   it('is a no-op without an active round', () => {
@@ -121,6 +122,7 @@ describe('recordOwnSubmission', () => {
     expect(recordOwnSubmission(round, mine)).toEqual({
       ...round,
       mySubmission: mine,
+      finalResult: null,
       submissions: [mine],
     })
   })
@@ -146,6 +148,7 @@ function snapshotOf(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
     roster: [{ participantId: 'a', submitted: true, connected: true }],
     submissions: [],
     finalizedItemIds: [],
+    finalResult: null,
     ...overrides,
   }
 }
@@ -158,6 +161,7 @@ function roundOf(overrides: Partial<LiveRound> = {}): LiveRound {
     round: 0,
     roster: [],
     mySubmission: null,
+    finalResult: null,
     ...overrides,
   }
 }
@@ -171,7 +175,23 @@ describe('adoptSnapshot', () => {
       round: 0,
       roster: [{ participantId: 'a', submitted: true, connected: true }],
       mySubmission: null,
+      finalResult: null,
     })
+  })
+
+  it("carries the active item's final result", () => {
+    const finalResult = aggregateOf(2, 3, 6)
+    expect(adoptSnapshot(null, snapshotOf({ finalResult }))?.finalResult).toEqual(
+      finalResult,
+    )
+  })
+
+  it('clears the final result when a reopen snapshot arrives', () => {
+    const next = adoptSnapshot(
+      roundOf({ finalResult: aggregateOf(2, 3, 6) }),
+      snapshotOf({ round: 1, finalResult: null }),
+    )
+    expect(next?.finalResult).toBeNull()
   })
 
   it('clears the round when the facilitator has no active item', () => {
@@ -213,6 +233,7 @@ describe('adoptSnapshot', () => {
       revealed: false,
       round: 0,
       mySubmission: estimateOf('me'),
+      finalResult: null,
     })
     const next = adoptSnapshot(previous, snapshotOf({ revealed: true, round: 2 }))
     expect(next).toMatchObject({ revealed: true, round: 2, mySubmission: null })

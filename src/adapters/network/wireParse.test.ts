@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { parseWireEstimate, parseWireUnit } from './wireParse'
+import { computeCI90 } from '../../domain/estimate'
+import { parseWireEstimate, parseWireFinalResult, parseWireUnit } from './wireParse'
 
 describe('parseWireEstimate', () => {
   it('accepts a well-formed estimate', () => {
@@ -45,5 +46,24 @@ describe('parseWireUnit', () => {
 
   it.each(['weeks!', 3, null, undefined])('falls back for %s', (v) => {
     expect(parseWireUnit(v, 'days')).toBe('days')
+  })
+})
+
+describe('parseWireFinalResult', () => {
+  const valid = { min: 2, expected: 3, max: 6, ci90: computeCI90(3, 2, 6) }
+
+  it('accepts a final result that keeps every rule', () => {
+    expect(parseWireFinalResult(valid)).toEqual(valid)
+  })
+
+  it.each([
+    ['missing (older facilitator build)', undefined],
+    ['null (pending item)', null],
+    ['not an object', 'final'],
+    ['missing a field', { min: 2, expected: 3, max: 6 }],
+    ['a field that is not a number', { ...valid, max: '6' }],
+    ['a range that breaks a rule', { ...valid, min: 9 }],
+  ])('treats a final result that is %s as none', (_label, input) => {
+    expect(parseWireFinalResult(input)).toBeNull()
   })
 })

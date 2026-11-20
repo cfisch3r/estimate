@@ -21,7 +21,6 @@ Feature: Save a session to a file and resume it later
       | item                    | best | likely | worst |
       | Payment provider switch | 3    | 5      | 12    |
 
-  @fail
   Scenario: A saved session is resumed as a live session
     Given Alex has a saved session file "Sprint 42" with the items
       | item   | state         |

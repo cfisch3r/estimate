@@ -1,6 +1,6 @@
 import type { Estimate } from '../../domain/estimate'
 import type { ParticipantAnnounce } from '../../domain/types'
-import { parseWireEstimate, parseWireUnit } from './wireParse'
+import { parseWireEstimate, parseWireFinalResult, parseWireUnit } from './wireParse'
 import type { RosterEntry, SessionSnapshot, SnapshotItem } from '../../domain/types'
 
 /** A participant's estimate plus the item it belongs to. The item id keeps a
@@ -219,6 +219,9 @@ function parseSnapshot(data: unknown): SessionSnapshot | null {
     roster: sanitizeRoster(data.roster),
     submissions: sanitizeSubmissions(data.submissions),
     finalizedItemIds: data.finalizedItemIds,
+    // Tolerate a missing or invalid final result (older builds omit it): none,
+    // so the participant falls back to the round view it had before.
+    finalResult: parseWireFinalResult(data.finalResult),
   }
 }
 

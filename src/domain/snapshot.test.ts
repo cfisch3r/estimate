@@ -4,7 +4,7 @@ import {
   sessionFieldsFromSnapshot,
   snapshotChangeKey,
 } from './snapshot'
-import { estimateOf, finalizedItemOf, itemOf } from './testFixtures'
+import { aggregateOf, estimateOf, finalizedItemOf, itemOf } from './testFixtures'
 import type { SessionSnapshot } from './types'
 
 const base = {
@@ -29,6 +29,7 @@ describe('buildSessionSnapshot', () => {
       sessionName: 'Sprint 42',
       unit: 'days',
       finalizedItemIds: ['done'],
+      finalResult: null,
     })
     expect(snapshot.roster).toEqual([
       { participantId: 'a', submitted: false, connected: true },
@@ -50,6 +51,25 @@ describe('buildSessionSnapshot', () => {
     expect(snapshot.roster).toEqual([
       { participantId: 'a', submitted: true, connected: true },
     ])
+  })
+
+  it("carries the active item's final result, with no round revealed", () => {
+    const finalResult = aggregateOf(2, 3, 6)
+    const snapshot = buildSessionSnapshot({
+      ...base,
+      items: [itemOf({ id: 'x', finalResult })],
+      activeItemId: 'x',
+    })
+    expect(snapshot).toMatchObject({ revealed: false, submissions: [], finalResult })
+  })
+
+  it('has no final result while the active item is pending', () => {
+    const snapshot = buildSessionSnapshot({
+      ...base,
+      items: [itemOf({ id: 'x' }), finalizedItemOf({ id: 'done' })],
+      activeItemId: 'x',
+    })
+    expect(snapshot.finalResult).toBeNull()
   })
 
   it('includes the frozen submissions once revealed', () => {
@@ -78,6 +98,17 @@ describe('snapshotChangeKey', () => {
       snapshotChangeKey(snapshot),
     )
   })
+
+  it('tracks a change of the final result alone', () => {
+    const snapshot = buildSessionSnapshot({
+      ...base,
+      items: [itemOf({ id: 'x' })],
+      activeItemId: 'x',
+    })
+    expect(
+      snapshotChangeKey({ ...snapshot, finalResult: aggregateOf(2, 3, 6) }),
+    ).not.toBe(snapshotChangeKey(snapshot))
+  })
 })
 
 function snapshotOf(): SessionSnapshot {
@@ -90,6 +121,7 @@ function snapshotOf(): SessionSnapshot {
     roster: [],
     submissions: [],
     finalizedItemIds: [],
+    finalResult: null,
   }
 }
 

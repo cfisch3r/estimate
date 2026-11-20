@@ -55,6 +55,16 @@ export function useParticipantRound() {
       liveRound: liveRound satisfies LiveRound,
     }
   }
+  // Finalized with no round revealed: an item from a loaded session file. A
+  // submission would be dropped, so there is no form to offer.
+  if (liveRound.finalResult) {
+    return {
+      ...shared,
+      view: 'finalized' as const,
+      liveRound,
+      finalResult: liveRound.finalResult,
+    }
+  }
   if (liveRound.mySubmission) {
     return {
       ...shared,

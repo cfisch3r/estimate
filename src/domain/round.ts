@@ -101,5 +101,6 @@ export function adoptSnapshot(
     round: snapshot.round,
     roster: snapshot.roster,
     mySubmission: carryOver ? previous.mySubmission : null,
+    finalResult: snapshot.finalResult,
   }
 }
