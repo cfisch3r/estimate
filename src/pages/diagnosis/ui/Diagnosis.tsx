@@ -1,10 +1,13 @@
 import { useState } from 'react'
 import { useDiagnosisReport } from '../../../application'
+import { useConfirmArm } from '../../../shared/lib/useConfirmArm'
 import { Button, Field, FieldLabel, LiveRegion, Textarea } from '../../../shared/ui'
 
-const COPY_MESSAGES = {
+const MESSAGES = {
   copied: 'Copied.',
   failed: "Couldn't copy. Use Download report instead.",
+  armed: 'Click Clear again to delete the recording.',
+  cleared: 'Report cleared.',
 } as const
 
 /** `/diagnosis`: what the browser recorded about its live-session connections,
@@ -12,7 +15,21 @@ const COPY_MESSAGES = {
  *  #229). A technical tool, reached by URL, not a screen of the domain flow. */
 export function Diagnosis() {
   const { available, report, download, copy, clear } = useDiagnosisReport(__APP_VERSION__)
-  const [copyMessage, setCopyMessage] = useState('')
+  // `count` gives every message a new node, so the same message said twice is
+  // announced twice.
+  const [message, setMessage] = useState<{ text: string; count: number }>({
+    text: '',
+    count: 0,
+  })
+  const say = (text: string) => setMessage(({ count }) => ({ text, count: count + 1 }))
+  const {
+    armed: clearArmed,
+    handleClick: armAndClear,
+    ref: clearRef,
+  } = useConfirmArm<HTMLButtonElement>(() => {
+    clear()
+    say(MESSAGES.cleared)
+  })
 
   return (
     <div
@@ -50,23 +67,27 @@ export function Diagnosis() {
           <Button variant="primary" onClick={download}>
             Download report
           </Button>
-          <Button
-            variant="secondary"
-            onClick={async () => setCopyMessage(COPY_MESSAGES[await copy()])}
-          >
+          <Button variant="secondary" onClick={async () => say(MESSAGES[await copy()])}>
             Copy report
           </Button>
           <Button
+            ref={clearRef}
             variant="ghost"
-            onClick={() => {
-              clear()
-              setCopyMessage('')
-            }}
+            style={{ color: clearArmed ? 'var(--color-warning)' : undefined }}
+            onClick={armAndClear}
           >
-            Clear
+            {clearArmed ? 'Click again to clear' : 'Clear'}
           </Button>
         </div>
-        <LiveRegion>{copyMessage}</LiveRegion>
+        {/* Renaming the focused Clear button alone is announced unreliably, so
+            its armed prompt is also said here. */}
+        <LiveRegion>
+          {clearArmed ? (
+            <span key="armed">{MESSAGES.armed}</span>
+          ) : (
+            <span key={message.count}>{message.text}</span>
+          )}
+        </LiveRegion>
       </div>
     </div>
   )

@@ -91,6 +91,11 @@ describe('Header', () => {
     expect(screen.queryByText('Single-user')).not.toBeInTheDocument()
   })
 
+  it('omits the mode tag on the connection diagnosis', () => {
+    renderHeader('/diagnosis')
+    expect(screen.queryByText('Single-user')).not.toBeInTheDocument()
+  })
+
   it('shows the Single-user tag in manual mode once in the workspace', () => {
     useConnectionStore.setState({ mode: 'manual' })
 

@@ -77,13 +77,31 @@ describe('Diagnosis', () => {
     )
   })
 
-  it('clears the recording', async () => {
+  it('announces a second copy as well', async () => {
+    const user = userEvent.setup()
+    render(<Diagnosis />)
+    const copy = screen.getByRole('button', { name: 'Copy report' })
+
+    await user.click(copy)
+    const first = (await screen.findByText('Copied.')) as HTMLElement
+    await user.click(copy)
+
+    expect(report.copy).toHaveBeenCalledTimes(2)
+    // A new node, so a screen reader announces it again.
+    expect(await screen.findByText('Copied.')).not.toBe(first)
+  })
+
+  it('asks for a second click before clearing, then says it cleared', async () => {
     const user = userEvent.setup()
     render(<Diagnosis />)
 
     await user.click(screen.getByRole('button', { name: 'Clear' }))
+    expect(report.clear).not.toHaveBeenCalled()
+
+    await user.click(screen.getByRole('button', { name: 'Click again to clear' }))
 
     expect(report.clear).toHaveBeenCalledTimes(1)
+    expect(screen.getByRole('status')).toHaveTextContent('Report cleared.')
   })
 
   it('has no detectable accessibility violations', async () => {
