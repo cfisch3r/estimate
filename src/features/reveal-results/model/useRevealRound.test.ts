@@ -48,13 +48,22 @@ describe('useRevealRound', () => {
   })
 
   it('finalizes from the submissions, or reports why it cannot', () => {
+    useSessionStore.setState((s) => ({
+      items: s.items.map((i) => ({ ...i, revealed: true })),
+    }))
     const { result } = renderHook(() => useRevealRound(currentItem()))
-    expect(result.current.finalize().ok).toBe(false)
+    const empty = result.current.finalize()
+    expect(empty.ok).toBe(false)
+    expect(empty).not.toEqual({ ok: false, error: 'Reveal the round first.' })
 
     const estimate = createEstimate({ participantId: 'p1', best: 1, likely: 2, worst: 3 })
     if (!estimate.ok) throw new Error(estimate.error)
     useSessionStore.setState((s) => ({
-      items: s.items.map((i) => ({ ...i, submissions: [estimate.value] })),
+      items: s.items.map((i) => ({
+        ...i,
+        revealed: true,
+        submissions: [estimate.value],
+      })),
     }))
 
     let outcome: { ok: boolean } | undefined
@@ -75,7 +84,11 @@ describe('useRevealRound', () => {
     const estimate = createEstimate({ participantId: 'p1', best: 1, likely: 2, worst: 3 })
     if (!estimate.ok) throw new Error(estimate.error)
     useSessionStore.setState((s) => ({
-      items: s.items.map((i) => ({ ...i, submissions: [estimate.value] })),
+      items: s.items.map((i) => ({
+        ...i,
+        revealed: true,
+        submissions: [estimate.value],
+      })),
     }))
     act(() => result.current.finalizeAndAdvance())
     expect(onAdvance).toHaveBeenCalledTimes(1)
@@ -98,7 +111,11 @@ describe('useRevealRound', () => {
     const estimate = createEstimate({ participantId: 'p1', best: 2, likely: 4, worst: 8 })
     if (!estimate.ok) throw new Error(estimate.error)
     useSessionStore.setState((s) => ({
-      items: s.items.map((i) => ({ ...i, submissions: [estimate.value] })),
+      items: s.items.map((i) => ({
+        ...i,
+        revealed: true,
+        submissions: [estimate.value],
+      })),
     }))
 
     expect(result.current.finalize()).toEqual({ ok: true })

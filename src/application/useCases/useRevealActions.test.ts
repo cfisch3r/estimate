@@ -38,7 +38,7 @@ describe('useRevealActions', () => {
     if (!estimate.ok) throw new Error('bad fixture')
     useSessionStore.setState((s) => ({
       items: s.items.map((i) =>
-        i.id === id ? { ...i, submissions: [estimate.value] } : i,
+        i.id === id ? { ...i, revealed: true, submissions: [estimate.value] } : i,
       ),
     }))
 
@@ -51,6 +51,22 @@ describe('useRevealActions', () => {
     expect(useSessionStore.getState().items[0]?.finalResult).toBeDefined()
   })
 
+  it('refuses to finalize a round that is not revealed yet', () => {
+    const id = itemId()
+    const { result } = renderHook(() => useRevealActions(id))
+    const estimate = createEstimate({ participantId: 'p1', best: 1, likely: 2, worst: 3 })
+    if (!estimate.ok) throw new Error('bad fixture')
+    useSessionStore.setState((s) => ({
+      items: s.items.map((i) => ({ ...i, submissions: [estimate.value] })),
+    }))
+
+    expect(result.current.finalize()).toEqual({
+      ok: false,
+      error: 'Reveal the round first.',
+    })
+    expect(useSessionStore.getState().items[0]?.finalResult).toBeNull()
+  })
+
   it('reports an unknown item instead of finalizing', () => {
     const { result } = renderHook(() => useRevealActions('missing'))
 
@@ -58,10 +74,15 @@ describe('useRevealActions', () => {
     expect(useRoundStore.getState().liveRound).toBeNull()
   })
 
-  it('fails to finalize an item with no submissions', () => {
+  it('fails to finalize a revealed item with no submissions', () => {
+    useSessionStore.setState((s) => ({
+      items: s.items.map((i) => ({ ...i, revealed: true })),
+    }))
     const { result } = renderHook(() => useRevealActions(itemId()))
 
-    expect(result.current.finalize().ok).toBe(false)
+    const outcome = result.current.finalize()
+    expect(outcome.ok).toBe(false)
+    expect(outcome).not.toEqual({ ok: false, error: 'Reveal the round first.' })
   })
 
   // livePhaseOf reads "finalized but not revealed" as "finalized before the

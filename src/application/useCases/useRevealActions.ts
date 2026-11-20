@@ -1,4 +1,5 @@
 import type { ActionResult } from '../../domain/estimate'
+import { canFinalizeLive } from '../../domain/round'
 import { useRoundStore, useSessionStore } from '../stores'
 import { finalizeWith } from './finalizeWith'
 
@@ -29,6 +30,8 @@ export function useRevealActions(itemId: string): RevealActions {
       // submission that landed since the last render is still aggregated.
       const current = useSessionStore.getState().items.find((i) => i.id === itemId)
       if (!current) return { ok: false, error: 'Unknown item.' }
+      const allowed = canFinalizeLive(current)
+      if (!allowed.ok) return allowed
       return finalizeWith(current.id, current.submissions)
     },
   }

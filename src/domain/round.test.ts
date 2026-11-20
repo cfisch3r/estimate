@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canFinalizeLive,
   isNewRound,
   acceptRemoteEstimate,
   adoptSnapshot,
@@ -28,6 +29,20 @@ describe('upsertByParticipant', () => {
     const list = [estimateOf('a')]
     upsertByParticipant(list, estimateOf('a', 4, 5, 6))
     expect(list).toEqual([estimateOf('a')])
+  })
+})
+
+describe('canFinalizeLive', () => {
+  it('allows finalizing a revealed round, finalized already or not', () => {
+    expect(canFinalizeLive(itemOf({ revealed: true }))).toEqual({ ok: true })
+    expect(canFinalizeLive(finalizedItemOf({ revealed: true }))).toEqual({ ok: true })
+  })
+
+  it('refuses a round that is not revealed, so a live item is never finalized unseen', () => {
+    expect(canFinalizeLive(itemOf({ submissions: [estimateOf('a')] }))).toEqual({
+      ok: false,
+      error: 'Reveal the round first.',
+    })
   })
 })
 
