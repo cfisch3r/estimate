@@ -4,6 +4,7 @@ import {
   joinSessionAsParticipant,
   addItem,
   expectNoA11yViolations,
+  tryJoinUnreachableSession,
 } from '../helpers'
 
 // Real-browser axe scans of the app's main screens — this is what actually
@@ -18,6 +19,13 @@ test.describe('accessibility', () => {
 
   test('join-session screen has no violations', async ({ facilitator: page }) => {
     await page.goto('/join')
+    await expectNoA11yViolations(page)
+  })
+
+  test('join-session screen has no violations with its problem notice shown', async ({
+    facilitator: page,
+  }) => {
+    await tryJoinUnreachableSession(page, 'ZZZZZZ', 'Sam')
     await expectNoA11yViolations(page)
   })
 

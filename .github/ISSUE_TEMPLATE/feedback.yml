@@ -4,6 +4,15 @@ title: '[Feedback]: '
 labels:
   - feedback
 body:
+  - type: markdown
+    attributes:
+      value: >-
+        **Something went wrong in a live session?** Open a new browser tab with
+        EstiMate's address, but replace everything after the site name with
+        `/diagnosis` (for example, `…/estimate` becomes `…/diagnosis`). Keep the
+        EstiMate tab open, so a running session goes on. Download the report
+        there and send the file to the organiser directly. Don't attach it here:
+        this form is public.
   - type: textarea
     id: feedback
     attributes:

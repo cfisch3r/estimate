@@ -306,7 +306,8 @@ from "reached someone, just not the facilitator."
 `disconnected` means **the join itself failed** (`onJoinError`) — nothing else produces
 it. It drives the Join screen's plain-language failure banner, and the facilitator
 strip's `Disconnected` tag + **Reconnect**, which calls `connect(code)` again: a full
-room rejoin, not a per-link repair.
+room rejoin, not a per-link repair. Both also carry a "Show diagnosis" link (see
+[Connection diagnosis](#connection-diagnosis)).
 
 Peers dropping to zero is deliberately *not* a status of its own. At this layer a
 participant who closed their tab is indistinguishable from a link that broke, so
@@ -332,7 +333,7 @@ stateDiagram-v2
 
 `reconnecting` renders a quiet spinner with **no action** — there is nothing useful to
 do while the transport is already retrying. Only `lost` raises the banner and offers
-Reconnect. `useConnectionStore`'s `hasEverConnected` (not the tracker's status) is the
+Reconnect, next to a "Show diagnosis" link. `useConnectionStore`'s `hasEverConnected` (not the tracker's status) is the
 input because `connect()` builds a fresh tracker: keying off status would clear the
 alarm the instant Reconnect is pressed, hiding a rejoin that never succeeds.
 
@@ -340,7 +341,7 @@ A second call site, `features/session-lifecycle`'s `useJoinFlow` (used by `pages
 **initial join**, not a drop: its "is it down" input is `submitted && connectionStatus
 === 'connecting'`. Held past the grace period, that means the participant never
 reached the facilitator at all — the Join screen escalates from its spinner to the
-same shape of plain-language banner, offering Retry only. There is no per-item or
+same shape of plain-language banner, offering Retry and a "Show diagnosis" link. There is no per-item or
 mid-session switch to Manual mode to offer alongside it (ADR-003, "Role-asymmetric
 link state" — decided out of scope while building #9).
 
@@ -456,10 +457,20 @@ connects." Two things go wrong in practice:
 Every browser records what happens to its live-session connections, so a tester can
 hand the organiser (the Developer) the exact facts after something went wrong. The
 **diagnostics log** lives in browser storage, survives a reload, and is shown at
-`/diagnosis`, a technical page reached by URL. The tester downloads the report there and
-sends the file to the organiser directly, never through the public feedback form.
+`/diagnosis`, a technical page outside the screen flow. The tester downloads the report
+there and sends the file to the organiser directly, never through the public feedback form.
 Recording is always on and never changes connection behaviour: the log catches every
 storage access, and a log whose storage fails stops recording and says so.
+
+| Way in | Shown where | What it covers |
+|---|---|---|
+| "Show diagnosis" link (`DiagnosisLink` in `features/open-diagnosis`) | The join screen's "Couldn't reach the session" problem notice, the participant's "Session connection lost" problem notice, and the facilitator's strip while it shows "Disconnected" | The failures the app notices itself |
+| The feedback form's note (`.github/ISSUE_TEMPLATE/feedback.yml`) | The top of the public feedback form | Failures no problem notice shows, such as both sides reading connected while nothing syncs |
+| The URL | Typed in | Anything, as the fallback |
+
+Every way in opens `/diagnosis` in a new tab: the link through `NewTabLink` (`shared/ui`),
+the form's note by telling the tester to. The screen with the problem, and a running
+session, stay where they are, and the new tab reads the same browser storage.
 
 Lines: **solid** = synchronous call, **dotted** = asynchronous callback / event / read.
 As in the component view above, a dotted `implements` line joins an adapter to its port.

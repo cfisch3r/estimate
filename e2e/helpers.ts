@@ -68,6 +68,32 @@ export async function joinSessionAsParticipant(
   await page.waitForURL('**/estimate')
 }
 
+/** Participant: tries to join a session that nobody runs, and waits for the
+ *  join screen's problem notice. It appears once the connection grace period
+ *  (`RECONNECT_GRACE_MS`, 15s) has passed without a facilitator. */
+export async function tryJoinUnreachableSession(
+  page: Page,
+  sessionCode: string,
+  name: string,
+): Promise<void> {
+  await page.goto('/join')
+  await page.getByLabel('Session code').fill(sessionCode)
+  await page.getByLabel('Your name').fill(name)
+  await page.getByRole('button', { name: 'Join' }).click()
+  await expect(page.getByText("Couldn't reach the session")).toBeVisible({
+    timeout: 30_000,
+  })
+}
+
+/** Follows the link named `name` and returns the tab it opened. */
+export async function followLinkToNewTab(page: Page, name: string): Promise<Page> {
+  const link = page.getByRole('link', { name })
+  await expect(link).toBeVisible()
+  const [opened] = await Promise.all([page.context().waitForEvent('page'), link.click()])
+  await opened.waitForLoadState()
+  return opened
+}
+
 /** Facilitator: adds an item via the sidebar's "Add an item" input. The
  *  first item added to an empty workspace is auto-selected
  *  (`useItemActions`' `addItem`); a second+ item is not. */

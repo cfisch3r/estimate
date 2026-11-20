@@ -10,6 +10,7 @@ import {
   Input,
   LiveRegion,
 } from '../../../shared/ui'
+import { DiagnosisLink } from '../../../features/open-diagnosis'
 import {
   useJoinFlow,
   useLeaveLiveSession,
@@ -98,8 +99,11 @@ export function JoinSession() {
           // "Also explicitly out of scope" under Role-asymmetric link state), so this
           // must not suggest one.
           <GuardNote variant="banner" headline="Couldn't reach the session">
-            We couldn&rsquo;t reach the facilitator. Double-check the session code with
-            them and try again.
+            <p style={{ margin: '0 0 var(--space-2)' }}>
+              We couldn&rsquo;t reach the facilitator. Double-check the session code with
+              them and try again.
+            </p>
+            <DiagnosisLink />
           </GuardNote>
         )}
       </LiveRegion>

@@ -1,5 +1,6 @@
 import { CircleNotchIcon } from '@phosphor-icons/react/dist/csr/CircleNotch'
 import { Button, GuardNote, LiveRegion } from '../../../shared/ui'
+import { DiagnosisLink } from '../../../features/open-diagnosis'
 import type { ConnectionPhase } from '../../../shared/lib/useConnectionPhase'
 
 interface ConnectionNoticesProps {
@@ -37,9 +38,19 @@ export function ConnectionNotices({
               You&apos;ve been disconnected and the session hasn&apos;t come back on its
               own.
             </p>
-            <Button variant="primary" onClick={onReconnect} disabled={!canReconnect}>
-              Reconnect
-            </Button>
+            <div
+              style={{
+                display: 'flex',
+                flexWrap: 'wrap',
+                alignItems: 'center',
+                gap: 'var(--space-3)',
+              }}
+            >
+              <Button variant="primary" onClick={onReconnect} disabled={!canReconnect}>
+                Reconnect
+              </Button>
+              <DiagnosisLink />
+            </div>
           </GuardNote>
         )}
       </LiveRegion>

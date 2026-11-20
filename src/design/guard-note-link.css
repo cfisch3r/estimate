@@ -1,0 +1,7 @@
+/* A link inside a banner guard note (Nocturne's `.guard-note--banner`). The
+   default link colour, --color-accent, reaches only about 4.2:1 on the banner's
+   warning tint, below the 4.5:1 that 13px text needs; the lighter accent reaches
+   about 6.6:1. Kept out of nocturne.css, which stays a verbatim port. */
+.guard-note--banner .guard-note-body a {
+  color: var(--color-accent-400);
+}

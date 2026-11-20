@@ -4,11 +4,15 @@ import {
   submitEstimate,
   expectItemVisible,
   expectSubmittedCount,
+  followLinkToNewTab,
   openDiagnosis,
   readDiagnosisReport,
+  tryJoinUnreachableSession,
 } from '../../../e2e/helpers'
 import { expect } from '@playwright/test'
-import { Given, When, Then } from '../../shared/e2e/world'
+import type { Page } from '@playwright/test'
+import { Given, When, Then, requireState } from '../../shared/e2e/world'
+import type { ScenarioState } from '../../shared/e2e/world'
 
 Given('a facilitator has started a collaborative session', async ({ actor, state }) => {
   const page = await actor('Facilitator')
@@ -38,31 +42,71 @@ Then(
   },
 )
 
-When('{word} opens the connection diagnosis', async ({ actor }, name: string) => {
+/** The page on which `name` opened the connection diagnosis. */
+function diagnosisPageOf(state: ScenarioState, name: string): Page {
+  const page = requireState(state, 'diagnosisPages')[name]
+  if (!page) throw new Error(`${name} has not opened the connection diagnosis`)
+  return page
+}
+
+When('{word} opens the connection diagnosis', async ({ actor, state }, name: string) => {
   const page = await actor(name)
   await openDiagnosis(page)
+  state.diagnosisPages = { ...state.diagnosisPages, [name]: page }
+})
+
+/** A random code, so no other scenario's session can answer it. */
+const unusedSessionCode = () =>
+  Array.from(
+    { length: 6 },
+    () => 'ABCDEFGHJKMNPQRSTUVWXYZ'[Math.floor(Math.random() * 23)],
+  ).join('')
+
+Given(
+  '{word} has tried to join a session nobody is running',
+  async ({ actor }, name: string) => {
+    await tryJoinUnreachableSession(await actor(name), unusedSessionCode(), name)
+  },
+)
+
+When(
+  '{word} follows {string} on the problem notice',
+  async ({ actor, state }, name: string, link: string) => {
+    const from = await actor(name)
+    const fromUrl = from.url()
+    const opened = await followLinkToNewTab(from, link)
+    state.followedLink = { from, fromUrl, opened }
+    state.diagnosisPages = { ...state.diagnosisPages, [name]: opened }
+  },
+)
+
+Then('the connection diagnosis opens in a new tab', async ({ state }) => {
+  const { from, fromUrl, opened } = requireState(state, 'followedLink')
+  expect(new URL(opened.url()).pathname).toBe('/diagnosis')
+  // The page the link was followed from stays where it was.
+  expect(from.url()).toBe(fromUrl)
 })
 
 Then(
   "{word}'s diagnosis report shows the session as {string}",
-  async ({ actor }, name: string, status: string) => {
-    const report = await readDiagnosisReport(await actor(name))
+  async ({ state }, name: string, status: string) => {
+    const report = await readDiagnosisReport(diagnosisPageOf(state, name))
     expect(report).toMatch(new RegExp(`status\\s+${status}\\b`))
   },
 )
 
 Then(
   "{word}'s diagnosis report lists a {string} candidate",
-  async ({ actor }, name: string, type: string) => {
-    const report = await readDiagnosisReport(await actor(name))
+  async ({ state }, name: string, type: string) => {
+    const report = await readDiagnosisReport(diagnosisPageOf(state, name))
     expect(report).toMatch(new RegExp(`\\b${type}/(udp|tcp)\\b`))
   },
 )
 
 Then(
   "{word}'s diagnosis report does not mention {string} or {string}",
-  async ({ actor }, name: string, first: string, second: string) => {
-    const report = await readDiagnosisReport(await actor(name))
+  async ({ state }, name: string, first: string, second: string) => {
+    const report = await readDiagnosisReport(diagnosisPageOf(state, name))
     expect(report).not.toContain(first)
     expect(report).not.toContain(second)
   },
