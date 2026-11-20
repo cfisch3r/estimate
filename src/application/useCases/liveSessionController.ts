@@ -7,7 +7,10 @@ import { FACILITATOR_PARTICIPANT_ID } from '../../domain/participantId'
 import { needsResend, roundKey } from '../../domain/resend'
 import { shouldPruneDeparted } from '../../domain/roster'
 import { buildSessionSnapshot, snapshotChangeKey } from '../../domain/snapshot'
+import type { DiagnosticEvent } from '../../domain/diagnosis/types'
+import type { LiveConnectionStatus } from '../../domain/types'
 import type { LiveSessionApi } from './liveSessionContext'
+import type { DiagnosticsLog } from '../ports/outbound/diagnosticsLog'
 import type {
   ConnectionState,
   JoinSession,
@@ -35,9 +38,30 @@ export interface LiveSessionController {
  *  against a fake and the React provider stays a thin shell. */
 export function createLiveSessionController(deps: {
   joinSession: JoinSession
+  /** Where the connection diagnosis records the session start and the status the
+   *  user saw (issue #229). */
+  diagnostics: DiagnosticsLog
 }): LiveSessionController {
   let live: TransportSession | null = null
   let unsubscribe: (() => void) | null = null
+
+  // The diagnosis is never worth a broken session: a failing log is ignored.
+  const record = (event: DiagnosticEvent) => {
+    try {
+      deps.diagnostics.record(event, useConnectionStore.getState().role)
+    } catch {
+      // Nothing to do: the diagnosis just misses this fact.
+    }
+  }
+
+  // The status line the diagnosis shows is the one the user saw, so it records
+  // the derived status, and only when that changes.
+  let lastRecordedStatus: LiveConnectionStatus | null = null
+  const recordStatus = (status: LiveConnectionStatus) => {
+    if (status === lastRecordedStatus) return
+    lastRecordedStatus = status
+    record({ kind: 'status', status })
+  }
 
   function teardown() {
     unsubscribe?.()
@@ -63,10 +87,14 @@ export function createLiveSessionController(deps: {
   // it's connected before facilitatorPeerId (above) is known.
   const syncConnectionStatus = (trackerState: ConnectionState) => {
     const { role, setConnectionStatus, setPeerCount } = useConnectionStore.getState()
-    setConnectionStatus(
-      deriveConnectionStatus(role, trackerState.status, facilitatorPeerId !== null),
+    const status = deriveConnectionStatus(
+      role,
+      trackerState.status,
+      facilitatorPeerId !== null,
     )
+    setConnectionStatus(status)
     setPeerCount(trackerState.peerIds.length)
+    recordStatus(status)
   }
 
   // Participant-only: `item:round` of a roster-triggered resend already in
@@ -118,6 +146,12 @@ export function createLiveSessionController(deps: {
       teardown()
       const session = deps.joinSession(sessionId)
       live = session
+      lastRecordedStatus = null
+      record({
+        kind: 'session-start',
+        sessionCode: sessionId,
+        role: useConnectionStore.getState().role,
+      })
       syncConnectionStatus(session.getConnectionState())
       lastSnapshotKey = ''
       peerParticipants.clear()
@@ -243,6 +277,7 @@ export function createLiveSessionController(deps: {
       const { setConnectionStatus, setPeerCount } = useConnectionStore.getState()
       setConnectionStatus('idle')
       setPeerCount(0)
+      recordStatus('idle')
     },
     sendEstimate: (itemId, estimate, round) => {
       const { role } = useConnectionStore.getState()

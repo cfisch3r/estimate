@@ -22,6 +22,7 @@ export function LiveSessionProvider({
   if (controllerRef.current === null) {
     controllerRef.current = createLiveSessionController({
       joinSession: createJoinSession({ diagnostics }),
+      diagnostics,
     })
   }
   const controller = controllerRef.current
