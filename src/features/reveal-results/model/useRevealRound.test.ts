@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { createEstimate } from '../../../domain/estimate'
 import {
@@ -48,13 +48,22 @@ describe('useRevealRound', () => {
   })
 
   it('finalizes from the submissions, or reports why it cannot', () => {
+    useSessionStore.setState((s) => ({
+      items: s.items.map((i) => ({ ...i, revealed: true })),
+    }))
     const { result } = renderHook(() => useRevealRound(currentItem()))
-    expect(result.current.finalize().ok).toBe(false)
+    const empty = result.current.finalize()
+    expect(empty.ok).toBe(false)
+    expect(empty).not.toEqual({ ok: false, error: 'Reveal the round first.' })
 
     const estimate = createEstimate({ participantId: 'p1', best: 1, likely: 2, worst: 3 })
     if (!estimate.ok) throw new Error(estimate.error)
     useSessionStore.setState((s) => ({
-      items: s.items.map((i) => ({ ...i, submissions: [estimate.value] })),
+      items: s.items.map((i) => ({
+        ...i,
+        revealed: true,
+        submissions: [estimate.value],
+      })),
     }))
 
     let outcome: { ok: boolean } | undefined
@@ -64,6 +73,30 @@ describe('useRevealRound', () => {
     expect(outcome?.ok).toBe(true)
     expect(currentItem().finalResult).not.toBeNull()
     expect(useRoundStore.getState().liveRound).toBeNull()
+  })
+
+  it('moves on only once finalizing worked', () => {
+    const onAdvance = vi.fn()
+    const { result } = renderHook(() => useRevealRound(currentItem(), onAdvance))
+    act(() => result.current.finalizeAndAdvance())
+    expect(onAdvance).not.toHaveBeenCalled()
+
+    const estimate = createEstimate({ participantId: 'p1', best: 1, likely: 2, worst: 3 })
+    if (!estimate.ok) throw new Error(estimate.error)
+    useSessionStore.setState((s) => ({
+      items: s.items.map((i) => ({
+        ...i,
+        revealed: true,
+        submissions: [estimate.value],
+      })),
+    }))
+    act(() => result.current.finalizeAndAdvance())
+    expect(onAdvance).toHaveBeenCalledTimes(1)
+  })
+
+  it('describes what the panel shows for the item', () => {
+    const { result } = renderHook(() => useRevealRound(currentItem()))
+    expect(result.current.view).toMatchObject({ roundOpen: true, footer: 'preReveal' })
   })
 
   it('reports an unknown item when finalizing one that is gone', () => {
@@ -78,7 +111,11 @@ describe('useRevealRound', () => {
     const estimate = createEstimate({ participantId: 'p1', best: 2, likely: 4, worst: 8 })
     if (!estimate.ok) throw new Error(estimate.error)
     useSessionStore.setState((s) => ({
-      items: s.items.map((i) => ({ ...i, submissions: [estimate.value] })),
+      items: s.items.map((i) => ({
+        ...i,
+        revealed: true,
+        submissions: [estimate.value],
+      })),
     }))
 
     expect(result.current.finalize()).toEqual({ ok: true })

@@ -50,6 +50,7 @@ describe('applyFacilitatorSnapshot', () => {
       ],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
 
     const round = useRoundStore.getState().liveRound
@@ -57,6 +58,7 @@ describe('applyFacilitatorSnapshot', () => {
       item: snapshotItem,
       revealed: false,
       mySubmission: null,
+      finalResult: null,
     })
     expect(useSessionStore.getState().unit).toBe('weeks')
   })
@@ -70,6 +72,7 @@ describe('applyFacilitatorSnapshot', () => {
         round: 0,
         roster: [],
         mySubmission: null,
+        finalResult: null,
       },
     })
 
@@ -82,6 +85,7 @@ describe('applyFacilitatorSnapshot', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
 
     expect(useRoundStore.getState().liveRound).toBeNull()
@@ -97,6 +101,7 @@ describe('applyFacilitatorSnapshot', () => {
         round: 0,
         roster: [],
         mySubmission: mine(2, 4, 8),
+        finalResult: null,
       },
     })
 
@@ -112,6 +117,7 @@ describe('applyFacilitatorSnapshot', () => {
       ],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
 
     const round = useRoundStore.getState().liveRound
@@ -128,6 +134,7 @@ describe('applyFacilitatorSnapshot', () => {
         round: 0,
         roster: [],
         mySubmission: null,
+        finalResult: null,
       },
     })
 
@@ -146,6 +153,7 @@ describe('applyFacilitatorSnapshot', () => {
         makeEstimate({ participantId: 'b', best: 3, likely: 5, worst: 9 }),
       ],
       finalizedItemIds: [],
+      finalResult: null,
     })
 
     const round = useRoundStore.getState().liveRound
@@ -162,6 +170,7 @@ describe('applyFacilitatorSnapshot', () => {
         round: 0,
         roster: [],
         mySubmission: mine(2, 4, 8),
+        finalResult: null,
       },
     })
 
@@ -174,6 +183,7 @@ describe('applyFacilitatorSnapshot', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
 
     const round = useRoundStore.getState().liveRound
@@ -192,6 +202,7 @@ describe('applyFacilitatorSnapshot', () => {
         round: 0,
         roster: [],
         mySubmission: mine(2, 4, 8),
+        finalResult: null,
       },
     })
 
@@ -204,6 +215,7 @@ describe('applyFacilitatorSnapshot', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
 
     const round = useRoundStore.getState().liveRound
@@ -226,6 +238,7 @@ describe('applyFacilitatorSnapshot', () => {
       ],
       submissions: [makeEstimate({ participantId: 'a' })],
       finalizedItemIds: [],
+      finalResult: null,
     })
 
     expect(useRoundStore.getState().liveRound).toMatchObject({
@@ -243,6 +256,7 @@ describe('applyFacilitatorSnapshot', () => {
         round: 0,
         roster: [],
         mySubmission: mine(2, 4, 8),
+        finalResult: null,
       },
     })
 
@@ -256,6 +270,7 @@ describe('applyFacilitatorSnapshot', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
 
     expect(useRoundStore.getState().liveRound).toMatchObject({
@@ -263,6 +278,7 @@ describe('applyFacilitatorSnapshot', () => {
       submissions: [],
       revealed: false,
       mySubmission: null,
+      finalResult: null,
     })
   })
 })
@@ -276,6 +292,7 @@ describe('applyFacilitatorSnapshot: session fields', () => {
     roster: [],
     submissions: [],
     finalizedItemIds: [],
+    finalResult: null,
   }
 
   it('lets a participant adopt the facilitator session name', () => {

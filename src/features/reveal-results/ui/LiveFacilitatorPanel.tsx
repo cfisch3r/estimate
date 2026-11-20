@@ -1,15 +1,19 @@
-import { useEffect, useRef } from 'react'
 import { GroupBox, LiveRegion, Tag, VisuallyHidden } from '../../../shared/ui'
 import { PARTICIPANT_ESTIMATES_INFO } from '../../../shared/copy'
 import { useSingleInfoPopover } from '../../../shared/lib/useSingleInfoPopover'
 import { EstimateTriple } from '../../../entities/estimate'
+import { AggregatedRange } from './AggregatedRange'
 import type { EstimationUnit } from '../../../domain/estimate'
-import { isFinalized } from '../../../domain/item'
 import { ItemDetailShell } from '../../../entities/item'
 import type { Item } from '../../../domain/types'
+import { useFocusOnNewRound } from '../model/useFocusOnNewRound'
 import { useRevealRound } from '../model/useRevealRound'
-import { AggregatedRange } from './AggregatedRange'
-import { FinalizedFooter, PreRevealFooter, ReviewFooter } from './RevealFooters'
+import {
+  FinalizedFooter,
+  PreRevealFooter,
+  ResumedFinalizedFooter,
+  ReviewFooter,
+} from './RevealFooters'
 
 interface LiveFacilitatorPanelProps {
   item: Item
@@ -21,8 +25,10 @@ interface LiveFacilitatorPanelProps {
 }
 
 /** Live mode, facilitator side: Workspace states 1c (waiting for estimates) and
- *  1d (revealed). The facilitator never types estimate values — the range comes
- *  from aggregating participants' submissions. */
+ *  1d (revealed), plus an item finalized before this session started (a loaded
+ *  session file), which has a saved range but no round. The facilitator never
+ *  types estimate values — the range comes from aggregating participants'
+ *  submissions, or is the saved one. */
 export function LiveFacilitatorPanel({
   item,
   unit,
@@ -31,31 +37,16 @@ export function LiveFacilitatorPanel({
   onAdvance,
   onNavigatePrev,
 }: LiveFacilitatorPanelProps) {
-  const { roster, reveal, retry, finalize } = useRevealRound(item)
-  const submittedCount = item.submissions.length
+  const { roster, reveal, retry, finalizeAndAdvance, view } = useRevealRound(
+    item,
+    onAdvance,
+  )
+  const participantsRef = useFocusOnNewRound<HTMLSpanElement>(item)
   const {
     openKey: infoOpen,
     open: openInfo,
     close: closeInfo,
   } = useSingleInfoPopover<'description' | 'estimate' | 'range'>()
-
-  // Reopen / Retry unmount the footer button that had focus (the footer swaps
-  // for the pre-reveal one, whose Reveal button is disabled with no
-  // submissions), which would drop focus to <body>. Hand it to the participants
-  // group's label, which is on screen in every state.
-  const participantsRef = useRef<HTMLSpanElement>(null)
-  const previous = useRef({ itemId: item.id, revealed: item.revealed })
-  useEffect(() => {
-    const was = previous.current
-    previous.current = { itemId: item.id, revealed: item.revealed }
-    if (was.itemId === item.id && was.revealed && !item.revealed) {
-      participantsRef.current?.focus()
-    }
-  }, [item.id, item.revealed])
-
-  function handleFinalizeAndAdvance() {
-    if (finalize().ok) onAdvance()
-  }
 
   return (
     <ItemDetailShell
@@ -66,7 +57,7 @@ export function LiveFacilitatorPanel({
     >
       <GroupBox
         labelRef={participantsRef}
-        label={item.revealed ? 'Participant estimates' : 'Participants'}
+        label={view.revealed ? 'Participant estimates' : 'Participants'}
         info={PARTICIPANT_ESTIMATES_INFO}
         infoOpen={infoOpen === 'estimate'}
         onInfoOpen={() => openInfo('estimate')}
@@ -74,9 +65,9 @@ export function LiveFacilitatorPanel({
       >
         <LiveRegion>
           <VisuallyHidden>
-            {item.revealed || roster.length === 0
-              ? ''
-              : `${submittedCount} of ${roster.length} submitted`}
+            {view.roundOpen && roster.length > 0
+              ? `${view.submittedCount} of ${roster.length} submitted`
+              : ''}
           </VisuallyHidden>
         </LiveRegion>
         {roster.length === 0 ? (
@@ -98,7 +89,7 @@ export function LiveFacilitatorPanel({
                 }}
               >
                 <span>{row.label}</span>
-                {item.revealed ? (
+                {view.revealed ? (
                   <span className={row.submission ? undefined : 'text-muted'}>
                     {row.submission ? (
                       <EstimateTriple
@@ -111,20 +102,21 @@ export function LiveFacilitatorPanel({
                       'No response'
                     )}
                   </span>
-                ) : (
+                ) : view.roundOpen ? (
                   <Tag variant={row.submission ? 'accent' : 'neutral'}>
                     {row.submission ? 'Submitted' : 'Waiting'}
                   </Tag>
-                )}
+                ) : null}
               </li>
             ))}
           </ul>
         )}
       </GroupBox>
 
-      {item.revealed && (
+      {view.range && (
         <AggregatedRange
-          submissions={item.submissions}
+          kind={view.range.kind}
+          range={view.range.values}
           unit={unit}
           infoOpen={infoOpen === 'range'}
           onInfoOpen={() => openInfo('range')}
@@ -132,23 +124,34 @@ export function LiveFacilitatorPanel({
         />
       )}
 
-      {!item.revealed ? (
-        <PreRevealFooter submittedCount={submittedCount} onReveal={reveal} />
-      ) : isFinalized(item) ? (
+      {view.footer === 'resumedFinalized' && (
+        <ResumedFinalizedFooter
+          isFirst={isFirst}
+          isLast={isLast}
+          onNavigatePrev={onNavigatePrev}
+          onAdvance={onAdvance}
+          onReopen={retry}
+        />
+      )}
+      {view.footer === 'preReveal' && (
+        <PreRevealFooter submittedCount={view.submittedCount} onReveal={reveal} />
+      )}
+      {view.footer === 'finalized' && (
         <FinalizedFooter
           isFirst={isFirst}
           isLast={isLast}
           onNavigatePrev={onNavigatePrev}
-          onUpdate={handleFinalizeAndAdvance}
+          onUpdate={finalizeAndAdvance}
           onReopen={retry}
         />
-      ) : (
+      )}
+      {view.footer === 'review' && (
         <ReviewFooter
-          submittedCount={submittedCount}
+          submittedCount={view.submittedCount}
           isFirst={isFirst}
           isLast={isLast}
           onNavigatePrev={onNavigatePrev}
-          onFinalize={handleFinalizeAndAdvance}
+          onFinalize={finalizeAndAdvance}
           onRetry={retry}
         />
       )}

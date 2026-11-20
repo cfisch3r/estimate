@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
+  canFinalizeLive,
+  isNewRound,
   acceptRemoteEstimate,
   adoptSnapshot,
   recordOwnSubmission,
   retryRoundPatch,
   upsertByParticipant,
 } from './round'
-import { estimateOf, finalizedItemOf, itemOf } from './testFixtures'
+import { aggregateOf, estimateOf, finalizedItemOf, itemOf } from './testFixtures'
 import type { LiveRound, SessionSnapshot } from './types'
 
 describe('upsertByParticipant', () => {
@@ -27,6 +29,31 @@ describe('upsertByParticipant', () => {
     const list = [estimateOf('a')]
     upsertByParticipant(list, estimateOf('a', 4, 5, 6))
     expect(list).toEqual([estimateOf('a')])
+  })
+})
+
+describe('canFinalizeLive', () => {
+  it('allows finalizing a revealed round, finalized already or not', () => {
+    expect(canFinalizeLive(itemOf({ revealed: true }))).toEqual({ ok: true })
+    expect(canFinalizeLive(finalizedItemOf({ revealed: true }))).toEqual({ ok: true })
+  })
+
+  it('refuses a round that is not revealed, so a live item is never finalized unseen', () => {
+    expect(canFinalizeLive(itemOf({ submissions: [estimateOf('a')] }))).toEqual({
+      ok: false,
+      error: 'Reveal the round first.',
+    })
+  })
+})
+
+describe('isNewRound', () => {
+  it('is a new round when the same item moved to another round', () => {
+    expect(isNewRound({ itemId: 'a', round: 0 }, { itemId: 'a', round: 1 })).toBe(true)
+  })
+
+  it('is not a new round for the same round, or for another item', () => {
+    expect(isNewRound({ itemId: 'a', round: 1 }, { itemId: 'a', round: 1 })).toBe(false)
+    expect(isNewRound({ itemId: 'a', round: 0 }, { itemId: 'b', round: 1 })).toBe(false)
   })
 })
 
@@ -110,6 +137,7 @@ describe('recordOwnSubmission', () => {
     round: 0,
     roster: [],
     mySubmission: null,
+    finalResult: null,
   }
 
   it('is a no-op without an active round', () => {
@@ -121,6 +149,7 @@ describe('recordOwnSubmission', () => {
     expect(recordOwnSubmission(round, mine)).toEqual({
       ...round,
       mySubmission: mine,
+      finalResult: null,
       submissions: [mine],
     })
   })
@@ -146,6 +175,7 @@ function snapshotOf(overrides: Partial<SessionSnapshot> = {}): SessionSnapshot {
     roster: [{ participantId: 'a', submitted: true, connected: true }],
     submissions: [],
     finalizedItemIds: [],
+    finalResult: null,
     ...overrides,
   }
 }
@@ -158,6 +188,7 @@ function roundOf(overrides: Partial<LiveRound> = {}): LiveRound {
     round: 0,
     roster: [],
     mySubmission: null,
+    finalResult: null,
     ...overrides,
   }
 }
@@ -171,7 +202,23 @@ describe('adoptSnapshot', () => {
       round: 0,
       roster: [{ participantId: 'a', submitted: true, connected: true }],
       mySubmission: null,
+      finalResult: null,
     })
+  })
+
+  it("carries the active item's final result", () => {
+    const finalResult = aggregateOf(2, 3, 6)
+    expect(adoptSnapshot(null, snapshotOf({ finalResult }))?.finalResult).toEqual(
+      finalResult,
+    )
+  })
+
+  it('clears the final result when a reopen snapshot arrives', () => {
+    const next = adoptSnapshot(
+      roundOf({ finalResult: aggregateOf(2, 3, 6) }),
+      snapshotOf({ round: 1, finalResult: null }),
+    )
+    expect(next?.finalResult).toBeNull()
   })
 
   it('clears the round when the facilitator has no active item', () => {
@@ -213,6 +260,7 @@ describe('adoptSnapshot', () => {
       revealed: false,
       round: 0,
       mySubmission: estimateOf('me'),
+      finalResult: null,
     })
     const next = adoptSnapshot(previous, snapshotOf({ revealed: true, round: 2 }))
     expect(next).toMatchObject({ revealed: true, round: 2, mySubmission: null })

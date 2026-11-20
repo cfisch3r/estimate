@@ -33,6 +33,21 @@ Feature: Save a session to a file and resume it later
       | Login  |
       | Search |
     And Sam is estimating "Search"
+    When Alex opens "Login"
+    Then Alex sees "Login" finalized at 2 to 6 days
+    And Sam sees "Login" already estimated at 2 to 6 days
+
+  Scenario: A finalized item from a saved file is reopened in a live session
+    Given Alex has a saved session file "Sprint 42" with the items
+      | item   | state         |
+      | Login  | estimated     |
+      | Search | not estimated |
+    When Alex loads the saved file
+    And Alex starts a collaborative session
+    And Sam joins the session
+    And Alex opens "Login"
+    And Alex reopens "Login"
+    Then Sam can estimate "Login"
 
   Scenario: A live session is saved by its facilitator
     Given Alex is facilitating a collaborative session named "Sprint 42"

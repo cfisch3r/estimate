@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  livePhaseOf,
   appendItem,
   firstPendingItemId,
   isFinalized,
@@ -8,7 +9,7 @@ import {
   renameItem,
   updateItem,
 } from './item'
-import { finalizedItemOf, itemOf } from './testFixtures'
+import { aggregateOf, finalizedItemOf, itemOf } from './testFixtures'
 
 describe('isFinalized', () => {
   it('is false while the item has no final result', () => {
@@ -160,5 +161,27 @@ describe('renameItem', () => {
 
   it('leaves every item untouched for an unknown id', () => {
     expect(renameItem(items, 'zzz', 'New')).toEqual(items)
+  })
+})
+
+describe('livePhaseOf', () => {
+  const finalResult = aggregateOf(2, 3, 6)
+
+  it('is revealed once the round is, finalized or not', () => {
+    expect(livePhaseOf({ revealed: true, finalResult: null })).toEqual({
+      phase: 'revealed',
+    })
+    expect(livePhaseOf({ revealed: true, finalResult })).toEqual({ phase: 'revealed' })
+  })
+
+  it('is finalized earlier for a final result with no round revealed', () => {
+    expect(livePhaseOf({ revealed: false, finalResult })).toEqual({
+      phase: 'finalizedEarlier',
+      finalResult,
+    })
+  })
+
+  it('is open while pending and unrevealed', () => {
+    expect(livePhaseOf({ revealed: false, finalResult: null })).toEqual({ phase: 'open' })
   })
 })

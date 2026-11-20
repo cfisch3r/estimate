@@ -9,6 +9,9 @@ import {
   expectAtModeSelection,
   expectInLiveSessionAsParticipant,
   expectFinalizedEstimate,
+  expectLiveFinalizedItem,
+  expectParticipantCanEstimate,
+  expectParticipantSeesFinalizedItem,
   expectItemList,
   expectLeaveConfirmationForUnsavedChanges,
   expectLeaveConfirmationForUnsavedChangesInLiveSession,
@@ -19,7 +22,9 @@ import {
   goBackInBrowser,
   leaveSession,
   loadSessionFile,
+  reopenActiveItem,
   saveSession,
+  selectItem,
   setSessionName,
   startCollaborativeEstimation,
   startSingleUserSession,
@@ -175,6 +180,16 @@ When('{word} starts a collaborative session', async ({ actor, state }, name: str
   state.sessionCode = await startCollaborativeEstimation(await actor(name))
 })
 
+When('{word} opens {string}', async ({ actor }, name: string, title: string) => {
+  await selectItem(await actor(name), title)
+})
+
+When('{word} reopens {string}', async ({ actor }, name: string, title: string) => {
+  const page = await actor(name)
+  await expectActiveItem(page, title)
+  await reopenActiveItem(page)
+})
+
 When('{word} goes back in the browser', async ({ actor }, name: string) => {
   await goBackInBrowser(await actor(name))
 })
@@ -205,6 +220,28 @@ Then(
     }
   },
 )
+
+Then(
+  '{word} sees {string} finalized at {int} to {int} days',
+  async ({ actor }, name: string, title: string, min: number, max: number) => {
+    await expectLiveFinalizedItem(await actor(name), title, { min, max, unitSuffix: 'd' })
+  },
+)
+
+Then(
+  '{word} sees {string} already estimated at {int} to {int} days',
+  async ({ actor }, name: string, title: string, min: number, max: number) => {
+    await expectParticipantSeesFinalizedItem(await actor(name), title, {
+      min,
+      max,
+      unitSuffix: 'd',
+    })
+  },
+)
+
+Then('{word} can estimate {string}', async ({ actor }, name: string, title: string) => {
+  await expectParticipantCanEstimate(await actor(name), title)
+})
 
 Then('{word} sees the items', async ({ actor }, name: string, table: DataTable) => {
   await expectItemList(

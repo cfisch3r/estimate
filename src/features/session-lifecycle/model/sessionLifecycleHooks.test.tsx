@@ -112,6 +112,7 @@ function seedLiveParticipant() {
       round: 0,
       roster: [],
       mySubmission: null,
+      finalResult: null,
     },
   })
 }

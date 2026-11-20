@@ -153,6 +153,7 @@ describe('joinSession', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     }
     fakeRoom.requestActionsByName.requestSnapshot!.request.mockResolvedValue(snapshot)
 
@@ -176,6 +177,7 @@ describe('joinSession', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     }
     session.onRequestSnapshot(() => snapshot)
 

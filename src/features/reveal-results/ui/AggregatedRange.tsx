@@ -1,47 +1,52 @@
 import { GroupBox } from '../../../shared/ui'
 import { RANGE_INFO } from '../../../shared/copy'
 import {
-  aggregateEstimates,
   UNIT_SUFFIX,
-  type Estimate,
+  type AggregateValues,
   type EstimationUnit,
 } from '../../../domain/estimate'
 import { RangeBar } from '../../../entities/estimate'
 
+const LABEL = {
+  aggregated: 'Range (aggregated)',
+  finalized: 'Range (finalized)',
+} as const
+
 interface AggregatedRangeProps {
-  submissions: Estimate[]
+  /** `aggregated` for a revealed round's submissions, `finalized` for an
+   *  item's saved result. */
+  kind: keyof typeof LABEL
+  range: AggregateValues
   unit: EstimationUnit
   infoOpen: boolean
   onInfoOpen: () => void
   onInfoClose: () => void
 }
 
-/** The revealed round's aggregated range as a labelled range bar, shared by the
- *  facilitator's panel and the participant's revealed view. Renders nothing when
- *  no estimates were submitted — callers decide what to say in that case. */
+/** An aggregated range as a labelled range bar, shared by the facilitator's
+ *  panel and the participant's revealed and finalized views. Callers decide
+ *  which range to show, and what to say when there is none. */
 export function AggregatedRange({
-  submissions,
+  kind,
+  range,
   unit,
   infoOpen,
   onInfoOpen,
   onInfoClose,
 }: AggregatedRangeProps) {
-  if (submissions.length === 0) return null
-  const aggregate = aggregateEstimates(submissions)
-
   return (
     <GroupBox
-      label="Range (aggregated)"
+      label={LABEL[kind]}
       info={RANGE_INFO}
       infoOpen={infoOpen}
       onInfoOpen={onInfoOpen}
       onInfoClose={onInfoClose}
     >
       <RangeBar
-        min={aggregate.min}
-        max={aggregate.max}
-        expected={aggregate.expected}
-        ci90={aggregate.ci90}
+        min={range.min}
+        max={range.max}
+        expected={range.expected}
+        ci90={range.ci90}
         unitSuffix={UNIT_SUFFIX[unit]}
       />
     </GroupBox>

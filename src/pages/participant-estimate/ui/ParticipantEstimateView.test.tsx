@@ -12,6 +12,7 @@ import {
   useRoundStore,
 } from '../../../application/testing'
 import { ROUTES } from '../../../shared/lib/routes'
+import { aggregateOf } from '../../../domain/testFixtures'
 
 function mine(best: number, likely: number, worst: number): Estimate {
   const result = createEstimate({ participantId: 'me-123', best, likely, worst })
@@ -170,6 +171,7 @@ describe('ParticipantEstimateView', () => {
         round: 0,
         roster: [{ participantId: 'me-123', submitted: false, connected: true }],
         mySubmission: null,
+        finalResult: null,
       },
     })
     renderView()
@@ -214,6 +216,7 @@ describe('ParticipantEstimateView', () => {
         round: 0,
         roster: [{ participantId: 'me-123', submitted: false, connected: true }],
         mySubmission: null,
+        finalResult: null,
       },
     })
     const { rerender } = renderView()
@@ -233,6 +236,7 @@ describe('ParticipantEstimateView', () => {
           round: 0,
           roster: [{ participantId: 'me-123', submitted: false, connected: true }],
           mySubmission: null,
+          finalResult: null,
         },
       })
     })
@@ -261,6 +265,7 @@ describe('ParticipantEstimateView', () => {
         round: 0,
         roster: [{ participantId: 'me-123', submitted: false, connected: true }],
         mySubmission: null,
+        finalResult: null,
       },
     })
     renderView()
@@ -300,6 +305,7 @@ describe('ParticipantEstimateView', () => {
         round: 0,
         roster: [{ participantId: 'me-123', submitted: false, connected: true }],
         mySubmission: null,
+        finalResult: null,
       },
     })
     renderView()
@@ -329,6 +335,7 @@ describe('ParticipantEstimateView', () => {
         round: 0,
         roster: [{ participantId: 'me-123', submitted: false, connected: true }],
         mySubmission: null,
+        finalResult: null,
       },
     })
     renderView()
@@ -352,6 +359,7 @@ describe('ParticipantEstimateView', () => {
         round: 0,
         roster: [{ participantId: 'me-123', submitted: false, connected: true }],
         mySubmission: null,
+        finalResult: null,
       },
     })
     renderView()
@@ -387,6 +395,7 @@ describe('ParticipantEstimateView', () => {
         round: 0,
         roster: [{ participantId: 'me-123', submitted: false, connected: true }],
         mySubmission: null,
+        finalResult: null,
       },
     })
     renderView()
@@ -423,6 +432,7 @@ describe('ParticipantEstimateView', () => {
         round: 0,
         roster: [{ participantId: 'me-123', submitted: true, connected: true }],
         mySubmission: mine(2, 4, 8),
+        finalResult: null,
       },
     })
     renderView()
@@ -446,6 +456,7 @@ describe('ParticipantEstimateView', () => {
           { participantId: 'p2', submitted: true, connected: true },
         ],
         mySubmission: mine(3, 5, 8),
+        finalResult: null,
       },
     })
     renderView()
@@ -474,6 +485,7 @@ describe('ParticipantEstimateView', () => {
         round: 0,
         roster: [],
         mySubmission: mine(3, 5, 8),
+        finalResult: null,
       },
     })
     renderView()
@@ -499,12 +511,55 @@ describe('ParticipantEstimateView', () => {
         round: 0,
         roster: [],
         mySubmission: mine(3, 5, 8),
+        finalResult: null,
       },
     })
     renderView()
 
     expect(screen.getByText('You')).toBeInTheDocument()
     expect(screen.getByText('Teammate 1')).toBeInTheDocument()
+  })
+
+  it('shows an item finalized in an earlier session as already estimated, with no form', () => {
+    useRoundStore.setState({
+      liveRound: {
+        item,
+        submissions: [],
+        revealed: false,
+        round: 0,
+        roster: [{ participantId: 'me-123', submitted: false, connected: true }],
+        mySubmission: null,
+        finalResult: aggregateOf(2, 3, 6),
+      },
+    })
+    renderView()
+
+    expect(
+      screen.getByRole('heading', { level: 1, name: item.title }),
+    ).toBeInTheDocument()
+    expect(screen.getByText('Range (finalized)')).toBeInTheDocument()
+    expect(screen.getByText('2d')).toBeInTheDocument()
+    expect(screen.getByText('6d')).toBeInTheDocument()
+    expect(screen.getByText(/This item is already estimated/)).toBeInTheDocument()
+    expect(screen.queryByLabelText('Best case (days)')).toBeNull()
+  })
+
+  it('shows the revealed round, not the finalized view, once a round is revealed', () => {
+    useRoundStore.setState({
+      liveRound: {
+        item,
+        submissions: [estimate({ participantId: 'me-123' })],
+        revealed: true,
+        round: 0,
+        roster: [{ participantId: 'me-123', submitted: true, connected: true }],
+        mySubmission: mine(2, 4, 8),
+        finalResult: aggregateOf(2, 4, 8),
+      },
+    })
+    renderView()
+
+    expect(screen.getByText('Range (aggregated)')).toBeInTheDocument()
+    expect(screen.queryByText('Range (finalized)')).toBeNull()
   })
 
   describe('accessibility', () => {
@@ -516,6 +571,7 @@ describe('ParticipantEstimateView', () => {
       round: 0,
       roster,
       mySubmission: null,
+      finalResult: null,
     }
     const waiting = { ...estimating, mySubmission: mine(2, 4, 8) }
     const revealed = {
@@ -533,6 +589,7 @@ describe('ParticipantEstimateView', () => {
       ['estimating', estimating],
       ['waiting', waiting],
       ['revealed', revealed],
+      ['finalized', { ...estimating, finalResult: aggregateOf(2, 3, 6) }],
     ])('has no axe violations in the %s state', async (_name, liveRound) => {
       useRoundStore.setState({ liveRound })
       const { container } = renderView()
@@ -570,6 +627,56 @@ describe('ParticipantEstimateView', () => {
 
       expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
       expect(screen.getByText('Estimates revealed.')).toBeInTheDocument()
+    })
+
+    it('moves focus to the heading and announces it when the facilitator opens a finalized item', () => {
+      useRoundStore.setState({ liveRound: estimating })
+      renderView()
+
+      act(() => {
+        useRoundStore.setState({
+          liveRound: { ...estimating, finalResult: aggregateOf(2, 3, 6) },
+        })
+      })
+
+      expect(screen.getByRole('heading', { level: 1 })).toHaveFocus()
+      expect(screen.getByText(`${item.title} is already estimated.`)).toBeInTheDocument()
+    })
+
+    it('announces each finalized item the facilitator moves on to', () => {
+      const finalized = { ...estimating, finalResult: aggregateOf(2, 3, 6) }
+      useRoundStore.setState({ liveRound: estimating })
+      renderView()
+
+      act(() => useRoundStore.setState({ liveRound: finalized }))
+      act(() =>
+        useRoundStore.setState({
+          liveRound: { ...finalized, item: { ...item, id: 'item-2', title: 'Search' } },
+        }),
+      )
+
+      expect(screen.getByText('Search is already estimated.')).toBeInTheDocument()
+    })
+
+    it('announces a second finalized item even when it has the same title', async () => {
+      const finalized = { ...estimating, finalResult: aggregateOf(2, 3, 6) }
+      useRoundStore.setState({ liveRound: estimating })
+      renderView()
+
+      act(() => useRoundStore.setState({ liveRound: finalized }))
+      expect(screen.getByText(`${item.title} is already estimated.`)).toBeInTheDocument()
+
+      act(() =>
+        useRoundStore.setState({
+          liveRound: { ...finalized, item: { ...item, id: 'item-2' } },
+        }),
+      )
+      // The region empties, then says the same words again, so a screen
+      // reader reads them a second time.
+      expect(screen.queryByText(`${item.title} is already estimated.`)).toBeNull()
+      expect(
+        await screen.findByText(`${item.title} is already estimated.`),
+      ).toBeInTheDocument()
     })
 
     it('hands focus to the first input when revising, and back to Revise after updating', async () => {

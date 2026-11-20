@@ -1,4 +1,4 @@
-import type { Estimate } from './estimate'
+import type { ActionResult, Estimate } from './estimate'
 import { isFinalized } from './item'
 import type { Item, LiveRound, SessionSnapshot } from './types'
 
@@ -10,6 +10,23 @@ export function upsertByParticipant(list: Estimate[], next: Estimate): Estimate[
   const copy = [...list]
   copy[index] = next
   return copy
+}
+
+/** Whether the facilitator may finalize `item` in a live session: only once its
+ *  round is revealed, so the group has seen what it records. This is also what
+ *  lets `livePhaseOf` read "finalized, not revealed" as "finalized before the
+ *  load" — a live session can never produce that state itself. */
+export function canFinalizeLive(item: Pick<Item, 'revealed'>): ActionResult {
+  return item.revealed ? { ok: true } : { ok: false, error: 'Reveal the round first.' }
+}
+
+/** Whether `current` is a new round of the same item as `previous`: a Retry
+ *  or a Reopen bumps the round, moving to another item does not count. */
+export function isNewRound(
+  previous: { itemId: string; round: number },
+  current: { itemId: string; round: number },
+): boolean {
+  return previous.itemId === current.itemId && previous.round !== current.round
 }
 
 /** The round fields a Retry resets. Discards the round's submissions and returns
@@ -101,5 +118,6 @@ export function adoptSnapshot(
     round: snapshot.round,
     roster: snapshot.roster,
     mySubmission: carryOver ? previous.mySubmission : null,
+    finalResult: snapshot.finalResult,
   }
 }

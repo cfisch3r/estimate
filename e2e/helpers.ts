@@ -282,6 +282,63 @@ export async function expectFinalizedEstimate(
   await expect(page.getByLabel(/^Worst case/)).toHaveValue(String(values.worst))
 }
 
+/** The "Range (finalized)" group a finalized item shows in a live session —
+ *  the item's saved result, not one computed from this session's submissions. */
+async function expectFinalizedRange(
+  page: Page,
+  range: { min: number; max: number; unitSuffix: string },
+): Promise<void> {
+  const group = page.locator('.group-box').filter({ hasText: 'Range (finalized)' })
+  await expect(group.locator('.range-bar-end-value')).toHaveText([
+    `${range.min}${range.unitSuffix}`,
+    `${range.max}${range.unitSuffix}`,
+  ])
+}
+
+/** Live Workspace, facilitator: `title` is open and shows its saved final
+ *  range, with no reveal pending. */
+export async function expectLiveFinalizedItem(
+  page: Page,
+  title: string,
+  range: { min: number; max: number; unitSuffix: string },
+): Promise<void> {
+  await expectActiveItem(page, title)
+  await expectFinalizedRange(page, range)
+  await expect(page.getByRole('button', { name: /^Reveal estimates/ })).toHaveCount(0)
+}
+
+/** Participant estimate view: the active item `title` is already estimated —
+ *  its final range shows and there is no estimate form. */
+export async function expectParticipantSeesFinalizedItem(
+  page: Page,
+  title: string,
+  range: { min: number; max: number; unitSuffix: string },
+): Promise<void> {
+  await expectActiveItem(page, title)
+  await expectFinalizedRange(page, range)
+  await expect(page.getByLabel(/^Best case/)).toHaveCount(0)
+}
+
+/** Live Workspace, facilitator: reopens the active finalized item, confirming
+ *  the armed second click. */
+export async function reopenActiveItem(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Reopen item' }).click()
+  await page.getByRole('button', { name: 'Click again to reopen' }).click()
+}
+
+/** Participant estimate view: `title` is active and its estimate form is
+ *  back, with no finalized range left over. */
+export async function expectParticipantCanEstimate(
+  page: Page,
+  title: string,
+): Promise<void> {
+  await expectActiveItem(page, title)
+  await expect(page.getByLabel(/^Best case/)).toBeVisible()
+  await expect(
+    page.locator('.group-box').filter({ hasText: 'Range (finalized)' }),
+  ).toHaveCount(0)
+}
+
 /** Closes the tab with `beforeunload` handlers run; reports whether the
  *  browser raised its leave-page warning, and dismisses it if so. */
 export async function closeTabAndCheckLeaveWarning(page: Page): Promise<boolean> {

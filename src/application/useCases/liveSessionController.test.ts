@@ -263,6 +263,7 @@ describe('createLiveSessionController', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
     emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac-2')
     await flushMicrotasks()
@@ -303,6 +304,7 @@ describe('createLiveSessionController', () => {
       roster: [{ participantId: 'p2', submitted: true, connected: true }],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
     expect(useRoundStore.getState().liveRound?.item.title).toBe('Retry queue')
     expect(useRoundStore.getState().liveRound?.roster).toHaveLength(1)
@@ -317,6 +319,7 @@ describe('createLiveSessionController', () => {
       roster: [{ participantId: 'p2', submitted: true, connected: true }],
       submissions: [{ participantId: 'p2', best: 2, likely: 4, worst: 8 }],
       finalizedItemIds: [],
+      finalResult: null,
     })
     expect(useRoundStore.getState().liveRound?.revealed).toBe(true)
 
@@ -329,6 +332,7 @@ describe('createLiveSessionController', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
     expect(useRoundStore.getState().liveRound?.revealed).toBe(false)
     expect(useRoundStore.getState().liveRound?.round).toBe(1)
@@ -427,6 +431,7 @@ describe('createLiveSessionController', () => {
       roster: [{ participantId: 'p-self', submitted: false, connected: true }],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     }
     fakeSession.requestSnapshot.mockResolvedValue(snapshot)
 
@@ -454,6 +459,7 @@ describe('createLiveSessionController', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
 
     emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
@@ -483,6 +489,7 @@ describe('createLiveSessionController', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
 
     emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
@@ -544,6 +551,7 @@ describe('createLiveSessionController', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
     emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
     await flushMicrotasks()
@@ -587,6 +595,7 @@ describe('createLiveSessionController', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
     emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
     await flushMicrotasks()
@@ -626,6 +635,7 @@ describe('createLiveSessionController', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
     emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
     await flushMicrotasks()
@@ -641,6 +651,7 @@ describe('createLiveSessionController', () => {
       roster: [{ participantId: 'p-self', submitted: false, connected: true }],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
     await flushMicrotasks()
 
@@ -665,6 +676,7 @@ describe('createLiveSessionController', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
     emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
     await flushMicrotasks()
@@ -679,6 +691,7 @@ describe('createLiveSessionController', () => {
       roster: [{ participantId: 'p-self', submitted: true, connected: true }],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
     await flushMicrotasks()
 
@@ -701,6 +714,7 @@ describe('createLiveSessionController', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
     emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
     await flushMicrotasks()
@@ -718,6 +732,7 @@ describe('createLiveSessionController', () => {
       roster: [{ participantId: 'p-self', submitted: false, connected: true }],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     }
     emit('syncState', unsubmittedSnapshot)
     await flushMicrotasks()
@@ -744,6 +759,7 @@ describe('createLiveSessionController', () => {
       roster: [],
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
     emit(
       'announce',
@@ -962,6 +978,7 @@ describe('createLiveSessionController', () => {
       revealed: false,
       submissions: [],
       finalizedItemIds: [],
+      finalResult: null,
     })
 
     expect(useRoundStore.getState().liveRound).toBeNull()

@@ -124,4 +124,44 @@ describe('LiveFacilitatorPanel', () => {
     expect(spy).not.toHaveBeenCalled()
     spy.mockRestore()
   })
+
+  describe('an item finalized before this session, with no round revealed', () => {
+    beforeEach(() => seed({ submissions: [], finalResult }))
+
+    it('shows the saved range instead of a reveal', () => {
+      render(<Host />)
+      expect(screen.getByText('Range (finalized)')).toBeInTheDocument()
+      expect(screen.getByText('1d')).toBeInTheDocument()
+      expect(screen.getByText('3d')).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /Reveal estimates/ })).toBeNull()
+      expect(screen.queryByRole('button', { name: /^Update/ })).toBeNull()
+      expect(screen.getByText('Ada')).toBeInTheDocument()
+      expect(screen.queryByText('Waiting')).toBeNull()
+      expect(screen.queryByText(/submitted/)).toBeNull()
+    })
+
+    it('moves on once on the primary button', async () => {
+      const onAdvance = vi.fn()
+      render(<Host onAdvance={onAdvance} />)
+      await userEvent.click(screen.getByRole('button', { name: 'View summary' }))
+      expect(onAdvance).toHaveBeenCalledTimes(1)
+    })
+
+    it('reopens the item on a confirmed second click', async () => {
+      render(<Host />)
+      await userEvent.click(screen.getByRole('button', { name: 'Reopen item' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Click again to reopen' }))
+      expect(useSessionStore.getState().items[0]).toMatchObject({
+        finalResult: null,
+        round: 1,
+      })
+      expect(screen.getByRole('button', { name: /Reveal estimates/ })).toBeInTheDocument()
+      expect(screen.getByText('Participants')).toHaveFocus()
+    })
+
+    it('has no axe violations', async () => {
+      const { container } = render(<Host />)
+      expect(await axe(container, A11Y)).toHaveNoViolations()
+    })
+  })
 })

@@ -1,6 +1,8 @@
 import {
+  createAggregateResult,
   createEstimate,
   isEstimationUnit,
+  type AggregateResult,
   type EstimationUnit,
   type RawEstimateInput,
 } from '../../domain/estimate'
@@ -28,4 +30,32 @@ export function parseWireEstimate(input: unknown): ReturnType<typeof createEstim
  *  whole snapshot. */
 export function parseWireUnit(input: unknown, fallback: EstimationUnit): EstimationUnit {
   return isEstimationUnit(input) ? input : fallback
+}
+
+/** A snapshot's final result, or null when it is missing (an older facilitator
+ *  build), null (a pending item) or breaks a rule. It becomes an
+ *  `AggregateResult` only through `createAggregateResult()`, like a final result
+ *  read from a session file; a bad value never drops the whole snapshot. */
+export function parseWireFinalResult(input: unknown): AggregateResult | null {
+  if (input === undefined || input === null) return null
+  const result = readFinalResult(input)
+  if (result.ok) return result.value
+  console.warn('Dropping malformed final result in incoming snapshot:', result.error)
+  return null
+}
+
+function readFinalResult(input: unknown): ReturnType<typeof createAggregateResult> {
+  if (typeof input !== 'object' || input === null) {
+    return { ok: false, error: 'is not an object' }
+  }
+  const { min, expected, max, ci90 } = input as Record<string, unknown>
+  if (![min, expected, max, ci90].every((value) => typeof value === 'number')) {
+    return { ok: false, error: 'is missing a number' }
+  }
+  return createAggregateResult({
+    min: min as number,
+    expected: expected as number,
+    max: max as number,
+    ci90: ci90 as number,
+  })
 }

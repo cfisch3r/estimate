@@ -8,6 +8,7 @@ import { useParticipantSessionGuard } from '../model/useParticipantSessionGuard'
 import { useRoundAnnouncement } from '../model/useRoundAnnouncement'
 import { ConnectionNotices } from './ConnectionNotices'
 import { EstimatingPanel } from './EstimatingPanel'
+import { FinalizedPanel } from './FinalizedPanel'
 import { LobbyPanel } from './LobbyPanel'
 import { RevealedPanel } from './RevealedPanel'
 import { WaitingPanel } from './WaitingPanel'
@@ -46,6 +47,16 @@ export function ParticipantEstimateView() {
         />
       )
       break
+    case 'finalized':
+      panel = (
+        <FinalizedPanel
+          round={round.liveRound}
+          finalResult={round.finalResult}
+          unit={unit}
+          kicker={kicker}
+        />
+      )
+      break
     case 'waiting':
       panel = (
         <WaitingPanel
@@ -71,7 +82,11 @@ export function ParticipantEstimateView() {
       break
   }
 
-  const announcement = useRoundAnnouncement(round.view, round.connectionStatus)
+  const announcement = useRoundAnnouncement(
+    round.view,
+    round.connectionStatus,
+    round.liveRound?.item ?? null,
+  )
 
   return (
     <div

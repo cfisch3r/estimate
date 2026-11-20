@@ -3,6 +3,7 @@ import {
   type ConnectionPhase,
 } from '../../../shared/lib/useConnectionPhase'
 import { useConnectionStore, useRoundStore, useSessionStore } from '../../../application'
+import { livePhaseOf } from '../../../domain/item'
 import type { LiveRound } from '../../../domain/types'
 
 /** "{sessionName} ({sessionId})" once the facilitator's session name has
@@ -48,11 +49,21 @@ export function useParticipantRound() {
   // A discriminated union, so a caller that switches on `view` gets a non-null
   // `liveRound` in every round state without re-checking.
   if (!liveRound) return { ...shared, view: 'lobby' as const, liveRound: null }
-  if (liveRound.revealed) {
+  const live = livePhaseOf(liveRound)
+  if (live.phase === 'revealed') {
     return {
       ...shared,
       view: 'revealed' as const,
       liveRound: liveRound satisfies LiveRound,
+    }
+  }
+  // A submission would be dropped, so there is no form to offer.
+  if (live.phase === 'finalizedEarlier') {
+    return {
+      ...shared,
+      view: 'finalized' as const,
+      liveRound,
+      finalResult: live.finalResult,
     }
   }
   if (liveRound.mySubmission) {

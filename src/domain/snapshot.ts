@@ -36,6 +36,7 @@ export function buildSessionSnapshot(input: SnapshotInput): SessionSnapshot {
     ),
     submissions: revealed && active ? active.submissions : [],
     finalizedItemIds: input.items.filter(isFinalized).map((item) => item.id),
+    finalResult: active?.finalResult ?? null,
   }
 }
 
@@ -50,6 +51,7 @@ export function snapshotChangeKey(snapshot: SessionSnapshot): string {
     round: snapshot.round,
     roster: snapshot.roster,
     finalizedItemIds: snapshot.finalizedItemIds,
+    finalResult: snapshot.finalResult,
   })
 }
 

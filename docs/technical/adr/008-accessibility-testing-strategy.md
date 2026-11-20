@@ -74,8 +74,8 @@ that landed with them:
 
 | Pattern | Where |
 |---|---|
-| Focus returns to the Participants label when a revealed round is reopened or retried (the control that had focus unmounts) | `LiveFacilitatorPanel` |
-| The armed Reopen confirmation prompt is announced through a `LiveRegion` | `FinalizedFooter` |
+| Focus returns to the Participants label when an item starts a new round — a Retry, or a Reopen of a finalized item (the control that had focus unmounts) | `useFocusOnNewRound` (`LiveFacilitatorPanel`) |
+| The armed Reopen confirmation prompt is announced through a `LiveRegion` | `ReopenButton` (`FinalizedFooter`, `ResumedFinalizedFooter`) |
 | `aria-pressed` on the Write / Preview toggle buttons | `MarkdownEditor` |
 | `aria-current` on the active row; the decorative marker is `aria-hidden` | `SessionSidebar` |
 
