@@ -26,7 +26,7 @@ snapshot itself via `requestSnapshot` rather than waiting for the facilitator to
 Level-3 (component) view. Each box carries its `[type]`; responsibilities are in the table
 below. Lanes follow FSD slice/segment (see
 [ADR-004](../adr/004-feature-sliced-design-architecture.md) — a single source directory no
-longer maps to one lane the way `src/network` once did) or, for `src/domain`, `src/application`, `src/adapters` and `src/app`, ADR-009 layers. The connect/resend/pull/prune/broadcast logic lives in the application layer's framework-free live-session controller; `LiveSessionProvider` (in `src/app`) is a thin React shell that hands it the network adapter's `joinSession` (ADR-009 stage 3c). Lines: **solid** = synchronous call,
+longer maps to one lane the way `src/network` once did) or, for `src/domain`, `src/application`, `src/adapters` and `src/app`, ADR-009 layers. The connect/resend/pull/prune/broadcast logic lives in the application layer's framework-free live-session controller; `LiveSessionProvider` (in `src/app`) is a thin React shell that hands it the `JoinSession` port the network adapter's `createJoinSession` builds, and the diagnostics log (ADR-009 stage 3c). Lines: **solid** = synchronous call,
 **dotted** = asynchronous callback / event / read, `<-->` = bidirectional.
 
 ```mermaid
@@ -60,7 +60,7 @@ flowchart TD
 
   subgraph core["ADAPTERS LANE &nbsp;·&nbsp; src/adapters/network"]
     direction LR
-    JSN["joinSession<br/>[Factory Function]"]
+    JSN["createJoinSession<br/>[Factory Function]"]
     Act["typed actions<br/>[Module]"]
     Conn["connection tracker<br/>[Module]"]
   end
@@ -82,7 +82,7 @@ flowchart TD
   MS -.->|"reads code"| Code
   NP -->|"createLiveSessionController"| Ctrl
   NP -->|"provides api via context"| Hook
-  NP -->|"imports joinSession"| JSN
+  NP -->|"createJoinSession"| JSN
   Hook -->|"api via context"| Ctrl
   Ctrl -->|"joinSession(code)"| Port
   JSN -.->|"implements"| Port
@@ -149,8 +149,8 @@ flowchart TD
 | **useSessionStore** | Zustand Store | Session domain data (ADR-005, concern 1): `sessionName`, `unit`, `items`, `activeItemId`, plus `lastSavedFile` (what "unsaved" compares against) and `loadedFrom` (the loaded file's name, public) and `started` (a mode is running; public, read by mode selection's guard). The public view adds only the trivial setters `setSessionName`, `setUnit`, `selectItem`, `setItemTitle`, `setItemNotes` and `setItemDescription`; add / remove / reorder go through the `useItemActions` use case, and `startSession`, `resetSession`, `loadSession` and `markSaved` stay internal to the application layer. Live mode reaches in via the module-level `patchItem(id, patch)` — a same-layer escape hatch (not a store action) scoped to the round-owned fields (`finalResult`/`revealed`/`round`/`submissions`) that `useRoundStore` writes through, without this store needing to know about round mechanics. |
 | **useConnectionStore** | Zustand Store | Live-connection state (ADR-005, concern 2). The layer's public export is a state-only view (`stores/publicStores.ts`) with no actions at all; the live-session controller writes through the internal store in `stores/connection.ts`: `mode`, `role`, `sessionId`, `myName`, `participantId`, `connectionStatus`, `hasEverConnected`, `peerCount`, `participantNames`, plus `startCollaborative` / `joinLiveSession` / `leaveLiveSession` (each touches only this store; the application layer's use-case hooks (`useStartCollaborativeSession`, `useJoinLiveSession`, `useEndSession`; `features/session-lifecycle` wraps them to add navigation) pair them with `useSessionStore`'s `startSession` / `resetSession`, `useRoundStore`'s `clearRound` and navigation). `joinLiveSession` returns whether it actually proceeded (false on a blank code/name), so the `useJoinLiveSession` use case (used by `useJoinFlow`) only clears `useRoundStore`'s stale round view on a real join. |
 | **useRoundStore** | Zustand Store | Round mechanics (ADR-005, concern 3). The public export is likewise state-only (`liveRound`); the actions stay internal: `finalizeItem` / `revealRound` / `retryRound` / `applyRoundSnapshot` / `applyRemoteEstimate` / `submitEstimate` / `clearRound`. **Participant** clients hold `liveRound` (the facilitator's current item + a values-free `roster` + revealed flag + own submission, plus the frozen `submissions` once revealed), updated by `applyRoundSnapshot` / `submitEstimate`; the session name and unit are written by the `applyFacilitatorSnapshot` use case (`application/useCases`, not a hook; the bridge calls it from event callbacks), which writes `useSessionStore` first (name for participants only, decided by `sessionFieldsFromSnapshot`) and then calls `applyRoundSnapshot`, so the round store never reads the connection store. A Reveal or Retry has no separate handler — it's just a later `applyRoundSnapshot` call with different `revealed` / `round` fields (#60). **Facilitator** clients instead accumulate each round on the `Item` itself, via the module-level `patchItem` that `session.ts` exposes to `round.ts` alone (not a store action, not exported from the layer) — `applyRemoteEstimate(itemId, estimate, round)` upserts inbound (targeted) submissions onto `items[activeItemId].submissions` only when `itemId` is the active item and it is not yet `revealed` or finalized (so a straggler for a just-finalized item can't seed the next round), `revealRound` / `retryRound` flip `items[].revealed` (`retryRound` also clears that item's `submissions`), and `finalizeItem(id, result)` stores an already-aggregated `AggregateResult` as `finalResult`. The store holds state only and calls the pure rules in `src/domain/round.ts` (`upsertByParticipant`, `retryRoundPatch`, `acceptRemoteEstimate` with the ADR-003 drop rules, `recordOwnSubmission`, `adoptSnapshot`): it accepts already-valid `Estimate` values and computed aggregates, and the validate / aggregate step is composed by the use cases (`useSubmitEstimate`, `useRevealActions`, `finalizeEstimate`; the last two share `finalizeWith`) that call it. On a participant, `applyRoundSnapshot` takes `revealed`, `roster`, and — once revealed — the frozen `submissions` list straight from the snapshot; pre-reveal, `submissions` stays empty (estimate values never reach a participant before reveal, #60). A peer that joins or reconnects pulls this snapshot itself (`requestSnapshot`) rather than waiting for a push, so it lands on the correct view regardless of what it missed. `SessionSnapshot` lives in `domain/types.ts`, so the stores import no adapter or provider. |
-| **LiveSessionProvider** | React Context Provider | A thin shell in `src/app` (ADR-009 stage 3c). Wraps `<App>`, creates the one live-session controller with the network adapter's `joinSession`, provides its `LiveSessionApi` via `LiveSessionContext`, and disposes it on unmount. Holds no session logic. |
-| **liveSessionController** | Factory Function | `createLiveSessionController({ joinSession })` in `application/useCases` returns `{ api, dispose }`; framework-free, with the transport (the `networkTransport` port, implemented by `adapters/network`) passed in, so it is tested against a fake. Owns the one `TransportSession` instance and all per-connection state. On `connect` it dispatches inbound `onEstimate` into `useRoundStore` and `onSyncState` through `applyFacilitatorSnapshot` (which writes the session name and unit to `useSessionStore`, then the round view to `useRoundStore`) and `onAnnounce` into `useConnectionStore`, registers an `onRequestSnapshot` responder (facilitator only, answers with the current snapshot, reading `useSessionStore`'s items and `useConnectionStore`'s `participantNames`), and (facilitator only) subscribes to **both** `useSessionStore` and `useConnectionStore` to broadcast a `syncState` whenever the active item, estimation unit, roster, or finalized set changes — `useRoundStore` doesn't affect the broadcast snapshot, since `revealed`/`round`/`submissions` live on the `Item` itself, not `liveRound`. It also broadcasts the local client's own `announce` on connect and re-announces on every peer join, applies inbound announces via `applyParticipantName` (`useConnectionStore`), and — participant only — learns the facilitator's peerId from its `announce` to target `sendEstimate` and to pull a snapshot via `requestSnapshot` on first learning (or re-learning, after a peerId change) that id. |
+| **LiveSessionProvider** | React Context Provider | A thin shell in `src/app` (ADR-009 stage 3c). Wraps `<App>`, creates the one live-session controller with the `JoinSession` port from the network adapter's `createJoinSession` and the diagnostics log, provides its `LiveSessionApi` via `LiveSessionContext`, and disposes it on unmount. Holds no session logic. |
+| **liveSessionController** | Factory Function | `createLiveSessionController({ joinSession, diagnostics })` in `application/useCases` returns `{ api, dispose }`; framework-free, with the transport (the `networkTransport` port, implemented by `adapters/network`) passed in, so it is tested against a fake. Owns the one `TransportSession` instance and all per-connection state. On `connect` it dispatches inbound `onEstimate` into `useRoundStore` and `onSyncState` through `applyFacilitatorSnapshot` (which writes the session name and unit to `useSessionStore`, then the round view to `useRoundStore`) and `onAnnounce` into `useConnectionStore`, registers an `onRequestSnapshot` responder (facilitator only, answers with the current snapshot, reading `useSessionStore`'s items and `useConnectionStore`'s `participantNames`), and (facilitator only) subscribes to **both** `useSessionStore` and `useConnectionStore` to broadcast a `syncState` whenever the active item, estimation unit, roster, or finalized set changes — `useRoundStore` doesn't affect the broadcast snapshot, since `revealed`/`round`/`submissions` live on the `Item` itself, not `liveRound`. It also broadcasts the local client's own `announce` on connect and re-announces on every peer join, applies inbound announces via `applyParticipantName` (`useConnectionStore`), and — participant only — learns the facilitator's peerId from its `announce` to target `sendEstimate` and to pull a snapshot via `requestSnapshot` on first learning (or re-learning, after a peerId change) that id. |
 | **networkTransport** | Port Interface | `application/ports/outbound/networkTransport.ts`: `TransportSession`, `ConnectionState`, `ParticipantAnnounce` and `JoinSession`, the shapes the controller needs from a transport. Implemented by `adapters/network`, which imports these types (adapters may import only `application/ports/outbound/**`, the `adapters-inward` rule). |
 | **roster / snapshot / resend** | Pure Modules | The session policies the live-session controller applies, kept framework- and store-free in `src/domain` so they are unit-tested directly: `roster.ts` (`roundMemberIds` — the single round-membership rule, also exported for the facilitator's reveal panel — `buildRoster`, the wire roster; the feature's own `buildFacilitatorRows` is the facilitator's labelled view, and `shouldPruneDeparted` for the departed-participant name policy), `snapshot.ts` (`buildSessionSnapshot` and the change key that decides when to rebroadcast), `resend.ts` (`needsResend`: the open round shows this participant unsubmitted; `roundKey`, the identity of a round for the resend de-duplication; the resend sends `LiveRound.mySubmission`, an already-validated `Estimate`, as-is, without re-parsing). |
 | **connection / item / round / delivery / navigation rules** | Pure Modules | The rules the stores and the former `NetworkProvider` used to hold inline (ADR-009 stage 3b-1), in `src/domain`: `connection.ts` (`deriveConnectionStatus`, `shouldBroadcastSnapshot`, `announcementFor`, `normalizeSessionCode`, `facilitatorStart`, `participantJoin`, `withConnectionStatus` with the `hasEverConnected` latch, `holdsItemList`, `leaveConfirmation`, `screenAccessFor` — the one access rule for the four guarded screens), `item.ts` (`firstPendingItemId`, `appendItem`, `removeItemFrom`, `moveItem`, `updateItem`), `round.ts` (see `useRoundStore`), `delivery.ts` (`DeliveryState`, `deliveryStateFor`) and `navigation.ts` (`advanceFrom`, `previousItemId`). The stores (`connection`, `item`, `round`) call them and only hold the result; `deliveryStateFor` is called by the `useSubmitEstimate` use case, `leaveConfirmation` by `useCloseWorkspace` (which asks for a second click for unsaved changes, for connected peers, or for both — naming both losses then), and `advanceFrom` / `previousItemId` by the workspace page's `useItemNavigation`. |
@@ -454,14 +454,15 @@ connects." Two things go wrong in practice:
 ## Connection diagnosis
 
 Every browser records what happens to its live-session connections, so a tester can
-hand the Developer the exact facts after something went wrong. The record lives in
-browser storage, survives a reload, and is shown at `/diagnosis`, a technical page reached
-by URL. The tester downloads the report there and sends the file directly, never through
-the public feedback form. Recording is always on and never changes connection behaviour:
-every write is caught, and a log whose storage fails stops recording and says so.
+hand the organiser (the Developer) the exact facts after something went wrong. The
+**diagnostics log** lives in browser storage, survives a reload, and is shown at
+`/diagnosis`, a technical page reached by URL. The tester downloads the report there and
+sends the file to the organiser directly, never through the public feedback form.
+Recording is always on and never changes connection behaviour: the log catches every
+storage access, and a log whose storage fails stops recording and says so.
 
-Lines: **solid** = synchronous call, **dotted** = implements a port or crosses into the
-browser's own systems.
+Lines: **solid** = synchronous call, **dotted** = asynchronous callback / event / read.
+As in the component view above, a dotted `implements` line joins an adapter to its port.
 
 ```mermaid
 flowchart TD
@@ -475,6 +476,7 @@ flowchart TD
     Ctrl["liveSessionController<br/>[Factory Function]"]
     LogPort["DiagnosticsLog<br/>[Port Interface]"]
     Clip["ClipboardApi<br/>[Port Interface]"]
+    FilePort["FileDownloadApi<br/>[Port Interface]"]
   end
 
   subgraph adapterlane["ADAPTERS LANE · src/adapters"]
@@ -482,6 +484,7 @@ flowchart TD
     Session["createJoinSession<br/>[Network Adapter]"]
     Recorder["RecordingPeerConnection<br/>[RTCPeerConnection Subclass]"]
     Store["createDiagnosticsLog<br/>[Storage Adapter]"]
+    ClipAd["writeClipboardText<br/>[Clipboard Adapter]"]
   end
 
   Trystero["Trystero<br/>[P2P Library]"]
@@ -490,13 +493,15 @@ flowchart TD
   Page -->|"report, download,<br/>copy, clear"| Report
   Report -->|"read, clear"| LogPort
   Report -->|"writeText"| Clip
+  Report -->|"download"| FilePort
   Ctrl -->|"record"| LogPort
   Session -->|"record"| LogPort
   Session -->|"rtcPolyfill"| Trystero
-  Trystero -.->|"builds connections from"| Recorder
-  Recorder -->|"record"| Session
+  Trystero -->|"constructs"| Recorder
+  Recorder -->|"record"| LogPort
   Store -.->|"implements"| LogPort
-  Store -.->|"one key per tab"| Storage
+  ClipAd -.->|"implements"| Clip
+  Store -->|"own key per tab"| Storage
 
   classDef page fill:#DDD6FE,stroke:#7C3AED,color:#2E1065
   classDef app  fill:#DBEAFE,stroke:#2563EB,color:#172554
@@ -504,8 +509,8 @@ flowchart TD
   classDef ext  fill:#FFEDD5,stroke:#EA580C,color:#3F1D0B,stroke-dasharray:5 4
 
   class Page page
-  class Report,Ctrl,LogPort,Clip app
-  class Session,Recorder,Store adp
+  class Report,Ctrl,LogPort,Clip,FilePort app
+  class Session,Recorder,Store,ClipAd adp
   class Trystero,Storage ext
 
   style pageslane fill:#F5F3FF,stroke:#7C3AED,stroke-width:2px,color:#14171f
@@ -515,25 +520,48 @@ flowchart TD
 
 | Component | Responsibility |
 |---|---|
-| `liveSessionController` | Records the session start (code and role) and the connection **status the user saw**: the derived one, so a participant reads `connecting` until the facilitator announces itself. Records a status only when it changes, and `idle` on leave |
-| `createJoinSession` | Builds the `JoinSession` port so that it records peers joining and leaving and Trystero's join errors, and hands Trystero the recording class as its `rtcPolyfill` |
-| `RecordingPeerConnection` | Numbers a WebRTC connection as an **attempt** once it has a remote description: Trystero keeps spare offer connections that may never be used. Records each state change; when the attempt settles, both sides' candidate kinds from their session descriptions; if it connected, the selected pair from `getStats()`. Trystero closes an attempt that never left the `new` state, and `close()` fires no event, so a closed attempt records its candidates and its last ICE state too |
-| `createDiagnosticsLog` | Implements `DiagnosticsLog` in `localStorage`, one key per tab so two tabs never overwrite each other's latest entry. A read merges every tab in time order; the cap of 500 entries drops the oldest across tabs. Checks storage once at start; a failing storage turns the log off |
-| `useDiagnosisReport` | Formats the report (`formatDiagnosisReport` in `domain/diagnosis`), downloads it as `estimate-diagnosis-<date>-<time>.txt` through the file-download port, copies it through `ClipboardApi`, and clears the log |
+| `liveSessionController` | Records the session start (code and role) and the connection **status the user saw**: the derived one, so a participant reads `connecting` until the facilitator announces itself. Records a status only when it changes, and `idle` when a live session ends |
+| `createJoinSession` | Builds the `JoinSession` port so that it records peers joining (once each) and leaving and Trystero's join errors, and hands Trystero the recording class as its `rtcPolyfill`. Every join shares one class, so a tab numbers its attempts across reconnects |
+| `RecordingPeerConnection` | Records each WebRTC connection Trystero builds as a numbered **attempt**, through the lifecycle below |
+| `createDiagnosticsLog` | Implements `DiagnosticsLog` in `localStorage`. A tab writes only its own key, at most 500 entries, so tabs never overwrite each other. A read merges every tab in time order and keeps the newest 500; a new tab removes the keys of tabs none of whose entries a read would keep |
+| `useDiagnosisReport` | Formats the report (`formatDiagnosisReport` in `domain/diagnosis`), downloads it as `estimate-diagnosis-<date>-<time>.txt` through `FileDownloadApi`, copies it through `ClipboardApi`, and clears the log |
+| `writeClipboardText` | Implements `ClipboardApi` with the browser's clipboard |
+
+One attempt's lifecycle. Trystero keeps spare offer connections that may never be used, so
+a connection is numbered only once it has a remote description. Trystero closes an attempt
+that never left the `new` state, and `close()` fires no event, so the recorder records a
+closed attempt from inside `close()`:
+
+```mermaid
+stateDiagram-v2
+  [*] --> Unnumbered: Trystero constructs it
+  Unnumbered --> Numbered: remote description set
+  Unnumbered --> [*]: closed unused, nothing recorded
+  Numbered --> Numbered: state change, rtc-state
+  Numbered --> Settled: connected or failed
+  Settled --> Closed: close(), rtc-state closed
+  Numbered --> Closed: close(), rtc-candidates and rtc-state closed
+  Closed --> [*]
+```
+
+On reaching `Settled`, the attempt records both sides' candidate kinds (`rtc-candidates`)
+from their session descriptions and, if it connected, the selected pair (`rtc-selected`)
+from `getStats()`: the pair the transport names, or in Firefox, which names none, the pair
+marked selected.
 
 What each entry kind holds (`DiagnosticEvent` in `src/domain/diagnosis/types.ts`); every
-entry also carries its time (`at`), its tab's short random id (`tab`) and, once a session
-has started, the tab's `role`:
+entry also carries its time (`at`) and its tab's short random id (`tab`). The report labels
+each line with its tab and the role of that tab's latest `session-start`:
 
 | `kind` | Recorded by | Holds |
 |---|---|---|
-| `session-start` | Controller | `sessionCode`, `role` |
-| `status` | Controller | `status`: `connecting`, `connected`, `disconnected` or `idle` |
-| `peer-join`, `peer-leave` | Network adapter | `peer`: the first 6 characters of the Trystero peer id |
-| `join-error` | Network adapter | `error`: Trystero's text, peer ids in it shortened; `peer` when Trystero names one |
-| `rtc-candidates` | Recording class | `attempt`, `side` (`local` or `remote`), `candidates`: type (`host`, `srflx`, `prflx`, `relay`) and protocol (`udp`, `tcp`) only |
-| `rtc-state` | Recording class | `attempt`, `connectionState`, `iceConnectionState` |
-| `rtc-selected` | Recording class | `attempt`, the `local` and `remote` candidate kinds of the pair in use |
+| `session-start` | `liveSessionController` | `sessionCode`, `role` |
+| `status` | `liveSessionController` | `status`: `connecting`, `connected`, `disconnected` or `idle` |
+| `peer-join`, `peer-leave` | `createJoinSession` | `peer`: the first 6 characters of the Trystero peer id |
+| `join-error` | `createJoinSession` | `error`: Trystero's text, peer ids in it shortened; `peer` when Trystero names one |
+| `rtc-candidates` | `RecordingPeerConnection` | `attempt`, `side` (`local` or `remote`), `candidates`: type (`host`, `srflx`, `prflx`, `relay`) and protocol (`udp`, `tcp`) only |
+| `rtc-state` | `RecordingPeerConnection` | `attempt`, `connectionState`, `iceConnectionState` |
+| `rtc-selected` | `RecordingPeerConnection` | `attempt`, the `local` and `remote` candidate kinds of the pair in use |
 
 **Never recorded**<br>
 Names, estimate values, item titles, notes and addresses. A candidate is parsed for its
@@ -546,9 +574,10 @@ only numbered. The reader matches attempts to the neighbouring peer and join-err
 by time.
 
 **What a failed connection looks like**<br>
-Between peers that can't reach each other directly (no TURN server is configured), the
-attempt typically ends `closed` with ICE still `new`, next to Trystero's join error
-"could not connect to peer … after exchanging SDP; configure TURN servers …".
+Between peers that can't reach each other directly (see
+[Why connections drop](#why-connections-drop-47)), the attempt typically ends `closed`
+with ICE still `new`, next to Trystero's join error "could not connect to peer … after
+exchanging SDP; configure TURN servers …".
 
 ## Store additions
 

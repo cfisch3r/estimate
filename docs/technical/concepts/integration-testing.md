@@ -6,7 +6,8 @@ The `integration` Test Level drives each outbound adapter through the port the a
 owns, in a real browser, against the real external system the adapter wraps. Scenarios
 live in `specs/<concept>/integration/*.feature`; the shared driver code lives in
 `specs/shared/integration/`. Steps run in Node; the adapters run on a test-only harness
-page, and every call crosses `page.evaluate`.
+page, and every call crosses `page.evaluate`, or a `JSHandle` for an object that stays in
+the page.
 
 This doc covers what exists and how it's wired. [ADR-011](../adr/011-integration-test-level.md)
 is the decision record: why a real browser, why Playwright, why port drivers derived from
@@ -24,7 +25,7 @@ flowchart TD
     direction LR
     Steps["concept steps<br/>[playwright-bdd Steps]"]
     World["world.ts (tab)<br/>[Playwright Fixture]"]
-    Remote["remote.ts (Remote, Harness, remote)<br/>[Port Driver Factory]"]
+    Remote["remote.ts (Remote, Harness,<br/>remote, remoteHandle)<br/>[Port Driver Factory]"]
   end
 
   subgraph configlane["CONFIG LANE · repo root"]
@@ -40,18 +41,18 @@ flowchart TD
   end
 
   subgraph portlane["PORT LANE · src/application/ports/outbound"]
-    Ports["fileDownload.ts, …<br/>[Port Types]"]
+    Ports["fileDownload.ts, networkTransport.ts,<br/>diagnosticsLog.ts<br/>[Port Types]"]
   end
 
   Chromium["Chromium<br/>[Browser, Playwright-controlled]"]
 
   Steps -->|"use"| World
   World -->|"build drivers"| Remote
-  Remote -.->|"page.evaluate"| Harness
+  Remote -.->|"page.evaluate,<br/>JSHandle"| Harness
   Harness -->|"call"| Adapters
   Harness -->|"satisfies Harness"| Remote
   Remote -->|"derive types"| Ports
-  World -->|"open contexts,<br/>catch downloads"| Chromium
+  World -->|"open contexts with faults,<br/>catch downloads"| Chromium
   PWConfig -.->|"webServer: starts"| HarnessConfig
   HarnessConfig -.->|"serves"| Harness
 
@@ -189,9 +190,8 @@ keeps the session in the page and hands Node a typed `JSHandle<TransportSession>
 3. **Driver**<br>
    Build it in `world.ts` with `remote(page, '<name>')`; its type follows from the entry.
 4. **A session-returning port**<br>
-   If the port is a function that returns an object, install it as `{ <operation> }` and
-   reach the result with `page.evaluateHandle` and `remoteHandle()`, as the network driver
-   does.
+   If the port is a function that returns an object, follow
+   [A port that returns a session](#port-drivers-follow-the-ports) above.
 5. **Callbacks**<br>
    A port's `on…` callbacks can't reach Node. Where an adapter records what it sees, steps
    wait on that record instead: the network scenarios poll the diagnostics log with

@@ -60,13 +60,13 @@ flowchart LR
   Peers["Other EstiMate instances<br/>[Participants' browsers]"]
   Relays["Signaling relays<br/>[Public Nostr relays]"]
   Stun["STUN servers<br/>[Public servers]"]
-  Files["Files and browser storage<br/>[Saved sessions, participant id]"]
+  Files["Files, browser storage<br/>and clipboard<br/>[Saved sessions, participant id,<br/>diagnostics log, report copy]"]
   Fac -->|runs the session| App
   Par -->|join with a code,<br/>submit estimates| Peers
   App <-.->|WebRTC data channels| Peers
   App <-.->|offers and answers| Relays
   App -.->|NAT discovery| Stun
-  App <-->|session file, id| Files
+  App <-->|session file, id,<br/>diagnostics, report| Files
   linkStyle default stroke:#8a93a6,stroke-width:2px
   classDef person fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   classDef sys fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
@@ -81,7 +81,7 @@ flowchart LR
 | Other EstiMate instances | Direct [WebRTC](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API) data channels, typed wire actions (`adapters/network/actions.ts`). Every inbound message is untrusted ([trust boundary](concepts/collaboration-mode.md)) |
 | Signaling relays | [Trystero](https://trystero.dev)'s [Nostr](https://nostr.com) strategy exchanges offers and answers. The e2e suite uses a local WebSocket relay instead (ADR-007) |
 | STUN servers | Public servers for NAT traversal ([STUN](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols), [RFC 8489](https://www.rfc-editor.org/rfc/rfc8489)). No [TURN](https://developer.mozilla.org/en-US/docs/Web/API/WebRTC_API/Protocols) server ([RFC 8656](https://www.rfc-editor.org/rfc/rfc8656)) is operated (ADR-001) |
-| Files and browser storage | A stable per-browser participant id, and session files: a download on save, a file the user picks on load |
+| Files, browser storage and clipboard | A stable per-browser participant id; the diagnostics log of the [connection diagnosis](concepts/collaboration-mode.md#connection-diagnosis); session files, a download on save and a file the user picks on load; the diagnosis report, downloaded or copied to the clipboard |
 
 ## 4. Solution strategy
 
@@ -92,7 +92,7 @@ flowchart LR
 | Facilitator owns the live state | Versioned rounds, a values-free submission roster, acknowledged submissions (ADR-003) |
 | One estimation engine for both modes | `aggregateEstimates` is called with N submissions or one (section 8) |
 | Three small stores | Session, connection and round state are separate Zustand stores (ADR-005) |
-| Wiring at composition time | `src/app` picks which adapter fills which port and hands the use-case hooks their controller and identity through React contexts (section 8) |
+| Wiring at composition time | `src/app` picks which adapter fills which port and hands the use-case hooks their controller and the identity, download, diagnostics log and clipboard ports through React contexts (section 8) |
 | Boundaries enforced by tools | [Steiger](https://github.com/feature-sliced/steiger) for the UI, [dependency-cruiser](https://github.com/sverweij/dependency-cruiser) for the layer imports, type tests for the store views (section 5) |
 
 ## 5. Building block view
@@ -118,8 +118,8 @@ flowchart LR
   UI["UI (FSD)<br/>[Pages, widgets, features]"]
   APP["APPLICATION<br/>[Use cases, state stores]"]
   DOM["DOMAIN<br/>[Pure rules and value types]"]
-  AD["ADAPTERS<br/>[Network, storage, file download]"]
-  Ext["Peers, relays, browser<br/>storage, downloads<br/>[External systems]"]
+  AD["ADAPTERS<br/>[Network, storage, file download,<br/>clipboard]"]
+  Ext["Peers, relays, browser<br/>storage, downloads, clipboard<br/>[External systems]"]
   UI -->|calls| APP
   APP -->|uses rules| DOM
   APP <-->|peer messages in,<br/>calls out via ports| AD
@@ -170,14 +170,15 @@ flowchart LR
     Net["Network and wire parsing<br/>[Trystero adapter]"]
     Store["Storage<br/>[Browser storage adapter]"]
     File["File download<br/>[Browser download adapter]"]
+    Clip["Clipboard<br/>[Browser clipboard adapter]"]
   end
   subgraph DOM["DOMAIN"]
     direction TB
     Core["Estimate and session rules<br/>[Pure functions and value types]"]
   end
-  Ext["Peers, relays, browser<br/>storage, downloads<br/>[External systems]"]
+  Ext["Peers, relays, browser<br/>storage, downloads, clipboard<br/>[External systems]"]
   Root -->|creates the controller<br/>with the adapter| UseCases
-  Root -->|passes joinSession from| Net
+  Root -->|creates the JoinSession port<br/>with createJoinSession| Net
   Pages -->|composes| Features
   Features -->|calls| UseCases
   Pages & Features -->|reads state,<br/>trivial setters| Stores
@@ -185,11 +186,14 @@ flowchart LR
   UseCases -->|reads and writes| Stores
   UseCases -->|send, join, leave<br/>via transport port| Net
   Net -.->|validated peer messages<br/>to registered handlers| UseCases
-  UseCases -->|reads identity<br/>via identity port| Store
-  UseCases -->|hands the saved file<br/>via download port| File
+  UseCases -->|reads identity, records and<br/>reads the diagnostics log via ports| Store
+  Net -->|records connection facts<br/>via diagnostics log port| Store
+  UseCases -->|hands the saved file<br/>and report via download port| File
+  UseCases -->|copies the report<br/>via clipboard port| Clip
   Net <-->|WebRTC, relays| Ext
   Store <-->|browser storage| Ext
   File -->|download| Ext
+  Clip -->|writeText| Ext
   linkStyle default stroke:#8a93a6,stroke-width:2px
   style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   style APP fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
@@ -203,7 +207,7 @@ flowchart LR
   class Root,Pages,Features ui
   class UseCases,Stores app
   class Core dom
-  class Net,Store,File ad
+  class Net,Store,File,Clip ad
   class Ext ext
 ```
 
@@ -213,7 +217,7 @@ flowchart LR
 | **Use cases** | Application | Submit, reveal, retry, finalize, join and leave, as straight-line code: read state, call a domain decision, write state, trigger an effect. The use-case hooks and the live-session controller (a factory function) belong here. The controller (`createLiveSessionController`) owns one connection: connect, disconnect, send with retry, resend, snapshot pull, roster prune, announce, and the facilitator's snapshot broadcast when the stores change. It owns the ports the adapters implement, such as the peer transport (`ports/outbound/networkTransport.ts`). |
 | **State stores** | Application | The Zustand stores holding session, round and connection state. The UI reads them with selectors and may call a few trivial field setters (session name, unit, item selection and text fields). Every other write goes through a use case. |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. It implements the transport port, delivers validated messages to the handlers the controller registered, and never touches the stores. It records peers, join errors and each WebRTC attempt into the diagnostics log ([connection diagnosis](concepts/collaboration-mode.md#connection-diagnosis)). |
-| **Storage** | Adapters | The stable per-browser participant id, and the connection diagnosis log, one key per tab. It implements the identity and diagnostics log ports. |
+| **Storage** | Adapters | The stable per-browser participant id, and the diagnostics log, one key per tab. It implements the identity and diagnostics log ports. |
 | **File download** | Adapters | Hands a saved session file to the browser as a download. It implements the download port. Loading needs no adapter: the UI reads the picked file's text, and the load use case parses it. |
 | **Clipboard** | Adapters | Puts the diagnosis report on the clipboard. It implements the clipboard port. |
 | **Composition root** | UI (`src/app`, FSD's app layer) | `App.tsx` provides the identity, download, diagnostics log and clipboard ports, and the live-session provider creates the controller with the network adapter, both recording into that one diagnostics log, and provides it to the UI. The one place in the UI that may import an adapter and the application's composition entry (`ui-no-adapters`, `composition-root`). |
