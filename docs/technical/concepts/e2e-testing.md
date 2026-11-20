@@ -207,7 +207,7 @@ such as `stereotypes.ts` free of `src/`.
 
 | Concept | Scenarios cover |
 |---|---|
-| `live-session` | A late joiner sees the running round — a direct port of `late-joiner-snapshot.spec.ts` below, kept side by side as the baseline comparison; a participant's connection diagnosis shows the session as connected and a host candidate, without the participant's name or the item title; a participant who couldn't join opens the diagnosis in a new tab from the problem notice |
+| `live-session` | **Late joiner**: sees the running round — a direct port of `late-joiner-snapshot.spec.ts` below, kept side by side as the baseline comparison<br>**Diagnosis privacy**: a participant's connection diagnosis shows the session as connected and a host candidate, without the participant's name or the item title<br>**Diagnosis from a problem notice**: a participant who couldn't join opens the diagnosis in a new tab |
 | `session-persistence` | Save and resume in Manual and Live mode, a damaged file rejected, the unsaved-changes leave warning (alone and with live participants) and tab-close warning, the browser's Back button kept away from a running session |
 
 ## CI
