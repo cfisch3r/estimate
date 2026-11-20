@@ -11,6 +11,11 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(version),
   },
+  // Pre-bundled up front: discovered on first load instead, Vite would re-optimise
+  // and reload the page while a scenario is already driving it. The network
+  // adapter reaches these only through a conditional dynamic import, which the
+  // dependency scan doesn't follow.
+  optimizeDeps: { include: ['trystero/nostr', '@trystero-p2p/ws-relay'] },
   server: {
     // The harness imports adapters from src/, outside its own root.
     fs: { allow: [fileURLToPath(new URL('.', import.meta.url))] },

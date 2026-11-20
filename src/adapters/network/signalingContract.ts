@@ -15,7 +15,16 @@ export type SignalingRoom = ActionRoom & {
   leave: () => Promise<void>
 }
 
+/** What Trystero reports when a handshake with a peer fails (its `JoinError`):
+ *  the error text, and the peer it failed with, if any. */
+export interface JoinErrorDetails {
+  error: string
+  peerId?: string
+}
+
 export interface JoinSignalingRoomOptions {
   password?: string
-  onJoinError?: () => void
+  onJoinError?: (details: JoinErrorDetails) => void
+  /** The `RTCPeerConnection` class Trystero builds its connections from. */
+  rtcPolyfill?: typeof RTCPeerConnection
 }

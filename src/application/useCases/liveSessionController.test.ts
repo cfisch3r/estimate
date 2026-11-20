@@ -9,6 +9,9 @@ import type {
   SessionRole,
 } from '../../domain/types'
 import type { ConnectionState, JoinSession } from '../ports/outbound/networkTransport'
+import type { DiagnosticsLog } from '../ports/outbound/diagnosticsLog'
+import type { DiagnosticEvent } from '../../domain/diagnosis/types'
+import { FACILITATOR_PARTICIPANT_ID } from '../../domain/participantId'
 import { useConnectionStore } from '../stores/connection'
 import { useRoundStore } from '../stores/round'
 import { useSessionStore } from '../stores/session'
@@ -137,9 +140,21 @@ async function flushMicrotasks() {
 
 let controller: LiveSessionController
 
+/** What the controller recorded. */
+let recorded: DiagnosticEvent[] = []
+const diagnostics: DiagnosticsLog = {
+  record: (event) => {
+    recorded.push(event)
+  },
+  read: () => ({ available: true, entries: [], userAgent: '' }),
+  clear: () => {},
+}
+
 beforeEach(() => {
+  recorded = []
   controller = createLiveSessionController({
     joinSession: joinSessionMock as unknown as JoinSession,
+    diagnostics,
   })
   joinSessionMock.mockClear()
   fakeSession.leave.mockClear()
@@ -950,5 +965,64 @@ describe('createLiveSessionController', () => {
     })
 
     expect(useRoundStore.getState().liveRound).toBeNull()
+  })
+})
+
+describe('the connection diagnosis', () => {
+  const statuses = () =>
+    recorded.flatMap((event) => (event.kind === 'status' ? [event.status] : []))
+
+  it('records the session start with the code and role', () => {
+    setSessionState({ mode: 'live', role: 'participant', sessionId: 'K7F9Q2' })
+
+    controller.api.connect('K7F9Q2')
+
+    expect(recorded).toEqual([
+      { kind: 'session-start', sessionCode: 'K7F9Q2', role: 'participant' },
+      { kind: 'status', status: 'connecting' },
+    ])
+  })
+
+  it('records the status a participant sees, not the raw link', () => {
+    setSessionState({ mode: 'live', role: 'participant', sessionId: 'K7F9Q2' })
+    controller.api.connect('K7F9Q2')
+
+    emitState({ status: 'connected', peerIds: ['peer-other'] })
+    emitState({ status: 'connected', peerIds: ['peer-other', 'peer-f'] })
+    emit(
+      'announce',
+      { participantId: FACILITATOR_PARTICIPANT_ID, name: 'Fran' },
+      'peer-f',
+    )
+
+    expect(statuses()).toEqual(['connecting', 'connected'])
+  })
+
+  it('records a status only when it changes', () => {
+    setSessionState({ mode: 'live', role: 'facilitator', sessionId: 'K7F9Q2' })
+    controller.api.connect('K7F9Q2')
+
+    emitState({ status: 'connected', peerIds: ['p1'] })
+    emitState({ status: 'connected', peerIds: ['p1', 'p2'] })
+    emitState({ status: 'disconnected', peerIds: [] })
+
+    expect(statuses()).toEqual(['connecting', 'connected', 'disconnected'])
+  })
+
+  it('records idle when the session is left', () => {
+    setSessionState({ mode: 'live', role: 'facilitator', sessionId: 'K7F9Q2' })
+    controller.api.connect('K7F9Q2')
+
+    controller.api.disconnect()
+
+    expect(statuses()).toEqual(['connecting', 'idle'])
+  })
+
+  it('records nothing when a session that never went live ends', () => {
+    setSessionState({ mode: 'manual', role: 'facilitator' })
+
+    controller.api.disconnect()
+
+    expect(recorded).toEqual([])
   })
 })

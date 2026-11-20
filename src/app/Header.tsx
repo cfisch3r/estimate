@@ -9,6 +9,12 @@ import { useLeaveWorkspace } from '../features/session-lifecycle'
 import { ROUTES } from '../shared/lib/routes'
 
 const EXIT_PATHS = new Set<string>([ROUTES.workspace, ROUTES.summary])
+/** Screens outside a session, where the session's mode means nothing. */
+const NO_MODE_TAG_PATHS = new Set<string>([
+  ROUTES.modeSelect,
+  ROUTES.join,
+  ROUTES.diagnosis,
+])
 /** The armed brand's text per reason for a second click. */
 const ARMED_LABEL = {
   unsaved: 'Unsaved changes, click again to leave',
@@ -33,8 +39,7 @@ export function Header() {
     ref: leaveRef,
   } = useConfirmArm<HTMLButtonElement>(leaveWorkspace, { holdWhileFocused: true })
 
-  const showModeTag =
-    location.pathname !== ROUTES.modeSelect && location.pathname !== ROUTES.join
+  const showModeTag = !NO_MODE_TAG_PATHS.has(location.pathname)
   const canLeave = EXIT_PATHS.has(location.pathname)
   const armedLabel = confirmation !== 'none' && armed ? ARMED_LABEL[confirmation] : null
   // The browser's Back button led to an entry screen, which sent it back here

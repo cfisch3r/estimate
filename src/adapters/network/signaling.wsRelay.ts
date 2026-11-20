@@ -35,6 +35,7 @@ export function joinSignalingRoom(
     {
       appId: APP_ID,
       password: options.password,
+      rtcPolyfill: options.rtcPolyfill,
       relayConfig: { urls: [relayUrl] },
     },
     sessionId,

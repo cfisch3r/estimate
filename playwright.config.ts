@@ -91,6 +91,12 @@ const sessionPersistenceIntegrationDir = defineBddConfig({
   outputDir: '.features-gen/session-persistence-integration',
 })
 
+const liveSessionIntegrationDir = defineBddConfig({
+  features: 'specs/live-session/integration/*.feature',
+  steps: ['specs/live-session/integration/steps.ts', 'specs/shared/integration/world.ts'],
+  outputDir: '.features-gen/live-session-integration',
+})
+
 export default defineConfig({
   testDir: './e2e/specs',
   // Real ICE/DTLS handshakes between real browser contexts are slower and
@@ -126,6 +132,13 @@ export default defineConfig({
     {
       name: 'session-persistence-integration',
       testDir: sessionPersistenceIntegrationDir,
+      use: { ...devices['Desktop Chrome'], baseURL: HARNESS_URL },
+    },
+    {
+      name: 'live-session-integration',
+      testDir: liveSessionIntegrationDir,
+      // A failed WebRTC attempt is only reported once ICE gives up (~30 s).
+      timeout: 90_000,
       use: { ...devices['Desktop Chrome'], baseURL: HARNESS_URL },
     },
   ].filter((project) => !(REAL_WORLD && project.name.endsWith('-integration'))),

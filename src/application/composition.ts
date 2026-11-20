@@ -12,3 +12,6 @@ export type { ParticipantIdentityApi } from './ports/outbound/participantIdentit
 export { FileDownloadContext } from './ports/fileDownloadContext'
 export type { FileDownloadApi } from './ports/outbound/fileDownload'
 export type { ConnectionState, JoinSession } from './ports/outbound/networkTransport'
+export type { DiagnosticsLog } from './ports/outbound/diagnosticsLog'
+export { DiagnosticsLogContext } from './ports/diagnosticsLogContext'
+export { ClipboardContext } from './ports/clipboardContext'

@@ -274,3 +274,17 @@ export async function closeTabAndCheckLeaveWarning(page: Page): Promise<boolean>
     .catch(() => {})
   return warned
 }
+
+/** Opens the connection diagnosis page (`/diagnosis`). */
+export async function openDiagnosis(page: Page): Promise<void> {
+  await page.goto('/diagnosis')
+}
+
+/** The report text on the diagnosis page, read from the read-only field the
+ *  page labels "Diagnosis report". `inputValue()`, not `innerText()`: a
+ *  textarea's text node holds only its initial content. */
+export async function readDiagnosisReport(page: Page): Promise<string> {
+  const report = page.getByLabel('Diagnosis report')
+  await expect(report).toBeVisible()
+  return report.inputValue()
+}
