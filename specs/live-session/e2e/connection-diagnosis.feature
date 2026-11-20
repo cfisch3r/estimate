@@ -1,6 +1,5 @@
 Feature: A tester can report how their live session connected
 
-  @fail
   Scenario: A participant's diagnosis report shows how the session connected, without names or content
     Given a facilitator has started a collaborative session
     And the item "Checkout redesign" is active

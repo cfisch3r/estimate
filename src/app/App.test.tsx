@@ -191,3 +191,16 @@ describe('Mode selection routing', () => {
     ).toBeInTheDocument()
   })
 })
+
+describe('The connection diagnosis', () => {
+  it('opens at /diagnosis', () => {
+    window.history.replaceState({}, '', '/diagnosis')
+    render(<App />)
+    expect(
+      screen.getByRole('heading', { name: 'Connection diagnosis' }),
+    ).toBeInTheDocument()
+    expect(
+      (screen.getByLabelText('Diagnosis report') as HTMLTextAreaElement).value,
+    ).toContain('EstiMate connection diagnosis')
+  })
+})

@@ -88,3 +88,20 @@ export function formatDiagnosisReport(input: {
     ...(lines.length > 0 ? lines : ['No connection events recorded.']),
   ].join('\n')
 }
+
+/** A local date and time, to the minute. */
+export type LocalDateTime = {
+  year: number
+  month: number
+  day: number
+  hour: number
+  minute: number
+}
+
+const pad = (value: number) => String(value).padStart(2, '0')
+
+/** The report's file name, after when it was downloaded:
+ *  `estimate-diagnosis-2026-03-07-0905.txt`. */
+export function diagnosisFileName(at: LocalDateTime): string {
+  return `estimate-diagnosis-${at.year}-${pad(at.month)}-${pad(at.day)}-${pad(at.hour)}${pad(at.minute)}.txt`
+}

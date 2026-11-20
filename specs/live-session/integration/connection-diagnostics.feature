@@ -6,7 +6,9 @@ Feature: The network adapter records how a live session connected
       Given browsers "A" and "B" have joined the same session
       Then browser "A" records a WebRTC attempt that ended "connected"
       And that attempt lists local candidates "host/udp" and remote candidates "host/udp"
-      And that attempt's selected pair is "host/udp" to "host/udp"
+      # Between local peers, a check can arrive before the other side's candidate,
+      # and the browser then names that candidate peer-reflexive.
+      And that attempt's selected pair is "host/udp" to "host/udp" or "prflx/udp"
       And browser "A"'s diagnostics contain no IP address and no host name
 
     Scenario: A browser that can't open direct connections records why it couldn't connect

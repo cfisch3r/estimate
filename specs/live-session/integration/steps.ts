@@ -184,19 +184,21 @@ Then(
 )
 
 Then(
-  "that attempt's selected pair is {string} to {string}",
-  async ({ tab, state }, local: string, remoteKind: string) => {
+  "that attempt's selected pair is {string} to {string} or {string}",
+  async ({ tab, state }, local: string, remoteKind: string, otherRemoteKind: string) => {
     const { browser, number } = requireState(state, 'attempt')
-    await expect
-      .poll(async () => {
-        const selected = (await entriesOf(tab, browser)).find(
-          (entry) => entry.kind === 'rtc-selected' && entry.attempt === number,
-        )
-        return selected?.kind === 'rtc-selected'
-          ? `${kindText(selected.local)} to ${kindText(selected.remote)}`
-          : undefined
-      })
-      .toBe(`${local} to ${remoteKind}`)
+    const selectedPair = async () => {
+      const selected = (await entriesOf(tab, browser)).find(
+        (entry) => entry.kind === 'rtc-selected' && entry.attempt === number,
+      )
+      return selected?.kind === 'rtc-selected'
+        ? `${kindText(selected.local)} to ${kindText(selected.remote)}`
+        : undefined
+    }
+    await expect.poll(selectedPair).toBeDefined()
+    expect([remoteKind, otherRemoteKind].map((kind) => `${local} to ${kind}`)).toContain(
+      await selectedPair(),
+    )
   },
 )
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { describeUserAgent, formatDiagnosisReport } from './report'
+import { describeUserAgent, diagnosisFileName, formatDiagnosisReport } from './report'
 import type { DiagnosticEntry } from './types'
 
 const CHROME_MAC =
@@ -137,5 +137,13 @@ describe('formatDiagnosisReport', () => {
         .split('\n')
         .slice(4),
     ).toEqual(['', 'No connection events recorded.'])
+  })
+})
+
+describe('diagnosisFileName', () => {
+  it('names the report after the local date and time, padded', () => {
+    expect(diagnosisFileName({ year: 2026, month: 3, day: 7, hour: 9, minute: 5 })).toBe(
+      'estimate-diagnosis-2026-03-07-0905.txt',
+    )
   })
 })
