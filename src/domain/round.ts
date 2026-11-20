@@ -12,6 +12,15 @@ export function upsertByParticipant(list: Estimate[], next: Estimate): Estimate[
   return copy
 }
 
+/** Whether `current` is a new round of the same item as `previous`: a Retry
+ *  or a Reopen bumps the round, moving to another item does not count. */
+export function isNewRound(
+  previous: { itemId: string; round: number },
+  current: { itemId: string; round: number },
+): boolean {
+  return previous.itemId === current.itemId && previous.round !== current.round
+}
+
 /** The round fields a Retry resets. Discards the round's submissions and returns
  *  it to the waiting state. Also used, behind a confirm step in the UI, to reopen
  *  an already-finalized item — clearing `finalResult` so a stale range doesn't

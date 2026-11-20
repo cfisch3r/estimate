@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  isNewRound,
   acceptRemoteEstimate,
   adoptSnapshot,
   recordOwnSubmission,
@@ -27,6 +28,17 @@ describe('upsertByParticipant', () => {
     const list = [estimateOf('a')]
     upsertByParticipant(list, estimateOf('a', 4, 5, 6))
     expect(list).toEqual([estimateOf('a')])
+  })
+})
+
+describe('isNewRound', () => {
+  it('is a new round when the same item moved to another round', () => {
+    expect(isNewRound({ itemId: 'a', round: 0 }, { itemId: 'a', round: 1 })).toBe(true)
+  })
+
+  it('is not a new round for the same round, or for another item', () => {
+    expect(isNewRound({ itemId: 'a', round: 1 }, { itemId: 'a', round: 1 })).toBe(false)
+    expect(isNewRound({ itemId: 'a', round: 0 }, { itemId: 'b', round: 1 })).toBe(false)
   })
 })
 
