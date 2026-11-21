@@ -33,6 +33,11 @@ export type Tab = {
   page: Page
   /** Reloads the page and waits until the harness is installed again. */
   reload: () => Promise<void>
+  /** Moves the clock (`Date.now()`) of this tab's browser forward by `ms`
+   *  without firing any timer early, as if the browser had been open that much
+   *  longer. Playwright's clock belongs to the browser context, so every tab of
+   *  the browser moves with it. */
+  moveClockForward: (ms: number) => Promise<void>
   files: FileDriver
   diagnostics: Remote<DiagnosticsLog>
   network: NetworkDriver
@@ -104,6 +109,31 @@ async function waitForHarness(page: Page): Promise<void> {
   await page.waitForFunction(() => '__harness' in globalThis)
 }
 
+/** Browser contexts whose clock is already installed: Playwright's clock
+ *  belongs to the context, and installing it twice would fail. */
+const clockInstalled = new WeakSet<BrowserContext>()
+
+/** Installs Playwright's clock on the tab's browser once, left running in real
+ *  time; `setSystemTime` then jumps `Date.now()` ahead without running the
+ *  timers that fall due in between. The check afterwards makes sure the jump
+ *  reached the page, so a clock that didn't take over fails here, not as a
+ *  spec that passes without having moved anything. */
+async function moveClockForward(page: Page, ms: number): Promise<void> {
+  const before = await page.evaluate(() => Date.now())
+  const context = page.context()
+  if (!clockInstalled.has(context)) {
+    await page.clock.install()
+    clockInstalled.add(context)
+  }
+  await page.clock.setSystemTime(before + ms)
+  const after = await page.evaluate(() => Date.now())
+  if (after < before + ms) {
+    throw new Error(
+      `the page's clock didn't move: ${after - before} ms instead of ${ms} ms`,
+    )
+  }
+}
+
 function networkDriver(page: Page): NetworkDriver {
   return {
     async join(...args) {
@@ -163,6 +193,7 @@ export const test = base.extend<Fixtures>({
           await page.reload()
           await waitForHarness(page)
         },
+        moveClockForward: (ms: number) => moveClockForward(page, ms),
         files: fileDriver(page),
         diagnostics: remote(page, 'diagnostics'),
         network: networkDriver(page),

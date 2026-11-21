@@ -1,12 +1,26 @@
 import { expect } from '@playwright/test'
 import type { CandidateKind, DiagnosticEntry } from '../../../src/domain/diagnosis/types'
 import type { Tab, BrowserOptions, ScenarioState } from '../../shared/integration/world'
+import { defineParameterType } from 'playwright-bdd'
 import { Given, When, Then, requireState } from '../../shared/integration/world'
 
 /** WebRTC needs a few seconds on a busy CI machine; ICE gives up after ~30 s. */
 const CONNECT_TIMEOUT = 60_000
 
 const PEER_EVENT = { joined: 'peer-join', left: 'peer-leave' } as const
+
+/** How long a browser's prepared connection offers must have been waiting
+ *  before a later browser joins: more than Trystero's offer lifetime (57.3 s). */
+const A_MINUTE = 60_000
+
+/** A list of browser names as a feature writes it: `"A"`, `"A" and "B"`,
+ *  `"A", "B" and "C"`. One step then fits any number of browsers. */
+defineParameterType({
+  name: 'browsers',
+  regexp: /"[^"]+"(?:(?:, | and )"[^"]+")*/,
+  transformer: (text: string) =>
+    [...text.matchAll(/"([^"]+)"/g)].map((match) => match[1]!),
+})
 
 type TabFixture = (browser: string, tab: string, options?: BrowserOptions) => Promise<Tab>
 
@@ -71,32 +85,51 @@ function expectListed(recorded: string[], expected: string): void {
   }
 }
 
-/** Waits until each browser's session reports a connected peer. */
-async function expectConnected(state: ScenarioState, ...browsers: string[]) {
+/** Waits until every browser's session reaches all the other browsers: its
+ *  peer list holds one peer for each of them, so the browsers form a full mesh. */
+async function expectAllConnected(state: ScenarioState, browsers: string[]) {
   for (const browser of browsers) {
     await expect
-      .poll(async () => (await sessionOf(state, browser).getConnectionState()).status, {
-        timeout: CONNECT_TIMEOUT,
-      })
-      .toBe('connected')
+      .poll(
+        async () => (await sessionOf(state, browser).getConnectionState()).peerIds.length,
+        { timeout: CONNECT_TIMEOUT, message: `${browser} reaches every other browser` },
+      )
+      .toBe(browsers.length - 1)
   }
 }
 
 Given(
-  'browsers {string} and {string} have joined the same session',
-  async ({ tab, state }, first: string, second: string) => {
-    await join(tab, state, first, 'the same')
-    await join(tab, state, second, 'the same')
-    // "Have joined" means the two are connected, not merely that both asked to.
-    await expectConnected(state, first, second)
+  'browsers {browsers} have joined the same session',
+  async ({ tab, state }, browsers: string[]) => {
+    for (const browser of browsers) await join(tab, state, browser, 'the same')
+    // "Have joined" means they are connected, not merely that each asked to.
+    await expectAllConnected(state, browsers)
   },
 )
 
 When(
-  'browsers {string} and {string} join the same session',
-  async ({ tab, state }, first: string, second: string) => {
-    await join(tab, state, first, 'the same')
-    await join(tab, state, second, 'the same')
+  'browsers {browsers} join the same session',
+  async ({ tab, state }, browsers: string[]) => {
+    for (const browser of browsers) await join(tab, state, browser, 'the same')
+  },
+)
+
+When(
+  'browser {string} joins the same session',
+  async ({ tab, state }, browser: string) => {
+    await join(tab, state, browser, 'the same')
+  },
+)
+
+Given(
+  'a minute has passed in browsers {browsers}',
+  async ({ tab, state }, browsers: string[]) => {
+    for (const browser of browsers) {
+      // Only a browser already in the session has offers that can go stale; a
+      // misspelt name would otherwise move the clock of a fresh, empty page.
+      sessionOf(state, browser)
+      await (await tab(browser, '1')).moveClockForward(A_MINUTE)
+    }
   },
 )
 
@@ -287,9 +320,9 @@ Then(
 )
 
 Then(
-  'browsers {string} and {string} are connected to each other',
-  async ({ state }, first: string, second: string) => {
-    await expectConnected(state, first, second)
+  'browsers {browsers} are (all )connected to each other',
+  async ({ state }, browsers: string[]) => {
+    await expectAllConnected(state, browsers)
   },
 )
 
