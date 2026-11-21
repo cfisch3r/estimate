@@ -27,8 +27,8 @@ importers:
         specifier: ^8.4.0
         version: 8.4.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
       trystero:
-        specifier: ^0.25.3
-        version: 0.25.3
+        specifier: ^0.26.0
+        version: 0.26.0
       zustand:
         specifier: ^5.0.15
         version: 5.0.15(@types/react@19.2.18)(immer@10.2.0)(react@19.2.8)
@@ -52,8 +52,8 @@ importers:
         specifier: ^14.6.5
         version: 14.6.5(@testing-library/dom@10.4.1)
       '@trystero-p2p/ws-relay':
-        specifier: ^0.25.4
-        version: 0.25.4
+        specifier: ^0.26.0
+        version: 0.26.0
       '@types/jest-axe':
         specifier: ^3.5.9
         version: 3.5.9
@@ -345,8 +345,8 @@ packages:
       '@emnapi/core': ^1.7.1 || ^2.0.0-alpha.4
       '@emnapi/runtime': ^1.7.1 || ^2.0.0-alpha.4
 
-  '@noble/secp256k1@3.1.0':
-    resolution: {integrity: sha512-+F7iS7tUMaNGXcc9X3PjmjvuQnXEuSjCRNzVVA2xAcKXgCaP0dHYz4SFyt4FKNHef7sOP//xihowcySSS7PK9g==}
+  '@noble/secp256k1@3.2.0':
+    resolution: {integrity: sha512-Z3ZAWOTxJ0EuTuZTi7Y69iK7GgrLHh8sgm45lVDhg/b3Nk1TpAiKhick2KkZisHuupeepSkyIydN/J459SdX1w==}
 
   '@nodelib/fs.scandir@2.1.5':
     resolution: {integrity: sha512-vq24Bq3ym5HEQm2NKCr3yXDwjc7vTsEThRDnkp2DK9p1uqLR+DHurm/NOTo0KG7HYHU7eppKZj3MyqYuMBf62g==}
@@ -856,17 +856,14 @@ packages:
     peerDependencies:
       '@testing-library/dom': '>=7.21.4'
 
-  '@trystero-p2p/core@0.25.3':
-    resolution: {integrity: sha512-lQKNq/ha+vF6kQZrpaXJGzlzxLF/Fhizoy5dwJUYQlkqRrbPup/Jov2EpPX/CPr2X+f79HxVzonkeni3MxmCuQ==}
+  '@trystero-p2p/core@0.26.0':
+    resolution: {integrity: sha512-CZpeXPgfbDdFKrGxfD98F9tn/fTjya4mQ2o/Ax6H0qpBaJXCBz5+jyPtjsYEPAAcKRK/btOatCetFiQ5qIMCOA==}
 
-  '@trystero-p2p/core@0.25.4':
-    resolution: {integrity: sha512-ehvSL1FqW962XyEctXngeDF/IOM1bWmfCKBNR4vwmVa0JGfM0+dlY4TEzSEGghYp3qqGCrpFIVTxdvlBUGVO6Q==}
+  '@trystero-p2p/nostr@0.26.0':
+    resolution: {integrity: sha512-HArp9fonBkqFZgw3U2D823fCePQv7haKkvjtwbGRkWzy+Wo9G3cCDEnG/GENDWwzERHrhRcRacpFsFt4JpwRJQ==}
 
-  '@trystero-p2p/nostr@0.25.3':
-    resolution: {integrity: sha512-nZV9Fl/GXuhIkJSQ+wIkdMoRLO1oSTUL/+vZorukaojeAdOpT/61e8b9Vzbt8L1ktMTaGPEJHw2BG/B5BCwBuw==}
-
-  '@trystero-p2p/ws-relay@0.25.4':
-    resolution: {integrity: sha512-IYyWontAE4eB0K2iWllklEbpGLAVAi5ydhEZeovNoGopYZFfIWZDJspswNSQexIK8l/JQoNdiGWVQCNTYcOmuA==}
+  '@trystero-p2p/ws-relay@0.26.0':
+    resolution: {integrity: sha512-jV1zLCiJ0Tu3ZEExTPRTV5uynICgwI2yJqdT6VR0YPHEx5xPGkzEjh/ixkPM7/8Psbwwxa3UtGMsHTUXrBWqqA==}
 
   '@tybys/wasm-util@0.10.4':
     resolution: {integrity: sha512-W3c4gRigFS0T/Ma4qIYF3GDAc5AQdHb1yL5znJT1Zv1YaD9Kitx656wBjvr19qbiosmZT8lWDM5BEMynUqX65A==}
@@ -1902,8 +1899,8 @@ packages:
     resolution: {integrity: sha512-bLVMLPtstlZ4iMQHpFHTR7GAGj2jxi8Dg0s2h2MafAE4uSWF98FC/3MomU51iQAMf8/qDUbKWf5GxuvvVcXEhw==}
     engines: {node: '>=20'}
 
-  trystero@0.25.3:
-    resolution: {integrity: sha512-mm6Mzmm10OXKfvOA0tUG6XXqlQDIPdHg0//mEqA4ayrtdqiie4ZQpSluEp6074L+dCtotCfCn/B/CWLWavZK6Q==}
+  trystero@0.26.0:
+    resolution: {integrity: sha512-M6NsoGmAkAy72K4YiPj0iGbd9hyuAGJpIBm0wL6f0g6bP/nCsMtbJKM8VpcxexK61HaQ5q5KDVnqFZogXGIolQ==}
 
   tsconfck@3.1.6:
     resolution: {integrity: sha512-ks6Vjr/jEw0P1gmOVwutM3B7fWxoWBL2KRDb1JfqGVawBmO5UsvmWOQFGHBPl5yxYz4eERr19E6L7NMv+Fej4w==}
@@ -2404,7 +2401,7 @@ snapshots:
       '@tybys/wasm-util': 0.10.4
     optional: true
 
-  '@noble/secp256k1@3.1.0': {}
+  '@noble/secp256k1@3.2.0': {}
 
   '@nodelib/fs.scandir@2.1.5':
     dependencies:
@@ -2697,18 +2694,16 @@ snapshots:
     dependencies:
       '@testing-library/dom': 10.4.1
 
-  '@trystero-p2p/core@0.25.3': {}
+  '@trystero-p2p/core@0.26.0': {}
 
-  '@trystero-p2p/core@0.25.4': {}
-
-  '@trystero-p2p/nostr@0.25.3':
+  '@trystero-p2p/nostr@0.26.0':
     dependencies:
-      '@noble/secp256k1': 3.1.0
-      '@trystero-p2p/core': 0.25.3
+      '@noble/secp256k1': 3.2.0
+      '@trystero-p2p/core': 0.26.0
 
-  '@trystero-p2p/ws-relay@0.25.4':
+  '@trystero-p2p/ws-relay@0.26.0':
     dependencies:
-      '@trystero-p2p/core': 0.25.4
+      '@trystero-p2p/core': 0.26.0
       '@types/ws': 8.18.2
       ws: 8.22.0
     transitivePeerDependencies:
@@ -3771,9 +3766,9 @@ snapshots:
     dependencies:
       punycode: 2.3.1
 
-  trystero@0.25.3:
+  trystero@0.26.0:
     dependencies:
-      '@trystero-p2p/nostr': 0.25.3
+      '@trystero-p2p/nostr': 0.26.0
 
   tsconfck@3.1.6(typescript@6.0.3):
     optionalDependencies:

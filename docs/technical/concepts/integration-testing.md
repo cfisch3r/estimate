@@ -77,7 +77,7 @@ flowchart TD
 | Component | Responsibility |
 |---|---|
 | Concept steps | Gherkin step definitions for one concept, calling port drivers only, never `page.evaluate` |
-| `world.ts` | The `tab(browser, tab, options)` fixture: one browser context per browser name, one page per tab, opened on the harness page once `window.__harness` is installed; builds the port drivers for a tab. A browser's options set its faults when its first tab opens |
+| `world.ts` | The `tab(browser, tab, options)` fixture: one browser context per browser name, one page per tab, opened on the harness page once `window.__harness` is installed; builds the port drivers for a tab. A browser's options set its faults when its first tab opens; a tab can also move its page's clock forward (`moveClockForward`) |
 | `remote.ts` | `Remote<Port>`, the type of a port as seen from Node (every operation async, `on…` callbacks left out); `Harness`, what `window.__harness` holds; `remote()`, the generic forwarder to a harness entry, and `remoteHandle()`, the same forwarder to an object that stays in the page |
 | `harness.ts` | Imports the real adapters, composed as `App.tsx` composes them (the network adapter records into the page's diagnostics log), and installs `window.__harness`, declared `satisfies Harness` |
 | `vite.harness.config.ts` | Serves the harness page with Vite's mode set to `e2e`, so the network adapter picks the local relay ([ADR-007](../adr/007-e2e-dual-mode-signaling.md)). Pre-bundles Trystero: found only on first load, it would make Vite re-optimise and reload the page under a running scenario |
@@ -210,6 +210,7 @@ when a scenario needs it.
 |---|---|---|
 | **No direct connections** | A separately launched Chromium with `--force-webrtc-ip-handling-policy=disable_non_proxied_udp`: it offers no candidates, so a WebRTC attempt with it can't connect | `{ directConnections: false }` |
 | **Storage refuses writes** | An init script on the browser context that makes `Storage.prototype.setItem` throw a `QuotaExceededError` | `{ storage: 'refuses-writes' }` |
+| **Time has passed** | Playwright's clock, installed on the open page and left running; `setSystemTime` moves `Date.now()` forward without firing the timers due in between, and the call fails if the page's clock didn't move | `tab.moveClockForward(ms)`, on a tab already in a session |
 
 ## Import rules
 
