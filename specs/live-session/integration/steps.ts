@@ -123,9 +123,13 @@ When(
 
 Given(
   'a minute has passed in browsers {browsers}',
-  async ({ tab }, browsers: string[]) => {
-    for (const browser of browsers)
+  async ({ tab, state }, browsers: string[]) => {
+    for (const browser of browsers) {
+      // Only a browser already in the session has offers that can go stale; a
+      // misspelt name would otherwise move the clock of a fresh, empty page.
+      sessionOf(state, browser)
       await (await tab(browser, '1')).moveClockForward(A_MINUTE)
+    }
   },
 )
 

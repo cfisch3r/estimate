@@ -33,8 +33,10 @@ export type Tab = {
   page: Page
   /** Reloads the page and waits until the harness is installed again. */
   reload: () => Promise<void>
-  /** Moves the page's clock (`Date.now()`) forward by `ms` without firing any
-   *  timer early, as if the page had been open that much longer. */
+  /** Moves the clock (`Date.now()`) of this tab's browser forward by `ms`
+   *  without firing any timer early, as if the browser had been open that much
+   *  longer. Playwright's clock belongs to the browser context, so every tab of
+   *  the browser moves with it. */
   moveClockForward: (ms: number) => Promise<void>
   files: FileDriver
   diagnostics: Remote<DiagnosticsLog>
@@ -107,14 +109,22 @@ async function waitForHarness(page: Page): Promise<void> {
   await page.waitForFunction(() => '__harness' in globalThis)
 }
 
-/** Playwright's clock, installed on the open page and left running in real
+/** Browser contexts whose clock is already installed: Playwright's clock
+ *  belongs to the context, and installing it twice would fail. */
+const clockInstalled = new WeakSet<BrowserContext>()
+
+/** Installs Playwright's clock on the tab's browser once, left running in real
  *  time; `setSystemTime` then jumps `Date.now()` ahead without running the
  *  timers that fall due in between. The check afterwards makes sure the jump
  *  reached the page, so a clock that didn't take over fails here, not as a
  *  spec that passes without having moved anything. */
 async function moveClockForward(page: Page, ms: number): Promise<void> {
   const before = await page.evaluate(() => Date.now())
-  await page.clock.install()
+  const context = page.context()
+  if (!clockInstalled.has(context)) {
+    await page.clock.install()
+    clockInstalled.add(context)
+  }
   await page.clock.setSystemTime(before + ms)
   const after = await page.evaluate(() => Date.now())
   if (after < before + ms) {
