@@ -103,7 +103,7 @@ display value can drift out of sync with the exact division.
 | Rule | Condition | Behavior | Spec |
 |---|---|---|---|
 | **A final result keeps every rule** | Any final result, aggregated or read from a file | **Accepted** only when every `AggregateResult` constraint in the information model holds; otherwise **rejected** with the rule it breaks | [final-result](../../../specs/estimation-method/domain/final-result.feature) |
-| **An estimate keeps every rule** | Any estimate, from the form, from a peer, or the facilitator's reconciled value | **Accepted** only when every `Estimate` constraint in the information model holds; otherwise **rejected** with the rule it breaks | [estimate](../../../specs/estimation-method/domain/estimate.feature) |
+| **An estimate keeps every rule** | Any estimate, from the form, from a peer, or the facilitator's reconciled value | **Accepted** only when every `Estimate` constraint in the information model holds; otherwise **rejected** with the rule it breaks, which has one fixed description (the estimate form shows its own message instead) | [estimate](../../../specs/estimation-method/domain/estimate.feature) |
 | **An estimate stays within 1,000,000** | The `worst ≤ 1,000,000` constraint above, in any unit, from any of those sources | Why the limit exists: aggregating submissions can never produce a `ci90` too large to keep the final-result rule. The form says "Enter a smaller value" | [estimate](../../../specs/estimation-method/domain/estimate.feature) |
 
 ## Rules (bias guards)

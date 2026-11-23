@@ -129,7 +129,8 @@ Feature: What an estimate may hold
   Rule: A rejected estimate is described by the rule it breaks
 
     Each rule has one description, so a rejected estimate can be reported in
-    words wherever it came from.
+    words wherever it came from. The estimate form shows its own message
+    instead, naming the numbers and what to change.
 
     Scenario Outline: Each broken rule has its own description
       When an estimate is made of
@@ -138,9 +139,9 @@ Feature: What an estimate may hold
       Then the estimate is described as "<description>"
 
       Examples:
-        | best | likely | worst   | description                                         |
-        | NaN  | 5      | 8       | best, likely, and worst must all be finite numbers  |
-        | 2    | 5      | 1000001 | best, likely, and worst must all be at most 1000000 |
-        | 0    | 5      | 8       | best, likely, and worst must all be greater than 0  |
-        | 8    | 5      | 9       | best must be ≤ likely                               |
-        | 2    | 9      | 8       | likely must be ≤ worst                              |
+        | best | likely | worst   | description                                           |
+        | NaN  | 5      | 8       | best, likely, and worst must all be finite numbers    |
+        | 2    | 5      | 1000001 | best, likely, and worst must all be at most 1,000,000 |
+        | 0    | 5      | 8       | best must be greater than 0                           |
+        | 8    | 5      | 9       | best must be ≤ likely                                 |
+        | 2    | 9      | 8       | likely must be ≤ worst                                |

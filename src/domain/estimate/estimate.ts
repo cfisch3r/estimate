@@ -152,8 +152,8 @@ export function createEstimate(input: RawEstimateInput): Result<Estimate, Estima
  *  sentence doesn't compile. */
 const ESTIMATE_ERROR_TEXT: Record<EstimateError['code'], string> = {
   'not-finite': 'best, likely, and worst must all be finite numbers',
-  'too-large': `best, likely, and worst must all be at most ${MAX_ESTIMATE_VALUE}`,
-  'non-positive': 'best, likely, and worst must all be greater than 0',
+  'too-large': `best, likely, and worst must all be at most ${MAX_ESTIMATE_VALUE.toLocaleString('en')}`,
+  'non-positive': 'best must be greater than 0',
   'best-above-likely': 'best must be ≤ likely',
   'likely-above-worst': 'likely must be ≤ worst',
   'no-participant': 'participantId must not be empty',
