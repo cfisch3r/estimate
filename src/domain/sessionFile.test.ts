@@ -39,6 +39,12 @@ describe('sessionFileName', () => {
       'q3-2026-2026-12-31.estimate.json',
     )
   })
+
+  it('falls back to a generic name', () => {
+    expect(sessionFileName('!!!', { year: 2026, month: 11, day: 12 })).toBe(
+      'estimate-session-2026-11-12.estimate.json',
+    )
+  })
 })
 
 describe('readSessionFile', () => {
@@ -81,6 +87,37 @@ describe('readSessionFile', () => {
       ],
     })
     expect(readSessionFile(text)).toEqual({ ok: false, error: 'Item 2 has no title.' })
+  })
+
+  // Until #246 replaces this file: the domain specs that covered these three
+  // rejections moved to the new saved-session and session-file specs.
+  it('rejects a newer version', () => {
+    expect(readSessionFile(fileWith({ version: 2 }))).toEqual({
+      ok: false,
+      error: 'This file was saved by a newer version of EstiMate.',
+    })
+  })
+
+  it('rejects an unknown unit', () => {
+    expect(readSessionFile(fileWith({ unit: 'months' }))).toEqual({
+      ok: false,
+      error: 'The unit "months" isn\'t one EstiMate can estimate in.',
+    })
+  })
+
+  it('rejects an item without an id', () => {
+    expect(readSessionFile(fileWith({}, { id: ' ' }))).toEqual({
+      ok: false,
+      error: 'Item 1 has no id.',
+    })
+  })
+
+  it('rejects a duplicate item id', () => {
+    const item = { id: 'a', title: 'A', description: '', notes: '', finalResult: null }
+    expect(readSessionFile(fileWith({ items: [item, item] }))).toEqual({
+      ok: false,
+      error: 'Item 2 has the same id as item 1.',
+    })
   })
 
   it('keeps description and notes', () => {

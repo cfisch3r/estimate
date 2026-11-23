@@ -1,13 +1,22 @@
-import { readFile } from 'node:fs/promises'
-import type { Browser, BrowserContext, Page } from '@playwright/test'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import type { Browser, BrowserContext, Download, Page } from '@playwright/test'
 import { test as base, createBdd } from 'playwright-bdd'
 import type { DiagnosticsLog } from '../../../src/application/ports/outbound/diagnosticsLog'
 import type { DiagnosticEntry } from '../../../src/domain/diagnosis/types'
+import type { Result } from '../../../src/domain/estimate'
+import type { SavedSession } from '../../../src/domain/savedSession'
 import type { FileDownloadApi } from '../../../src/application/ports/outbound/fileDownload'
 import type {
   JoinSession,
   TransportSession,
 } from '../../../src/application/ports/outbound/networkTransport'
+import type {
+  PickedFile,
+  SessionFileApi,
+  SessionFileRejection,
+} from '../../../src/application/ports/outbound/sessionFiles'
 import { joinInPage, remote, remoteHandle } from './remote'
 import type { Remote } from './remote'
 
@@ -19,6 +28,22 @@ export type SavedFile = { suggestedName: string; bytes: Buffer }
  *  waits for the browser's real `download` event. */
 export type FileDriver = {
   download(...args: Parameters<Remote<FileDownloadApi>['download']>): Promise<SavedFile>
+}
+
+/** A file the user picks: its name and bytes, or a file that was deleted after
+ *  it was picked, so the browser can no longer read it. */
+export type PickFile = { name: string; bytes: Buffer } | { deletedAfterPicking: true }
+
+/** The session-file adapter, driven through its port. Hand-written, because a
+ *  picked `File` can't cross from Node into the page: `open` picks the file in
+ *  the harness page's file input and opens what the input holds, so the
+ *  adapter reads a real browser `File`. `save` also waits for the browser's
+ *  real `download` event. */
+export type SessionFileDriver = {
+  save(
+    ...args: Parameters<Remote<SessionFileApi>['save']>
+  ): Promise<{ fileName: string; savedFile: SavedFile }>
+  open(file: PickFile): Promise<Result<SavedSession, SessionFileRejection>>
 }
 
 /** The network adapter, driven through its port: `join` opens a session in the
@@ -39,6 +64,7 @@ export type Tab = {
    *  the browser moves with it. */
   moveClockForward: (ms: number) => Promise<void>
   files: FileDriver
+  sessionFiles: SessionFileDriver
   diagnostics: Remote<DiagnosticsLog>
   network: NetworkDriver
 }
@@ -71,6 +97,16 @@ export type ScenarioState = {
   peer?: string
   /** The entries the last "diagnostics read in tab" step read. */
   entries?: DiagnosticEntry[]
+  /** The saved session the next "saves it" step saves. */
+  savedSession?: SavedSession
+  /** What the last session-file save returned and the browser saved. */
+  sessionFileSave?: { fileName: string; savedFile: SavedFile }
+  /** The file the next "opens it" step opens. */
+  pick?: PickFile
+  /** The text of the last file the user opened, when a step wrote it. */
+  openedText?: string
+  /** What the last session-file open gave back. */
+  opened?: Result<SavedSession, SessionFileRejection>
 }
 
 export function requireState<K extends keyof ScenarioState>(
@@ -94,11 +130,65 @@ function fileDriver(page: Page): FileDriver {
         page.waitForEvent('download'),
         port.download(...args),
       ])
-      const path = await download.path()
-      return {
-        suggestedName: download.suggestedFilename(),
-        bytes: await readFile(path),
+      return savedFileOf(download)
+    },
+  }
+}
+
+async function savedFileOf(download: Download): Promise<SavedFile> {
+  return {
+    suggestedName: download.suggestedFilename(),
+    bytes: await readFile(await download.path()),
+  }
+}
+
+/** Sets the harness page's file input to a real file on disk, then deletes the
+ *  file: the input keeps a `File` whose bytes the browser can no longer read
+ *  (ADR-011: a fault through the browser, never a stub). */
+async function pickDeletedFile(page: Page): Promise<void> {
+  const directory = await mkdtemp(join(tmpdir(), 'estimate-pick-'))
+  const path = join(directory, 'gone.estimate.json')
+  await writeFile(path, '{}')
+  await page.setInputFiles('#picker', path)
+  await rm(directory, { recursive: true })
+}
+
+function sessionFileDriver(page: Page): SessionFileDriver {
+  const port = remote(page, 'sessionFiles')
+  return {
+    async save(...args) {
+      const [download, fileName] = await Promise.all([
+        page.waitForEvent('download'),
+        port.save(...args),
+      ])
+      return { fileName, savedFile: await savedFileOf(download) }
+    },
+    async open(file) {
+      if ('deletedAfterPicking' in file) {
+        await pickDeletedFile(page)
+      } else {
+        await page.setInputFiles('#picker', {
+          name: file.name,
+          mimeType: 'application/json',
+          buffer: file.bytes,
+        })
       }
+      // Node has no DOM types: the input is typed by what the step reads off it.
+      return page.locator('#picker').evaluate((input) => {
+        const picked = (input as unknown as { files: ArrayLike<PickedFile> | null })
+          .files?.[0]
+        const open = (
+          globalThis as unknown as {
+            __harness?: { sessionFiles?: Pick<SessionFileApi, 'open'> }
+          }
+        ).__harness?.sessionFiles?.open
+        if (!picked || !open) {
+          throw new Error(
+            'No picked file, or window.__harness.sessionFiles is not installed',
+          )
+        }
+        return open(picked)
+      })
     },
   }
 }
@@ -195,6 +285,7 @@ export const test = base.extend<Fixtures>({
         },
         moveClockForward: (ms: number) => moveClockForward(page, ms),
         files: fileDriver(page),
+        sessionFiles: sessionFileDriver(page),
         diagnostics: remote(page, 'diagnostics'),
         network: networkDriver(page),
       }

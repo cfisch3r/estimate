@@ -5,6 +5,9 @@
     <title>EstiMate integration harness</title>
   </head>
   <body>
+    <!-- The file a scenario picks: the session-file driver sets it with
+         Playwright's setInputFiles, so the adapter reads a real browser File. -->
+    <input id="picker" type="file" />
     <script type="module" src="./harness.ts"></script>
   </body>
 </html>
