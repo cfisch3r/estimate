@@ -41,7 +41,7 @@ flowchart TD
   end
 
   subgraph portlane["PORT LANE · src/application/ports/outbound"]
-    Ports["fileDownload.ts, networkTransport.ts,<br/>diagnosticsLog.ts<br/>[Port Types]"]
+    Ports["fileDownload.ts, sessionFiles.ts,<br/>networkTransport.ts, diagnosticsLog.ts<br/>[Port Types]"]
   end
 
   Chromium["Chromium<br/>[Browser, Playwright-controlled]"]
@@ -169,9 +169,17 @@ that uses it. A parameter added to the port is the one exception the harness sid
 catch, because TypeScript accepts a function with fewer parameters: when a port gains a
 parameter, update its adapter in the same change.
 
-The one partly hand-written driver is the file driver: its parameters come from the port,
-but it also waits for Playwright's `download` event and returns the saved file's name and
-bytes.
+Two drivers are partly hand-written:
+
+- **The file driver**<br>
+  Its parameters come from the port, but it also waits for Playwright's `download` event
+  and returns the saved file's name and bytes.
+- **The session-file driver**<br>
+  `save` takes the port's parameters and also waits for the `download` event. `open`
+  can't take the port's `PickedFile`, because a browser `File` can't cross from Node into
+  the page: it takes what the user picks (a name and bytes), sets the harness page's
+  `#picker` file input with `setInputFiles`, and opens the `File` that input holds, so the
+  adapter reads a real browser file. Its result type still comes from the port.
 
 **A port that returns a session.** The network port, `JoinSession`, is a function that
 returns a `TransportSession`, an object full of functions that can't cross into Node. Its
@@ -210,6 +218,7 @@ when a scenario needs it.
 |---|---|---|
 | **No direct connections** | A separately launched Chromium with `--force-webrtc-ip-handling-policy=disable_non_proxied_udp`: it offers no candidates, so a WebRTC attempt with it can't connect | `{ directConnections: false }` |
 | **Storage refuses writes** | An init script on the browser context that makes `Storage.prototype.setItem` throw a `QuotaExceededError` | `{ storage: 'refuses-writes' }` |
+| **File deleted after picking** | The driver sets the file input to a real file in a temporary folder, then deletes the folder: the input keeps a `File` whose read Chromium rejects with `NotFoundError` | `sessionFiles.open({ deletedAfterPicking: true })` |
 | **Time has passed** | Playwright's clock, installed once per browser context and left running; `setSystemTime` moves `Date.now()` forward in every tab of that browser without firing the timers due in between, and the call fails if the page's clock didn't move | `tab.moveClockForward(ms)` |
 
 ## Import rules

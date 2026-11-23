@@ -92,7 +92,7 @@ flowchart LR
 | Facilitator owns the live state | Versioned rounds, a values-free submission roster, acknowledged submissions (ADR-003) |
 | One estimation engine for both modes | `aggregateEstimates` is called with N submissions or one (section 8) |
 | Three small stores | Session, connection and round state are separate Zustand stores (ADR-005) |
-| Wiring at composition time | `src/app` picks which adapter fills which port and hands the use-case hooks their controller and the identity, download, diagnostics log and clipboard ports through React contexts (section 8) |
+| Wiring at composition time | `src/app` picks which adapter fills which port and hands the use-case hooks their controller and the identity, download, session-file, diagnostics log and clipboard ports through React contexts (section 8) |
 | Boundaries enforced by tools | [Steiger](https://github.com/feature-sliced/steiger) for the UI, [dependency-cruiser](https://github.com/sverweij/dependency-cruiser) for the layer imports, type tests for the store views (section 5) |
 
 ## 5. Building block view
@@ -169,7 +169,7 @@ flowchart LR
     direction TB
     Net["Network and wire parsing<br/>[Trystero adapter]"]
     Store["Storage<br/>[Browser storage adapter]"]
-    File["File download<br/>[Browser download adapter]"]
+    File["Files<br/>[Session-file and download adapters]"]
     Clip["Clipboard<br/>[Browser clipboard adapter]"]
   end
   subgraph DOM["DOMAIN"]
@@ -188,11 +188,11 @@ flowchart LR
   Net -.->|validated peer messages<br/>to registered handlers| UseCases
   UseCases -->|reads identity, records and<br/>reads the diagnostics log via ports| Store
   Net -->|records connection facts<br/>via diagnostics log port| Store
-  UseCases -->|hands the saved file<br/>and report via download port| File
+  UseCases -->|saves and opens session files,<br/>downloads the report via ports| File
   UseCases -->|copies the report<br/>via clipboard port| Clip
   Net <-->|WebRTC, relays| Ext
   Store <-->|browser storage| Ext
-  File -->|download| Ext
+  File <-->|downloads,<br/>picked files| Ext
   Clip -->|writeText| Ext
   linkStyle default stroke:#8a93a6,stroke-width:2px
   style UI fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
@@ -218,9 +218,9 @@ flowchart LR
 | **State stores** | Application | The Zustand stores holding session, round and connection state. The UI reads them with selectors and may call a few trivial field setters (session name, unit, item selection and text fields). Every other write goes through a use case. |
 | **Network and wire parsing** | Adapters | The Trystero/WebRTC transport, signaling, and validation of untrusted peer messages into domain values. It implements the transport port, delivers validated messages to the handlers the controller registered, and never touches the stores. It records peers, join errors and each WebRTC attempt into the diagnostics log ([connection diagnosis](concepts/collaboration-mode.md#connection-diagnosis)). |
 | **Storage** | Adapters | The stable per-browser participant id, and the diagnostics log, one key per tab. It implements the identity and diagnostics log ports. |
-| **File download** | Adapters | Hands a saved session file to the browser as a download. It implements the download port. Loading needs no adapter: the UI reads the picked file's text, and the load use case parses it. |
+| **Files** | Adapters | Saves a session as a version-1 file the browser downloads, and opens a file the user picked, checking its format before the domain checks its rules. It implements the session-file port ([session-persistence](concepts/session-persistence.md)). Also hands the diagnosis report to the browser as a download, implementing the download port. |
 | **Clipboard** | Adapters | Puts the diagnosis report on the clipboard. It implements the clipboard port. |
-| **Composition root** | UI (`src/app`, FSD's app layer) | `App.tsx` provides the identity, download, diagnostics log and clipboard ports, and the live-session provider creates the controller with the network adapter, both recording into that one diagnostics log, and provides it to the UI. The one place in the UI that may import an adapter and the application's composition entry (`ui-no-adapters`, `composition-root`). |
+| **Composition root** | UI (`src/app`, FSD's app layer) | `App.tsx` provides the identity, download, session-file, diagnostics log and clipboard ports, and the live-session provider creates the controller with the network adapter, both recording into that one diagnostics log, and provides it to the UI. The one place in the UI that may import an adapter and the application's composition entry (`ui-no-adapters`, `composition-root`). |
 | **Features** | UI | UI-only features and their components. They call use cases and add navigation. |
 | **Pages and widgets** | UI | Screens and widgets composed from features and shared UI, plus routing (ADR-006) and the design system. |
 | **Peers, relays, browser storage, downloads** | External | Not part of the codebase. |
@@ -230,9 +230,9 @@ flowchart LR
 | Part | Location |
 |---|---|
 | Domain | `src/domain` (rules and types), `src/domain/estimate` (the estimation engine, formerly `/calc`), `src/domain/diagnosis` (the connection diagnosis: candidate parsing, peer-id shortening, the log cap, the report text) |
-| Application | `src/application`: `stores/` (session, connection, round, plus the narrowed `publicStores`), `useCases/` (the use cases, the live-session controller and its `LiveSessionApi` context and hook), `ports/outbound/` (the peer transport and the identity, download, diagnostics log and clipboard ports) and `ports/` (the React contexts that hand those four ports to the use cases), `composition.ts` and `testing.ts` (entries for `src/app` and tests only), `index.ts` (the barrel the UI imports) |
-| Adapters | `src/adapters/network` (Trystero transport, wire actions and parsing, signaling), `src/adapters/storage` (participant id, diagnostics log), `src/adapters/file` (session file download), `src/adapters/clipboard` (diagnosis report copy) |
-| Composition | `src/app`: `App.tsx` provides the identity, download, diagnostics log and clipboard ports, `LiveSessionProvider.tsx` is the thin React shell that wires the network adapter into the live-session controller and provides its `LiveSessionApi` |
+| Application | `src/application`: `stores/` (session, connection, round, plus the narrowed `publicStores`), `useCases/` (the use cases, the live-session controller and its `LiveSessionApi` context and hook), `ports/outbound/` (the peer transport and the identity, download, session-file, diagnostics log and clipboard ports) and `ports/` (the React contexts that hand those five ports to the use cases), `composition.ts` and `testing.ts` (entries for `src/app` and tests only), `index.ts` (the barrel the UI imports) |
+| Adapters | `src/adapters/network` (Trystero transport, wire actions and parsing, signaling), `src/adapters/storage` (participant id, diagnostics log), `src/adapters/file` (session files: format, file name, saving and opening; the download), `src/adapters/clipboard` (diagnosis report copy) |
+| Composition | `src/app`: `App.tsx` provides the identity, download, session-file, diagnostics log and clipboard ports, `LiveSessionProvider.tsx` is the thin React shell that wires the network adapter into the live-session controller and provides its `LiveSessionApi` |
 | UI | `src/pages`, `src/widgets`, `src/features`, `src/entities` (`item`, `estimate`), `src/shared`. The slice mapping is in ADR-004 and the placement helper is the `react-webapp-architecture` plugin's code-placement skill |
 | Styling | `src/design` holds the verbatim Nocturne port and generic composed patterns, component CSS sits beside its component |
 
@@ -302,14 +302,52 @@ releases are in the [runbook](runbook.md).
 | Live sync | Room id is the 6-character session code (Crockford base32, no deep link) under the fixed `appId` `estimate-app-v1`. Trystero's [Nostr](https://nostr.com) strategy is the default (the library's own robustness ranking is Nostr, MQTT, BitTorrent, IPFS, and the Supabase and Firebase strategies need your own project). A self-hosted WebSocket relay is the escape hatch. An optional room password AES-GCM-encrypts the signaling handshake, without it the room id is visible as metadata on the relay. The facilitator's items are the single source of truth: participants send estimates only to the facilitator, and everyone else receives `syncState` snapshots. A peer that connects or reconnects pulls the snapshot itself (`requestSnapshot`) | ADR-001, ADR-003, [collaboration-mode](concepts/collaboration-mode.md) |
 | Reliability | Versioned rounds, a values-free roster, acknowledged submissions with a kind-driven retry policy, a stable per-browser participant id, role-asymmetric link state | ADR-003 |
 | Trust boundary | Every inbound peer message is validated into domain values at the adapter edge, so the UI only sees valid `Estimate`s | [collaboration-mode](concepts/collaboration-mode.md): trust boundary |
-| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (peer transport, participant identity, file download, diagnostics log and clipboard, all in `ports/outbound`). The use-case hooks reach the live-session controller, and the identity, download, diagnostics log and clipboard ports, through React contexts, because a hook cannot import an object created at runtime. The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (`ui-no-adapters`, `composition-root`) | [glossary](../glossary.md): port and handle, ADR-009 |
+| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (peer transport, participant identity, file download, session files, diagnostics log and clipboard, all in `ports/outbound`). The use-case hooks reach the live-session controller, and the identity, download, session-file, diagnostics log and clipboard ports, through React contexts, because a hook cannot import an object created at runtime ([below](#how-the-use-cases-reach-the-ports)). The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (`ui-no-adapters`, `composition-root`) | [glossary](../glossary.md): port and handle, ADR-009 |
 | State and UI access | Three stores in the application layer, read-only narrowed views for the UI, use cases for rule-bearing writes (`ui-reads-views`, `store-vs-usecase`) | ADR-005, ADR-009 |
 | Navigation | `react-router`. Use cases contain no navigation, `features/session-lifecycle` wraps them with it | ADR-006 |
-| Persistence | Local-first and **file-based**, with no accounts and no cross-device sync in the MVP. The file format and its rules are pure domain code (`domain/sessionFile.ts`); **save** goes through the file-download port and adapter, **load** needs no adapter (the UI hands the picked file's text to the load use case). The UI wiring — Save button, Load row, loaded-session card, unsaved-changes cues, the entry-screen guard — is in the [collaboration-mode](concepts/collaboration-mode.md) screen table. The rules are in the domain concept | [session-persistence](../domain/concepts/session-persistence.md) |
+| Persistence | Local-first and **file-based**, with no accounts and no cross-device sync in the MVP. The saved session and its rules are domain code (`domain/savedSession.ts`); the file format, the file name and the browser I/O are the session-file adapter, and **save and load both go through its port**. A picked file is untrusted input and becomes a saved session only through the domain's factory. The UI wiring — Save button, Load row, loaded-session card, unsaved-changes cues, the entry-screen guard — is in the [collaboration-mode](concepts/collaboration-mode.md) screen table. The rules are in the domain concept | [session-persistence](../domain/concepts/session-persistence.md) (domain), [session-persistence](concepts/session-persistence.md) (technical) |
 | Estimation unit | The facilitator picks hours, days or weeks per session. The false-precision guard's rounding granularity derives from the unit through a lookup, and the unit travels on `SessionSnapshot`, which is how the participant view receives it | [estimation-engine](concepts/estimation-engine.md) |
 | Testing | Unit and component tests, a thin Playwright layer for real WebRTC, type tests for the store views, 100% coverage on the domain. Spec-first: executable Gherkin specs under `specs/<concept>/<test level>/`, three Test Levels (`e2e` and `integration` via `playwright-bdd`, `domain` via `quickpickle`) | ADR-002, ADR-007, ADR-010, ADR-011, [e2e-testing](concepts/e2e-testing.md), [integration-testing](concepts/integration-testing.md) |
 | Accessibility | oxlint `jsx-a11y`, `jest-axe` scans, `@axe-core/playwright` scans, a tracked `color-contrast` exclusion | ADR-008 |
 | Styling and shared UI | Nocturne is the single source of tokens and components. `shared/ui` holds thin wrappers over Nocturne classes (Button, Card, Field, Markdown and MarkdownEditor, LiveRegion, and so on). `Header` lives in `app/` because it carries screen and mode-aware logic. `RadioTile` is unused but kept as a design-system primitive. Composed patterns sit in their own files in `src/design`, and component CSS sits beside its component | Section 9, product and design decisions |
+
+### How the use cases reach the ports
+
+A port is an interface in `ports/outbound`: plain TypeScript, no React, so adapters and the
+integration harness can import it. The use cases are React hooks, and a hook can't take a
+constructor parameter or import the adapter (`adapters-inward-application-only-outbound-ports`,
+`ui-no-adapters`). So each port has a React context next to it in `ports/`, typed by the
+port: the use case reads the adapter from the context (`useSessionFiles()`), and `src/app`
+puts the real adapter into it. The context does the job a constructor parameter does in
+classic hexagonal code. Lines: **solid** = import/call, **dotted** = implements.
+
+```mermaid
+flowchart LR
+  App["App.tsx<br/>[Composition root]"]
+  subgraph applane["APPLICATION"]
+    direction TB
+    UC["useSaveSession, useLoadSessionFile<br/>[Use cases]"]
+    Ctx["sessionFilesContext.ts<br/>[React context]"]
+    Port["outbound/sessionFiles.ts<br/>[Port: SessionFileApi]"]
+  end
+  Ad["adapters/file/sessionFiles.ts<br/>[Adapter]"]
+  App -->|imports| Ad
+  App -->|fills| Ctx
+  UC -->|"useSessionFiles()"| Ctx
+  Ctx -->|typed by| Port
+  Ad -.->|implements| Port
+  classDef ui fill:#b9ccf7,stroke:#3d56a6,color:#14171f
+  classDef app fill:#b2dfc0,stroke:#2f7a43,color:#14171f
+  classDef ad fill:#dcbfe5,stroke:#7a3d8c,color:#14171f
+  class App ui
+  class UC,Ctx,Port app
+  class Ad ad
+  style applane fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
+```
+
+At runtime the use case calls `save` or `open` on what the context holds, which is the
+adapter. The identity, download, diagnostics log and clipboard ports work the same way;
+the live-session controller's `LiveSessionApi` too, though it is a handle, not a port.
 
 ## 9. Architecture decisions
 
