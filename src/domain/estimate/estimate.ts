@@ -136,3 +136,9 @@ export function createEstimate(input: RawEstimateInput): Result<Estimate> {
 
   return { ok: true, value: input as Estimate }
 }
+
+/** Placeholder until #244 gives each rule its description; the estimate spec's
+ *  description scenarios are written against it first. */
+export function estimateErrorText(error: unknown): string {
+  throw new Error(`No description yet for ${String(error)}`)
+}

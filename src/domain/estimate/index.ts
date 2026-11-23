@@ -31,6 +31,7 @@ export type {
 } from './estimate'
 export {
   createEstimate,
+  estimateErrorText,
   findOrderViolation,
   MAX_ESTIMATE_VALUE,
   validateEstimateValues,

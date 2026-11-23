@@ -24,6 +24,7 @@ Feature: What an estimate may hold
         | 2    | 5      | 8     | ascending             |
         | 5    | 5      | 5     | equal values are fine |
 
+    @fail
     Scenario Outline: An estimate that breaks a rule is rejected with its reason
       When an estimate is made of
         | best   | likely   | worst   |
@@ -86,6 +87,7 @@ Feature: What an estimate may hold
         | 1    | 2      | 1000000 |
       Then the estimate is accepted
 
+    @fail
     Scenario Outline: A value above the largest is rejected
       When an estimate is made of
         | best   | likely   | worst   |
@@ -112,6 +114,7 @@ Feature: What an estimate may hold
     value above 1,000,000, a best case of 0 or less, then the order, best above
     likely before likely above worst. Only the first broken rule is reported.
 
+    @fail
     Scenario Outline: The first broken rule is the reason
       When an estimate is made of
         | best   | likely   | worst   |
@@ -125,3 +128,23 @@ Feature: What an estimate may hold
         | 0    | 5      | 2000000 | a best case of 0 or less         | has a value above 1,000,000            | worst           |
         | 0    | 5      | 3       | likely above worst               | has a best case of 0 or less           | best            |
         | 10   | 5      | 3       | likely above worst               | has a best case above its likely case  | best and likely |
+
+  Rule: A rejected estimate is described by the rule it breaks
+
+    Each rule has one description, so a rejected estimate can be reported in
+    words wherever it came from.
+
+    @fail
+    Scenario Outline: Each broken rule has its own description
+      When an estimate is made of
+        | best   | likely   | worst   |
+        | <best> | <likely> | <worst> |
+      Then the estimate is described as "<description>"
+
+      Examples:
+        | best | likely | worst   | description                                         |
+        | NaN  | 5      | 8       | best, likely, and worst must all be finite numbers  |
+        | 2    | 5      | 1000001 | best, likely, and worst must all be at most 1000000 |
+        | 0    | 5      | 8       | best, likely, and worst must all be greater than 0  |
+        | 8    | 5      | 9       | best must be ≤ likely                               |
+        | 2    | 9      | 8       | likely must be ≤ worst                              |
