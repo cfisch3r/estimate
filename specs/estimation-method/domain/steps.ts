@@ -9,6 +9,7 @@ import {
   checkUncertaintyRange,
   createAggregateResult,
   createEstimate,
+  findOrderViolation,
   isEstimationUnit,
   UNCERTAINTY_GUIDANCE,
   UNCERTAINTY_LEVELS,
@@ -21,6 +22,7 @@ import type {
   Estimate,
   EstimateValuesResult,
   EstimationUnit,
+  OrderViolation,
   Result,
   UncertaintyLevel,
 } from '../../../src/domain/estimate'
@@ -32,6 +34,8 @@ type Data = {
   /** One estimate made from its three values: the factory's verdict, and the
    *  validator's, which names the rule broken. */
   estimate?: { created: Result<Estimate>; values: EstimateValuesResult }
+  /** The ordering check over the values given so far; null when none is broken. */
+  order?: { violation: OrderViolation | null }
   estimates?: Estimate[]
   groupRange?: AggregateResult
   range?: { best: number; likely: number; worst: number }
@@ -127,6 +131,40 @@ Then(
     expect(values).toMatchObject({ ok: false, code })
   },
 )
+
+/** "best", "best and worst", "best, likely and worst" as a list of fields. */
+function fieldList(text: string): string[] {
+  return text.split(/, | and /)
+}
+
+Then('the values breaking it are {}', (world: QuickPickleWorld, values: string) => {
+  expect(required(data(world), 'estimate').values).toMatchObject({
+    ok: false,
+    fields: fieldList(values),
+  })
+})
+
+When('only these values are given', (world: QuickPickleWorld, table: DataTable) => {
+  const [row, ...rest] = table.hashes()
+  if (!row || rest.length > 0) throw new Error('Give exactly one row of values')
+  /** An empty cell is a value not given yet. */
+  const given = (column: string) => {
+    const text = row[column]
+    if (text === undefined) throw new Error(`Missing column "${column}"`)
+    return text.trim() === '' ? null : Number(text)
+  }
+  data(world).order = {
+    violation: findOrderViolation(given('best'), given('likely'), given('worst')),
+  }
+})
+
+Then('the order is broken by {}', (world: QuickPickleWorld, values: string) => {
+  expect(required(data(world), 'order').violation?.fields).toEqual(fieldList(values))
+})
+
+Then('the order is not broken', (world: QuickPickleWorld) => {
+  expect(required(data(world), 'order').violation).toBeNull()
+})
 
 // Aggregation
 
