@@ -69,7 +69,7 @@ export function useThreePointDraft(
   const currentIssue =
     validation && !validation.ok
       ? describeEstimateIssue(
-          validation,
+          validation.error,
           { best: bestNum, likely: likelyNum, worst: worstNum },
           unit,
         )

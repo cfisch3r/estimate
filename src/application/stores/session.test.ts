@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { aggregateEstimates, createEstimate } from '../../domain/estimate'
+import {
+  aggregateEstimates,
+  createEstimate,
+  estimateErrorText,
+} from '../../domain/estimate'
 import { patchItem, useSessionStore } from './session'
 
 function resetStore() {
@@ -116,7 +120,7 @@ describe('startSession', () => {
     addItem('B')
     const [first, second] = useSessionStore.getState().items
     const estimate = createEstimate({ participantId: 'p', best: 1, likely: 2, worst: 3 })
-    if (!estimate.ok) throw new Error(estimate.error)
+    if (!estimate.ok) throw new Error(estimateErrorText(estimate.error))
     patchItem(first!.id, { finalResult: aggregateEstimates([estimate.value]) })
 
     useSessionStore.getState().startSession()

@@ -1,4 +1,8 @@
-import { createEstimate, type ActionResult } from '../../domain/estimate'
+import {
+  createEstimate,
+  estimateErrorText,
+  type ActionResult,
+} from '../../domain/estimate'
 import { FACILITATOR_PARTICIPANT_ID } from '../../domain/participantId'
 import { finalizeWith } from './finalizeWith'
 
@@ -17,6 +21,6 @@ export function finalizeEstimate(
     likely,
     worst,
   })
-  if (!estimate.ok) return estimate
+  if (!estimate.ok) return { ok: false, error: estimateErrorText(estimate.error) }
   return finalizeWith(id, [estimate.value])
 }

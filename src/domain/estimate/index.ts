@@ -23,6 +23,7 @@ export type {
   Estimate,
   EstimateField,
   EstimateValues,
+  EstimateError,
   EstimateValuesError,
   EstimateValuesResult,
   OrderViolation,

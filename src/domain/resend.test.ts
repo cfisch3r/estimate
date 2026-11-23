@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { createEstimate, type Estimate } from './estimate'
+import { createEstimate, estimateErrorText, type Estimate } from './estimate'
 import { needsResend, roundKey } from './resend'
 import type { LiveRound } from './types'
 
 function mine(best: number, likely: number, worst: number): Estimate {
   const result = createEstimate({ participantId: 'me', best, likely, worst })
-  if (!result.ok) throw new Error(result.error)
+  if (!result.ok) throw new Error(estimateErrorText(result.error))
   return result.value
 }
 

@@ -24,7 +24,6 @@ Feature: What an estimate may hold
         | 2    | 5      | 8     | ascending             |
         | 5    | 5      | 5     | equal values are fine |
 
-    @fail
     Scenario Outline: An estimate that breaks a rule is rejected with its reason
       When an estimate is made of
         | best   | likely   | worst   |
@@ -87,7 +86,6 @@ Feature: What an estimate may hold
         | 1    | 2      | 1000000 |
       Then the estimate is accepted
 
-    @fail
     Scenario Outline: A value above the largest is rejected
       When an estimate is made of
         | best   | likely   | worst   |
@@ -114,7 +112,6 @@ Feature: What an estimate may hold
     value above 1,000,000, a best case of 0 or less, then the order, best above
     likely before likely above worst. Only the first broken rule is reported.
 
-    @fail
     Scenario Outline: The first broken rule is the reason
       When an estimate is made of
         | best   | likely   | worst   |
@@ -134,7 +131,6 @@ Feature: What an estimate may hold
     Each rule has one description, so a rejected estimate can be reported in
     words wherever it came from.
 
-    @fail
     Scenario Outline: Each broken rule has its own description
       When an estimate is made of
         | best   | likely   | worst   |

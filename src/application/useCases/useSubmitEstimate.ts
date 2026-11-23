@@ -1,6 +1,10 @@
 import { useState } from 'react'
 import { deliveryStateFor } from '../../domain/delivery'
-import { createEstimate, type ActionResult } from '../../domain/estimate'
+import {
+  createEstimate,
+  estimateErrorText,
+  type ActionResult,
+} from '../../domain/estimate'
 import { LOCAL_PARTICIPANT_ID } from '../../domain/participantId'
 import { useConnectionStore, useRoundStore } from '../stores'
 import { useLiveSession } from './useLiveSession'
@@ -35,7 +39,7 @@ export function useSubmitEstimate() {
       likely,
       worst,
     })
-    if (!result.ok) return result
+    if (!result.ok) return { ok: false, error: estimateErrorText(result.error) }
     submitEstimate(result.value)
     setDeliveryFailed(false)
     sendEstimate(round.item.id, result.value, round.round).catch(() => {

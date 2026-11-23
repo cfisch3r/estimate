@@ -4,6 +4,7 @@ import {
   MAX_ESTIMATE_VALUE,
   type EstimateField,
   type EstimateValuesError,
+  type OrderViolation,
   type EstimationUnit,
 } from '../../../domain/estimate'
 import { ESTIMATE_FIELD_LABEL } from './estimateFieldLabel'
@@ -48,9 +49,10 @@ function orderingIssue(
   }
 }
 
-/** Turn a validator rejection into an actionable issue. */
+/** Turn a validator rejection, or the partial ordering check's violation, into
+ *  an actionable issue. */
 export function describeEstimateIssue(
-  error: EstimateValuesError,
+  error: EstimateValuesError | OrderViolation,
   values: Values,
   unit: EstimationUnit,
 ): EstimateIssue {

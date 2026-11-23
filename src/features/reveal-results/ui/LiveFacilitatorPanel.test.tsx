@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
-import { createEstimate } from '../../../domain/estimate'
+import { createEstimate, estimateErrorText } from '../../../domain/estimate'
 import { useConnectionStore, useSessionStore } from '../../../application/testing'
 import type { Item } from '../../../domain/types'
 import { LiveFacilitatorPanel } from './LiveFacilitatorPanel'
@@ -12,7 +12,7 @@ const A11Y = { rules: { 'color-contrast': { enabled: false } } }
 
 function estimate(participantId: string) {
   const result = createEstimate({ participantId, best: 1, likely: 2, worst: 3 })
-  if (!result.ok) throw new Error(result.error)
+  if (!result.ok) throw new Error(estimateErrorText(result.error))
   return result.value
 }
 

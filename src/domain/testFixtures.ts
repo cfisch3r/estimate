@@ -3,6 +3,7 @@ import {
   computeCI90,
   createAggregateResult,
   createEstimate,
+  estimateErrorText,
 } from './estimate'
 import type { AggregateResult, Estimate } from './estimate'
 import type { Item } from './types'
@@ -14,7 +15,7 @@ export function estimateOf(
   worst = 3,
 ): Estimate {
   const result = createEstimate({ participantId, best, likely, worst })
-  if (!result.ok) throw new Error(result.error)
+  if (!result.ok) throw new Error(estimateErrorText(result.error))
   return result.value
 }
 

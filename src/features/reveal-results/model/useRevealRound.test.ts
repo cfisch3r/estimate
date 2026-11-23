@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
-import { createEstimate } from '../../../domain/estimate'
+import { createEstimate, estimateErrorText } from '../../../domain/estimate'
 import {
   useConnectionStore,
   useRoundStore,
@@ -57,7 +57,7 @@ describe('useRevealRound', () => {
     expect(empty).not.toEqual({ ok: false, error: 'Reveal the round first.' })
 
     const estimate = createEstimate({ participantId: 'p1', best: 1, likely: 2, worst: 3 })
-    if (!estimate.ok) throw new Error(estimate.error)
+    if (!estimate.ok) throw new Error(estimateErrorText(estimate.error))
     useSessionStore.setState((s) => ({
       items: s.items.map((i) => ({
         ...i,
@@ -82,7 +82,7 @@ describe('useRevealRound', () => {
     expect(onAdvance).not.toHaveBeenCalled()
 
     const estimate = createEstimate({ participantId: 'p1', best: 1, likely: 2, worst: 3 })
-    if (!estimate.ok) throw new Error(estimate.error)
+    if (!estimate.ok) throw new Error(estimateErrorText(estimate.error))
     useSessionStore.setState((s) => ({
       items: s.items.map((i) => ({
         ...i,
@@ -109,7 +109,7 @@ describe('useRevealRound', () => {
   it('aggregates the submissions present at call time, not at render time', () => {
     const { result } = renderHook(() => useRevealRound(currentItem()))
     const estimate = createEstimate({ participantId: 'p1', best: 2, likely: 4, worst: 8 })
-    if (!estimate.ok) throw new Error(estimate.error)
+    if (!estimate.ok) throw new Error(estimateErrorText(estimate.error))
     useSessionStore.setState((s) => ({
       items: s.items.map((i) => ({
         ...i,

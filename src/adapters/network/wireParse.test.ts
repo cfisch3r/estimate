@@ -9,10 +9,13 @@ describe('parseWireEstimate', () => {
     if (result.ok) expect(result.value).toMatchObject({ participantId: 'a', likely: 2 })
   })
 
-  it('rejects an order violation', () => {
+  it('rejects an order violation with the rule it breaks as a sentence', () => {
     expect(
-      parseWireEstimate({ participantId: 'a', best: 3, likely: 2, worst: 1 }).ok,
-    ).toBe(false)
+      parseWireEstimate({ participantId: 'a', best: 3, likely: 2, worst: 1 }),
+    ).toEqual({
+      ok: false,
+      error: 'best must be ≤ likely',
+    })
   })
 
   it('rejects a blank participantId', () => {
