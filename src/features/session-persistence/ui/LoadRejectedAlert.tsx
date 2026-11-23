@@ -1,7 +1,5 @@
 import { GuardNote, LiveRegion } from '../../../shared/ui'
-
-/** A file that was picked and rejected, with the reason it can't be loaded. */
-export type LoadRejection = { fileName: string; reason: string }
+import type { LoadRejection } from '../model/useLoadPickedFile'
 
 /** Announces a rejected file and why. The region stays mounted and only its
  *  content changes, so screen readers announce each rejection. */

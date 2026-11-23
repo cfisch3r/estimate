@@ -38,7 +38,7 @@ const SOME_DAY: LocalDate = { year: 2026, month: 11, day: 23 }
 /** A saved session the scenario knows to keep every rule. Built as plain
  *  data, because integration steps take only types from src/ (ADR-011); the
  *  brand is compile-time only, and the adapter checks what it reads anyway. */
-function savedSessionOf(
+function savedSessionFixture(
   sessionName: string,
   unit: string,
   rows: Record<string, string>[],
@@ -121,12 +121,12 @@ function openedSession(state: ScenarioState): SavedSession {
 Given(
   'a saved session named {string} estimated in {word} with the items',
   async ({ state }, sessionName: string, unit: string, table: DataTable) => {
-    state.savedSession = savedSessionOf(sessionName, unit, table.hashes())
+    state.savedSession = savedSessionFixture(sessionName, unit, table.hashes())
   },
 )
 
 Given('a saved session named {string}', async ({ state }, sessionName: string) => {
-  state.savedSession = savedSessionOf(sessionName, 'days', [])
+  state.savedSession = savedSessionFixture(sessionName, 'days', [])
 })
 
 When('the tab saves it', async ({ tab, state }) => {
