@@ -89,6 +89,21 @@ Feature: Bias guards
         | Initial Concept          | the narrow-range nudge |
         | Detailed Design Complete | a calm confirmation    |
 
+    Scenario Outline: A range that breaks an estimate rule gets no phase guidance
+      The estimate form shows the broken rule instead, so the participant isn't
+      nudged to widen a range that has to be fixed first.
+
+      Given the phase "Requirements Complete"
+      When the range <best> to <worst> is entered
+      Then the range gets no phase guidance
+
+      Examples:
+        | best | worst | why                    |
+        | 0    | 10    | a best case of 0       |
+        | -5   | 10    | a negative best case   |
+        | 10   | 5     | worst below best       |
+        | 10   | 0     | worst below best, at 0 |
+
   Rule: A participant whose estimate stands apart from the others is flagged
 
     A participant is compared with the others only, never with a range that

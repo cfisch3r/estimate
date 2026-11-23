@@ -6,6 +6,7 @@ import {
   checkFalsePrecision,
   checkOutlier,
   checkSymmetricRange,
+  checkUncertaintyRange,
   createAggregateResult,
   createEstimate,
   isEstimationUnit,
@@ -238,15 +239,36 @@ Then('the guidance ceiling is {float}', (world: QuickPickleWorld, ceiling: numbe
   expect(guidanceCeiling(data(world))).toBeCloseTo(ceiling, 2)
 })
 
-Then('the range gets {}', (world: QuickPickleWorld, response: string) => {
+/** The range entered so far, with the phase it is judged against. */
+function enteredRange(world: QuickPickleWorld) {
   const state = data(world)
-  const guidance = uncertaintyGuidance(
-    required(state, 'best'),
-    required(state, 'worst'),
-    required(state, 'level'),
-  )
-  const nudged = expectation(response, 'the narrow-range nudge', 'a calm confirmation')
-  expect(guidance).toMatchObject({ covered: !nudged, guard: { fired: nudged } })
+  return {
+    best: required(state, 'best'),
+    worst: required(state, 'worst'),
+    level: required(state, 'level'),
+  }
+}
+
+function expectGuidance(world: QuickPickleWorld, nudged: boolean): void {
+  const { best, worst, level } = enteredRange(world)
+  expect(uncertaintyGuidance(best, worst, level)).toMatchObject({
+    covered: !nudged,
+    guard: { fired: nudged },
+  })
+}
+
+Then('the range gets the narrow-range nudge', (world: QuickPickleWorld) => {
+  expectGuidance(world, true)
+})
+
+Then('the range gets a calm confirmation', (world: QuickPickleWorld) => {
+  expectGuidance(world, false)
+})
+
+Then('the range gets no phase guidance', (world: QuickPickleWorld) => {
+  const { best, worst, level } = enteredRange(world)
+  expect(uncertaintyGuidance(best, worst, level)).toBeNull()
+  expect(checkUncertaintyRange(best, worst, level).fired).toBe(false)
 })
 
 // Outlier
