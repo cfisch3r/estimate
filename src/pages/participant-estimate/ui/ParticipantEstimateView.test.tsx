@@ -5,7 +5,11 @@ import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
 import { ParticipantEstimateView } from './ParticipantEstimateView'
 import { RECONNECT_GRACE_MS } from '../../../shared/lib/useConnectionPhase'
-import { createEstimate, type Estimate } from '../../../domain/estimate'
+import {
+  createEstimate,
+  estimateErrorText,
+  type Estimate,
+} from '../../../domain/estimate'
 import {
   useSessionStore,
   useConnectionStore,
@@ -16,7 +20,7 @@ import { aggregateOf } from '../../../domain/testFixtures'
 
 function mine(best: number, likely: number, worst: number): Estimate {
   const result = createEstimate({ participantId: 'me-123', best, likely, worst })
-  if (!result.ok) throw new Error(result.error)
+  if (!result.ok) throw new Error(estimateErrorText(result.error))
   return result.value
 }
 

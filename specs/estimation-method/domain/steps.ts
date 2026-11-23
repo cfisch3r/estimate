@@ -9,18 +9,17 @@ import {
   checkUncertaintyRange,
   createAggregateResult,
   createEstimate,
+  estimateErrorText,
   findOrderViolation,
   isEstimationUnit,
   UNCERTAINTY_GUIDANCE,
   UNCERTAINTY_LEVELS,
   UNIT_GRANULARITY,
   uncertaintyGuidance,
-  validateEstimateValues,
 } from '../../../src/domain/estimate'
 import type {
   AggregateResult,
   Estimate,
-  EstimateValuesResult,
   EstimationUnit,
   OrderViolation,
   Result,
@@ -31,9 +30,9 @@ import type {
 type Data = {
   /** A final result made straight from its four values. */
   made?: Result<AggregateResult>
-  /** One estimate made from its three values: the factory's verdict, and the
-   *  validator's, which names the rule broken. */
-  estimate?: { created: Result<Estimate>; values: EstimateValuesResult }
+  /** One estimate made from its three values: the factory's verdict, whose
+   *  error names the rule broken. */
+  estimate?: ReturnType<typeof createEstimate>
   /** The ordering check over the values given so far; null when none is broken. */
   order?: { violation: OrderViolation | null }
   estimates?: Estimate[]
@@ -111,14 +110,16 @@ const REJECTION_CODES: Record<string, string> = {
 When('an estimate is made of', (world: QuickPickleWorld, table: DataTable) => {
   const value = onlyRow(table)
   const [best, likely, worst] = [value('best'), value('likely'), value('worst')]
-  data(world).estimate = {
-    created: createEstimate({ participantId: 'participant', best, likely, worst }),
-    values: validateEstimateValues(best, likely, worst),
-  }
+  data(world).estimate = createEstimate({
+    participantId: 'participant',
+    best,
+    likely,
+    worst,
+  })
 })
 
 Then('the estimate is accepted', (world: QuickPickleWorld) => {
-  expect(required(data(world), 'estimate').created.ok).toBe(true)
+  expect(required(data(world), 'estimate').ok).toBe(true)
 })
 
 Then(
@@ -126,9 +127,10 @@ Then(
   (world: QuickPickleWorld, reason: string) => {
     const code = REJECTION_CODES[reason]
     if (code === undefined) throw new Error(`No rule is known for the reason "${reason}"`)
-    const { created, values } = required(data(world), 'estimate')
-    expect(created.ok).toBe(false)
-    expect(values).toMatchObject({ ok: false, code })
+    expect(required(data(world), 'estimate')).toMatchObject({
+      ok: false,
+      error: { code },
+    })
   },
 )
 
@@ -138,11 +140,20 @@ function fieldList(text: string): string[] {
 }
 
 Then('the values breaking it are {}', (world: QuickPickleWorld, values: string) => {
-  expect(required(data(world), 'estimate').values).toMatchObject({
+  expect(required(data(world), 'estimate')).toMatchObject({
     ok: false,
-    fields: fieldList(values),
+    error: { fields: fieldList(values) },
   })
 })
+
+Then(
+  'the estimate is described as {string}',
+  (world: QuickPickleWorld, description: string) => {
+    const created = required(data(world), 'estimate')
+    if (created.ok) throw new Error('The estimate was accepted, so nothing describes it')
+    expect(estimateErrorText(created.error)).toBe(description)
+  },
+)
 
 When('only these values are given', (world: QuickPickleWorld, table: DataTable) => {
   const [row, ...rest] = table.hashes()

@@ -27,16 +27,25 @@ function computeCI90(expected: number, best: number, worst: number): number {
 }
 ```
 
-**`Estimate` is a self-validating value type, not a bare interface.** `best ≤ likely ≤ worst` is a domain invariant of what an Estimate *is* — not a UI-specific concern — so per hexagonal architecture's port/adapter separation, it's enforced once in the core rather than duplicated across every adapter that constructs one (the estimate form in #7, incoming Trystero peer messages, a future CSV import). `Estimate` is only producible via `createEstimate(input): Result<Estimate, string>`, which is the single point where the ordering (and finiteness) check happens:
+**`Estimate` is a self-validating value type, not a bare interface.** `best ≤ likely ≤ worst` is a domain invariant of what an Estimate *is* — not a UI-specific concern — so per hexagonal architecture's port/adapter separation, it's enforced once in the core rather than duplicated across every adapter that constructs one (the estimate form, incoming Trystero peer messages, a future CSV import). `Estimate` is only producible via `createEstimate(input): Result<Estimate, EstimateError>`, which is the single point where every `Estimate` rule is checked, each one a code of `EstimateError`:
 
 ```ts
 interface RawEstimateInput { participantId: string; best: number; likely: number; worst: number }
-type Result<T> = { ok: true; value: T } | { ok: false; error: string }
+type Result<T, E = string> = { ok: true; value: T } | { ok: false; error: E }
 
 declare const EstimateBrand: unique symbol
 type Estimate = RawEstimateInput & { readonly [EstimateBrand]: true }
 
-function createEstimate(input: RawEstimateInput): Result<Estimate>
+type EstimateError =
+  | { code: 'not-finite'; fields: EstimateField[] }       // NaN or ±Infinity
+  | { code: 'too-large'; fields: EstimateField[] }        // above MAX_ESTIMATE_VALUE (1,000,000)
+  | { code: 'non-positive'; fields: ['best'] }            // best <= 0
+  | { code: 'best-above-likely'; fields: ['best', 'likely'] }
+  | { code: 'likely-above-worst'; fields: ['likely', 'worst'] }
+  | { code: 'no-participant' }                            // blank participantId
+
+function createEstimate(input: RawEstimateInput): Result<Estimate, EstimateError>
+function estimateErrorText(error: EstimateError): string  // one sentence per code
 ```
 
 The brand is compile-time only — it adds no runtime property, so `Estimate` stays plain, JSON-transparent data for network transport and file-based session storage — but it does make constructing one any other way (e.g. a bare `{best, likely, worst}` object literal) a type error everywhere `Estimate` is expected. This only guards against *accidental* misuse within our own code, though: TypeScript types don't exist at runtime, so they can't protect against a malformed message from an untrusted Trystero peer. The network layer therefore calls `createEstimate()` on every incoming peer message before it touches state — via `parseWireEstimate()` in `adapters/network/wireParse.ts`, which also traps the throw path since peer input isn't guaranteed well-shaped. One shared validation function, not the ordering check re-implemented per adapter.
@@ -55,7 +64,7 @@ function checkUncertaintyRange(best: number, worst: number, level: UncertaintyLe
 
 **`AggregateResult` is self-validating the same way.** `createAggregateResult()` (`domain/estimate/aggregateResult.ts`) is the only producer: it rejects a value that isn't finite, a minimum of 0 or less, a minimum above the maximum, an expected value outside the range, and a 90% value that isn't `computeCI90`'s for the range (within floating-point noise), each with a clause naming the rule. `aggregateEstimates()` builds its result through it and throws if a strategy produces a result that breaks a rule (possible with a mean of best cases above a median of likely ones; the default strategy never does). The session-file reader (`domain/sessionFile.ts`) checks only the shape of a stored result and hands the four numbers to the same factory, prefixing its clause with the item ("Item 1, "Login", has a minimum of 0 or less."). Tests build results through `aggregateOf()` in `domain/testFixtures.ts`.
 
-`domain/estimate/estimate.ts` also exports `validateEstimateValues` — the numeric half of `createEstimate`'s invariant, usable for a live form preview before a participant exists; `createEstimate` runs it after its `participantId` check. It returns a `code` and the affected `fields` alongside the error text, and `features/estimate-round` (`lib/describeEstimateIssue.ts`) turns those into the actionable form messages (naming the numbers and what to change) and marks the offending inputs `aria-invalid` with `aria-describedby` pointing at the message. A problem first appears only after the entry has settled (~600 ms, `model/useSettledIssue.ts`) or a field loses focus, so typing through an intermediate value doesn't flash it; an entry that is already invalid when the form opens is shown at once, a showing problem updates in place, a resolved one clears at once, and the submit button is never delayed.
+**Errors are data; each caller chooses the words.** `domain/estimate/estimate.ts` also exports `validateEstimateValues` — the numeric half of `createEstimate`'s invariant, usable for a live form preview before a participant exists; `createEstimate` runs it after its `participantId` check. Like `createEstimate`, it rejects with an error that carries no text (every `EstimateError` code but `no-participant`, sketched above). `estimateErrorText` is the one place a code becomes a sentence, for logs, the network layer's rejections and use-case results; `features/estimate-round` (`lib/describeEstimateIssue.ts`) instead turns the code and fields into the actionable form messages (naming the numbers and what to change) and marks the offending inputs `aria-invalid` with `aria-describedby` pointing at the message. A problem first appears only after the entry has settled (~600 ms, `model/useSettledIssue.ts`) or a field loses focus, so typing through an intermediate value doesn't flash it; an entry that is already invalid when the form opens is shown at once, a showing problem updates in place, a resolved one clears at once, and the submit button is never delayed.
 
 The PRD §5 uncertainty-range guard (`checkUncertaintyRange`) is implemented: a participant optionally selects a cone-of-uncertainty phase per item via the Phase Picker (`features/estimate-round/ui/PhasePicker.tsx`), local to their own view (guidance derived inside `features/estimate-round/model/useThreePointDraft.ts`, composed with the rest of the entry form by `ThreePointEstimateForm`), and the guard fires when their entered range is narrower than that phase's guidance ratio, anchored to Best Case.
 

@@ -1,10 +1,13 @@
 import {
   createAggregateResult,
   createEstimate,
+  estimateErrorText,
   isEstimationUnit,
   type AggregateResult,
+  type Estimate,
   type EstimationUnit,
   type RawEstimateInput,
+  type Result,
 } from '../../domain/estimate'
 
 /** The wire layer's anti-corruption boundary for estimates: every estimate that
@@ -16,10 +19,12 @@ import {
  *  `createEstimate()` assumes a well-shaped `RawEstimateInput` (its form callers
  *  always build one) and throws on null/missing fields rather than returning a
  *  `Result`. Peer messages are untrusted, so that throw must not escape — it is
- *  caught and reported as a validation failure. */
-export function parseWireEstimate(input: unknown): ReturnType<typeof createEstimate> {
+ *  caught and reported as a validation failure. Either way the reason is a
+ *  sentence: the network layer only logs it or throws it back to the sender. */
+export function parseWireEstimate(input: unknown): Result<Estimate> {
   try {
-    return createEstimate(input as RawEstimateInput)
+    const result = createEstimate(input as RawEstimateInput)
+    return result.ok ? result : { ok: false, error: estimateErrorText(result.error) }
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : String(error) }
   }

@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { createEstimate, type Estimate } from '../../../domain/estimate'
+import {
+  createEstimate,
+  estimateErrorText,
+  type Estimate,
+} from '../../../domain/estimate'
 import { buildRevealedRows } from './buildRevealedRows'
 
 function est(participantId: string): Estimate {
   const result = createEstimate({ participantId, best: 1, likely: 2, worst: 3 })
-  if (!result.ok) throw new Error(result.error)
+  if (!result.ok) throw new Error(estimateErrorText(result.error))
   return result.value
 }
 

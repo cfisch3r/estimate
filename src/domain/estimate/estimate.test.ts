@@ -1,22 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { createEstimate, validateEstimateValues } from './estimate'
+import { createEstimate, estimateErrorText } from './estimate'
 
 describe('createEstimate', () => {
-  it('rejects an empty or whitespace-only participantId', () => {
-    expect(createEstimate({ participantId: '', best: 2, likely: 5, worst: 8 }).ok).toBe(
-      false,
-    )
-    expect(
-      createEstimate({ participantId: '   ', best: 2, likely: 5, worst: 8 }).ok,
-    ).toBe(false)
-  })
-})
+  it.each(['', '   '])('rejects the participantId %j as missing', (participantId) => {
+    const result = createEstimate({ participantId, best: 2, likely: 5, worst: 8 })
 
-describe('validateEstimateValues', () => {
-  it('keeps createEstimate error text in step with the validator', () => {
-    const values = validateEstimateValues(8, 5, 9)
-    const created = createEstimate({ participantId: 'a', best: 8, likely: 5, worst: 9 })
-
-    expect(created).toEqual({ ok: false, error: values.ok ? '' : values.error })
+    expect(result).toEqual({ ok: false, error: { code: 'no-participant' } })
+    if (!result.ok) {
+      expect(estimateErrorText(result.error)).toBe('participantId must not be empty')
+    }
   })
 })
