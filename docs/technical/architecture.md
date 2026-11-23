@@ -302,7 +302,7 @@ releases are in the [runbook](runbook.md).
 | Live sync | Room id is the 6-character session code (Crockford base32, no deep link) under the fixed `appId` `estimate-app-v1`. Trystero's [Nostr](https://nostr.com) strategy is the default (the library's own robustness ranking is Nostr, MQTT, BitTorrent, IPFS, and the Supabase and Firebase strategies need your own project). A self-hosted WebSocket relay is the escape hatch. An optional room password AES-GCM-encrypts the signaling handshake, without it the room id is visible as metadata on the relay. The facilitator's items are the single source of truth: participants send estimates only to the facilitator, and everyone else receives `syncState` snapshots. A peer that connects or reconnects pulls the snapshot itself (`requestSnapshot`) | ADR-001, ADR-003, [collaboration-mode](concepts/collaboration-mode.md) |
 | Reliability | Versioned rounds, a values-free roster, acknowledged submissions with a kind-driven retry policy, a stable per-browser participant id, role-asymmetric link state | ADR-003 |
 | Trust boundary | Every inbound peer message is validated into domain values at the adapter edge, so the UI only sees valid `Estimate`s | [collaboration-mode](concepts/collaboration-mode.md): trust boundary |
-| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (peer transport, participant identity, file download, session files, diagnostics log and clipboard, all in `ports/outbound`). The use-case hooks reach the live-session controller, and the identity, download, session-file, diagnostics log and clipboard ports, through React contexts, because a hook cannot import an object created at runtime ([below](#how-the-use-cases-reach-the-ports)). The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (`ui-no-adapters`, `composition-root`) | [glossary](../glossary.md): port and handle, ADR-009 |
+| Wiring at composition time | Ports are the real boundaries: the application owns them and adapters implement them (peer transport, participant identity, file download, session-file, diagnostics log and clipboard, all in `ports/outbound`). The use-case hooks reach the live-session controller, and the identity, download, session-file, diagnostics log and clipboard ports, through React contexts, because a hook cannot import an object created at runtime ([below](#how-the-use-cases-reach-the-ports)). The controller's face for the hooks, `LiveSessionApi`, is a handle, not a port: the application implements it itself. `src/app` is the only place that creates the controller with the adapter and fills the contexts (`ui-no-adapters`, `composition-root`) | [glossary](../glossary.md): port and handle, ADR-009 |
 | State and UI access | Three stores in the application layer, read-only narrowed views for the UI, use cases for rule-bearing writes (`ui-reads-views`, `store-vs-usecase`) | ADR-005, ADR-009 |
 | Navigation | `react-router`. Use cases contain no navigation, `features/session-lifecycle` wraps them with it | ADR-006 |
 | Persistence | Local-first and **file-based**, with no accounts and no cross-device sync in the MVP. The saved session and its rules are domain code (`domain/savedSession.ts`); the file format, the file name and the browser I/O are the session-file adapter, and **save and load both go through its port**. A picked file is untrusted input and becomes a saved session only through the domain's factory. The UI wiring — Save button, Load row, loaded-session card, unsaved-changes cues, the entry-screen guard — is in the [collaboration-mode](concepts/collaboration-mode.md) screen table. The rules are in the domain concept | [session-persistence](../domain/concepts/session-persistence.md) (domain), [session-persistence](concepts/session-persistence.md) (technical) |
@@ -313,24 +313,27 @@ releases are in the [runbook](runbook.md).
 
 ### How the use cases reach the ports
 
-A port is an interface in `ports/outbound`: plain TypeScript, no React, so adapters and the
-integration harness can import it. The use cases are React hooks, and a hook can't take a
-constructor parameter or import the adapter (`adapters-inward-application-only-outbound-ports`,
-`ui-no-adapters`). So each port has a React context next to it in `ports/`, typed by the
-port: the use case reads the adapter from the context (`useSessionFiles()`), and `src/app`
-puts the real adapter into it. The context does the job a constructor parameter does in
-classic hexagonal code. Lines: **solid** = import/call, **dotted** = implements.
+A port is plain TypeScript with no React, so adapters and the integration harness can
+import it (`adapters-inward`). The use cases are React hooks: a hook can't take a
+constructor parameter, and the application may not import an adapter (`app-layer-core`).
+So a React context next to each port plays the constructor parameter's part, and only the
+composition root fills it (`composition-root`). Lines: **solid** = import/call,
+**dotted** = implements.
 
 ```mermaid
 flowchart LR
-  App["App.tsx<br/>[Composition root]"]
-  subgraph applane["APPLICATION"]
+  subgraph uilane["UI · src/app"]
+    App["App.tsx<br/>[Composition root]"]
+  end
+  subgraph applane["APPLICATION · src/application"]
     direction TB
     UC["useSaveSession, useLoadSessionFile<br/>[Use cases]"]
-    Ctx["sessionFilesContext.ts<br/>[React context]"]
-    Port["outbound/sessionFiles.ts<br/>[Port: SessionFileApi]"]
+    Ctx["ports/sessionFilesContext.ts<br/>[React context]"]
+    Port["ports/outbound/sessionFiles.ts<br/>[Port: SessionFileApi]"]
   end
-  Ad["adapters/file/sessionFiles.ts<br/>[Adapter]"]
+  subgraph adlane["ADAPTERS · src/adapters/file"]
+    Ad["sessionFiles.ts<br/>[Adapter]"]
+  end
   App -->|imports| Ad
   App -->|fills| Ctx
   UC -->|"useSessionFiles()"| Ctx
@@ -342,12 +345,13 @@ flowchart LR
   class App ui
   class UC,Ctx,Port app
   class Ad ad
+  style uilane fill:#dbe6ff,stroke:#3d56a6,stroke-width:2px,color:#14171f
   style applane fill:#d3eddb,stroke:#2f7a43,stroke-width:2px,color:#14171f
+  style adlane fill:#ecd8f1,stroke:#7a3d8c,stroke-width:2px,color:#14171f
 ```
 
-At runtime the use case calls `save` or `open` on what the context holds, which is the
-adapter. The identity, download, diagnostics log and clipboard ports work the same way;
-the live-session controller's `LiveSessionApi` too, though it is a handle, not a port.
+The identity, download, diagnostics log and clipboard ports work the same way; so does the
+live-session controller's `LiveSessionApi`, though it is a handle, not a port.
 
 ## 9. Architecture decisions
 

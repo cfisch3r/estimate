@@ -52,8 +52,8 @@ SavedItem:               # an Item as saved: without its running round
 `AggregateResult` is the four values of [estimation-method](estimation-method.md), checked by its rules there. A
 running round's submissions, its reveal state and its round number are never part of a
 saved session: they belong to participants of a session that won't exist when it is
-restored. How a saved session is written to a file, and what the file is named, is in the
-[technical concept](../../technical/concepts/session-persistence.md).
+restored. How a saved session is written to a file, and what the file is named, is a
+technical concern.
 
 ## Rules
 
@@ -66,4 +66,4 @@ restored. How a saved session is written to a file, and what the file is named, 
 | **The browser's Back button never leaves a running session** | A mode is running, or a participant has joined, and the browser goes back to mode selection or Join | **The session's screen comes back** instead (the Workspace, or the participant's estimate screen), and says why: leaving goes only through the app's own leave, with its confirmation | [unsaved-changes](../../../specs/session-persistence/e2e/unsaved-changes.feature), [save-and-resume](../../../specs/session-persistence/e2e/save-and-resume.feature) |
 | **A resumed session starts at the open work** | A loaded session starts | The **first item still needing an estimate** is active | [save-and-resume](../../../specs/session-persistence/e2e/save-and-resume.feature) |
 | **A loaded final result stays shown** | An item finalized before the load | It **shows its result** to everyone, Live-mode participants included, until the facilitator reopens it | [save-and-resume](../../../specs/session-persistence/e2e/save-and-resume.feature) |
-| **A saved session is restored whole or not at all** | A saved session, such as a picked file, breaks a rule of the information model | **Nothing is loaded**, and the user is told which rule, by item number (and title, where it has one) | [saved-session](../../../specs/session-persistence/domain/saved-session.feature), [session-file](../../../specs/session-persistence/integration/session-file.feature) |
+| **A saved session is restored whole or not at all** | A saved session, such as a picked file, breaks a rule of the information model | **Nothing is loaded**, and the user is told which rule, by item number (and title, where it has one). A file saved by a newer release of EstiMate is refused, not guessed at | [saved-session](../../../specs/session-persistence/domain/saved-session.feature), [session-file](../../../specs/session-persistence/integration/session-file.feature) |

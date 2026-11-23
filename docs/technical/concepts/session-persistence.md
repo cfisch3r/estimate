@@ -49,8 +49,8 @@ flowchart LR
   UseCases -->|savedSessionOf| Saved
   Context -->|typed by| Port
   Files -.->|implements| Port
-  Files --> Format
-  Files --> Download
+  Files -->|writes, reads, names| Format
+  Files -->|downloads the text| Download
   Format -->|createSavedSession| Saved
   Download -->|download| Browser
   Files -->|reads a picked File| Browser
@@ -73,17 +73,23 @@ flowchart LR
 
 | Component | Responsibility |
 |---|---|
-| **`savedSession.ts`** | `SavedSession` and `SavedItem`, a branded value type made only by `createSavedSession()` (untrusted input, the first broken rule as a `SavedSessionError`) or `savedSessionOf()` (the session itself, without its running round). `restoredItems()` puts each item outside any round. `hasUnsavedChanges()` compares the current session's saved form with the baseline field by field |
-| **`SessionFileApi`** | The port: `save(session, savedOn)` returns the file name, `open(file)` returns the `SavedSession` or a `SessionFileRejection`. `PickedFile` (`name`, `text()`) is the port's own shape of a picked file, which a browser `File` already has |
-| **`SessionFilesContext`** | Hands the adapter to the use-case hooks (see [architecture](../architecture.md), section 8, how the use cases reach the ports) |
+| **`savedSession.ts`** | `SavedSession` (a branded value type made only by `createSavedSession()` (untrusted input, the first broken rule as a `SavedSessionError`) or `savedSessionOf()` (the session itself, without its running round)) and its `SavedItem`s. `restoredItems()` puts each item outside any round. `hasUnsavedChanges()` compares the current session's saved form with the baseline field by field |
+| **`SessionFileApi`** | The port: `save(session, savedOn)` returns the file name, `open(file)` returns the `SavedSession` or a `SessionFileRejection`. `PickedFile` (`name`, `text()`) is the port's own type for a picked file, which a browser `File` already has |
+| **`SessionFilesContext`** | See [architecture](../architecture.md#how-the-use-cases-reach-the-ports), section 8 |
+| **`App.tsx`** | Puts `sessionFiles` into the context; the one place that imports the adapter |
+| **`useSessionStore`** | Holds `savedBaseline`, what the last save or load held, which the unsaved-changes cues compare against |
 | **`useSaveSession`** | Builds the saved session, saves it dated with today's local date, records it as the store's `savedBaseline`, returns the file name for the save announcement |
 | **`useLoadSessionFile`** | Opens the picked file through the port; on success it loads the session (`loadSession`, which restores the items and makes the loaded session the baseline), otherwise it returns the rejection and changes nothing |
 | **`sessionFiles`** | The adapter: writes, names and downloads on save; on open reads the file's text, turns a failed read into `unreadable`, then reads the format |
 | **`sessionFileFormat`** | The version-1 format: `writeSessionFile()` and `readSessionFile()`, which checks the shape and the version, then hands the values to `createSavedSession()` and passes its refusal on unchanged |
 | **`sessionFileName`** | The file name rule below |
+| **`LoadSessionRow`, `SaveSessionButton`** | The Load row hands the picked file to `useLoadPickedFile`, which runs the load, the focus hand-off and the rejection alert; the Save button saves and announces the file name |
+| **`downloadTextFile`** | Hands text to the browser as a download; the diagnosis report uses it too |
 | **`describeLoadRejection`** | One sentence per rejection code, for the load alert. A `Record` over the codes, so a new code without a sentence doesn't compile |
 
 ## Saving
+
+Lines: numbered edges = the order, solid = call.
 
 ```mermaid
 flowchart LR
@@ -92,6 +98,16 @@ flowchart LR
   UC -->|3 save with today| Ad["sessionFiles"]
   Ad -->|4 write, name, download| Br["browser"]
   UC -->|5 markSaved| St["session store"]
+  classDef ui fill:#b9ccf7,stroke:#3d56a6,color:#14171f
+  classDef app fill:#b2dfc0,stroke:#2f7a43,color:#14171f
+  classDef ad fill:#dcbfe5,stroke:#7a3d8c,color:#14171f
+  classDef dom fill:#f6d891,stroke:#9a6f1e,color:#14171f
+  classDef ext fill:#ffffff,stroke:#555555,color:#14171f,stroke-dasharray: 5 5
+  class Button ui
+  class UC,St app
+  class Ad ad
+  class Dom dom
+  class Br ext
 ```
 
 1. **Save**<br>
@@ -109,36 +125,53 @@ flowchart LR
 
 ## Opening
 
+Lines: numbered edges = the order, solid = call; the check after step 4 decides between
+5a and 5b.
+
 ```mermaid
 flowchart LR
   Row["Load row"] -->|1 load the picked File| UC["useLoadSessionFile"]
   UC -->|2 open| Ad["sessionFiles"]
   Ad -->|3 read, check format| Ad
   Ad -->|4 createSavedSession| Dom["domain"]
-  UC -->|5 loadSession| St["session store"]
-  Row -->|6 on rejection| Desc["describeLoadRejection"]
+  Dom --> Ok{"keeps every<br/>rule?"}
+  Ok -->|5a yes: loadSession| St["session store"]
+  Ok -->|5b no: the rejection| Desc["describeLoadRejection"]
+  classDef ui fill:#b9ccf7,stroke:#3d56a6,color:#14171f
+  classDef app fill:#b2dfc0,stroke:#2f7a43,color:#14171f
+  classDef ad fill:#dcbfe5,stroke:#7a3d8c,color:#14171f
+  classDef dom fill:#f6d891,stroke:#9a6f1e,color:#14171f
+  class Row,Desc ui
+  class UC,St app
+  class Ad ad
+  class Dom,Ok dom
 ```
 
 1. **Pick**<br>
-   `LoadSessionRow` hands the picked `File` to the use case. It hands focus to the loaded
-   session before loading, because the store update renders the loaded session before the
-   load returns; on a rejection it withdraws that hand-off.
-2. **Open through the port**
+   `LoadSessionRow` hands the picked `File` to `useLoadPickedFile`, which calls the use
+   case. It hands focus to the loaded session before loading, because the store update
+   renders the loaded session before the load returns; a rejection withdraws that
+   hand-off.
+2. **Open through the port**<br>
+   The use case calls `open(file)` on the adapter from `SessionFilesContext`; it never sees
+   the file's text.
 3. **Read and check the format**<br>
    A failed read (the file was moved, deleted or locked after it was picked) is
-   `unreadable`. Text that isn't a version-1 session file's shape is `not-a-session-file`,
-   a higher version is `newer-version`.
+   `unreadable`. Text without a version-1 session file's fields is `not-a-session-file`,
+   a higher version is `newer-version`. Either way the open ends here, as in 5b.
 4. **Check the rules**<br>
    `createSavedSession()` checks the unit and every item and returns the first broken rule.
-5. **Load**<br>
-   Only a session that keeps every rule replaces the session; nothing changes otherwise.
-6. **Say why**<br>
-   The row shows the rejection's sentence and the file's name in the load alert.
+
+   - **5a. Load**<br>
+     A session that keeps every rule replaces the session (`loadSession`).
+   - **5b. Say why**<br>
+     Otherwise nothing changes, and the load alert shows the rejection's sentence and the
+     file's name.
 
 ## File format
 
 Version 1, JSON, `application/json`. `writeSessionFile()` writes exactly these fields;
-`readSessionFile()` accepts nothing else.
+`readSessionFile()` requires them and ignores any others.
 
 ```yaml
 FileShape:               # sessionFileFormat.ts
@@ -177,7 +210,7 @@ characters into one hyphen; a name with nothing left becomes `estimate-session`.
 | `item-without-id` | domain | Item 1 has no id. |
 | `item-without-title` | domain | Item 1 has no title. |
 | `duplicate-item-id` | domain | Item 2 has the same id as item 1. |
-| `broken-final-result` | domain | Item 1, "Login", has a minimum of 0 or less. (the clause comes from `createAggregateResult`) |
+| `broken-final-result` | domain, clause from `createAggregateResult` | Item 1, "Login", has a minimum of 0 or less. |
 
 ## Specs
 
