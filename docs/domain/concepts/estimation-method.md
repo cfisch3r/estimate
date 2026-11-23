@@ -19,12 +19,12 @@ flowchart TD
     Guard --> Finalize(["Finalize"])
 ```
 
-| Step | What happens | Notes |
-|---|---|---|
-| **Aggregate** | Individual submissions become one group range: **Best** = minimum of all Best Cases, **Worst** = maximum of all Worst Cases, **Likely** = median of all Likely values | Don't average away the outliers — the worst case in particular tends to get optimistically averaged down. A single-entry group, as in Manual mode, degenerates to that one estimate's own values |
-| **Compute confidence interval** | 90% Confidence Interval = `Likely + 1.28 × ((Worst − Best) / 3)` | McConnell's formula, Episode III |
-| **Guard** | The bias guards below run and surface nudges, as values are entered and again at reveal | None of them block submission or finalize |
-| **Finalize** | The four values (min, expected, CI90, max) are locked for the item | |
+| Step | What happens | Notes | Spec |
+|---|---|---|---|
+| **Aggregate** | Individual submissions become one group range: **Best** = minimum of all Best Cases, **Worst** = maximum of all Worst Cases, **Likely** = median of all Likely values (the mean of the two middle values for an even count) | Don't average away the outliers — the worst case in particular tends to get optimistically averaged down. A single-entry group, as in Manual mode, degenerates to that one estimate's own values | [aggregation](../../../specs/estimation-method/domain/aggregation.feature) |
+| **Compute confidence interval** | 90% Confidence Interval = `Likely + 1.28 × ((Worst − Best) / 3)` | McConnell's formula, Episode III | [aggregation](../../../specs/estimation-method/domain/aggregation.feature) |
+| **Guard** | The bias guards below surface nudges as values are entered; the outlier flag belongs to the reveal | None of them block submission or finalize | [bias-guards](../../../specs/estimation-method/domain/bias-guards.feature) |
+| **Finalize** | The four values (min, expected, CI90, max) are locked for the item | | [final-result](../../../specs/estimation-method/domain/final-result.feature) |
 
 ## Information model
 
@@ -74,12 +74,13 @@ Worst Case is expected to land around 4× (High mult. / Low mult. = 16x) the Bes
 table at implementation time rather than stored as its own rounded column, since a rounded
 display value can drift out of sync with the exact division.
 
-## Rules (final result)
+## Rules (estimate and final result)
 
 | Rule | Condition | Behavior | Spec |
 |---|---|---|---|
 | **A final result keeps every rule** | Any final result, aggregated or read from a file | **Accepted** only when every `AggregateResult` constraint in the information model holds; otherwise **rejected** with the rule it breaks | [final-result](../../../specs/estimation-method/domain/final-result.feature) |
-| **An estimate stays within 1,000,000** | A best, likely or worst case above 1,000,000, in any unit, from the form or from a peer | The estimate is **rejected** ("Enter a smaller value"), so aggregating submissions can never produce a 90% value too large to keep the rule above | — |
+| **An estimate keeps every rule** | Any estimate, from the form, from a peer, or the facilitator's reconciled value | **Accepted** only when every `Estimate` constraint in the information model holds; otherwise **rejected** with the rule it breaks | [estimate](../../../specs/estimation-method/domain/estimate.feature) |
+| **An estimate stays within 1,000,000** | A best, likely or worst case above 1,000,000, in any unit, from the form or from a peer | The estimate is **rejected** ("Enter a smaller value"), so aggregating submissions can never produce a 90% value too large to keep the final-result rule | [estimate](../../../specs/estimation-method/domain/estimate.feature) |
 
 ## Rules (bias guards)
 
@@ -87,11 +88,10 @@ These are nudges, not hard blocks — they never prevent submission or finalize.
 
 | Guard | Trigger | Behavior |
 |---|---|---|
-| **Symmetric range warning** | `(Likely − Best) ≈ (Worst − Likely)` within a tolerance | **Nudge:** the range looks symmetric, worst case in software usually has more room than best case |
-| **False precision guard** | Non-round input where rounding is expected (e.g. "3.7 days") | **Soft suggestion** to round to the unit's expected granularity |
-| **Outlier flag at reveal** | A participant's value is far from the group median | **Highlight** (not hide) the outlier, to prompt discussion rather than silently average it out |
-| **Uncertainty-range guard** | The entered range (worst/best ratio) is narrower than the selected uncertainty level's guidance ratio | **Nudge:** the range looks narrow for that phase, teams at this stage typically see a wider spread. If the ratio already meets or exceeds guidance, show a **calm confirmation** instead |
+| **Symmetric range warning** | `(Likely − Best)` and `(Worst − Likely)` differ by at most 15% of `(Worst − Best)` | **Nudge:** the range looks symmetric, worst case in software usually has more room than best case |
+| **False precision guard** | A value that isn't a multiple of the unit's granularity: whole hours, half days, half weeks (e.g. "3.7 days") | **Soft suggestion** to round to the unit's expected granularity |
+| **Outlier flag at reveal** | Compared with the others only, never with a range including their own: the participant's range doesn't overlap the others' range, or their Likely is more than 40% of the others' range away from the others' median Likely | **Highlight** (not hide) the outlier, to prompt discussion rather than silently average it out. **Not shown on any screen yet** |
+| **Uncertainty-range guard** | The entered range (worst/best ratio) is narrower than the selected uncertainty level's guidance ratio, i.e. Worst is below Best × High mult. / Low mult. | **Nudge:** the range looks narrow for that phase, teams at this stage typically see a wider spread. If the ratio already meets or exceeds guidance, show a **calm confirmation** instead |
 
-The final-result rules have an executable spec
-([final-result](../../../specs/estimation-method/domain/final-result.feature)); the
-aggregation and the bias guards don't yet.
+All four bias guards have an executable spec
+([bias-guards](../../../specs/estimation-method/domain/bias-guards.feature)).
