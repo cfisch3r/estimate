@@ -1,10 +1,6 @@
-import {
-  SESSION_FILE_CONTENT_TYPE,
-  sessionFileName,
-  writeSessionFile,
-} from '../../domain/sessionFile'
-import type { LocalDate } from '../../domain/sessionFile'
-import { useFileDownload } from '../ports/fileDownloadContext'
+import { savedSessionOf } from '../../domain/savedSession'
+import type { LocalDate } from '../ports/outbound/sessionFiles'
+import { useSessionFiles } from '../ports/sessionFilesContext'
 import { useSessionStore } from '../stores'
 
 function today(): LocalDate {
@@ -12,19 +8,18 @@ function today(): LocalDate {
   return { year: now.getFullYear(), month: now.getMonth() + 1, day: now.getDate() }
 }
 
-/** Save the session: write it as a file named after the session and today's
- *  local date, hand it to the user, and remember it as the saved state. A
- *  running live round is not part of the file, so saving is safe in any mode.
+/** Save the session: hand what a save keeps to the user as a file dated with
+ *  today's local date, and remember it as the saved state. A running live
+ *  round is not part of a saved session, so saving is safe in any mode.
  *  Returns the file's name, for the UI to confirm the save. */
 export function useSaveSession(): () => string {
-  const { download } = useFileDownload()
+  const sessionFiles = useSessionFiles()
 
   return () => {
     const { sessionName, unit, items, markSaved } = useSessionStore.getState()
-    const file = writeSessionFile({ sessionName, unit, items })
-    const fileName = sessionFileName(sessionName, today())
-    download(fileName, file, SESSION_FILE_CONTENT_TYPE)
-    markSaved(file)
+    const saved = savedSessionOf({ sessionName, unit, items })
+    const fileName = sessionFiles.save(saved, today())
+    markSaved(saved)
     return fileName
   }
 }

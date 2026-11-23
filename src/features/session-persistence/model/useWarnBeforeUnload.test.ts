@@ -15,7 +15,7 @@ beforeEach(() => {
     unit: 'days',
     items: [],
     activeItemId: null,
-    lastSavedFile: null,
+    savedBaseline: null,
   })
 })
 

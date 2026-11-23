@@ -1,4 +1,3 @@
-@fail
 Feature: Reading and writing a session file
 
   A session file is how a saved session leaves the browser and comes back.

@@ -9,8 +9,8 @@ import {
   renameItem,
   updateItem,
 } from '../../domain/item'
-import { writeSessionFile } from '../../domain/sessionFile'
-import type { SavedSession } from '../../domain/sessionFile'
+import { restoredItems } from '../../domain/savedSession'
+import type { SavedSession } from '../../domain/savedSession'
 import type { Item } from '../../domain/types'
 
 export interface SessionStore {
@@ -18,10 +18,9 @@ export interface SessionStore {
   unit: EstimationUnit
   items: Item[]
   activeItemId: string | null
-  /** The last file this session was saved to or loaded from, as
-   *  `writeSessionFile` wrote it — what "unsaved changes" compares against.
-   *  Null until the first save or load. */
-  lastSavedFile: string | null
+  /** What the last save or load held — what "unsaved changes" compares
+   *  against. Null until the first save or load. */
+  savedBaseline: SavedSession | null
   /** The name of the file this session was loaded from, until the session is
    *  reset — what tells mode selection a loaded session is waiting to start.
    *  Null for a session that wasn't loaded. */
@@ -56,8 +55,8 @@ export interface SessionStore {
    *  Nothing is selected yet: starting a mode selects the first item still
    *  needing an estimate. */
   loadSession: (session: SavedSession, fileName: string) => void
-  /** Record `file` as the session's last saved state. */
-  markSaved: (file: string) => void
+  /** Record `saved` as what the session's last save held. */
+  markSaved: (saved: SavedSession) => void
 }
 
 const NEW_SESSION = {
@@ -65,7 +64,7 @@ const NEW_SESSION = {
   unit: DEFAULT_ESTIMATION_UNIT,
   items: [],
   activeItemId: null,
-  lastSavedFile: null,
+  savedBaseline: null,
   loadedFrom: null,
   started: false,
 } satisfies Partial<SessionStore>
@@ -113,13 +112,13 @@ export const useSessionStore = create<SessionStore>((set) => ({
     set({
       sessionName: session.sessionName,
       unit: session.unit,
-      items: session.items,
+      items: restoredItems(session),
       activeItemId: null,
-      lastSavedFile: writeSessionFile(session),
+      savedBaseline: session,
       loadedFrom: fileName,
     }),
 
-  markSaved: (file) => set({ lastSavedFile: file }),
+  markSaved: (saved) => set({ savedBaseline: saved }),
 }))
 
 /** Merge a round outcome into item `id`. Module-level (not a store action) and

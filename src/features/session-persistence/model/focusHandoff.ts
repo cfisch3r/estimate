@@ -9,8 +9,9 @@ import { createContext, useContext } from 'react'
 export type Target = 'loaded-session' | 'load-row'
 
 export type FocusHandoff = {
-  /** The next mounted `target` takes focus. */
-  handFocusTo: (target: Target) => void
+  /** The next mounted `target` takes focus; null withdraws a hand-off that no
+   *  swap followed. */
+  handFocusTo: (target: Target | null) => void
   /** True once for the target the last action handed focus to. */
   takeFocus: (target: Target) => boolean
 }

@@ -1,4 +1,3 @@
-@fail
 Feature: Name of a saved session file
 
   Saved sessions pile up in a downloads folder, so the file name tells them

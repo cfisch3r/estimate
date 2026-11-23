@@ -4,7 +4,10 @@ import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
 import { ModeSelect } from './ModeSelect'
+import { SessionFilesContext } from '../../../application/composition'
 import { useSessionStore, useConnectionStore } from '../../../application/testing'
+import { createSavedSession } from '../../../domain/savedSession'
+import type { SavedSessionInput } from '../../../domain/savedSession'
 
 const { connectMock, navigateMock } = vi.hoisted(() => ({
   connectMock: vi.fn(),
@@ -22,10 +25,28 @@ vi.mock('react-router', async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateMock }
 })
 
+/** Opens a picked file the way the session-file adapter does, minus the
+ *  format's shape checks: an unreadable file is rejected, and the rest goes
+ *  through the real domain factory, so its refusals are the real ones. */
+const sessionFiles = {
+  save: vi.fn(() => 'saved.estimate.json'),
+  open: async (file: { text(): Promise<string> }) => {
+    let text: string
+    try {
+      text = await file.text()
+    } catch {
+      return { ok: false as const, error: { code: 'unreadable' as const } }
+    }
+    return createSavedSession(JSON.parse(text) as SavedSessionInput)
+  },
+}
+
 function renderModeSelect() {
   return render(
     <MemoryRouter>
-      <ModeSelect />
+      <SessionFilesContext.Provider value={sessionFiles}>
+        <ModeSelect />
+      </SessionFilesContext.Provider>
     </MemoryRouter>,
   )
 }
@@ -36,7 +57,7 @@ function resetStore() {
     unit: 'days',
     items: [],
     activeItemId: null,
-    lastSavedFile: null,
+    savedBaseline: null,
     loadedFrom: null,
     started: false,
   })

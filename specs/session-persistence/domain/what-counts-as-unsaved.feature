@@ -1,4 +1,3 @@
-@fail
 Feature: What counts as unsaved
 
   A session is lost when the user leaves it or closes its tab, unless it was

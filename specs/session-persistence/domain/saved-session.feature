@@ -1,4 +1,3 @@
-@fail
 Feature: What a saved session keeps
 
   A saved session is the part of a session that outlives its browser tab: its

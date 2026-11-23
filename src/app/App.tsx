@@ -4,10 +4,12 @@ import {
   DiagnosticsLogContext,
   FileDownloadContext,
   ParticipantIdentityContext,
+  SessionFilesContext,
 } from '../application/composition'
 import { LiveSessionProvider } from './LiveSessionProvider'
 import { getOrCreateParticipantId } from '../adapters/storage/participantIdentity'
 import { downloadTextFile } from '../adapters/file/fileDownload'
+import { sessionFiles } from '../adapters/file/sessionFiles'
 import { createDiagnosticsLog } from '../adapters/storage/diagnosticsLog'
 import { writeClipboardText } from '../adapters/clipboard/clipboard'
 import { ROUTES } from '../shared/lib/routes'
@@ -35,34 +37,39 @@ function App() {
     <BrowserRouter>
       <ParticipantIdentityContext.Provider value={participantIdentity}>
         <FileDownloadContext.Provider value={fileDownload}>
-          <DiagnosticsLogContext.Provider value={diagnosticsLog}>
-            <ClipboardContext.Provider value={clipboard}>
-              <LiveSessionProvider diagnostics={diagnosticsLog}>
-                <a href="#main-content" className="skip-link">
-                  Skip to main content
-                </a>
-                <Header />
-                {/* tabIndex={-1}: a plain <main> isn't focusable, so activating the skip
+          <SessionFilesContext.Provider value={sessionFiles}>
+            <DiagnosticsLogContext.Provider value={diagnosticsLog}>
+              <ClipboardContext.Provider value={clipboard}>
+                <LiveSessionProvider diagnostics={diagnosticsLog}>
+                  <a href="#main-content" className="skip-link">
+                    Skip to main content
+                  </a>
+                  <Header />
+                  {/* tabIndex={-1}: a plain <main> isn't focusable, so activating the skip
             link above wouldn't move keyboard focus here in Firefox/Safari without it. */}
-                <main id="main-content" tabIndex={-1}>
-                  <Routes>
-                    <Route path={ROUTES.modeSelect} element={<ModeSelect />} />
-                    <Route path={ROUTES.join} element={<JoinSession />} />
-                    <Route path={ROUTES.estimate} element={<ParticipantEstimateView />} />
-                    <Route path={ROUTES.workspace} element={<Workspace />} />
-                    <Route path={ROUTES.summary} element={<SessionSummary />} />
-                    <Route path={ROUTES.diagnosis} element={<Diagnosis />} />
-                    {/* Anything else — an old bookmark such as the removed /history
+                  <main id="main-content" tabIndex={-1}>
+                    <Routes>
+                      <Route path={ROUTES.modeSelect} element={<ModeSelect />} />
+                      <Route path={ROUTES.join} element={<JoinSession />} />
+                      <Route
+                        path={ROUTES.estimate}
+                        element={<ParticipantEstimateView />}
+                      />
+                      <Route path={ROUTES.workspace} element={<Workspace />} />
+                      <Route path={ROUTES.summary} element={<SessionSummary />} />
+                      <Route path={ROUTES.diagnosis} element={<Diagnosis />} />
+                      {/* Anything else — an old bookmark such as the removed /history
                     page, or a mistyped path — starts over at mode selection. */}
-                    <Route
-                      path="*"
-                      element={<Navigate to={ROUTES.modeSelect} replace />}
-                    />
-                  </Routes>
-                </main>
-              </LiveSessionProvider>
-            </ClipboardContext.Provider>
-          </DiagnosticsLogContext.Provider>
+                      <Route
+                        path="*"
+                        element={<Navigate to={ROUTES.modeSelect} replace />}
+                      />
+                    </Routes>
+                  </main>
+                </LiveSessionProvider>
+              </ClipboardContext.Provider>
+            </DiagnosticsLogContext.Provider>
+          </SessionFilesContext.Provider>
         </FileDownloadContext.Provider>
       </ParticipantIdentityContext.Provider>
     </BrowserRouter>
