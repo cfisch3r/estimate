@@ -8,23 +8,47 @@ Developer's Guide to Software Estimation (agiledojo.de, Episodes I–III). See
 
 ## Process
 
-For each item, once best/likely/worst are set (individual submissions, or a
-facilitator-reconciled value):
+Each item goes through three phases. In Manual mode the facilitator enters one reconciled
+value: it is its own group range, and there is no outlier flag.
+
+Solid arrows show the order of the steps; the dotted arrow shows what the outlier flag
+feeds into.
 
 ```mermaid
 flowchart TD
-    Start(["Best / Likely / Worst set<br/>(submissions, or reconciled value)"]) --> Aggregate["Aggregate"]
-    Aggregate --> CI["Compute confidence interval"]
-    CI --> Guard["Guard"]
-    Guard --> Finalize(["Finalize"])
+    subgraph ENTER["1 · ENTER — each participant"]
+        Entry(["Best / Likely / Worst entered"]) --> EntryGuards["Entry guards"]
+    end
+    subgraph REVEAL["2 · REVEAL — the whole group"]
+        Aggregate["Aggregate"] --> CI["Compute confidence interval"]
+        Outlier["Outlier flag"]
+    end
+    subgraph FINALIZE["3 · FINALIZE"]
+        Finalize(["Lock the four values"])
+    end
+    EntryGuards -->|submit| Aggregate
+    EntryGuards -->|submit| Outlier
+    CI --> Finalize
+    Outlier -.->|discussion| Finalize
+
+    classDef enter fill:#e8f0fe,stroke:#4a6fa5,color:#1a1a1a
+    classDef reveal fill:#fdf3e1,stroke:#b07d2b,color:#1a1a1a
+    classDef finalize fill:#e6f4ea,stroke:#3d8b54,color:#1a1a1a
+    class Entry,EntryGuards enter
+    class Aggregate,CI,Outlier reveal
+    class Finalize finalize
+    style ENTER fill:#f4f8ff,stroke:#4a6fa5,color:#1a1a1a
+    style REVEAL fill:#fffaf0,stroke:#b07d2b,color:#1a1a1a
+    style FINALIZE fill:#f3faf5,stroke:#3d8b54,color:#1a1a1a
 ```
 
-| Step | What happens | Notes | Spec |
-|---|---|---|---|
-| **Aggregate** | Individual submissions become one group range: **Best** = minimum of all Best Cases, **Worst** = maximum of all Worst Cases, **Likely** = median of all Likely values (the mean of the two middle values for an even count) | Don't average away the outliers — the worst case in particular tends to get optimistically averaged down. A single-entry group, as in Manual mode, degenerates to that one estimate's own values | [aggregation](../../../specs/estimation-method/domain/aggregation.feature) |
-| **Compute confidence interval** | 90% Confidence Interval = `Likely + 1.28 × ((Worst − Best) / 3)` | McConnell's formula, Episode III | [aggregation](../../../specs/estimation-method/domain/aggregation.feature) |
-| **Guard** | The bias guards below surface nudges as values are entered; the outlier flag belongs to the reveal | | [bias-guards](../../../specs/estimation-method/domain/bias-guards.feature) |
-| **Finalize** | The four values (min, expected, CI90, max) are locked for the item | | [final-result](../../../specs/estimation-method/domain/final-result.feature) |
+| Phase | Step | What happens | Notes | Spec |
+|---|---|---|---|---|
+| **Enter** | **Entry guards** | While a participant enters their own Best / Likely / Worst, the symmetric-range nudge, the rounding suggestion and the narrow-range nudge (see the bias guards below) react to that estimate | They check one participant's estimate, never the group range | [bias-guards](../../../specs/estimation-method/domain/bias-guards.feature) |
+| **Reveal** | **Aggregate** | Individual submissions become one group range: **Best** = minimum of all Best Cases, **Worst** = maximum of all Worst Cases, **Likely** = median of all Likely values (the mean of the two middle values for an even count) | Don't average away the outliers — the worst case in particular tends to get optimistically averaged down. A single-entry group, as in Manual mode, degenerates to that one estimate's own values | [aggregation](../../../specs/estimation-method/domain/aggregation.feature) |
+| **Reveal** | **Compute confidence interval** | 90% Confidence Interval = `Likely + 1.28 × ((Worst − Best) / 3)` | McConnell's formula, Episode III | [aggregation](../../../specs/estimation-method/domain/aggregation.feature) |
+| **Reveal** | **Outlier flag** | Each participant's estimate is compared with the others' estimates (not with the group range), and one that stands apart is flagged | Prompts discussion before finalizing; Live mode only | [bias-guards](../../../specs/estimation-method/domain/bias-guards.feature) |
+| **Finalize** | **Finalize** | The four values (min, expected, CI90, max) are locked for the item | | [final-result](../../../specs/estimation-method/domain/final-result.feature) |
 
 ## Information model
 
