@@ -13,10 +13,6 @@ describe('createEstimate', () => {
 })
 
 describe('validateEstimateValues', () => {
-  it('reports the first broken pair when both are out of order', () => {
-    expect(validateEstimateValues(9, 5, 2)).toMatchObject({ code: 'best-above-likely' })
-  })
-
   it('keeps createEstimate error text in step with the validator', () => {
     const values = validateEstimateValues(8, 5, 9)
     const created = createEstimate({ participantId: 'a', best: 8, likely: 5, worst: 9 })

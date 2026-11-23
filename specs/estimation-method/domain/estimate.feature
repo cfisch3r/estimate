@@ -9,6 +9,10 @@ Feature: What an estimate may hold
 
   Rule: An estimate is ordered best ≤ likely ≤ worst, and every value is a finite number above 0
 
+    A likely or worst case of 0 or less always breaks the order, because the best
+    case has to be above 0 and no larger than either. Such an estimate is
+    rejected for its order, not for the value itself.
+
     Scenario Outline: A consistent estimate is accepted
       When an estimate is made of
         | best   | likely   | worst   |
@@ -36,8 +40,10 @@ Feature: What an estimate may hold
         | 0    | 5        | 8         | has a best case of 0 or less           | best             |
         | -2   | 0        | 3         | has a best case of 0 or less           | best             |
         | 8    | 5        | 9         | has a best case above its likely case  | best and likely  |
-        | 10   | 5        | 3         | has a best case above its likely case  | best and likely  |
         | 2    | 9        | 8         | has a likely case above its worst case | likely and worst |
+        | 2    | -1       | 8         | has a best case above its likely case  | best and likely  |
+        | 2    | 0        | 8         | has a best case above its likely case  | best and likely  |
+        | 2    | 5        | -3        | has a likely case above its worst case | likely and worst |
 
   Rule: The order is checked among the values given so far
 
@@ -99,3 +105,23 @@ Feature: What an estimate may hold
         | Ben         | 1       | 1000000 | 1000000 |
       When they are aggregated
       Then the group range is a valid final result
+
+  Rule: An estimate that breaks several rules is rejected with the first of them
+
+    The rules are checked in this order: a value that isn't a finite number, a
+    value above 1,000,000, a best case of 0 or less, then the order, best above
+    likely before likely above worst. Only the first broken rule is reported.
+
+    Scenario Outline: The first broken rule is the reason
+      When an estimate is made of
+        | best   | likely   | worst   |
+        | <best> | <likely> | <worst> |
+      Then the estimate is rejected because it <reason>
+      And the values breaking it are <values>
+
+      Examples:
+        | best | likely | worst   | also broken                     | reason                                 | values          |
+        | NaN  | 5      | 2000000 | a value above 1,000,000          | has a value that isn't a finite number | best            |
+        | 0    | 5      | 2000000 | a best case of 0 or less         | has a value above 1,000,000            | worst           |
+        | 0    | 5      | 3       | likely above worst               | has a best case of 0 or less           | best            |
+        | 10   | 5      | 3       | likely above worst               | has a best case above its likely case  | best and likely |
