@@ -186,7 +186,7 @@ Given('the session is estimated in {word}', (world: QuickPickleWorld, unit: stri
   data(world).unit = unit
 })
 
-When('{float} is entered', (world: QuickPickleWorld, value: number) => {
+When('the value {float} is entered', (world: QuickPickleWorld, value: number) => {
   data(world).value = value
 })
 

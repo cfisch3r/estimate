@@ -30,7 +30,7 @@ Feature: Bias guards
 
     Scenario Outline: Whether a value gets a rounding suggestion
       Given the session is estimated in <unit>
-      When <value> is entered
+      When the value <value> is entered
       Then the rounding suggestion <suggestion>
 
       Examples:

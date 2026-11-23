@@ -98,6 +98,8 @@ and use "lane" and "slice" in their own sense. They are not rewritten.
 | **Attempt** | One WebRTC connection between two peers, counted once it has the other side's session description. Numbered per tab in the connection diagnosis, not tied to a peer id. |
 | **AggregateResult** | Unrelated to the **Aggregate** entry above despite the shared prefix — matches the actual `AggregateResult` type in `src/domain/estimate/types.ts`. The group range three-point estimation produces for an item: min, expected, ci90, max ([estimation-method](domain/concepts/estimation-method.md)). |
 | **Uncertainty level** | One of 5 Cone-of-Uncertainty phases a participant selects per item, per view, used only for guidance, never synced ([estimation-method](domain/concepts/estimation-method.md)). |
+| **Guidance ceiling** | The worst case an uncertainty level suggests at least: Best × High mult. / Low mult. A worst case below it gets the narrow-range nudge, one at or above it a calm confirmation ([estimation-method](domain/concepts/estimation-method.md)). |
+| **Bias guard** | A check that nudges against a known estimation trap — the symmetric-range nudge, the rounding suggestion, the narrow-range nudge, the outlier flag. It never blocks submitting or finalizing ([estimation-method](domain/concepts/estimation-method.md)). |
 
 ## Working rule
 

@@ -26,6 +26,13 @@ describe('validateEstimateValues', () => {
     })
   })
 
+  it('names the best case for a non-positive best case', () => {
+    expect(validateEstimateValues(0, 5, 8)).toMatchObject({
+      code: 'non-positive',
+      fields: ['best'],
+    })
+  })
+
   it('names every field above the largest value an estimate may hold', () => {
     expect(validateEstimateValues(2, 5, MAX_ESTIMATE_VALUE + 1)).toMatchObject({
       ok: false,
