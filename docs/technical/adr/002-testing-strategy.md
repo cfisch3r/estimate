@@ -4,6 +4,8 @@
 **Date:** 2026-08-22
 **Related:** package.json (vitest, @testing-library/react)
 
+> **Update 2026-11-23:** the session file's format and file name moved from `src/domain/sessionFile.ts` to `src/adapters/file/`, behind the session-file port that saving and loading both use; the domain keeps the saved session (`src/domain/savedSession.ts`). The note below describes the layout before that.
+>
 > **Update 2026-11-13:** save and load now exist: the file format in `src/domain/sessionFile.ts`, the download in `src/adapters/file/`, and the UI in `features/session-persistence`. The 2026-09-29 note below that save/load "has no directory yet" predates them.
 >
 > **Update 2026-09-29:** the module paths below (`src/calc/`, `src/state/store.ts`,

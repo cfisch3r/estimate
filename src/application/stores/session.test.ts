@@ -1,3 +1,4 @@
+import { savedSessionOf } from '../../domain/savedSession'
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   aggregateEstimates,
@@ -145,7 +146,7 @@ describe('resetSession', () => {
     useSessionStore
       .getState()
       .loadSession(
-        { sessionName: 'Loaded', unit: 'weeks', items: [] },
+        savedSessionOf({ sessionName: 'Loaded', unit: 'weeks', items: [] }),
         'loaded.estimate.json',
       )
     useSessionStore.getState().addItem('Item A')
@@ -157,7 +158,7 @@ describe('resetSession', () => {
       sessionName: '',
       unit: 'days',
       activeItemId: null,
-      lastSavedFile: null,
+      savedBaseline: null,
       loadedFrom: null,
     })
   })

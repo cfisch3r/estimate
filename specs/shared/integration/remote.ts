@@ -2,6 +2,7 @@ import type { JSHandle, Page } from '@playwright/test'
 import type { DiagnosticsLog } from '../../../src/application/ports/outbound/diagnosticsLog'
 import type { FileDownloadApi } from '../../../src/application/ports/outbound/fileDownload'
 import type { JoinSession } from '../../../src/application/ports/outbound/networkTransport'
+import type { SessionFileApi } from '../../../src/application/ports/outbound/sessionFiles'
 
 /** What the harness installs for a port: the adapter's own operations, without
  *  the port's `on…` callbacks, which can't cross from the page into Node. */
@@ -27,6 +28,7 @@ export type Remote<Port> = {
  *  stays in the page, and steps reach it through a `JSHandle` (`remoteHandle`). */
 export type Harness = {
   file: HarnessEntry<FileDownloadApi>
+  sessionFiles: HarnessEntry<SessionFileApi>
   diagnostics: HarnessEntry<DiagnosticsLog>
   network: { join: JoinSession }
 }

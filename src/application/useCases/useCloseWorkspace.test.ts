@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
 import { useCloseWorkspace } from './useCloseWorkspace'
-import { writeSessionFile } from '../../domain/sessionFile'
+import { savedSessionOf } from '../../domain/savedSession'
 import { useConnectionStore, useSessionStore } from '../stores'
 
 const { disconnectMock } = vi.hoisted(() => ({ disconnectMock: vi.fn() }))
@@ -17,7 +17,7 @@ beforeEach(() => {
     unit: 'days',
     items: [],
     activeItemId: null,
-    lastSavedFile: null,
+    savedBaseline: null,
   })
   useConnectionStore.getState().leaveLiveSession()
 })
@@ -59,7 +59,7 @@ describe('useCloseWorkspace', () => {
 
     act(() => {
       const { sessionName, unit, items, markSaved } = useSessionStore.getState()
-      markSaved(writeSessionFile({ sessionName, unit, items }))
+      markSaved(savedSessionOf({ sessionName, unit, items }))
     })
     rerender()
     expect(result.current.confirmation).toBe('none')

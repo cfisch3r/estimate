@@ -3,10 +3,10 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
-import { FileDownloadContext } from '../application/composition'
+import { SessionFilesContext } from '../application/composition'
 import { Header } from './Header'
 import { useSessionStore, useConnectionStore } from '../application/testing'
-import { writeSessionFile } from '../domain/sessionFile'
+import { savedSessionOf } from '../domain/savedSession'
 import type { Item } from '../domain/types'
 
 const { disconnectMock, navigateMock } = vi.hoisted(() => ({
@@ -14,7 +14,12 @@ const { disconnectMock, navigateMock } = vi.hoisted(() => ({
   navigateMock: vi.fn(),
 }))
 
-const downloadMock = vi.fn()
+const saveMock = vi.fn((session: { sessionName: string }) =>
+  session.sessionName === 'Sprint 42'
+    ? 'sprint-42-2026-11-12.estimate.json'
+    : 'saved.estimate.json',
+)
+const sessionFiles = { save: saveMock, open: vi.fn() }
 
 vi.mock('../application/useCases/useLiveSession', () => ({
   useLiveSession: () => ({ connect: vi.fn(), disconnect: disconnectMock }),
@@ -31,7 +36,7 @@ function resetStore() {
     unit: 'days',
     items: [],
     activeItemId: null,
-    lastSavedFile: null,
+    savedBaseline: null,
   })
   useConnectionStore.setState({
     mode: 'manual',
@@ -43,9 +48,9 @@ function resetStore() {
 function renderHeader(path: string | { pathname: string; state: unknown } = '/') {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <FileDownloadContext.Provider value={{ download: downloadMock }}>
+      <SessionFilesContext.Provider value={sessionFiles}>
         <Header />
-      </FileDownloadContext.Provider>
+      </SessionFilesContext.Provider>
     </MemoryRouter>,
   )
 }
@@ -154,11 +159,9 @@ describe('Header', () => {
     await user.click(screen.getByRole('button', { name: /^Save session/ }))
 
     expect(
-      await screen.findByText(
-        /^Session saved as sprint-42-\d{4}-\d{2}-\d{2}\.estimate\.json$/,
-      ),
+      await screen.findByText('Session saved as sprint-42-2026-11-12.estimate.json'),
     ).toBeInTheDocument()
-    expect(downloadMock).toHaveBeenCalledTimes(1)
+    expect(saveMock).toHaveBeenCalledTimes(1)
   })
 
   it('does not make the brand a button on join', () => {
@@ -197,7 +200,7 @@ describe('Header', () => {
       sessionName: 'My session',
       items: [storyItem],
       activeItemId: '1',
-      lastSavedFile: writeSessionFile({
+      savedBaseline: savedSessionOf({
         sessionName: 'My session',
         unit: 'days',
         items: [storyItem],

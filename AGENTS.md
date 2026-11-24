@@ -23,7 +23,7 @@ code, and depends on it — never the reverse. Before making non-trivial changes
   process, the Estimate/AggregateResult/uncertainty-level information model, and the
   bias-guard rules
 - `docs/domain/concepts/session-persistence.md` — domain concept: saving a session to a
-  file and resuming it, the session-file information model, and the rules (unsaved-changes
+  file and resuming it, the saved-session information model, and the rules (unsaved-changes
   warning, whole-or-nothing restore, load only before a mode starts)
 - `docs/domain/concepts/screen-flow.md` — domain concept: the screen-flow diagram and
   per-screen content table for Mode selection, Workspace, Join Session, Participant
@@ -39,6 +39,10 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 - `docs/technical/adr/007-e2e-dual-mode-signaling.md` — accepted decision on dual-mode signaling for the Playwright e2e suite: a locally self-hosted relay by default (blocking CI), production Nostr relays in a separate nightly/manual job
 - `docs/technical/adr/003-session-reliability-model.md` — accepted decision on who owns live-session state and what reconnect restores: facilitator-authoritative rounds, a values-free submission roster in the snapshot, acknowledged submissions with a kind-driven retry policy, stable client identity, and role-asymmetric link state. **Read before working #9, #60, #61, #62, or #63** — it is the design anchor for all of them; the ADR's own status line tracks which elements have landed, rather than duplicating that list here.
 - `docs/technical/concepts/collaboration-mode.md` — Live mode technical concept: the Trystero P2P network layer, join flow, participant estimate round, facilitator reveal / retry-round flow, the connection diagnosis, and screen/store wiring delivered so far. Implements `docs/domain/concepts/live-collaboration.md`
+- `docs/technical/concepts/session-persistence.md` — session persistence technical concept: the
+  saved session in the domain, the session-file port and adapter, the save and open flows, the
+  version-1 file format, the file name and the rejection codes. Implements
+  `docs/domain/concepts/session-persistence.md`
 - `docs/technical/concepts/estimation-engine.md` — the estimation engine's detailed design (aggregation, the `Estimate` value type, bias guards). Implements `docs/domain/concepts/estimation-method.md`
 - `docs/technical/concepts/e2e-testing.md` — E2E testing technical concept: the Playwright/fixture/signaling component wiring, the dual-mode (local relay / real-world) build-and-run flows, and the spec-to-wire-action coverage map
 - `docs/technical/concepts/integration-testing.md` — integration testing technical concept: the steps/driver/harness wiring across the Node and browser sides, how drivers follow the ports, adding a port or a fault, the import rules

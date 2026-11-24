@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { act, render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
 import { MemoryRouter } from 'react-router'
 import { ModeSelect } from './ModeSelect'
+import { SessionFilesContext } from '../../../application/composition'
 import { useSessionStore, useConnectionStore } from '../../../application/testing'
+import { createSavedSession } from '../../../domain/savedSession'
+import type { SavedSessionInput } from '../../../domain/savedSession'
 
 const { connectMock, navigateMock } = vi.hoisted(() => ({
   connectMock: vi.fn(),
@@ -22,10 +25,28 @@ vi.mock('react-router', async (importOriginal) => {
   return { ...actual, useNavigate: () => navigateMock }
 })
 
+/** Opens a picked file the way the session-file adapter does, minus the
+ *  format's shape checks: an unreadable file is rejected, and the rest goes
+ *  through the real domain factory, so its refusals are the real ones. */
+const sessionFiles = {
+  save: vi.fn(() => 'saved.estimate.json'),
+  open: async (file: { text(): Promise<string> }) => {
+    let text: string
+    try {
+      text = await file.text()
+    } catch {
+      return { ok: false as const, error: { code: 'unreadable' as const } }
+    }
+    return createSavedSession(JSON.parse(text) as SavedSessionInput)
+  },
+}
+
 function renderModeSelect() {
   return render(
     <MemoryRouter>
-      <ModeSelect />
+      <SessionFilesContext.Provider value={sessionFiles}>
+        <ModeSelect />
+      </SessionFilesContext.Provider>
     </MemoryRouter>,
   )
 }
@@ -36,7 +57,7 @@ function resetStore() {
     unit: 'days',
     items: [],
     activeItemId: null,
-    lastSavedFile: null,
+    savedBaseline: null,
     loadedFrom: null,
     started: false,
   })
@@ -292,6 +313,24 @@ describe('ModeSelect', () => {
       expect(alert).toHaveTextContent("This file couldn't be read. Pick it again.")
       expect(alert).toHaveTextContent('gone.estimate.json · nothing was changed')
       expect(useSessionStore.getState().items).toEqual([])
+    })
+
+    it('leaves no focus hand-off behind after a rejection', async () => {
+      const damaged = SAVED.replace('"min":3', '"min":13')
+      await loadFile(damaged, 'damaged.estimate.json')
+      await within(screen.getByRole('alert')).findByText(/can’t be loaded/)
+
+      // A session that appears later, without a load, must not take focus.
+      act(() => {
+        useSessionStore.setState({
+          sessionName: 'Checkout rework',
+          loadedFrom: 'checkout-rework.estimate.json',
+        })
+      })
+
+      expect(
+        await screen.findByRole('heading', { name: 'Checkout rework' }),
+      ).not.toHaveFocus()
     })
 
     it('rejects a damaged file with its reason and loads nothing', async () => {
