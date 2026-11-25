@@ -47,7 +47,7 @@ vocabulary used on both sides.
 
 | Doc | What it covers |
 |---|---|
-| [glossary.md](glossary.md) | The repo's vocabulary, with the words to avoid: architecture (layer, type, aggregate, entity, value object, inbound/outbound adapter, port, FSD slice and segment), review (floor, risk category, Review guide), testing (Test Level, stereotype, harness page, port driver, docs site, concept folder), the story workflow (implementation design artifact, screen design, design handoff) and the domain concepts (session, round, roster, snapshot). |
+| [glossary.md](glossary.md) | The repo's vocabulary, with the words to avoid: architecture (layer, type, aggregate, entity, value object, inbound/outbound adapter, port, FSD slice and segment), review (floor, risk category, Review guide), testing (Test Level, data table, stereotype, harness page, port driver, docs site, concept folder), the story workflow (implementation design artifact, screen design, design handoff) and the domain concepts (session, round, roster, snapshot). |
 
 ## Specs
 
