@@ -14,7 +14,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin: -8px 0 20px;
+  margin: 16px 0 24px;
 }
 .vp-doc a.g-chip,
 .g-chip {
