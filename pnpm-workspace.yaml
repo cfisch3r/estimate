@@ -1,0 +1,7 @@
+packages:
+  - site
+
+# esbuild (pulled in by VitePress) ships its binary as an optional dependency;
+# its install script only re-checks that binary, so it stays off.
+allowBuilds:
+  esbuild: false

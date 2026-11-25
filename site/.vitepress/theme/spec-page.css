@@ -1,0 +1,212 @@
+/* Spec pages and the specs overview, as written by site/lib/featurePage.ts and specsOverview.ts */
+:root {
+  --g-given: #4c5397;
+  --g-when: #796cbf;
+  --g-then: #3d8b6a;
+}
+.dark {
+  --g-given: #8f97e6;
+  --g-when: #b5abfc;
+  --g-then: #7fd1a8;
+}
+
+.g-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -8px 0 20px;
+}
+.vp-doc a.g-chip,
+.g-chip {
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--vp-c-border);
+  color: var(--vp-c-text-2);
+  text-decoration: none;
+}
+.vp-doc a.g-chip:hover {
+  border-color: var(--vp-c-brand-2);
+  color: var(--vp-c-text-1);
+}
+.g-chip-level {
+  border-color: transparent;
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.vp-doc .g-lede {
+  font-size: 17px;
+  line-height: 1.7;
+  color: var(--vp-c-text-2);
+}
+.vp-doc .g-rule-why {
+  border-left: 3px solid var(--vp-c-brand-2);
+  padding: 2px 0 2px 14px;
+  color: var(--vp-c-text-2);
+}
+
+.vp-doc .g-steps {
+  list-style: none;
+  margin: 12px 0 16px;
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+}
+.vp-doc .g-step {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  margin: 4px 0;
+  line-height: 1.6;
+}
+.vp-doc .g-step + .g-step {
+  margin-top: 6px;
+}
+.g-kw {
+  flex: 0 0 52px;
+  text-align: right;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.g-given .g-kw {
+  color: var(--g-given);
+}
+.g-when .g-kw {
+  color: var(--g-when);
+}
+.g-then .g-kw {
+  color: var(--g-then);
+}
+.g-text {
+  flex: 1 1 0;
+  min-width: 0;
+}
+.g-param {
+  font-family: var(--vp-font-family-mono);
+  font-size: 13px;
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+.g-string {
+  color: var(--vp-c-warning-1);
+}
+.g-arg {
+  flex-basis: 100%;
+  margin-left: 62px;
+  overflow-x: auto;
+}
+.vp-doc .g-arg table,
+.vp-doc .g-examples table {
+  margin: 6px 0 0;
+}
+.vp-doc .g-docstring {
+  font-size: 13px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--vp-code-block-bg);
+}
+
+.g-examples {
+  overflow-x: auto;
+}
+.vp-doc .g-examples table {
+  display: table;
+  width: 100%;
+}
+.vp-doc .g-table td {
+  font-variant-numeric: tabular-nums;
+}
+.vp-doc .g-examples-name {
+  font-weight: 600;
+  margin-bottom: 0;
+}
+
+.g-background {
+  border: 1px dashed var(--vp-c-border);
+  border-radius: 14px;
+  padding: 10px 14px 2px;
+  margin: 16px 0;
+}
+.vp-doc .g-background-label {
+  margin: 0;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--vp-c-text-3);
+}
+.vp-doc .g-background .g-steps {
+  background: transparent;
+  border: 0;
+  padding: 4px 0;
+}
+
+.g-source {
+  margin-top: 40px;
+  border-top: 1px solid var(--vp-c-divider);
+  padding-top: 16px;
+}
+.g-source summary {
+  cursor: pointer;
+  color: var(--vp-c-text-2);
+  font-weight: 500;
+}
+
+/* Specs overview */
+.spec-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+.vp-doc a.spec-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 18px;
+  border-radius: 14px;
+  text-decoration: none;
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--vp-c-text-1);
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
+}
+.vp-doc a.spec-card:hover {
+  border-color: var(--vp-c-brand-2);
+  transform: translateY(-2px);
+}
+.spec-card-level {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vp-c-brand-1);
+}
+.spec-card-name {
+  font-size: 17px;
+  font-weight: 600;
+}
+.spec-card-count {
+  font-size: 13px;
+  color: var(--vp-c-text-3);
+}
+
+@media (max-width: 640px) {
+  .g-kw {
+    flex-basis: 44px;
+  }
+  .g-arg {
+    margin-left: 0;
+  }
+}

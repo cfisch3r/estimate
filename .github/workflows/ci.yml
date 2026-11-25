@@ -165,6 +165,24 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
+  # The docs site (site/): its build step refuses a spec no doc links to, and
+  # VitePress refuses a broken link. Deployed from main by docs-site.yml.
+  docs-site:
+    name: docs-site
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.3.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm docs:build
+
   codeql:
     name: codeql
     runs-on: ubuntu-latest
@@ -180,7 +198,8 @@ jobs:
 
   ci-passed:
     name: ci-passed
-    needs: [lint, arch, arch-specs, format, typecheck, test, build, deadcode, e2e]
+    needs:
+      [lint, arch, arch-specs, format, typecheck, test, build, deadcode, e2e, docs-site]
     runs-on: ubuntu-latest
     steps:
       - run: exit 0

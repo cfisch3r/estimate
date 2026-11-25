@@ -4,6 +4,7 @@
     { "path": "./tsconfig.app.json" },
     { "path": "./tsconfig.node.json" },
     { "path": "./tsconfig.playwright.json" },
-    { "path": "./tsconfig.harness.json" }
+    { "path": "./tsconfig.harness.json" },
+    { "path": "./site/tsconfig.json" }
   ]
 }

@@ -163,6 +163,30 @@ Verify after every deploy that touches routing: load a non-root path directly (n
 in-app navigation) — e.g. `https://<site>/workspace` — and confirm it serves the app
 rather than a host 404.
 
+## Docs site
+
+The docs and the specs are also published as a website, built with VitePress from `docs/`
+and `specs/` by the `site/` workspace package
+([ADR-012](adr/012-docs-website.md)). It is separate from the app's deployment above: it
+is served by GitHub Pages, not IONOS.
+
+| What | Where | When |
+|---|---|---|
+| **Build check** | CI's `docs-site` job (`pnpm docs:build`) | Every pull request and push to `main`; required by `ci-passed` |
+| **Deploy** | `.github/workflows/docs-site.yml`: build, upload, deploy to Pages | A push to `main` touching `docs/`, `specs/`, `site/` or the lockfile, or a manual run |
+| **Local** | `pnpm docs:dev` (live), `pnpm docs:build` then `pnpm docs:preview` (the built site) | Any time; the site is served under `/estimate/` |
+
+**One-time setup**<br>
+In the repo's Settings → Pages, set the source to **GitHub Actions**. Until then the
+deploy job fails, and the build check is unaffected.
+
+**When the build fails**<br>
+- *"These specs are linked from no doc"*: link each listed `.feature` file from the doc
+  rule it checks, or from the technical concept's "Specs" table.
+- *A dead link*: VitePress names the page and the link. A link to a doc the site leaves
+  out (the runbook, the PR review catalogue) or to a file outside `docs/` and `specs/`
+  goes to GitHub, so a dead link is a real broken path in `docs/`.
+
 ## Secrets (repo → Settings → Secrets and variables → Actions)
 
 | Secret | Purpose | Provisioned by | Rotate when |
