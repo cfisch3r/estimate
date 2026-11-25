@@ -1,4 +1,4 @@
-# ADR-012: A Docs Website Built from `docs/` and `specs/`
+# ADR-012: A Docs Site Built from `docs/` and `specs/`
 
 **Status:** Accepted
 **Date:** 2026-11-25
@@ -74,8 +74,9 @@ workspace package `site/`, and publish it with GitHub Pages from `main`.
 ## Consequences
 
 - **Every spec needs a doc link**<br>
-  A new `.feature` file fails CI until a doc links to it, usually from the rule it
-  checks or from a technical concept's "Specs" table.
+  A new `.feature` file fails CI until a doc links to it. A spec of domain behaviour is
+  linked from the domain concept rule it checks; a spec that checks no domain rule, such
+  as an adapter's, from its technical concept's "Specs" table.
 - **The repo is a pnpm workspace**<br>
   `pnpm-workspace.yaml` lists `site`, and `pnpm install` installs both packages.
   `knip.json` checks each workspace on its own.
@@ -96,5 +97,5 @@ workspace package `site/`, and publish it with GitHub Pages from `main`.
 | MkDocs Material | Brings Python into a pnpm repo |
 | Raw `.feature` files with highlighting only | Doesn't make the specs readable for people outside the team |
 | A mapping table from spec folder to concept doc | Folder names match neither side's docs, and a folder-level mapping is too coarse |
-| Changing the diagram colours in `docs/` for both themes | Changes how the 13 diagrams render on GitHub; the light card fixes it on the site alone |
+| Changing the diagram colours in `docs/` for both themes | Changes how the diagrams render on GitHub; the light card fixes it on the site alone |
 | A preview build per pull request | Not needed now; GitHub Pages doesn't offer one |
