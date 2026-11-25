@@ -89,7 +89,7 @@ and use "lane" and "slice" in their own sense. They are not rewritten.
 | **Live mode** | The session mode in which participants submit their own estimates from their own devices, peer to peer. The UI's "Start collaborative"; older docs say "Mode A" ([live-collaboration](domain/concepts/live-collaboration.md)). |
 | **Manual mode** | The session mode in which the facilitator alone types in the agreed values. The UI's "Start single-user"; older docs say "Mode B" ([live-collaboration](domain/concepts/live-collaboration.md)). |
 | **Round** | One pass of everyone estimating one item; the facilitator can retry it. |
-| **Submission** | One participant's estimate for the current round. |
+| **Submission** | One participant's estimate for the current round. It counts once the facilitator's roster shows it; until then the participant sees it as sending or not delivered. |
 | **Roster** | The values-free list of who has submitted, sent in the snapshot ([ADR-003](technical/adr/003-session-reliability-model.md)). |
 | **Snapshot** | A derived, read-only copy of the facilitator's round state that participants hold (applied via `applyRoundSnapshot` to a `LiveRound`). The facilitator stays the authority. |
 | **Connection state** | The status of the peer link. It describes the link, not the estimate, so it is outside the aggregate. |

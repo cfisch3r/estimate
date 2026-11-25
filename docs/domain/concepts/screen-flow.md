@@ -52,7 +52,7 @@ stateDiagram-v2
         AlreadyEstimated --> Submitting : facilitator reopens item
     }
 
-    Workspace --> SessionSummary : all items finalized
+    Workspace --> SessionSummary : open summary, or move on from the last item
     SessionSummary --> [*]
 ```
 

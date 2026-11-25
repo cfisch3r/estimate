@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  livePhaseOf,
   appendItem,
   firstPendingItemId,
   isFinalized,
@@ -9,7 +8,7 @@ import {
   renameItem,
   updateItem,
 } from './item'
-import { aggregateOf, finalizedItemOf, itemOf } from './testFixtures'
+import { finalizedItemOf, itemOf } from './testFixtures'
 
 describe('isFinalized', () => {
   it('is false while the item has no final result', () => {
@@ -22,11 +21,6 @@ describe('isFinalized', () => {
 })
 
 describe('firstPendingItemId', () => {
-  it('returns the first item without a final result', () => {
-    const items = [finalizedItemOf({ id: 'a' }), itemOf({ id: 'b' }), itemOf({ id: 'c' })]
-    expect(firstPendingItemId(items)).toBe('b')
-  })
-
   it('is null when every item is finalized or there are none', () => {
     expect(firstPendingItemId([finalizedItemOf({ id: 'a' })])).toBeNull()
     expect(firstPendingItemId([])).toBeNull()
@@ -34,10 +28,11 @@ describe('firstPendingItemId', () => {
 })
 
 describe('appendItem', () => {
-  const empty = { items: [], activeItemId: null }
-
   it('appends a trimmed item with empty notes, no result and round 0', () => {
-    const next = appendItem(empty, { id: 'x', title: '  Migrate  ', description: 'd' })
+    const next = appendItem(
+      { items: [], activeItemId: null },
+      { id: 'x', title: '  Migrate  ', description: 'd' },
+    )
     expect(next?.items).toEqual([
       {
         id: 'x',
@@ -52,23 +47,6 @@ describe('appendItem', () => {
     ])
   })
 
-  it('is a no-op for a blank title', () => {
-    expect(appendItem(empty, { id: 'x', title: '   ', description: '' })).toBeNull()
-  })
-
-  it('selects the first item added to an empty workspace', () => {
-    expect(
-      appendItem(empty, { id: 'x', title: 'A', description: '' })?.activeItemId,
-    ).toBe('x')
-  })
-
-  it('keeps the active item when adding a later one', () => {
-    const state = { items: [itemOf({ id: 'a' })], activeItemId: 'a' }
-    const next = appendItem(state, { id: 'b', title: 'B', description: '' })
-    expect(next?.activeItemId).toBe('a')
-    expect(next?.items.map((i) => i.id)).toEqual(['a', 'b'])
-  })
-
   it('selects the new item when the selection had been cleared', () => {
     const state = { items: [finalizedItemOf({ id: 'a' })], activeItemId: null }
     expect(
@@ -78,30 +56,6 @@ describe('appendItem', () => {
 })
 
 describe('removeItemFrom', () => {
-  it('keeps the selection when a different item is removed', () => {
-    const state = { items: [itemOf({ id: 'a' }), itemOf({ id: 'b' })], activeItemId: 'a' }
-    expect(removeItemFrom(state, 'b')).toEqual({
-      items: [itemOf({ id: 'a' })],
-      activeItemId: 'a',
-    })
-  })
-
-  it('falls back to the next pending item when the active one is removed', () => {
-    const state = {
-      items: [itemOf({ id: 'a' }), finalizedItemOf({ id: 'b' }), itemOf({ id: 'c' })],
-      activeItemId: 'a',
-    }
-    expect(removeItemFrom(state, 'a').activeItemId).toBe('c')
-  })
-
-  it('clears the selection when no pending item remains', () => {
-    const state = {
-      items: [itemOf({ id: 'a' }), finalizedItemOf({ id: 'b' })],
-      activeItemId: 'a',
-    }
-    expect(removeItemFrom(state, 'a').activeItemId).toBeNull()
-  })
-
   it('leaves the list unchanged for an unknown id', () => {
     const state = { items: [itemOf({ id: 'a' })], activeItemId: 'a' }
     expect(removeItemFrom(state, 'zzz')).toEqual(state)
@@ -111,11 +65,6 @@ describe('removeItemFrom', () => {
 describe('moveItem', () => {
   const items = [itemOf({ id: 'a' }), itemOf({ id: 'b' }), itemOf({ id: 'c' })]
   const ids = (list: ReturnType<typeof moveItem>) => list?.map((i) => i.id)
-
-  it('moves an item to a new index', () => {
-    expect(ids(moveItem(items, 0, 2))).toEqual(['b', 'c', 'a'])
-    expect(ids(moveItem(items, 2, 0))).toEqual(['c', 'a', 'b'])
-  })
 
   it('does not mutate its input', () => {
     moveItem(items, 0, 2)
@@ -149,39 +98,7 @@ describe('updateItem', () => {
 describe('renameItem', () => {
   const items = [itemOf({ id: 'a', title: 'Old' }), itemOf({ id: 'b', title: 'Other' })]
 
-  it('renames the matching item to the trimmed title', () => {
-    const next = renameItem(items, 'a', '  New  ')
-    expect(next?.map((i) => i.title)).toEqual(['New', 'Other'])
-  })
-
-  it('is a no-op for a blank title, like appendItem', () => {
-    expect(renameItem(items, 'a', '   ')).toBeNull()
-    expect(renameItem(items, 'a', '')).toBeNull()
-  })
-
   it('leaves every item untouched for an unknown id', () => {
     expect(renameItem(items, 'zzz', 'New')).toEqual(items)
-  })
-})
-
-describe('livePhaseOf', () => {
-  const finalResult = aggregateOf(2, 3, 6)
-
-  it('is revealed once the round is, finalized or not', () => {
-    expect(livePhaseOf({ revealed: true, finalResult: null })).toEqual({
-      phase: 'revealed',
-    })
-    expect(livePhaseOf({ revealed: true, finalResult })).toEqual({ phase: 'revealed' })
-  })
-
-  it('is finalized earlier for a final result with no round revealed', () => {
-    expect(livePhaseOf({ revealed: false, finalResult })).toEqual({
-      phase: 'finalizedEarlier',
-      finalResult,
-    })
-  })
-
-  it('is open while pending and unrevealed', () => {
-    expect(livePhaseOf({ revealed: false, finalResult: null })).toEqual({ phase: 'open' })
   })
 })

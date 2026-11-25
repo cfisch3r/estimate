@@ -47,7 +47,7 @@ flowchart TD
 5. **Discuss** — the team discusses outliers; the facilitator can retry the round, which
    clears its submissions
 6. **Finalize** — the facilitator locks in the `AggregateResult` of the submissions and
-   moves on to the next item; a finalized item can be updated or reopened (see
+   moves on to the next item; a finalized item can be reopened (see
    [Item lifecycle](#item-lifecycle))
 7. **Session summary** — every finalized item with its min, expected and max; the session
    can be saved to a file
@@ -132,18 +132,28 @@ stateDiagram-v2
     }
     Revealed --> Finalized: finalize
     Finalized --> Round: reopen (Live)
-    Finalized --> Finalized: update
+    Finalized --> Finalized: update (Manual)
 ```
 
 Retrying and reopening both clear the item's submissions and start a new round; reopening
-also clears its `finalResult`. Updating a finalized item replaces its `finalResult`: in
-Manual mode from newly entered values, in Live mode from the revealed submissions.
+also clears its `finalResult`. In Manual mode, updating a finalized item replaces its
+`finalResult` with newly entered values. In Live mode a finalized item takes no more
+estimates, so only reopening it changes the result. Spec:
+[`item-lifecycle.feature`](../../../specs/live-session/domain/item-lifecycle.feature).
 
 ## Rules
 
 | Rule | Condition | Behavior | Spec |
 |---|---|---|---|
-| **Privacy before reveal** | Before the facilitator reveals the round | A participant never sees another's values: submissions go **only to the facilitator**, and everyone else sees a **values-free roster** | — |
+| **Privacy before reveal** | Before the facilitator reveals the round | A participant never sees another's values: submissions go **only to the facilitator**, and everyone else sees a **values-free roster** | [`privacy-before-reveal.feature`](../../../specs/live-session/domain/privacy-before-reveal.feature) |
 | **No mid-session mode switch** | The live connection fails | The **mode is fixed** when the session starts, for the session and for each item in it; the facilitator starts a fresh **Manual-mode session** instead of switching the running one | — |
-| **Late join and reconnect land on the correct view** | A participant joins mid-round, or reconnects | They see the **active item** and how many teammates have **submitted** (or, for an item finalized before the load, its saved result), whatever they missed while away | [`late-joiner.feature`](../../../specs/live-session/e2e/late-joiner.feature) (late join only) |
+| **A participant is in once they reach the facilitator** | A participant joins with a code and their name | They stay **connecting** until they reach the facilitator, whichever teammates they reach first; someone who never got in is told apart from someone who was in and lost the connection | [`joining.feature`](../../../specs/live-session/domain/joining.feature) |
+| **Late join and reconnect land on the correct view** | A participant joins mid-round, or reconnects | They see the **active item** and how many teammates have **submitted** (or, for an item finalized before the load, its saved result), whatever they missed while away | [`late-join-and-reconnect.feature`](../../../specs/live-session/domain/late-join-and-reconnect.feature), [`late-joiner.feature`](../../../specs/live-session/e2e/late-joiner.feature) (in the app) |
+| **Your own estimate survives a reconnect only within its round** | A participant who has submitted reconnects | Their own estimate is **kept** while the facilitator is still on the same item and round, and dropped after a retry, a reopen or a move to another item | [`late-join-and-reconnect.feature`](../../../specs/live-session/domain/late-join-and-reconnect.feature) |
+| **A submission counts once the facilitator has it** | A participant submits an estimate | It counts only once the facilitator's **roster shows it**; until then the participant sees it as sending or not delivered, and after a reconnect an estimate the facilitator lacks is sent again while the round is still open | [`submission-delivery.feature`](../../../specs/live-session/domain/submission-delivery.feature) |
+| **Participants are shown by name** | Any view of the round's participants | A participant shows by the **name they joined with**, or as "Teammate N" until that name arrives; nobody's number changes when someone else's name arrives later. Your own row reads **"You"** and takes no number, so an unnamed teammate's number can differ between your view and the facilitator's | [`participant-names.feature`](../../../specs/live-session/domain/participant-names.feature) |
+| **Every item has a title** | An item is added or renamed | A **blank title** is refused | [`item-list.feature`](../../../specs/live-session/domain/item-list.feature) |
+| **The active item follows the list** | Items are added or removed | The **first item added** becomes the active one; removing the active item moves on to the **first item still pending** | [`item-list.feature`](../../../specs/live-session/domain/item-list.feature) |
+| **Moving on and back follow the list** | The facilitator moves between items | **Moving on** (Next, or Finalize & next) goes to the item after the active one in list order, finalized or not, and from the last item to the session summary; **Previous** goes to the item before | [`navigation.feature`](../../../specs/live-session/domain/navigation.feature) |
+| **Leaving a live session with teammates asks first** | The facilitator leaves the Workspace while teammates are still connected | Leaving **asks first**, because it ends the session for them; with unsaved changes too, the question names both losses (see [session persistence](session-persistence.md#rules)) | [`leaving.feature`](../../../specs/live-session/domain/leaving.feature) |
 | **Both modes are interchangeable at the report** | Always | The **session summary** and the **saved file** look the same whichever mode produced the values | — |

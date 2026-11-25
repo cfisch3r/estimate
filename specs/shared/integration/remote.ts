@@ -2,6 +2,7 @@ import type { JSHandle, Page } from '@playwright/test'
 import type { DiagnosticsLog } from '../../../src/application/ports/outbound/diagnosticsLog'
 import type { FileDownloadApi } from '../../../src/application/ports/outbound/fileDownload'
 import type { JoinSession } from '../../../src/application/ports/outbound/networkTransport'
+import type { ParticipantIdentityApi } from '../../../src/application/ports/outbound/participantIdentity'
 import type { SessionFileApi } from '../../../src/application/ports/outbound/sessionFiles'
 
 /** What the harness installs for a port: the adapter's own operations, without
@@ -30,6 +31,7 @@ export type Harness = {
   file: HarnessEntry<FileDownloadApi>
   sessionFiles: HarnessEntry<SessionFileApi>
   diagnostics: HarnessEntry<DiagnosticsLog>
+  participantIdentity: HarnessEntry<ParticipantIdentityApi>
   network: { join: JoinSession }
 }
 

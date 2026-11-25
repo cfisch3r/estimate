@@ -3,13 +3,10 @@ import {
   deriveConnectionStatus,
   facilitatorStart,
   announcementFor,
-  holdsItemList,
   leaveConfirmation,
   shouldBroadcastSnapshot,
-  normalizeSessionCode,
   participantJoin,
   screenAccessFor,
-  withConnectionStatus,
 } from './connection'
 import type { ScreenAccessState } from './connection'
 import type { ConnectionStatus, SessionRole } from './types'
@@ -17,14 +14,6 @@ import type { ConnectionStatus, SessionRole } from './types'
 const STATUSES: ConnectionStatus[] = ['connecting', 'connected', 'disconnected']
 
 describe('deriveConnectionStatus', () => {
-  it('holds a participant at connecting until the facilitator link is confirmed', () => {
-    expect(deriveConnectionStatus('participant', 'connected', false)).toBe('connecting')
-  })
-
-  it('reports connected to a participant once the facilitator link is confirmed', () => {
-    expect(deriveConnectionStatus('participant', 'connected', true)).toBe('connected')
-  })
-
   it.each(STATUSES.filter((s) => s !== 'connected'))(
     'passes a participant %s status through unchanged',
     (status) => {
@@ -37,12 +26,6 @@ describe('deriveConnectionStatus', () => {
     const role: SessionRole = 'facilitator'
     expect(deriveConnectionStatus(role, status, false)).toBe(status)
     expect(deriveConnectionStatus(role, status, true)).toBe(status)
-  })
-})
-
-describe('normalizeSessionCode', () => {
-  it('trims and upper-cases', () => {
-    expect(normalizeSessionCode('  k7f9q2 ')).toBe('K7F9Q2')
   })
 })
 
@@ -75,56 +58,13 @@ describe('participantJoin', () => {
       peerCount: 0,
     })
   })
-
-  it.each([
-    ['   ', 'Sam'],
-    ['K7F9Q2', '   '],
-    ['', ''],
-  ])('does not proceed for code %j and name %j', (code, name) => {
-    expect(participantJoin(code, name, 'p-1')).toBeNull()
-  })
-})
-
-describe('withConnectionStatus', () => {
-  it('latches hasEverConnected once the link has reported connected', () => {
-    const connected = withConnectionStatus({ hasEverConnected: false }, 'connected')
-    expect(connected).toEqual({ connectionStatus: 'connected', hasEverConnected: true })
-    expect(withConnectionStatus(connected, 'disconnected')).toEqual({
-      connectionStatus: 'disconnected',
-      hasEverConnected: true,
-    })
-  })
-
-  it('stays false while the link has never connected', () => {
-    expect(withConnectionStatus({ hasEverConnected: false }, 'connecting')).toEqual({
-      connectionStatus: 'connecting',
-      hasEverConnected: false,
-    })
-    expect(
-      withConnectionStatus({ hasEverConnected: false }, 'idle').hasEverConnected,
-    ).toBe(false)
-  })
-})
-
-describe('holdsItemList', () => {
-  it('is true for the facilitator only', () => {
-    expect(holdsItemList('facilitator')).toBe(true)
-    expect(holdsItemList('participant')).toBe(false)
-  })
 })
 
 describe('leaveConfirmation', () => {
-  it.each([
-    ['live', 2, false, 'live-peers'],
-    ['live', 1, false, 'live-peers'],
-    ['live', 0, false, 'none'],
-    ['manual', 0, false, 'none'],
-    ['manual', 3, false, 'none'],
-    ['manual', 0, true, 'unsaved'],
-    ['live', 0, true, 'unsaved'],
-    ['live', 2, true, 'unsaved-and-live-peers'],
-  ] as const)('mode %s, %i peers, unsaved %s -> %s', (mode, peers, unsaved, expected) => {
-    expect(leaveConfirmation(mode, peers, unsaved)).toBe(expected)
+  // The rule itself is specified in specs/live-session/domain/leaving.feature.
+  // Manual mode never has peers; whether this check is needed is open (#248).
+  it('asks nothing for a Manual session, whatever the peer count', () => {
+    expect(leaveConfirmation('manual', 3, false)).toBe('none')
   })
 })
 

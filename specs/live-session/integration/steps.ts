@@ -348,3 +348,69 @@ Then(
       .toBe(true)
   },
 )
+
+// participant-identity.feature
+
+/** A random UUID: what the storage adapter hands out. */
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
+
+async function askForParticipantId(
+  tab: TabFixture,
+  state: ScenarioState,
+  browser: string,
+  tabName = '1',
+): Promise<string> {
+  const id = await (
+    await tab(browser, tabName)
+  ).participantIdentity.getOrCreateParticipantId()
+  state.participantIds.push(id)
+  return id
+}
+
+Given(
+  'browser {string} has a participant id',
+  async ({ tab, state }, browser: string) => {
+    expect(await askForParticipantId(tab, state, browser)).toMatch(UUID)
+  },
+)
+
+Then(
+  'browser {string} has the same participant id',
+  async ({ tab, state }, browser: string) => {
+    const [first] = state.participantIds
+    expect(await askForParticipantId(tab, state, browser)).toBe(first)
+  },
+)
+
+for (const text of [
+  'tab {string} of browser {string} has a participant id',
+  'tab {string} of browser {string} asks for a participant id',
+]) {
+  Given(text, async ({ tab, state }, tabName: string, browser: string) => {
+    expect(await askForParticipantId(tab, state, browser, tabName)).toMatch(UUID)
+  })
+}
+
+Then('both tabs have the same participant id', ({ state }) => {
+  const [first, second] = state.participantIds
+  expect(state.participantIds).toHaveLength(2)
+  expect(second).toBe(first)
+})
+
+When(
+  'browser {string} asks for a participant id twice',
+  async ({ tab, state }, browser: string) => {
+    await askForParticipantId(tab, state, browser)
+    await askForParticipantId(tab, state, browser)
+  },
+)
+
+Then('it gets a participant id both times', ({ state }) => {
+  expect(state.participantIds).toHaveLength(2)
+  for (const id of state.participantIds) expect(id).toMatch(UUID)
+})
+
+Then('the two ids differ', ({ state }) => {
+  const [first, second] = state.participantIds
+  expect(second).not.toBe(first)
+})

@@ -12,6 +12,7 @@ import type {
   JoinSession,
   TransportSession,
 } from '../../../src/application/ports/outbound/networkTransport'
+import type { ParticipantIdentityApi } from '../../../src/application/ports/outbound/participantIdentity'
 import type {
   PickedFile,
   SessionFileApi,
@@ -66,6 +67,7 @@ export type Tab = {
   files: FileDriver
   sessionFiles: SessionFileDriver
   diagnostics: Remote<DiagnosticsLog>
+  participantIdentity: Remote<ParticipantIdentityApi>
   network: NetworkDriver
 }
 
@@ -107,6 +109,8 @@ export type ScenarioState = {
   openedText?: string
   /** What the last session-file open gave back. */
   opened?: Result<SavedSession, SessionFileRejection>
+  /** The participant ids handed out so far, in the order they were asked for. */
+  participantIds: string[]
 }
 
 export function requireState<K extends keyof ScenarioState>(
@@ -287,6 +291,7 @@ export const test = base.extend<Fixtures>({
         files: fileDriver(page),
         sessionFiles: sessionFileDriver(page),
         diagnostics: remote(page, 'diagnostics'),
+        participantIdentity: remote(page, 'participantIdentity'),
         network: networkDriver(page),
       }
       tabs.set(key, created)
@@ -296,7 +301,7 @@ export const test = base.extend<Fixtures>({
     await Promise.all(launched.map((owner) => owner.close()))
   },
   state: async ({}, use) => {
-    await use({ sessionCodes: {}, sessions: {} })
+    await use({ sessionCodes: {}, sessions: {}, participantIds: [] })
   },
 })
 

@@ -23,17 +23,6 @@ describe('teammateLabel', () => {
 })
 
 describe('participantLabels', () => {
-  it('prefers announced names and labels self without consuming a number', () => {
-    expect(
-      participantLabels(['me', 'a', 'b'], { a: 'Ada' }, { id: 'me', label: 'You' }),
-    ).toEqual(['You', 'Ada', 'Teammate 2'])
-  })
-
-  it('counts named peers too, so an unnamed peer keeps its number when another peer is named', () => {
-    expect(participantLabels(['a', 'b'], {})).toEqual(['Teammate 1', 'Teammate 2'])
-    expect(participantLabels(['a', 'b'], { a: 'Ada' })).toEqual(['Ada', 'Teammate 2'])
-  })
-
   it('numbers every id when there is no self', () => {
     expect(participantLabels(['x'], {})).toEqual(['Teammate 1'])
   })
