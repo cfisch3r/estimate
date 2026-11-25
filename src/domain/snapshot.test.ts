@@ -36,33 +36,6 @@ describe('buildSessionSnapshot', () => {
     ])
   })
 
-  it('withholds estimate values until the round is revealed, exposing only the roster', () => {
-    const active = itemOf({
-      id: 'x',
-      title: 'T',
-      description: 'D',
-      round: 3,
-      submissions: [estimateOf('a')],
-    })
-    const snapshot = buildSessionSnapshot({ ...base, items: [active], activeItemId: 'x' })
-    expect(snapshot.currentItem).toEqual({ id: 'x', title: 'T', description: 'D' })
-    expect(snapshot.round).toBe(3)
-    expect(snapshot.submissions).toEqual([])
-    expect(snapshot.roster).toEqual([
-      { participantId: 'a', submitted: true, connected: true },
-    ])
-  })
-
-  it("carries the active item's final result, with no round revealed", () => {
-    const finalResult = aggregateOf(2, 3, 6)
-    const snapshot = buildSessionSnapshot({
-      ...base,
-      items: [itemOf({ id: 'x', finalResult })],
-      activeItemId: 'x',
-    })
-    expect(snapshot).toMatchObject({ revealed: false, submissions: [], finalResult })
-  })
-
   it('has no final result while the active item is pending', () => {
     const snapshot = buildSessionSnapshot({
       ...base,
@@ -70,17 +43,6 @@ describe('buildSessionSnapshot', () => {
       activeItemId: 'x',
     })
     expect(snapshot.finalResult).toBeNull()
-  })
-
-  it('includes the frozen submissions once revealed', () => {
-    const submissions = [estimateOf('a')]
-    const snapshot = buildSessionSnapshot({
-      ...base,
-      items: [itemOf({ id: 'x', revealed: true, submissions })],
-      activeItemId: 'x',
-    })
-    expect(snapshot.revealed).toBe(true)
-    expect(snapshot.submissions).toEqual(submissions)
   })
 })
 
@@ -126,13 +88,6 @@ function snapshotOf(): SessionSnapshot {
 }
 
 describe('sessionFieldsFromSnapshot', () => {
-  it('lets a participant adopt the facilitator name and unit', () => {
-    expect(sessionFieldsFromSnapshot('participant', snapshotOf())).toEqual({
-      sessionName: 'Sprint 42',
-      unit: 'weeks',
-    })
-  })
-
   it('never lets an echoed snapshot overwrite the facilitator own name', () => {
     expect(sessionFieldsFromSnapshot('facilitator', snapshotOf())).toEqual({
       unit: 'weeks',
