@@ -28,6 +28,25 @@ describe('firstPendingItemId', () => {
 })
 
 describe('appendItem', () => {
+  it('appends a trimmed item with empty notes, no result and round 0', () => {
+    const next = appendItem(
+      { items: [], activeItemId: null },
+      { id: 'x', title: '  Migrate  ', description: 'd' },
+    )
+    expect(next?.items).toEqual([
+      {
+        id: 'x',
+        title: 'Migrate',
+        description: 'd',
+        notes: '',
+        finalResult: null,
+        submissions: [],
+        revealed: false,
+        round: 0,
+      },
+    ])
+  })
+
   it('selects the new item when the selection had been cleared', () => {
     const state = { items: [finalizedItemOf({ id: 'a' })], activeItemId: null }
     expect(

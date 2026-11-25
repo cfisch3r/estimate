@@ -41,7 +41,7 @@ flowchart TD
   end
 
   subgraph portlane["PORT LANE · src/application/ports/outbound"]
-    Ports["fileDownload.ts, sessionFiles.ts,<br/>networkTransport.ts, diagnosticsLog.ts<br/>[Port Types]"]
+    Ports["fileDownload.ts, sessionFiles.ts,<br/>networkTransport.ts, diagnosticsLog.ts,<br/>participantIdentity.ts<br/>[Port Types]"]
   end
 
   Chromium["Chromium<br/>[Browser, Playwright-controlled]"]

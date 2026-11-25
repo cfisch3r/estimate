@@ -50,7 +50,7 @@ Feature: Nobody sees anyone's values before the reveal
         | Sam         | no        |
         | Jordan      | yes       |
 
-    Scenario: The facilitator is not a roster member until they submit
+    Scenario: The facilitator is not a roster member
       Given Sam has joined the facilitator's session
       And the item "Login" is active
       When the facilitator shares the session snapshot

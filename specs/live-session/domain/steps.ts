@@ -308,8 +308,9 @@ Given(
 )
 
 When('the facilitator finalizes it', (world: QuickPickleWorld) => {
-  // The live finalize use case: refused until revealed, then the aggregate of
-  // the round's estimates.
+  // Mirrors the live finalize use case (application/useCases/useRevealActions
+  // and finalizeWith): refused until revealed, then the aggregate of the
+  // round's estimates. Keep the two in step.
   const state = data(world)
   const item = theItem(state)
   const allowed = canFinalizeLive(item)
@@ -1238,6 +1239,7 @@ function activeIndex(state: Data): number {
 }
 
 When('the facilitator presses Next', (world: QuickPickleWorld) => {
+  // Mirrors how pages/workspace/model/useItemNavigation applies advanceFrom.
   const state = data(world)
   const move = advanceFrom(list(state).items, activeIndex(state))
   if (move.kind === 'select') list(state).activeItemId = move.itemId
