@@ -6,6 +6,7 @@ import { downloadTextFile } from '../../../../src/adapters/file/fileDownload'
 import { sessionFiles } from '../../../../src/adapters/file/sessionFiles'
 import { createJoinSession } from '../../../../src/adapters/network/session'
 import { createDiagnosticsLog } from '../../../../src/adapters/storage/diagnosticsLog'
+import { getOrCreateParticipantId } from '../../../../src/adapters/storage/participantIdentity'
 import type { Harness } from '../remote'
 
 // Composed as `App.tsx` composes them: one log per page, which the network
@@ -16,6 +17,7 @@ const harness = {
   file: { download: downloadTextFile },
   sessionFiles,
   diagnostics,
+  participantIdentity: { getOrCreateParticipantId },
   network: { join: createJoinSession({ diagnostics }) },
 } satisfies Harness
 
