@@ -107,12 +107,19 @@ Given(
   },
 )
 
+/** The titles of an item list: a table with an `item` header row and at least one item. */
+function itemTitles(table: DataTable): string[] {
+  const titles = table.hashes().map((row) => row.item ?? '')
+  if (titles.length === 0 || titles.includes(''))
+    throw new Error(
+      'An item list needs an "item" header row and a title in every row below it',
+    )
+  return titles
+}
+
 Given('{word} has added the items', async ({ actor }, name: string, table: DataTable) => {
   const page = await actor(name)
-  for (const [title] of table.raw()) {
-    if (!title) throw new Error('Each row of the item list needs a title')
-    await addItem(page, title)
-  }
+  for (const title of itemTitles(table)) await addItem(page, title)
 })
 
 Given('{word} has finalized', async ({ actor }, name: string, table: DataTable) => {
@@ -244,10 +251,7 @@ Then('{word} can estimate {string}', async ({ actor }, name: string, title: stri
 })
 
 Then('{word} sees the items', async ({ actor }, name: string, table: DataTable) => {
-  await expectItemList(
-    await actor(name),
-    table.raw().map(([title]) => title ?? ''),
-  )
+  await expectItemList(await actor(name), itemTitles(table))
 })
 
 Then("{word} is told the file can't be loaded", async ({ actor }, name: string) => {

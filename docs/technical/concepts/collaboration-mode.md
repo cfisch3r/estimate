@@ -697,3 +697,16 @@ validated `Estimate` values.
 - `participantId` is a stable per-browser id, not a per-device or per-person one (#50): two
   tabs open in the same browser share it, so the join screen warns against estimating from
   both at once rather than trying to detect or prevent it.
+
+## Specs
+
+The `domain` specs are linked from the rules they check in the
+[live-collaboration domain concept](../../domain/concepts/live-collaboration.md#rules).
+
+| Spec | Test Level | Covers |
+|---|---|---|
+| [integration/connection-diagnostics](../../../specs/live-session/integration/connection-diagnostics.feature) | `integration` | What the network adapter records about a connection attempt: candidate types and protocols, never an address |
+| [integration/late-joiner](../../../specs/live-session/integration/late-joiner.feature) | `integration` | A browser joining a long-running session connects to every browser already in it |
+| [integration/participant-identity](../../../specs/live-session/integration/participant-identity.feature) | `integration` | The storage adapter keeps one participant id per browser, across reloads and tabs |
+| [e2e/connection-diagnosis](../../../specs/live-session/e2e/connection-diagnosis.feature) | `e2e` | The diagnosis report in the app, and the way in from the problem notice |
+| [e2e/late-joiner](../../../specs/live-session/e2e/late-joiner.feature) | `e2e` | A late joiner lands on the correct view in the app |

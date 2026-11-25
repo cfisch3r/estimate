@@ -6,6 +6,7 @@ Feature: Save a session to a file and resume it later
   Scenario: A saved session is resumed in single-user mode
     Given Alex is estimating alone in a session named "Checkout rework"
     And Alex has added the items
+      | item                    |
       | Payment provider switch |
       | Address autocomplete    |
     And Alex has finalized
@@ -30,6 +31,7 @@ Feature: Save a session to a file and resume it later
     And Alex starts a collaborative session
     And Sam joins the session
     Then Alex sees the items
+      | item   |
       | Login  |
       | Search |
     And Sam is estimating "Search"
@@ -52,6 +54,7 @@ Feature: Save a session to a file and resume it later
   Scenario: A live session is saved by its facilitator
     Given Alex is facilitating a collaborative session named "Sprint 42"
     And Alex has added the items
+      | item   |
       | Login  |
       | Search |
     And Sam has joined the session
@@ -60,6 +63,7 @@ Feature: Save a session to a file and resume it later
     And Alex continues alone
     Then Alex sees the session named "Sprint 42"
     And Alex sees the items
+      | item   |
       | Login  |
       | Search |
 
@@ -74,15 +78,18 @@ Feature: Save a session to a file and resume it later
   Scenario: Going back in the browser never reaches a load while live
     Given Alex is facilitating a collaborative session named "Sprint 42"
     And Alex has added the items
+      | item  |
       | Login |
     And Sam has joined the session
     When Alex goes back in the browser
     Then Alex sees the items
+      | item  |
       | Login |
 
   Scenario: Going back in the browser keeps a participant in the live session
     Given Alex is facilitating a collaborative session named "Sprint 42"
     And Alex has added the items
+      | item  |
       | Login |
     And Sam has joined the session
     When Sam goes back in the browser

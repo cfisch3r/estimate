@@ -30,7 +30,7 @@ flowchart TB
 
   subgraph CIL["CI"]
     direction LR
-    Gates["lint, arch, arch-specs, format, typecheck,<br/>test, build, deadcode, e2e<br/>[Quality Gate: 9 parallel GitHub Actions Jobs]"]
+    Gates["lint, arch, arch-specs, format, typecheck,<br/>test, build, deadcode, e2e, docs-site<br/>[Quality Gate: 10 parallel GitHub Actions Jobs]"]
     Passed["ci-passed<br/>[Merge Gate: GitHub Actions Job]"]
     CodeQL["codeql<br/>[Security Scan: GitHub Actions Job]"]
     Gates --> Passed
@@ -59,7 +59,7 @@ flowchart TB
 | build (job) | `pnpm build` (`tsc -b && vite build`); uploads `dist/` to IONOS keyed by commit SHA | Defined in `estimate-build.yaml`. Output dir `dist` is Vite's default — the IONOS setup form was originally pre-filled with `public` (source assets, not build output) and had to be corrected |
 | trigger deployment (job) | Dispatches the deployment through the IONOS API once `build` has finished | Part of Orchestration |
 | Deploy to IONOS | rsyncs `dist/` to the IONOS webspace over SSH, flips it live | IONOS-generated; its `push` trigger only exists so GitHub registers the file — the job itself is gated `if: github.event_name == 'workflow_dispatch'` |
-| CI (`lint`/`arch`/`arch-specs`/`format`/`typecheck`/`test`/`build`/`deadcode`/`e2e`, `ci-passed`, `codeql`) | Quality gates + security scan; `ci-passed` is the required status check | Independent of the deploy pipeline — does not gate it; a push where `ci-passed` fails still deploys |
+| CI (`lint`/`arch`/`arch-specs`/`format`/`typecheck`/`test`/`build`/`deadcode`/`e2e`/`docs-site`, `ci-passed`, `codeql`) | Quality gates + security scan; `ci-passed` is the required status check | Independent of the deploy pipeline — does not gate it; a push where `ci-passed` fails still deploys |
 
 Orchestration and Deploy to IONOS carry a "please do not edit" header — re-run the IONOS
 setup flow to regenerate them if the project configuration changes. `estimate-build.yaml`
@@ -78,7 +78,7 @@ flowchart TB
   PR["Pull Request opened/updated<br/>[Git Event: GitHub Actions Trigger]"]:::external
   MergeButton["Merge button<br/>[UI Control: GitHub Pull Request]"]:::external
 
-  Gates["lint, arch, arch-specs, format, typecheck,<br/>test, build, deadcode, e2e<br/>[Quality Gate: 9 parallel GitHub Actions Jobs]"]
+  Gates["lint, arch, arch-specs, format, typecheck,<br/>test, build, deadcode, e2e, docs-site<br/>[Quality Gate: 10 parallel GitHub Actions Jobs]"]
   Passed["ci-passed<br/>[Merge Gate: GitHub Actions Job]"]
   CodeQL["codeql<br/>[Security Scan: GitHub Actions Job]"]
 
@@ -148,6 +148,10 @@ Also running, outside this deploy pipeline:
   it re-runs the e2e specs against the production Nostr relays instead of the
   local relay `ci.yml`'s `e2e` job uses, and never gates a PR. See
   [ADR-007](adr/007-e2e-dual-mode-signaling.md).
+- **Docs site deploy**<br>
+  `.github/workflows/docs-site.yml` builds the docs site and publishes it with GitHub
+  Pages when a push to `main` touches the docs, the specs or the site. See
+  [Docs site](#docs-site).
 
 ### SPA routing
 
@@ -162,6 +166,30 @@ verbatim) configures this via `mod_rewrite` for IONOS's Apache-based webspace.
 Verify after every deploy that touches routing: load a non-root path directly (not via
 in-app navigation) — e.g. `https://<site>/workspace` — and confirm it serves the app
 rather than a host 404.
+
+## Docs site
+
+The docs and the specs are also published as a website, built with VitePress from `docs/`
+and `specs/` by the `site/` workspace package
+([ADR-012](adr/012-docs-website.md)). It is separate from the app's deployment above: it
+is served by GitHub Pages, not IONOS.
+
+| What | Where | When |
+|---|---|---|
+| **Build check** | CI's `docs-site` job (`pnpm docs:build`) | Every pull request and push to `main`; required by `ci-passed` |
+| **Deploy** | `.github/workflows/docs-site.yml`: build, upload, deploy to Pages | A push to `main` touching `docs/`, `specs/`, `site/`, the package or workspace files or the lockfile, or a manual run |
+| **Local** | `pnpm docs:dev` (live), `pnpm docs:build` then `pnpm docs:preview` (the built site) | Any time; the site is served under `/estimate/` |
+
+**One-time setup**<br>
+In the repo's Settings → Pages, set the source to **GitHub Actions**. Until then the
+deploy job fails, and the build check is unaffected.
+
+**When the build fails**<br>
+- *"These specs are linked from no doc"*: link each listed `.feature` file from the doc
+  rule it checks, or from the technical concept's "Specs" table.
+- *A dead link*: VitePress names the page and the link. A link to a doc the site leaves
+  out (the runbook, the PR review catalogue) or to a file outside `docs/` and `specs/`
+  goes to GitHub, so a dead link is a real broken path in `docs/`.
 
 ## Secrets (repo → Settings → Secrets and variables → Actions)
 

@@ -23,13 +23,14 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'unit',
-          // Scoped to src/ and the tooling scripts' tests so Vitest's default *.spec.ts pickup doesn't also try to
+          // Scoped to src/, the tooling scripts' tests and the docs site's build step so Vitest's default *.spec.ts pickup doesn't also try to
           // collect e2e/specs/*.spec.ts — those are Playwright tests, and Playwright's
           // `test()` isn't the same global Vitest provides (see ADR-007).
           include: [
             'src/**/*.{test,spec}.{ts,tsx}',
             'scripts/**/*.test.ts',
             '.claude/skills/*/scripts/**/*.test.ts',
+            'site/lib/**/*.test.ts',
           ],
           environment: 'jsdom',
           setupFiles: ['./src/setupTests.ts'],

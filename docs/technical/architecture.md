@@ -368,6 +368,7 @@ live-session controller's `LiveSessionApi`, though it is a handle, not a port.
 | [009](adr/009-architecture-style-fsd-vs-hexagonal-core.md) | Hexagonal core with an FSD UI, extracted in stages 1 to 3d (done) |
 | [010](adr/010-spec-first-gherkin-specs.md) | Spec-first development with executable Gherkin specs (`specs/`), replacing the retired board-walking task-picking algorithm |
 | [011](adr/011-integration-test-level.md) | The `integration` Test Level: outbound adapters driven through their ports on a real-browser harness page |
+| [012](adr/012-docs-website.md) | A docs site built with VitePress from `docs/` and `specs/`, published with GitHub Pages |
 
 Product and design decisions that have no ADR:
 

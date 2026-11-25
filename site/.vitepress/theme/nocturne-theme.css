@@ -1,0 +1,176 @@
+/*
+ * Nocturne's colours and type mapped onto VitePress's theme variables. The values
+ * are copied from src/design/nocturne.css, which stays untouched. Nocturne is dark
+ * only; the light theme is derived from its neutral and accent colour scales.
+ */
+:root {
+  --vp-font-family-base: 'Inter', system-ui, sans-serif;
+
+  --vp-c-bg: #fbfbfe;
+  --vp-c-bg-alt: #f3f5fe;
+  --vp-c-bg-elv: #ffffff;
+  --vp-c-bg-soft: #eceefa;
+  --vp-c-text-1: #232532;
+  --vp-c-text-2: #595d6c;
+  --vp-c-text-3: #75798c;
+  --vp-c-divider: #e4e7f5;
+  --vp-c-gutter: #e4e7f5;
+  --vp-c-border: #cfd3e5;
+  --vp-c-brand-1: #5d5294;
+  --vp-c-brand-2: #796cbf;
+  --vp-c-brand-3: #796cbf;
+  --vp-c-brand-soft: rgba(121, 108, 191, 0.14);
+  --vp-c-warning-1: #9a6a22;
+  --vp-c-warning-soft: rgba(224, 172, 103, 0.18);
+
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(
+    120deg,
+    #796cbf 10%,
+    #4c5397 60%,
+    #b07d2b 110%
+  );
+
+  --card-bg: #ffffff;
+  --card-border: #e4e7f5;
+}
+
+.dark {
+  --vp-c-bg: #161826;
+  --vp-c-bg-alt: #121420;
+  --vp-c-bg-elv: #232532;
+  --vp-c-bg-soft: #232532;
+  --vp-c-text-1: #e9e9ed;
+  --vp-c-text-2: #b2b6ca;
+  --vp-c-text-3: #9397ab;
+  --vp-c-divider: color-mix(in srgb, #e9e9ed 12%, transparent);
+  --vp-c-gutter: #121420;
+  --vp-c-border: #3f424d;
+  --vp-c-brand-1: #b5abfc;
+  --vp-c-brand-2: #9184d9;
+  --vp-c-brand-3: #796cbf;
+  --vp-c-brand-soft: rgba(145, 132, 217, 0.16);
+  --vp-c-warning-1: #e0ac67;
+  --vp-c-warning-soft: rgba(224, 172, 103, 0.16);
+  --vp-code-block-bg: #1c1e2c;
+  --vp-code-bg: #262a3a;
+
+  --vp-home-hero-name-background: linear-gradient(
+    120deg,
+    #b5abfc 10%,
+    #8f97e6 60%,
+    #e0ac67 110%
+  );
+
+  --card-bg: #1c1e2c;
+  --card-border: #2c2f40;
+}
+
+/* Home: Nocturne's section glow behind the hero */
+.dark .VPHome {
+  background:
+    radial-gradient(900px 420px at 15% -10%, rgba(53, 59, 128, 0.55), transparent 70%),
+    radial-gradient(700px 380px at 95% 10%, rgba(145, 132, 217, 0.18), transparent 70%);
+}
+.VPHero .name,
+.VPHero .text {
+  letter-spacing: -0.02em;
+}
+.VPFeature {
+  border: 1px solid var(--vp-c-divider) !important;
+  transition:
+    border-color 0.2s,
+    transform 0.2s;
+}
+.VPFeature:hover {
+  border-color: var(--vp-c-brand-2) !important;
+  transform: translateY(-2px);
+}
+
+/* Type */
+.vp-doc h1 {
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+.vp-doc h2 {
+  letter-spacing: -0.01em;
+  font-weight: 600;
+}
+.vp-doc h3 {
+  font-weight: 600;
+}
+
+/* Tables: the docs' rule tables have up to five wordy columns */
+.vp-doc table {
+  font-size: 14px;
+}
+.vp-doc table th {
+  background: var(--vp-c-bg-soft);
+}
+@media (min-width: 1440px) {
+  .VPDoc.has-aside .content-container {
+    max-width: 860px !important;
+  }
+  .VPDoc .content {
+    max-width: 900px !important;
+  }
+}
+
+/* Mermaid: the diagrams set light fills for GitHub, so they sit on a light card in both themes */
+.mermaid-card {
+  margin: 20px 0;
+  padding: 20px;
+  border-radius: 14px;
+  background: #fbfbfe;
+  border: 1px solid var(--card-border);
+  overflow-x: auto;
+}
+.mermaid-card {
+  position: relative;
+}
+.mermaid-diagram svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100% !important;
+  height: auto;
+}
+.mermaid-full .mermaid-diagram svg {
+  max-width: none !important;
+}
+.mermaid-toggle {
+  position: sticky;
+  left: 0;
+  float: right;
+  margin: -8px -8px 8px 8px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid #cfd3e5;
+  background: #ffffff;
+  color: #5d5294;
+  font-size: 12px;
+  font-weight: 500;
+}
+.mermaid-toggle:hover {
+  border-color: #796cbf;
+}
+/* Mermaid sizes each label for its own line height; the doc's paragraph line height would
+   make a two-line label taller than its box. */
+.vp-doc .mermaid-diagram foreignObject p {
+  line-height: inherit;
+  margin: 0;
+}
+.mermaid-diagram .edgeLabel,
+.mermaid-diagram .edgeLabel p {
+  background: #fbfbfe !important;
+  color: #595d6c;
+  font-size: 13px;
+}
+.mermaid-diagram .cluster-label,
+.mermaid-diagram .cluster-label p {
+  white-space: nowrap;
+}
+.mermaid-loading,
+.mermaid-failed {
+  color: #595d6c;
+  font-size: 13px;
+}

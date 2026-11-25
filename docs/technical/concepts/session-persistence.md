@@ -220,4 +220,5 @@ characters into one hyphen; a name with nothing left becomes `estimate-session`.
 | [what-counts-as-unsaved](../../../specs/session-persistence/domain/what-counts-as-unsaved.feature) | `domain` | The unsaved-changes rule |
 | [session-file](../../../specs/session-persistence/integration/session-file.feature) | `integration` | Reading back a saved file, a file from an earlier release, every rejection the adapter sets |
 | [session-file-name](../../../specs/session-persistence/integration/session-file-name.feature) | `integration` | The file name |
+| [file-download](../../../specs/session-persistence/integration/file-download.feature) | `integration` | A file handed to the browser is saved under its name, its text byte for byte |
 | [save-and-resume](../../../specs/session-persistence/e2e/save-and-resume.feature), [unsaved-changes](../../../specs/session-persistence/e2e/unsaved-changes.feature) | `e2e` | The whole flow in the app |

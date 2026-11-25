@@ -7,6 +7,7 @@ Feature: Warn before unsaved changes are lost
   Scenario: Leaving with unsaved changes asks for confirmation
     Given Alex is estimating alone in a session named "Checkout rework"
     And Alex has added the items
+      | item                    |
       | Payment provider switch |
     When Alex leaves the session
     Then Alex is asked to confirm leaving because of unsaved changes
@@ -14,6 +15,7 @@ Feature: Warn before unsaved changes are lost
   Scenario: Leaving a live session with unsaved changes names both losses
     Given Alex is facilitating a collaborative session named "Sprint 42"
     And Alex has added the items
+      | item  |
       | Login |
     And Sam has joined the session
     When Alex leaves the session
@@ -22,6 +24,7 @@ Feature: Warn before unsaved changes are lost
   Scenario: Leaving right after saving needs no confirmation
     Given Alex is estimating alone in a session named "Checkout rework"
     And Alex has added the items
+      | item                    |
       | Payment provider switch |
     When Alex saves the session
     And Alex leaves the session
@@ -45,6 +48,7 @@ Feature: Warn before unsaved changes are lost
   Scenario: Closing the tab with unsaved changes asks for confirmation
     Given Alex is estimating alone in a session named "Checkout rework"
     And Alex has added the items
+      | item                    |
       | Payment provider switch |
     When Alex closes the tab
     Then the browser asks Alex to confirm leaving the page
@@ -52,15 +56,19 @@ Feature: Warn before unsaved changes are lost
   Scenario: Going back in the browser keeps a session with unsaved changes
     Given Alex is estimating alone in a session named "Checkout rework"
     And Alex has added the items
+      | item                    |
       | Payment provider switch |
     When Alex goes back in the browser
     Then Alex sees the items
+      | item                    |
       | Payment provider switch |
 
   Scenario: Going back after reloading the workspace keeps unsaved changes
     Given Alex has started estimating alone and reloaded the page
     And Alex has added the items
+      | item                    |
       | Payment provider switch |
     When Alex goes back in the browser
     Then Alex sees the items
+      | item                    |
       | Payment provider switch |

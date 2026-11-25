@@ -4,6 +4,13 @@
 **Date:** 2026-11-09
 **Related:** [002-testing-strategy.md](002-testing-strategy.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md), [glossary.md](../../glossary.md), AGENTS.md
 
+> **Update 2026-11-25:** a concept folder's name needn't match a concept doc's, unlike the
+> "parallel to the concept name" below: `live-session` is specified in
+> `live-collaboration.md` and built in `collaboration-mode.md`. A spec belongs to the docs
+> that link to it, and the docs site's build refuses a spec no doc links to
+> ([ADR-012](012-docs-website.md)). Where this update and the text below differ, this
+> update is current.
+>
 > **Update 2026-11-20:** the "design artifact" of the first workflow step below is an
 > [implementation design artifact](../../glossary.md#story-workflow). A screen design is a
 > separate step, offered only when a story has new UI. Where this update and the text below

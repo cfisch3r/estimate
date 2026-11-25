@@ -42,10 +42,12 @@ pnpm test:e2e:ui          # Playwright UI mode, for local debugging
 pnpm test:integration     # the integration Test Level only (ADR-011)
 pnpm test:specs           # every executable Gherkin spec (domain, then e2e and integration)
 pnpm deadcode             # knip — unused exports/files/dependencies
+pnpm docs:dev             # the docs site (site/, ADR-012) with live reload
+pnpm docs:build           # build the docs site
 ```
 
 Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm arch:specs`, `pnpm specs:no-pending`,
-`pnpm format:check`, `pnpm test`, `pnpm test:coverage`, and `pnpm deadcode` before
+`pnpm format:check`, `pnpm test`, `pnpm test:coverage`, `pnpm deadcode`, and `pnpm docs:build` before
 considering any change complete (AGENTS.md has the authoritative list). These also run as
 required checks in CI (`.github/workflows/ci.yml`) on every PR and push to `main` — `pnpm test:e2e` does
 too (needs `pnpm exec playwright install --with-deps chromium` once beforehand).
@@ -55,6 +57,7 @@ too (needs `pnpm exec playwright install --with-deps chromium` once beforehand).
 ## Docs
 
 - [docs/README.md](docs/README.md) — the documentation index: domain docs (what EstiMate does), technical docs (how it's built), and shared vocabulary
+- [The docs site](docs/technical/runbook.md#docs-site) — the same docs and the specs, rendered for reading and published from `main` with GitHub Pages ([ADR-012](docs/technical/adr/012-docs-website.md))
 - [AGENTS.md](AGENTS.md) — conventions for AI coding agents working in this repo
 
 ## License

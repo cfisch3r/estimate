@@ -35,23 +35,26 @@ vocabulary used on both sides.
 | [technical/adr/009-architecture-style-fsd-vs-hexagonal-core.md](technical/adr/009-architecture-style-fsd-vs-hexagonal-core.md) | Accepted decision: keep FSD only for the UI and move the pure domain, the use cases and the transport/storage adapters into a hexagonal core with enforced inward-only dependencies, staged in three independently shippable steps; evidence from the 2026-10-05 architecture review. All stages are done (1, 2, 3a to 3d). |
 | [technical/adr/010-spec-first-gherkin-specs.md](technical/adr/010-spec-first-gherkin-specs.md) | Accepted decision: a `specs/<concept>/<test level>/` tree of executable Gherkin specs (`playwright-bdd` for the `e2e` Test Level, `quickpickle` for the `domain` one since its 2026-11-13 update), dependency-cruiser rules keeping `e2e` driver code out of `src/` and `domain` driver code on `src/domain` only, and two asked-not-assumed workflow steps (an ephemeral implementation design artifact before branching, a failing spec before planning) replacing the retired GitHub-Project-board task-picking algorithm. |
 | [technical/adr/011-integration-test-level.md](technical/adr/011-integration-test-level.md) | Accepted decision: an `integration` Test Level that drives each outbound adapter through its port on a real-browser harness page, with port drivers derived from the port types, a callback journal (planned with the first scenario that needs a port callback itself), browser-level fault injection only, and import rules for harness and driver code; it replaces ADR-010's deferred `protocol` Test Level. |
+| [technical/adr/012-docs-website.md](technical/adr/012-docs-website.md) | Accepted decision: a VitePress docs site built from `docs/` and `specs/` in its own `site/` workspace package and published with GitHub Pages; spec pages generated from the `.feature` files, each spec's docs taken from the docs' own links, and a build that refuses a spec no doc links to. |
 | [technical/concepts/collaboration-mode.md](technical/concepts/collaboration-mode.md) | Live mode technical concept, diagram-driven: the Trystero network layer, join flow, connection state machine, the participant estimate round, the facilitator reveal / retry-round flow, the connection diagnosis, and the screen/store wiring shipped so far. Implements [domain/concepts/live-collaboration.md](domain/concepts/live-collaboration.md). |
 | [technical/concepts/session-persistence.md](technical/concepts/session-persistence.md) | Session persistence technical concept, diagram-driven: the saved session in the domain, the session-file port and its adapter, the save and open flows, the version-1 file format, the file name, the rejection codes and their sentences, and the specs. Implements [domain/concepts/session-persistence.md](domain/concepts/session-persistence.md). |
 | [technical/concepts/estimation-engine.md](technical/concepts/estimation-engine.md) | Estimation engine technical concept: one aggregation function for both modes, the self-validating `Estimate` value type, bias guards and the tunable constants. Implements [domain/concepts/estimation-method.md](domain/concepts/estimation-method.md). |
 | [technical/concepts/e2e-testing.md](technical/concepts/e2e-testing.md) | E2E testing technical concept, diagram-driven: the Playwright/fixture/signaling component wiring, the two dual-mode build-and-run flows, the fixture-role model, the spec-to-wire-action coverage map, and the spec-first Gherkin scenarios under `specs/` (ADR-010). |
 | [technical/concepts/integration-testing.md](technical/concepts/integration-testing.md) | Integration testing technical concept, diagram-driven: the steps/driver/harness component wiring across the Node and browser sides, one step call and the run flow, how port drivers follow the ports (a session-returning port through a `JSHandle`), adding a port or a fault (the faults in use), the import rules, and how the Test Level runs. |
-| [technical/runbook.md](technical/runbook.md) | Deployment & release runbook: the IONOS Deploy Now CD pipeline, secrets, troubleshooting, and versioning/release process. |
+| [technical/runbook.md](technical/runbook.md) | Deployment & release runbook: the IONOS Deploy Now CD pipeline, the docs site's build and GitHub Pages deploy, secrets, troubleshooting, and versioning/release process. |
 
 ## Shared
 
 | Doc | What it covers |
 |---|---|
-| [glossary.md](glossary.md) | The repo's vocabulary, with the words to avoid: architecture (layer, type, aggregate, entity, value object, inbound/outbound adapter, port, FSD slice and segment), review (floor, risk category, Review guide), testing (Test Level, stereotype, harness page, port driver), the story workflow (implementation design artifact, screen design, design handoff) and the domain concepts (session, round, roster, snapshot). |
+| [glossary.md](glossary.md) | The repo's vocabulary, with the words to avoid: architecture (layer, type, aggregate, entity, value object, inbound/outbound adapter, port, FSD slice and segment), review (floor, risk category, Review guide), testing (Test Level, data table, stereotype, harness page, port driver, docs site, concept folder), the story workflow (implementation design artifact, screen design, design handoff) and the domain concepts (session, round, roster, snapshot). |
 
 ## Specs
 
 Executable Gherkin specs under `../specs/<concept>/<test level>/` are the acceptance
 criteria for domain behaviour (ADR-010) — each domain concept doc above links to the specs
-that cover it, where any exist yet.
+that cover it, where any exist yet. Specs that check no domain rule, such as an adapter's, are
+linked from their technical concept's "Specs" table instead. The docs site's build refuses
+a spec no doc links to (ADR-012).
 
 Design references (dated snapshots, not living docs) live in `../design_handoff_estimate_app/` and `../design_handoffs/`.

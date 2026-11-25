@@ -46,7 +46,7 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 - `docs/technical/concepts/estimation-engine.md` — the estimation engine's detailed design (aggregation, the `Estimate` value type, bias guards). Implements `docs/domain/concepts/estimation-method.md`
 - `docs/technical/concepts/e2e-testing.md` — E2E testing technical concept: the Playwright/fixture/signaling component wiring, the dual-mode (local relay / real-world) build-and-run flows, and the spec-to-wire-action coverage map
 - `docs/technical/concepts/integration-testing.md` — integration testing technical concept: the steps/driver/harness wiring across the Node and browser sides, how drivers follow the ports, adding a port or a fault, the import rules
-- `docs/technical/runbook.md` — deployment & release runbook: the IONOS Deploy Now CD pipeline, secrets, troubleshooting, and versioning/release process
+- `docs/technical/runbook.md` — deployment & release runbook: the IONOS Deploy Now CD pipeline, the docs site's build and GitHub Pages deploy, secrets, troubleshooting, and versioning/release process
 - `docs/technical/adr/004-feature-sliced-design-architecture.md` — accepted decision on Feature-Sliced Design (FSD) as the enforced architecture: the adopted layer set (`app/pages/widgets/features/entities/shared`), the slice mapping, and the completed follow-ups (store decomposition, see ADR-005; advisory `pnpm metrics` hotspots instead of a metrics ratchet). The `react-webapp-architecture` plugin's code-placement skill has the day-to-day "which layer, then which slice does new code belong in" guidance; `steiger.config.ts` is the enforcement source of truth for layer/slice/public-API boundaries
 - `docs/technical/adr/005-session-store-decomposition.md` — accepted decision on splitting the monolithic session store into three per-concern stores (`session.ts`, `connection.ts`, `round.ts`, now in `src/application/stores`; navigation is out of scope — see ADR-006). Implemented in issue #111.
 - `docs/technical/adr/006-router-adoption.md` — accepted decision on replacing the hand-rolled `currentScreen`/`goToScreen` navigation state with `react-router`, resolving an FSD layer-direction conflict ADR-005 hit
@@ -54,6 +54,7 @@ code, and depends on it — never the reverse. Before making non-trivial changes
 - `docs/technical/adr/009-architecture-style-fsd-vs-hexagonal-core.md` — accepted decision to replace FSD-everywhere with a hexagonal core plus an FSD UI, staged in three steps, all done (stages 1 and 2 were the `src/domain/` and `src/adapters/` extractions; stage 3 was the `src/application/` extraction, 3a-3d; 3d split the UI-only `entities/session` slice into `entities/item` and `entities/estimate`; 3b-1 moved the store rules into `src/domain`, 3c split the provider (then `NetworkProvider`, now `LiveSessionProvider`) into a framework-free live-session controller plus a thin shell in `src/app`). It governs where non-UI code goes; ADR-004 and ADR-005 describe the pre-extraction layout (stores and use cases are now in `src/application`). Read it before proposing structural moves of non-UI code
 - `docs/technical/adr/010-spec-first-gherkin-specs.md` — accepted decision on spec-first development: a `specs/<concept>/<test level>/` tree of executable Gherkin specs (`playwright-bdd` for the `e2e` Test Level, `quickpickle` for the `domain` one), dependency-cruiser rules keeping `e2e` driver code out of `src/` and `domain` driver code on `src/domain` only, shared `e2e` driver code in `specs/shared/e2e/`, and the two asked-not-assumed workflow steps in [Picking the next task](#picking-the-next-task)
 - `docs/technical/adr/011-integration-test-level.md` — accepted decision on the `integration` Test Level: outbound adapters driven through their ports on a real-browser harness page, port drivers derived from the port types, browser-level fault injection only; replaces ADR-010's deferred `protocol` Test Level
+- `docs/technical/adr/012-docs-website.md` — accepted decision on the docs site: VitePress in the `site/` workspace package, built from `docs/` and `specs/` and published with GitHub Pages; spec pages generated from the `.feature` files, and a build that refuses a spec no doc links to, so **every new `.feature` file needs a link from the doc rule it checks**
 
 **Shared**
 
@@ -124,6 +125,9 @@ pnpm test:e2e:ui          # Playwright UI mode, for local debugging
 pnpm test:integration     # bddgen, then the integration Test Level only (Playwright projects `*-integration`, ADR-011)
 pnpm test:specs           # every executable Gherkin spec (ADR-010): the domain level in Vitest, then the e2e and integration levels (Playwright projects `*-bdd` and `*-integration`); runs both runners even if the first fails
 pnpm deadcode             # knip — unused exports/files/dependencies
+pnpm docs:dev             # the docs site (site/, ADR-012) with live reload, under /estimate/
+pnpm docs:build           # build the docs site; fails on a spec no doc links to, or a broken link
+pnpm docs:preview         # serve the built docs site locally
 pnpm metrics              # advisory complexity/size hotspots in the diff (`pnpm metrics all` for src/); never gates
 pnpm review:floor         # minimum review risk of the branch plus working tree from docs/technical/pr-review-catalogue.md (`pnpm review:floor <commit>` for changes since a commit); prints JSON
 pnpm review:guide         # render the Review guide page from the floor, signals and `pr-review-guide:reviewer` answer files (`--floor`, `--signals`, `--agent`; optional `--covers`, `--title`), plus the branch diff, the import edges it adds and removes and the exports it changes, which it reads itself for the changeset map; prints HTML
@@ -131,7 +135,7 @@ pnpm review:signals       # evidence for the Review guide's risk reviewer on the
 ```
 
 Run `pnpm build`, `pnpm lint`, `pnpm arch`, `pnpm arch:specs`, `pnpm specs:no-pending`, `pnpm format:check`,
-`pnpm test`, `pnpm test:coverage`, `pnpm deadcode`, and `pnpm test:e2e` before considering
+`pnpm test`, `pnpm test:coverage`, `pnpm deadcode`, `pnpm docs:build`, and `pnpm test:e2e` before considering
 any change complete. (`pnpm test:e2e:real-world` is not part of that list — it runs nightly and on
 manual dispatch only, never gates a PR.) These
 also run as required checks in CI (`.github/workflows/ci.yml`) on every PR and push to
