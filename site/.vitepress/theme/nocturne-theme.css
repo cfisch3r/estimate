@@ -153,6 +153,12 @@
 .mermaid-toggle:hover {
   border-color: #796cbf;
 }
+/* Mermaid sizes each label for its own line height; the doc's paragraph line height would
+   make a two-line label taller than its box. */
+.vp-doc .mermaid-diagram foreignObject p {
+  line-height: inherit;
+  margin: 0;
+}
 .mermaid-diagram .edgeLabel,
 .mermaid-diagram .edgeLabel p {
   background: #fbfbfe !important;
