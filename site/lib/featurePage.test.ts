@@ -17,7 +17,7 @@ const source = `Feature: An item's group range
 
   Rule: The group range keeps the extremes
 
-    Don't average the outliers away.
+    Don't average the \`outliers\` away.
 
     Scenario: Three estimates give one group range
       Given the estimates
@@ -32,14 +32,26 @@ const source = `Feature: An item's group range
         | 2–8   |
 
   @fail
-  Scenario: Not built yet
+  Scenario: Not built *yet*
     Then nothing happens
 `
 
 describe('stepText', () => {
-  it('marks up strings and placeholders without breaking its own markup', () => {
+  it('marks up strings and placeholders, keeping every character', () => {
     expect(stepText('the 90% value is <90% value> for "Ana"')).toBe(
-      'the 90% value is <span class="g-param">90% value</span> for <span class="g-string">“Ana”</span>',
+      'the 90% value is <span class="g-param">90% value</span> for <span class="g-string">&quot;Ana&quot;</span>',
+    )
+  })
+
+  it('keeps the double quotes inside a single-quoted string as part of it', () => {
+    expect(stepText(`the saved file contains exactly '{"items":[]}'`)).toBe(
+      `the saved file contains exactly <span class="g-string">'{&quot;items&quot;:[]}'</span>`,
+    )
+  })
+
+  it("doesn't read an apostrophe as the start of a string", () => {
+    expect(stepText(`Imogen's report does not mention "Imogen" or the team's item`)).toBe(
+      `Imogen's report does not mention <span class="g-string">&quot;Imogen&quot;</span> or the team's item`,
     )
   })
 })
@@ -73,8 +85,9 @@ describe('featurePage', () => {
 
   it('turns rules into sections and scenarios into step cards', () => {
     expect(page.markdown).toContain('## The group range keeps the extremes')
+    // The description stays Markdown, so its `code` renders like anywhere else.
     expect(page.markdown).toContain(
-      `<p class="g-rule-why">Don't average the outliers away.</p>`,
+      '<div class="g-rule-why">\n\nDon\'t average the `outliers` away.\n\n</div>',
     )
     expect(page.markdown).toContain(
       '### Three estimates give one group range <Badge type="info" text="Examples" />',
@@ -102,9 +115,9 @@ describe('featurePage', () => {
     )
   })
 
-  it('marks a scenario tagged @fail as not built yet', () => {
+  it('marks a scenario tagged @fail as not built yet, keeping Markdown characters in its name literal', () => {
     expect(page.markdown).toContain(
-      '## Not built yet <Badge type="warning" text="Not built yet" />',
+      '## Not built \\*yet\\* <Badge type="warning" text="Not built yet" />',
     )
   })
 

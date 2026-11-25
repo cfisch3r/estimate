@@ -173,7 +173,7 @@ is served by GitHub Pages, not IONOS.
 | What | Where | When |
 |---|---|---|
 | **Build check** | CI's `docs-site` job (`pnpm docs:build`) | Every pull request and push to `main`; required by `ci-passed` |
-| **Deploy** | `.github/workflows/docs-site.yml`: build, upload, deploy to Pages | A push to `main` touching `docs/`, `specs/`, `site/` or the lockfile, or a manual run |
+| **Deploy** | `.github/workflows/docs-site.yml`: build, upload, deploy to Pages | A push to `main` touching `docs/`, `specs/`, `site/`, the package or workspace files or the lockfile, or a manual run |
 | **Local** | `pnpm docs:dev` (live), `pnpm docs:build` then `pnpm docs:preview` (the built site) | Any time; the site is served under `/estimate/` |
 
 **One-time setup**<br>

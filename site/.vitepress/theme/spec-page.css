@@ -38,15 +38,19 @@
   letter-spacing: 0.06em;
 }
 
-.vp-doc .g-lede {
+.vp-doc .g-lede p {
   font-size: 17px;
   line-height: 1.7;
   color: var(--vp-c-text-2);
 }
 .vp-doc .g-rule-why {
+  margin: 16px 0;
   border-left: 3px solid var(--vp-c-brand-2);
   padding: 2px 0 2px 14px;
   color: var(--vp-c-text-2);
+}
+.vp-doc .g-rule-why p {
+  margin: 8px 0;
 }
 
 .vp-doc .g-steps {

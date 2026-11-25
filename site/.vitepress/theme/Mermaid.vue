@@ -1,14 +1,16 @@
 <script setup lang="ts">
 // Draws one Mermaid diagram in the browser. The diagrams in docs/ set their own
 // light fill colours for GitHub, so each sits on a light card in both themes.
-import { onMounted, ref, useId } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
 
 const props = defineProps<{ code: string }>()
+const card = ref<HTMLElement | null>(null)
 const svg = ref('')
 const failed = ref(false)
-// A diagram wider than the column fits it by default; "Full size" draws it at its
+// A diagram wider than its card fits it by default; "Full size" draws it at its
 // natural width, scrolling sideways inside the card.
 const naturalWidth = ref(0)
+const fitsCard = ref(true)
 const fullSize = ref(false)
 const id = `mermaid-${useId()}`
 
@@ -17,6 +19,17 @@ function withNaturalWidth(markup: string): string {
   if (!width) return markup
   naturalWidth.value = Number(width)
   return markup.replace('width="100%"', `width="${width}"`)
+}
+
+/** Whether the diagram fits its card's content box at its natural width. */
+function measure() {
+  const el = card.value
+  if (!el) return
+  const style = getComputedStyle(el)
+  const content =
+    el.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight)
+  fitsCard.value = naturalWidth.value <= content
+  if (fitsCard.value) fullSize.value = false
 }
 
 onMounted(async () => {
@@ -42,13 +55,18 @@ onMounted(async () => {
   } catch {
     failed.value = true
   }
+  await nextTick()
+  measure()
+  window.addEventListener('resize', measure)
 })
+
+onBeforeUnmount(() => window.removeEventListener('resize', measure))
 </script>
 
 <template>
-  <div class="mermaid-card" :class="{ 'mermaid-full': fullSize }">
+  <div ref="card" class="mermaid-card" :class="{ 'mermaid-full': fullSize }">
     <button
-      v-if="svg && naturalWidth > 760"
+      v-if="svg && !fitsCard"
       type="button"
       class="mermaid-toggle"
       :aria-pressed="fullSize"

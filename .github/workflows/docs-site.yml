@@ -9,7 +9,9 @@ on:
       - 'docs/**'
       - 'specs/**'
       - 'site/**'
+      - 'package.json'
       - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
       - '.github/workflows/docs-site.yml'
   workflow_dispatch:
 

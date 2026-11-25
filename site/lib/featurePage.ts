@@ -26,11 +26,50 @@ export function escapeHtml(text: string): string {
     .replace(/\{\{/g, '&#123;&#123;')
 }
 
-/** A step's text with `"strings"` and `<placeholders>` marked up. Quotes go first, so the markup's own quotes stay untouched. */
+// The literal parts of a step: a '…' or "…" string, or an Outline <placeholder>. A
+// single-quoted string comes first and must start and end at a word boundary, so the
+// double quotes inside '{"items":[]}' stay part of it and an apostrophe ("Imogen's")
+// doesn't open one.
+const STEP_LITERAL = /(?<!\w)'[^']*'(?!\w)|"[^"]*"|<[^<>]+>/g
+
+/** A step's text with its strings and `<placeholders>` marked up, every character kept as written. */
 export function stepText(text: string): string {
-  return escapeHtml(text)
-    .replace(/&quot;([^&]*?)&quot;/g, '<span class="g-string">“$1”</span>')
-    .replace(/&lt;([^&]+?)&gt;/g, '<span class="g-param">$1</span>')
+  let html = ''
+  let last = 0
+  for (const match of text.matchAll(STEP_LITERAL)) {
+    const literal = match[0]
+    html += escapeHtml(text.slice(last, match.index))
+    html += literal.startsWith('<')
+      ? `<span class="g-param">${escapeHtml(literal.slice(1, -1))}</span>`
+      : `<span class="g-string">${escapeHtml(literal)}</span>`
+    last = match.index + literal.length
+  }
+  return html + escapeHtml(text.slice(last))
+}
+
+/** Heading text: HTML-escaped, and Markdown's inline syntax kept literal. */
+function headingText(text: string): string {
+  return escapeHtml(text).replace(/([\\`*_[\]])/g, '\\$1')
+}
+
+/**
+ * Description text for Markdown to render: HTML-escaped outside `code` spans, and
+ * left as written inside them, where Markdown escapes it itself.
+ */
+function markdownText(text: string): string {
+  return text
+    .split(/(`[^`]*`)/)
+    .map((part, i) => (i % 2 === 1 ? part : escapeHtml(part)))
+    .join('')
+}
+
+/**
+ * Description paragraphs inside a wrapper element. The blank lines around them let
+ * Markdown render their inline syntax, such as `code`, the same as elsewhere.
+ */
+function describedBlock(className: string, paragraphsText: readonly string[]): string {
+  if (paragraphsText.length === 0) return ''
+  return `<div class="${className}">\n\n${paragraphsText.map(markdownText).join('\n\n')}\n\n</div>`
 }
 
 /** Gherkin description text as paragraphs: line breaks inside a paragraph are just wrapping. */
@@ -85,8 +124,8 @@ function scenario(sc: Scenario, level: 2 | 3): string {
       ? '<Badge type="warning" text="Not built yet" />'
       : '',
   ].filter(Boolean)
-  const heading = `${'#'.repeat(level)} ${escapeHtml(sc.name)}${badges.length ? ' ' + badges.join(' ') : ''}`
-  const description = paragraphs(sc.description).map((p) => escapeHtml(p))
+  const heading = `${'#'.repeat(level)} ${headingText(sc.name)}${badges.length ? ' ' + badges.join(' ') : ''}`
+  const description = paragraphs(sc.description).map(markdownText)
   return [heading, ...description, steps(sc.steps), examples(sc.examples)]
     .filter(Boolean)
     .join('\n\n')
@@ -148,9 +187,8 @@ export function featurePage(
     }
     if (child.rule) {
       const rule = child.rule
-      parts.push(`## ${escapeHtml(rule.name)}`)
-      for (const p of paragraphs(rule.description))
-        parts.push(`<p class="g-rule-why">${escapeHtml(p)}</p>`)
+      parts.push(`## ${headingText(rule.name)}`)
+      parts.push(describedBlock('g-rule-why', paragraphs(rule.description)))
       for (const rc of rule.children) {
         if (rc.background) parts.push(background(rc.background))
         if (rc.scenario) {
@@ -168,9 +206,7 @@ export function featurePage(
     'outline: [2, 3]',
     '---',
   ].join('\n')
-  const lede = paragraphs(feature.description).map(
-    (p) => `<p class="g-lede">${escapeHtml(p)}</p>`,
-  )
+  const lede = describedBlock('g-lede', paragraphs(feature.description))
   const fence = '`'.repeat(
     Math.max(3, ...[...source.matchAll(/`+/g)].map((m) => m[0].length + 1)),
   )
@@ -178,11 +214,13 @@ export function featurePage(
 
   const markdown = [
     frontmatter,
-    `# ${escapeHtml(feature.name)}`,
+    `# ${headingText(feature.name)}`,
     chips(specPath, level, linkedFrom, base),
-    ...lede,
+    lede,
     ...parts,
     sourceBlock,
-  ].join('\n\n')
+  ]
+    .filter(Boolean)
+    .join('\n\n')
   return { title: feature.name, scenarioCount, markdown: markdown + '\n' }
 }
