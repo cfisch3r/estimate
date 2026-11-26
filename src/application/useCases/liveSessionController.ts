@@ -3,7 +3,6 @@ import {
   deriveConnectionStatus,
   shouldBroadcastSnapshot,
 } from '../../domain/connection'
-import { FACILITATOR_PARTICIPANT_ID } from '../../domain/participantId'
 import { needsResend, roundKey } from '../../domain/resend'
 import { shouldPruneDeparted } from '../../domain/roster'
 import { buildSessionSnapshot, snapshotChangeKey } from '../../domain/snapshot'
@@ -13,8 +12,10 @@ import type { LiveSessionApi } from './liveSessionContext'
 import type { DiagnosticsLog } from '../ports/outbound/diagnosticsLog'
 import type {
   ConnectionState,
+  FacilitatorSession,
   JoinSession,
-  TransportSession,
+  LiveSession,
+  ParticipantSession,
 } from '../ports/outbound/networkTransport'
 import { useConnectionStore } from '../stores/connection'
 import { useRoundStore } from '../stores/round'
@@ -42,7 +43,11 @@ export function createLiveSessionController(deps: {
    *  user saw (issue #229). */
   diagnostics: DiagnosticsLog
 }): LiveSessionController {
-  let live: TransportSession | null = null
+  // The open session, and the same session under its role's type: exactly one
+  // of `facilitator` and `participant` is set while `live` is.
+  let live: LiveSession | null = null
+  let facilitator: FacilitatorSession | null = null
+  let participant: ParticipantSession | null = null
   let unsubscribe: (() => void) | null = null
 
   // The port promises never to throw.
@@ -63,29 +68,25 @@ export function createLiveSessionController(deps: {
     unsubscribe = null
     live?.leave()
     live = null
+    facilitator = null
+    participant = null
   }
 
-  // Trystero's onPeerLeave gives a peerId (a connection), not a participantId (a
-  // person) — this map, built from inbound announces, is what lets a departure be
-  // resolved back to the participant who left, and lets the roster report who's
-  // currently connected.
+  // Facilitator only: Trystero's onPeerLeave gives a peerId (a connection), not a
+  // participantId (a person) — this map, built from inbound announces, is what
+  // lets a departure be resolved back to the participant who left, and lets the
+  // roster report who's currently connected.
   const peerParticipants = new Map<string, string>()
-
-  // Participant-only: the facilitator's peerId, learned from its `announce`.
-  // Targets `sendEstimate` at it and dedupes the pull-on-connect below so a
-  // re-announce triggered by an unrelated peer join doesn't re-pull.
-  let facilitatorPeerId: string | null = null
-  let lastPulledFacilitatorPeerId: string | null = null
 
   // Writes connectionStatus/peerCount into the store from the transport's raw
   // state, gated through deriveConnectionStatus so a participant isn't told
-  // it's connected before facilitatorPeerId (above) is known.
+  // it's connected before its session knows the facilitator.
   const syncConnectionStatus = (trackerState: ConnectionState) => {
     const { role, setConnectionStatus, setPeerCount } = useConnectionStore.getState()
     const status = deriveConnectionStatus(
       role,
       trackerState.status,
-      facilitatorPeerId !== null,
+      participant?.hasFacilitator() ?? false,
     )
     setConnectionStatus(status)
     setPeerCount(trackerState.peerIds.length)
@@ -93,7 +94,7 @@ export function createLiveSessionController(deps: {
   }
 
   // Participant-only: `item:round` of a roster-triggered resend already in
-  // flight (see the onSyncState handler below). Snapshots can arrive faster
+  // flight (see the onFacilitatorSnapshot handler below). Snapshots can arrive faster
   // than a resend's own retry/backoff resolves, so without this a burst of
   // snapshots before the roster catches up fires one duplicate submitEstimate
   // request per snapshot instead of letting the first one finish.
@@ -125,7 +126,7 @@ export function createLiveSessionController(deps: {
     const key = snapshotChangeKey(snapshot)
     if (key === lastSnapshotKey) return
     lastSnapshotKey = key
-    live?.sendSyncState(snapshot)
+    facilitator?.sendSnapshot(snapshot)
   }
 
   // Trystero doesn't replay history to a newcomer, so every client (re-)broadcasts
@@ -136,133 +137,116 @@ export function createLiveSessionController(deps: {
     if (announcement) live?.sendAnnounce(announcement)
   }
 
+  // Both roles: the status line, and names for the reveal rows.
+  const sharedHandlers = (session: LiveSession) => [
+    session.onConnectionStateChange(syncConnectionStatus),
+    session.onAnnounce((announce) =>
+      useConnectionStore
+        .getState()
+        .applyParticipantName(announce.participantId, announce.name),
+    ),
+    // Every client re-announces itself whenever a peer joins, so a newcomer's
+    // reveal rows show real names instead of "Teammate N" (the snapshot itself
+    // is pulled by the newcomer, not pushed here).
+    session.onPeerJoin(() => announceSelf()),
+  ]
+
+  // The facilitator owns the session's state: it takes the estimates, answers
+  // a newcomer's snapshot request and broadcasts every real change.
+  const facilitatorHandlers = (session: FacilitatorSession) => [
+    session.onEstimate((itemId, estimate, _peerId, round) =>
+      useRoundStore.getState().applyRemoteEstimate(itemId, estimate, round),
+    ),
+    session.onSnapshotRequest(() => computeSnapshot()),
+    session.onAnnounce((announce, peerId) =>
+      peerParticipants.set(peerId, announce.participantId),
+    ),
+    session.onPeerLeave((peerId) => {
+      const participantId = peerParticipants.get(peerId)
+      if (participantId === undefined) return
+      peerParticipants.delete(peerId)
+      const state = useSessionStore.getState()
+      const activeItem = state.items.find((item) => item.id === state.activeItemId)
+      if (
+        shouldPruneDeparted(
+          participantId,
+          peerParticipants.values(),
+          activeItem?.submissions.map((s) => s.participantId) ?? [],
+        )
+      ) {
+        useConnectionStore.getState().removeParticipant(participantId)
+      }
+    }),
+    useSessionStore.subscribe(broadcastFacilitatorState),
+    useConnectionStore.subscribe(broadcastFacilitatorState),
+  ]
+
+  // A participant pulls the snapshot whenever its session finds the
+  // facilitator (again, under a new peer), and takes the snapshots the
+  // facilitator pushes. Its session hands on no one else's.
+  const participantHandlers = (session: ParticipantSession) => [
+    session.onFacilitatorChange((present) => {
+      syncConnectionStatus(session.getConnectionState())
+      if (!present) return
+      withKindDrivenRetry(() => {
+        if (participant !== session) return Promise.reject(new Error('No active session'))
+        return session.requestSnapshot()
+      })
+        .then((snapshot) => {
+          if (participant === session) applyFacilitatorSnapshot(snapshot)
+        })
+        .catch((error) => {
+          console.warn('requestSnapshot pull failed after retries:', error)
+        })
+    }),
+    session.onFacilitatorSnapshot((snapshot) => {
+      applyFacilitatorSnapshot(snapshot)
+      // Correctness rests on this, not on sendEstimate's ack (ADR-003,
+      // "Acknowledged submissions"): on every snapshot, check whether this
+      // participant's own submission actually landed, and re-send if not.
+      // This is what recovers a submission that arrived but whose ack was
+      // lost on the way back, as well as one that never arrived at all.
+      const { participantId } = useConnectionStore.getState()
+      const { liveRound } = useRoundStore.getState()
+      if (!liveRound || !needsResend(liveRound, participantId)) return
+      // A burst of snapshots (other participants submitting in quick
+      // succession) can arrive before this participant's own roster entry
+      // catches up — don't stack a second resend on top of one already
+      // in flight for the same item/round.
+      const resendKey = roundKey(liveRound)
+      if (resendInFlightKey === resendKey) return
+      resendInFlightKey = resendKey
+      api
+        .sendEstimate(liveRound.item.id, liveRound.mySubmission, liveRound.round)
+        .catch((error) => {
+          console.warn('Roster-triggered resend failed:', error)
+        })
+        .finally(() => {
+          if (resendInFlightKey === resendKey) resendInFlightKey = null
+        })
+    }),
+  ]
+
   const api: LiveSessionApi = {
     connect: (sessionId) => {
       teardown()
-      const session = deps.joinSession(sessionId)
-      live = session
+      const { role } = useConnectionStore.getState()
       lastRecordedStatus = null
-      record({
-        kind: 'session-start',
-        sessionCode: sessionId,
-        role: useConnectionStore.getState().role,
-      })
-      syncConnectionStatus(session.getConnectionState())
       lastSnapshotKey = ''
       peerParticipants.clear()
-      facilitatorPeerId = null
-      lastPulledFacilitatorPeerId = null
       resendInFlightKey = null
-      const unsubscribers = [
-        session.onConnectionStateChange(syncConnectionStatus),
-        session.onEstimate((itemId, estimate, _peerId, round) =>
-          useRoundStore.getState().applyRemoteEstimate(itemId, estimate, round),
-        ),
-        session.onSyncState((snapshot) => {
-          applyFacilitatorSnapshot(snapshot)
-          // Correctness rests on this, not on sendEstimate's ack (ADR-003,
-          // "Acknowledged submissions"): on every snapshot, check whether this
-          // participant's own submission actually landed, and re-send if not.
-          // This is what recovers a submission that arrived but whose ack was
-          // lost on the way back, as well as one that never arrived at all.
-          const { role, participantId } = useConnectionStore.getState()
-          const { liveRound } = useRoundStore.getState()
-          if (
-            role !== 'participant' ||
-            !liveRound ||
-            !needsResend(liveRound, participantId)
-          ) {
-            return
-          }
-          // A burst of snapshots (other participants submitting in quick
-          // succession) can arrive before this participant's own roster entry
-          // catches up — don't stack a second resend on top of one already
-          // in flight for the same item/round.
-          const resendKey = roundKey(liveRound)
-          if (resendInFlightKey === resendKey) return
-          resendInFlightKey = resendKey
-          api
-            .sendEstimate(liveRound.item.id, liveRound.mySubmission, liveRound.round)
-            .catch((error) => {
-              console.warn('Roster-triggered resend failed:', error)
-            })
-            .finally(() => {
-              if (resendInFlightKey === resendKey) resendInFlightKey = null
-            })
-        }),
-        session.onRequestSnapshot(() => computeSnapshot()),
-        session.onAnnounce((announce, peerId) => {
-          peerParticipants.set(peerId, announce.participantId)
-          useConnectionStore
-            .getState()
-            .applyParticipantName(announce.participantId, announce.name)
-          // A peer that has just connected or reconnected pulls the snapshot
-          // itself, rather than the facilitator inferring the event and pushing
-          // one (ADR-003, "Snapshot delivery: pull on arrival"). Single fetch,
-          // not polling — only re-pull if the facilitator's peerId actually
-          // changed since the last pull.
-          if (
-            announce.participantId === FACILITATOR_PARTICIPANT_ID &&
-            useConnectionStore.getState().role === 'participant'
-          ) {
-            facilitatorPeerId = peerId
-            const current = live?.getConnectionState()
-            if (current) syncConnectionStatus(current)
-            if (peerId !== lastPulledFacilitatorPeerId) {
-              lastPulledFacilitatorPeerId = peerId
-              withKindDrivenRetry(() => {
-                const active = live
-                if (!active) return Promise.reject(new Error('No active session'))
-                return active.requestSnapshot(peerId)
-              })
-                .then((snapshot) => applyFacilitatorSnapshot(snapshot))
-                .catch((error) => {
-                  console.warn('requestSnapshot pull failed after retries:', error)
-                })
-            }
-          }
-        }),
-        session.onPeerLeave((peerId) => {
-          const participantId = peerParticipants.get(peerId)
-          if (participantId === undefined) return
-          peerParticipants.delete(peerId)
-          // Losing the facilitator's own peer means the confirmed link is gone,
-          // even if other participants' connections remain up. Re-derive right
-          // away — connection.ts's handlePeerLeave fires notifyStateChange (which
-          // drives syncConnectionStatus above) BEFORE its peerLeaveListeners
-          // (this handler), so without this the tracker-driven sync would already
-          // have run with a stale, not-yet-cleared facilitatorPeerId. Clearing
-          // lastPulledFacilitatorPeerId too lets a facilitator reconnect under a
-          // new peerId re-trigger the snapshot pull instead of being deduped.
-          if (participantId === FACILITATOR_PARTICIPANT_ID) {
-            facilitatorPeerId = null
-            lastPulledFacilitatorPeerId = null
-            const current = live?.getConnectionState()
-            if (current) syncConnectionStatus(current)
-          }
-          // Roster pruning is facilitator-only: Item.submissions (the "already
-          // submitted" guard below) only exists on the facilitator's copy of
-          // state.items, so this guard is meaningless on a participant client.
-          if (useConnectionStore.getState().role !== 'facilitator') return
-          const state = useSessionStore.getState()
-          const activeItem = state.items.find((item) => item.id === state.activeItemId)
-          if (
-            shouldPruneDeparted(
-              participantId,
-              peerParticipants.values(),
-              activeItem?.submissions.map((s) => s.participantId) ?? [],
-            )
-          ) {
-            useConnectionStore.getState().removeParticipant(participantId)
-          }
-        }),
-        useSessionStore.subscribe(broadcastFacilitatorState),
-        useConnectionStore.subscribe(broadcastFacilitatorState),
-        // Every client still re-announces itself whenever a peer joins, so a
-        // newcomer's reveal rows show real names instead of "Teammate N" (the
-        // snapshot itself is now pulled by the newcomer, not pushed here).
-        session.onPeerJoin(() => announceSelf()),
-      ]
+      let unsubscribers: (() => void)[]
+      if (role === 'participant') {
+        const session = deps.joinSession.asParticipant(sessionId)
+        live = participant = session
+        unsubscribers = [...sharedHandlers(session), ...participantHandlers(session)]
+      } else {
+        const session = deps.joinSession.asFacilitator(sessionId)
+        live = facilitator = session
+        unsubscribers = [...sharedHandlers(session), ...facilitatorHandlers(session)]
+      }
+      record({ kind: 'session-start', sessionCode: sessionId, role })
+      syncConnectionStatus(live.getConnectionState())
       unsubscribe = () => unsubscribers.forEach((off) => off())
       broadcastFacilitatorState()
       announceSelf()
@@ -275,42 +259,17 @@ export function createLiveSessionController(deps: {
       if (lastRecordedStatus !== null) recordStatus('idle')
     },
     sendEstimate: (itemId, estimate, round) => {
-      const { role } = useConnectionStore.getState()
-      // Facilitator-only clients never submit their own estimate over the
-      // network (Workspace drives that side directly), so this is
-      // participant-only in practice.
-      if (role !== 'participant') return Promise.resolve()
-      // Never fall back to an untargeted broadcast: that would put this
-      // estimate's values back on every other peer's wire, exactly what
-      // targeting exists to prevent (ADR-003, "Single owner"). If the
-      // facilitator's peerId isn't known yet (a narrow window right after
-      // connect/reconnect, before its announce has arrived), reject the same
-      // way an actually-dead link would — the roster convergence check (in
-      // onSyncState above), not a retry here, is what recovers this case
-      // once the peerId is learned.
-      if (facilitatorPeerId === null) {
-        return Promise.reject(
-          Object.assign(new Error("The facilitator's peerId isn't known yet"), {
-            kind: 'disconnected',
-          }),
-        )
-      }
-      // Re-read facilitatorPeerId on every attempt, not just the first: a
-      // retry can span several seconds, long enough for the facilitator to
-      // reconnect and re-announce under a new peerId mid-retry. Capturing
-      // the old one up front would keep every retry aimed at a connection
-      // that's already gone.
+      const session = participant
+      // Facilitators never submit their own estimate over the network
+      // (Workspace drives that side directly).
+      if (!session) return Promise.resolve()
+      // The session sends to the facilitator's current peer on every attempt,
+      // so a retry follows a facilitator that reconnected under a new peer,
+      // and rejects as disconnected while none is known. The roster check on
+      // the next snapshot, not a retry here, recovers that case.
       return withKindDrivenRetry(() => {
-        const active = live
-        if (!active) return Promise.reject(new Error('No active session'))
-        if (facilitatorPeerId === null) {
-          return Promise.reject(
-            Object.assign(new Error("The facilitator's peerId isn't known yet"), {
-              kind: 'disconnected',
-            }),
-          )
-        }
-        return active.sendEstimate(itemId, estimate, round, facilitatorPeerId)
+        if (participant !== session) return Promise.reject(new Error('No active session'))
+        return session.sendEstimate(itemId, estimate, round)
       })
     },
   }

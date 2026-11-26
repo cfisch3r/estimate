@@ -582,7 +582,33 @@ describe('createTypedActions', () => {
     expect(result).toBe(snapshot)
 
     unsubscribe()
-    expect(requestActionsByName.requestSnapshot!.onRequest).toBeNull()
+    expect(() =>
+      requestActionsByName.requestSnapshot!.onRequest?.(null, { peerId: 'peer-1' }),
+    ).toThrow()
+  })
+
+  it('refuses a requestSnapshot pull while no responder is registered', () => {
+    const { room, requestActionsByName } = makeFakeRoom()
+    createTypedActions(room)
+
+    expect(() =>
+      requestActionsByName.requestSnapshot!.onRequest?.(null, { peerId: 'peer-1' }),
+    ).toThrow()
+  })
+
+  it('refuses an incoming estimate while nobody listens for estimates', () => {
+    const { room, requestActionsByName } = makeFakeRoom()
+    createTypedActions(room)
+
+    expect(() =>
+      requestActionsByName.submitEstimate!.onRequest?.(
+        {
+          itemId: 'item-1',
+          estimate: { participantId: 'b', best: 1, likely: 2, worst: 3 },
+        },
+        { peerId: 'peer-1' },
+      ),
+    ).toThrow('takes no estimates')
   })
 
   it('sends a participant announce through the announce action', () => {
@@ -671,13 +697,16 @@ describe('createTypedActions', () => {
     const unsubscribe = actions.onEstimate(cb)
     unsubscribe()
 
-    requestActionsByName.submitEstimate!.onRequest?.(
-      {
-        itemId: 'item-1',
-        estimate: { participantId: 'b', best: 1, likely: 2, worst: 3 },
-      },
-      { peerId: 'peer-1' },
-    )
+    // With nobody listening any more, the estimate is refused.
+    expect(() =>
+      requestActionsByName.submitEstimate!.onRequest?.(
+        {
+          itemId: 'item-1',
+          estimate: { participantId: 'b', best: 1, likely: 2, worst: 3 },
+        },
+        { peerId: 'peer-1' },
+      ),
+    ).toThrow('takes no estimates')
 
     expect(cb).not.toHaveBeenCalled()
   })

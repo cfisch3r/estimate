@@ -101,15 +101,15 @@ export function listenersOf<Port>(handle: JSHandle<Port>): Listeners<Port> {
 
 /** Everything `window.__harness` holds, one entry per port. The harness page
  *  declares its global `satisfies Harness`, so a missing operation fails to
- *  compile on both sides. A port that is a function returning a session (the
- *  network's `JoinSession`) is installed as `{ join }`: the session it returns
- *  stays in the page, and steps reach it through a `JSHandle` (`remoteHandle`). */
+ *  compile on both sides. A port whose operations return a session (the
+ *  network's `JoinSession`) is installed as it is: the session stays in the
+ *  page, and steps reach it through a `JSHandle` (`remoteHandle`). */
 export type Harness = {
   file: HarnessEntry<FileDownloadApi>
   sessionFiles: HarnessEntry<SessionFileApi>
   diagnostics: HarnessEntry<DiagnosticsLog>
   participantIdentity: HarnessEntry<ParticipantIdentityApi>
-  network: { join: JoinSession }
+  network: JoinSession
 }
 
 type HarnessGlobal = {
@@ -177,19 +177,23 @@ export function remoteHandle<Port>(handle: JSHandle<Port>): Remote<Port> {
   )
 }
 
-/** Calls `window.__harness.network.join` in the page and keeps the session it
- *  returns there, handing Node a typed handle to it. */
-export async function joinInPage(
+/** Joins a session in the page as `role` and keeps the session there, handing
+ *  Node a typed handle to it. */
+export async function joinInPage<Role extends keyof JoinSession>(
   page: Page,
-  ...args: Parameters<JoinSession>
-): Promise<JSHandle<ReturnType<JoinSession>>> {
-  return page.evaluateHandle((joinArgs) => {
-    const join = (globalThis as unknown as HarnessGlobal).__harness?.network?.join
-    if (!join) {
-      throw new Error(
-        'window.__harness.network.join is not installed: did the harness page load?',
-      )
-    }
-    return join(...joinArgs) as ReturnType<JoinSession>
-  }, args)
+  role: Role,
+  sessionId: string,
+): Promise<JSHandle<ReturnType<JoinSession[Role]>>> {
+  return page.evaluateHandle(
+    ([joinAs, code]) => {
+      const join = (globalThis as unknown as HarnessGlobal).__harness?.network?.[joinAs]
+      if (!join) {
+        throw new Error(
+          `window.__harness.network.${joinAs} is not installed: did the harness page load?`,
+        )
+      }
+      return join(code) as ReturnType<JoinSession[Role]>
+    },
+    [role, sessionId] as const,
+  ) as Promise<JSHandle<ReturnType<JoinSession[Role]>>>
 }

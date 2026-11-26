@@ -2,7 +2,12 @@ import { expect } from '@playwright/test'
 import type { CandidateKind, DiagnosticEntry } from '../../../src/domain/diagnosis/types'
 import type { Estimate } from '../../../src/domain/estimate'
 import type { SessionSnapshot } from '../../../src/domain/types'
-import type { Tab, BrowserOptions, ScenarioState } from '../../shared/integration/world'
+import type {
+  Tab,
+  BrowserOptions,
+  JoinedSession,
+  ScenarioState,
+} from '../../shared/integration/world'
 import { defineParameterType } from 'playwright-bdd'
 import { Given, When, Then, requireState } from '../../shared/integration/world'
 
@@ -39,29 +44,52 @@ async function join(
   state: ScenarioState,
   browser: string,
   session: string,
-  { tabName = '1', options }: { tabName?: string; options?: BrowserOptions } = {},
+  {
+    tabName = '1',
+    options,
+    role = 'participant',
+  }: { tabName?: string; options?: BrowserOptions; role?: JoinedSession['role'] } = {},
 ): Promise<void> {
   const { network } = await tab(browser, tabName, options)
-  const joined = await network.join(sessionCode(state, session))
+  const code = sessionCode(state, session)
+  const key = `${browser}/${tabName}`
   // Recorded from the start, so a message that arrives before a step looks is
   // still seen.
-  for (const listener of ['onSyncState', 'onAnnounce', 'onEstimate'] as const) {
-    await joined.listeners.record(listener)
+  if (role === 'facilitator') {
+    const joined = await network.asFacilitator(code)
+    for (const listener of ['onAnnounce', 'onEstimate'] as const) {
+      await joined.listeners.record(listener)
+    }
+    state.sessions[key] = { role, ...joined }
+  } else {
+    const joined = await network.asParticipant(code)
+    for (const listener of ['onAnnounce', 'onFacilitatorSnapshot'] as const) {
+      await joined.listeners.record(listener)
+    }
+    state.sessions[key] = { role, ...joined }
   }
-  state.sessions[`${browser}/${tabName}`] = joined.session
-  state.listeners[`${browser}/${tabName}`] = joined.listeners
+}
+
+function joinedOf(state: ScenarioState, browser: string, tabName = '1'): JoinedSession {
+  const joined = state.sessions[`${browser}/${tabName}`]
+  if (!joined) throw new Error(`${browser}/${tabName} hasn't joined a session`)
+  return joined
 }
 
 function sessionOf(state: ScenarioState, browser: string, tabName = '1') {
-  const session = state.sessions[`${browser}/${tabName}`]
-  if (!session) throw new Error(`${browser}/${tabName} hasn't joined a session`)
-  return session
+  return joinedOf(state, browser, tabName).session
 }
 
-function listenersOf(state: ScenarioState, browser: string, tabName = '1') {
-  const listeners = state.listeners[`${browser}/${tabName}`]
-  if (!listeners) throw new Error(`${browser}/${tabName} hasn't joined a session`)
-  return listeners
+function facilitatorOf(state: ScenarioState, browser: string) {
+  const joined = joinedOf(state, browser)
+  if (joined.role !== 'facilitator') throw new Error(`${browser} isn't a facilitator`)
+  return joined
+}
+
+function participantOf(state: ScenarioState, browser: string) {
+  const joined = joinedOf(state, browser)
+  if (joined.role !== 'participant') throw new Error(`${browser} isn't a participant`)
+  return joined
 }
 
 async function entriesOf(tab: TabFixture, browser: string, tabName = '1') {
@@ -449,45 +477,39 @@ function snapshotOf(title: string): SessionSnapshot {
   }
 }
 
-/** Every browser in the scenario apart from `browser`. */
-function othersOf(state: ScenarioState, browser: string): string[] {
-  return Object.keys(state.sessions)
-    .map((key) => key.split('/')[0]!)
-    .filter((other) => other !== browser)
+/** The browsers in the scenario, each once. */
+function browsersOf(state: ScenarioState): string[] {
+  return [...new Set(Object.keys(state.sessions).map((key) => key.split('/')[0]!))]
 }
 
 async function announcesOf(state: ScenarioState, browser: string) {
-  return (await listenersOf(state, browser).delivered('onAnnounce')).map(
-    ([announce, peerId]) => ({ participantId: announce.participantId, peerId }),
-  )
+  const joined = joinedOf(state, browser)
+  // Each role's listeners are their own type, so the call is made per role.
+  const delivered =
+    joined.role === 'facilitator'
+      ? await joined.listeners.delivered('onAnnounce')
+      : await joined.listeners.delivered('onAnnounce')
+  return delivered.map(([announce]) => announce.participantId)
 }
 
-/** Waits until `browser` has the announce with `participantId`, and gives the
- *  peer that sent it. */
+/** Waits until `browser` has the announce with `participantId`. */
 async function waitForAnnounce(
   state: ScenarioState,
   browser: string,
   participantId: string,
-): Promise<string> {
+): Promise<void> {
   await expect
-    .poll(
-      async () =>
-        (await announcesOf(state, browser)).some(
-          (announce) => announce.participantId === participantId,
-        ),
-      { timeout: CONNECT_TIMEOUT, message: `${browser} has ${participantId}'s announce` },
-    )
-    .toBe(true)
-  const announce = (await announcesOf(state, browser)).find(
-    (each) => each.participantId === participantId,
-  )
-  return announce!.peerId
+    .poll(() => announcesOf(state, browser), {
+      timeout: CONNECT_TIMEOUT,
+      message: `${browser} has ${participantId}'s announce`,
+    })
+    .toContain(participantId)
 }
 
 async function snapshotTitlesOf(state: ScenarioState, browser: string) {
-  return (await listenersOf(state, browser).delivered('onSyncState')).map(
-    ([snapshot]) => snapshot.currentItem?.title,
-  )
+  return (
+    await participantOf(state, browser).listeners.delivered('onFacilitatorSnapshot')
+  ).map(([snapshot]) => snapshot.currentItem?.title)
 }
 
 async function announce(
@@ -499,11 +521,37 @@ async function announce(
   state.lastAnnounce = participantId
 }
 
+/** Waits until a participant's session knows the facilitator. */
+async function waitForFacilitator(state: ScenarioState, browser: string) {
+  const { session } = participantOf(state, browser)
+  await expect
+    .poll(() => session.hasFacilitator(), { timeout: CONNECT_TIMEOUT })
+    .toBe(true)
+  return session
+}
+
+Given(
+  'browser {string} has started a session as the facilitator',
+  async ({ tab, state }, browser: string) => {
+    await join(tab, state, browser, 'the same', { role: 'facilitator' })
+  },
+)
+
+for (const [text, role] of [
+  ['browser {string} has joined it as a participant', 'participant'],
+  ['browser {string} has joined it as another facilitator', 'facilitator'],
+] as const) {
+  Given(text, async ({ tab, state }, browser: string) => {
+    await join(tab, state, browser, 'the same', { role })
+    await expectAllConnected(state, browsersOf(state))
+  })
+}
+
 Given(
   'browser {string} has announced itself as the facilitator',
   async ({ state }, browser: string) => {
     await announce(state, browser, FACILITATOR)
-    for (const other of othersOf(state, browser)) {
+    for (const other of browsersOf(state).filter((each) => each !== browser)) {
       await waitForAnnounce(state, other, FACILITATOR)
     }
   },
@@ -512,21 +560,24 @@ Given(
 Given(
   'browser {string} answers snapshot requests with the item {string}',
   async ({ state }, browser: string, title: string) => {
-    await listenersOf(state, browser).answerWith('onRequestSnapshot', snapshotOf(title))
+    await facilitatorOf(state, browser).listeners.answerWith(
+      'onSnapshotRequest',
+      snapshotOf(title),
+    )
   },
 )
 
 When(
   'browser {string} sends a snapshot of the item {string}',
   async ({ state }, browser: string, title: string) => {
-    await sessionOf(state, browser).sendSyncState(snapshotOf(title))
+    await facilitatorOf(state, browser).session.sendSnapshot(snapshotOf(title))
   },
 )
 
 When(
   'browser {string} sends a snapshot of the item {string}, then announces itself as {}',
   async ({ state }, browser: string, title: string, who: string) => {
-    await sessionOf(state, browser).sendSyncState(snapshotOf(title))
+    await facilitatorOf(state, browser).session.sendSnapshot(snapshotOf(title))
     await announce(
       state,
       browser,
@@ -538,7 +589,7 @@ When(
 When(
   'browser {string} sends an estimate for the item {string}',
   async ({ state }, browser: string, title: string) => {
-    const facilitator = await waitForAnnounce(state, browser, FACILITATOR)
+    const session = await waitForFacilitator(state, browser)
     // A plain estimate: the adapter parses it back through `createEstimate`.
     const estimate = {
       participantId: browser.toLowerCase(),
@@ -546,20 +597,15 @@ When(
       likely: 2,
       worst: 4,
     }
-    await sessionOf(state, browser).sendEstimate(
-      title.toLowerCase(),
-      estimate as Estimate,
-      0,
-      facilitator,
-    )
+    await session.sendEstimate(title.toLowerCase(), estimate as Estimate, 0)
   },
 )
 
 When(
   'browser {string} asks the facilitator for a snapshot',
   async ({ state }, browser: string) => {
-    const facilitator = await waitForAnnounce(state, browser, FACILITATOR)
-    state.pulledSnapshot = await sessionOf(state, browser).requestSnapshot(facilitator)
+    const session = await waitForFacilitator(state, browser)
+    state.pulledSnapshot = await session.requestSnapshot()
   },
 )
 
@@ -584,10 +630,9 @@ Then(
 Then(
   'browser {string} gets the estimate for {string}',
   async ({ state }, browser: string, title: string) => {
+    const { listeners } = facilitatorOf(state, browser)
     const itemIds = async () =>
-      (await listenersOf(state, browser).delivered('onEstimate')).map(
-        ([itemId]) => itemId,
-      )
+      (await listeners.delivered('onEstimate')).map(([itemId]) => itemId)
     await expect
       .poll(itemIds, { timeout: CONNECT_TIMEOUT })
       .toContain(title.toLowerCase())

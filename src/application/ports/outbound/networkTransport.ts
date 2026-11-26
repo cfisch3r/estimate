@@ -17,18 +17,23 @@ export interface ConnectionState {
   peerIds: string[]
 }
 
-export interface TransportSession {
-  sendEstimate(
-    itemId: string,
-    estimate: Estimate,
-    round: number,
-    target: string,
-  ): Promise<void>
-  sendSyncState(snapshot: SessionSnapshot): void
+/** What a live session offers both roles: announcing themselves, seeing peers
+ *  come and go, and leaving. */
+export interface LiveSession {
   sendAnnounce(announce: ParticipantAnnounce): void
-  /** A peer that just (re)connected pulls the facilitator's current snapshot
-   *  itself (ADR-003, "Snapshot delivery: pull on arrival"). */
-  requestSnapshot(targetPeerId: string): Promise<SessionSnapshot>
+  onAnnounce(cb: (announce: ParticipantAnnounce, peerId: string) => void): Unsubscribe
+  onPeerJoin(cb: (peerId: string) => void): Unsubscribe
+  onPeerLeave(cb: (peerId: string) => void): Unsubscribe
+  onConnectionStateChange(cb: (state: ConnectionState) => void): Unsubscribe
+  getConnectionState(): ConnectionState
+  leave(): void
+}
+
+/** The facilitator's side of a live session: it owns the session's state, sends
+ *  it to everyone, collects the estimates and answers a newcomer's snapshot
+ *  request. It never takes a snapshot from anyone. */
+export interface FacilitatorSession extends LiveSession {
+  sendSnapshot(snapshot: SessionSnapshot): void
   onEstimate(
     cb: (
       itemId: string,
@@ -37,16 +42,34 @@ export interface TransportSession {
       round: number | undefined,
     ) => void,
   ): Unsubscribe
-  onSyncState(cb: (snapshot: SessionSnapshot, peerId: string) => void): Unsubscribe
-  onAnnounce(cb: (announce: ParticipantAnnounce, peerId: string) => void): Unsubscribe
-  /** Facilitator-only: answers a peer's `requestSnapshot` pull. */
-  onRequestSnapshot(cb: () => SessionSnapshot): Unsubscribe
-  onPeerJoin(cb: (peerId: string) => void): Unsubscribe
-  onPeerLeave(cb: (peerId: string) => void): Unsubscribe
-  onConnectionStateChange(cb: (state: ConnectionState) => void): Unsubscribe
-  getConnectionState(): ConnectionState
-  leave(): void
+  /** Answers a peer's `requestSnapshot` pull. */
+  onSnapshotRequest(cb: () => SessionSnapshot): Unsubscribe
 }
 
-/** Opens the peer connection for a session code. */
-export type JoinSession = (sessionId: string) => TransportSession
+/** A participant's side of a live session: everything it sends goes to the
+ *  facilitator, and the only snapshots it takes are the facilitator's. The
+ *  facilitator is the peer that announced the facilitator's participant id. */
+export interface ParticipantSession extends LiveSession {
+  /** Whether the facilitator's peer is known: set by its announce, replaced by
+   *  a later one from another peer, cleared when that peer leaves. */
+  hasFacilitator(): boolean
+  /** Fires whenever the facilitator's peer changes: `true` when a facilitator
+   *  announced itself (again, under a new peer), `false` when it left. */
+  onFacilitatorChange(cb: (present: boolean) => void): Unsubscribe
+  /** Sends this participant's estimate to the facilitator and resolves once it
+   *  acknowledges it. Rejects with a Trystero request error (`error.kind`:
+   *  `timeout` | `disconnected` | `aborted` | a generic rejection), and with
+   *  `disconnected` while no facilitator is known (ADR-003, "Acknowledged
+   *  submissions"). */
+  sendEstimate(itemId: string, estimate: Estimate, round: number): Promise<void>
+  /** Pulls the facilitator's current snapshot (ADR-003, "Snapshot delivery: pull
+   *  on arrival"). Rejects like `sendEstimate`. */
+  requestSnapshot(): Promise<SessionSnapshot>
+  onFacilitatorSnapshot(cb: (snapshot: SessionSnapshot) => void): Unsubscribe
+}
+
+/** Opens the peer connection for a session code, shaped for the role. */
+export interface JoinSession {
+  asFacilitator(sessionId: string): FacilitatorSession
+  asParticipant(sessionId: string): ParticipantSession
+}

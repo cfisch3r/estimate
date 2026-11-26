@@ -11,7 +11,6 @@ import type {
 import type { ConnectionState, JoinSession } from '../ports/outbound/networkTransport'
 import type { DiagnosticsLog } from '../ports/outbound/diagnosticsLog'
 import type { DiagnosticEvent } from '../../domain/diagnosis/types'
-import { FACILITATOR_PARTICIPANT_ID } from '../../domain/participantId'
 import { useConnectionStore } from '../stores/connection'
 import { useRoundStore } from '../stores/round'
 import { useSessionStore } from '../stores/session'
@@ -78,56 +77,71 @@ function setSessionState(patch: SessionPatch & ConnectionPatch & RoundPatch) {
   if (Object.keys(round).length > 0) useRoundStore.setState(round)
 }
 
-const { joinSessionMock, fakeSession, emitState, emit } = vi.hoisted(() => {
-  let listener: ((state: ConnectionState) => void) | null = null
-  let current: ConnectionState = { status: 'connecting', peerIds: [] }
-  const handlers: Record<string, ((...args: never[]) => void) | null> = {
-    estimate: null,
-    syncState: null,
-    announce: null,
-    peerJoin: null,
-    peerLeave: null,
-  }
-  let requestSnapshotResponder: (() => unknown) | null = null
-  const capture = (name: string) => (cb: (...args: never[]) => void) => {
-    handlers[name] = cb
-    return () => {
-      handlers[name] = null
+const { joinSessionMock, fakeSession, emitState, emit, setFacilitator } = vi.hoisted(
+  () => {
+    let listener: ((state: ConnectionState) => void) | null = null
+    let current: ConnectionState = { status: 'connecting', peerIds: [] }
+    const handlers: Record<string, Set<(...args: never[]) => void>> = {}
+    let requestSnapshotResponder: (() => unknown) | null = null
+    let facilitatorPresent = false
+    const capture = (name: string) => (cb: (...args: never[]) => void) => {
+      handlers[name] ??= new Set()
+      handlers[name].add(cb)
+      return () => {
+        handlers[name]?.delete(cb)
+      }
     }
-  }
-  const fakeSession = {
-    getConnectionState: () => current,
-    onConnectionStateChange: vi.fn((cb: (state: ConnectionState) => void) => {
-      listener = cb
-      return () => {
-        listener = null
-      }
-    }),
-    onEstimate: vi.fn(capture('estimate')),
-    onSyncState: vi.fn(capture('syncState')),
-    onAnnounce: vi.fn(capture('announce')),
-    onRequestSnapshot: vi.fn((cb: () => unknown) => {
-      requestSnapshotResponder = cb
-      return () => {
-        requestSnapshotResponder = null
-      }
-    }),
-    onPeerJoin: vi.fn(capture('peerJoin')),
-    onPeerLeave: vi.fn(capture('peerLeave')),
-    sendEstimate: vi.fn(() => Promise.resolve()),
-    sendSyncState: vi.fn(),
-    sendAnnounce: vi.fn(),
-    requestSnapshot: vi.fn(() => Promise.resolve(requestSnapshotResponder?.())),
-    leave: vi.fn(),
-  }
-  const emitState = (state: ConnectionState) => {
-    current = state
-    listener?.(state)
-  }
-  const emit = (name: string, ...args: unknown[]) =>
-    handlers[name]?.(...(args as never[]))
-  return { joinSessionMock: vi.fn(() => fakeSession), fakeSession, emitState, emit }
-})
+    // One fake serves both roles: it has every operation of the facilitator's
+    // and the participant's session, and records which ones the controller used.
+    const fakeSession = {
+      getConnectionState: () => current,
+      onConnectionStateChange: vi.fn((cb: (state: ConnectionState) => void) => {
+        listener = cb
+        return () => {
+          listener = null
+        }
+      }),
+      onAnnounce: vi.fn(capture('announce')),
+      onPeerJoin: vi.fn(capture('peerJoin')),
+      onPeerLeave: vi.fn(capture('peerLeave')),
+      sendAnnounce: vi.fn(),
+      leave: vi.fn(),
+      // The facilitator's session.
+      onEstimate: vi.fn(capture('estimate')),
+      onSnapshotRequest: vi.fn((cb: () => unknown) => {
+        requestSnapshotResponder = cb
+        return () => {
+          requestSnapshotResponder = null
+        }
+      }),
+      sendSnapshot: vi.fn(),
+      // The participant's session.
+      hasFacilitator: () => facilitatorPresent,
+      onFacilitatorChange: vi.fn(capture('facilitatorChange')),
+      onFacilitatorSnapshot: vi.fn(capture('facilitatorSnapshot')),
+      sendEstimate: vi.fn(() => Promise.resolve()),
+      requestSnapshot: vi.fn(() => Promise.resolve(requestSnapshotResponder?.())),
+    }
+    const emitState = (state: ConnectionState) => {
+      current = state
+      listener?.(state)
+    }
+    const emit = (name: string, ...args: unknown[]) => {
+      for (const handler of handlers[name] ?? []) handler(...(args as never[]))
+    }
+    /** What the participant's session does when it finds or loses the
+     *  facilitator's peer. Without `notify`, only the state changes. */
+    const setFacilitator = (present: boolean, notify = true) => {
+      facilitatorPresent = present
+      if (notify) emit('facilitatorChange', present)
+    }
+    const joinSessionMock = {
+      asFacilitator: vi.fn(() => fakeSession),
+      asParticipant: vi.fn(() => fakeSession),
+    }
+    return { joinSessionMock, fakeSession, emitState, emit, setFacilitator }
+  },
+)
 
 /** Drains the promise chains the controller kicks off (snapshot pull, resend) by
  *  yielding one macrotask, which runs every queued microtask first. A fixed number of
@@ -156,11 +170,17 @@ beforeEach(() => {
     joinSession: joinSessionMock as unknown as JoinSession,
     diagnostics,
   })
-  joinSessionMock.mockClear()
+  joinSessionMock.asFacilitator.mockClear()
+  joinSessionMock.asParticipant.mockClear()
+  fakeSession.onEstimate.mockClear()
+  fakeSession.onSnapshotRequest.mockClear()
+  fakeSession.onFacilitatorSnapshot.mockClear()
+  fakeSession.onFacilitatorChange.mockClear()
+  setFacilitator(false, false)
   fakeSession.leave.mockClear()
   fakeSession.onConnectionStateChange.mockClear()
   fakeSession.sendEstimate.mockClear()
-  fakeSession.sendSyncState.mockClear()
+  fakeSession.sendSnapshot.mockClear()
   fakeSession.sendAnnounce.mockClear()
   fakeSession.requestSnapshot.mockClear()
   fakeSession.sendEstimate.mockImplementation(() => Promise.resolve())
@@ -211,7 +231,7 @@ describe('createLiveSessionController', () => {
     expect(useConnectionStore.getState().peerCount).toBe(1)
   })
 
-  it("flips a participant to connected once the facilitator's announce arrives", async () => {
+  it('flips a participant to connected once its session finds the facilitator', async () => {
     setSessionState({
       mode: 'live',
       role: 'participant',
@@ -223,12 +243,12 @@ describe('createLiveSessionController', () => {
     emitState({ status: 'connected', peerIds: ['peer-fac'] })
     expect(useConnectionStore.getState().connectionStatus).toBe('connecting')
 
-    emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+    setFacilitator(true)
 
     expect(useConnectionStore.getState().connectionStatus).toBe('connected')
   })
 
-  it('drops a participant back to connecting (not disconnected) when only the facilitator peer leaves', async () => {
+  it('drops a participant back to connecting (not disconnected) when the facilitator leaves, and pulls again when it returns', async () => {
     setSessionState({
       mode: 'live',
       role: 'participant',
@@ -238,23 +258,18 @@ describe('createLiveSessionController', () => {
     controller.api.connect('K7F9Q2')
 
     emitState({ status: 'connected', peerIds: ['peer-fac', 'peer-other'] })
-    emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
-    emit('announce', { participantId: 'p-other', name: 'Other' }, 'peer-other')
+    setFacilitator(true)
+    await flushMicrotasks()
     expect(useConnectionStore.getState().connectionStatus).toBe('connected')
 
-    // Mirrors connection.ts's real ordering: the tracker's own state-change
-    // fires before its peer-leave listeners, so the raw peer count drops
-    // first (leaving connectionStatus stale at 'connected', since peer-other
-    // is still up) and only the onPeerLeave handler's facilitator-departure
-    // check corrects it back down.
+    // The link is still up (peer-other), but the facilitator is gone.
     emitState({ status: 'connected', peerIds: ['peer-other'] })
-    emit('peerLeave', 'peer-fac')
+    setFacilitator(false)
 
     expect(useConnectionStore.getState().connectionStatus).toBe('connecting')
     expect(useConnectionStore.getState().peerCount).toBe(1)
 
-    // The facilitator reconnecting under a new peerId still triggers a pull
-    // (lastPulledFacilitatorPeerId was cleared on the departure above).
+    fakeSession.requestSnapshot.mockClear()
     fakeSession.requestSnapshot.mockResolvedValue({
       currentItem: null,
       unit: 'days',
@@ -265,9 +280,9 @@ describe('createLiveSessionController', () => {
       finalizedItemIds: [],
       finalResult: null,
     })
-    emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac-2')
+    setFacilitator(true)
     await flushMicrotasks()
-    expect(fakeSession.requestSnapshot).toHaveBeenCalledWith('peer-fac-2')
+    expect(fakeSession.requestSnapshot).toHaveBeenCalledTimes(1)
   })
 
   it('leaves the room on dispose without touching the stores', () => {
@@ -291,12 +306,12 @@ describe('createLiveSessionController', () => {
     expect(useConnectionStore.getState().peerCount).toBe(0)
   })
 
-  it('dispatches incoming syncState into the store, including reveal and Retry via later snapshots', async () => {
+  it("takes the facilitator's snapshots into the store, including reveal and Retry via later snapshots", async () => {
     setSessionState({ mode: 'live', role: 'participant' })
     controller.api.connect('K7F9Q2')
 
     const item = { id: 'item-1', title: 'Retry queue', description: 'backoff' }
-    emit('syncState', {
+    emit('facilitatorSnapshot', {
       currentItem: item,
       unit: 'days',
       revealed: false,
@@ -311,7 +326,7 @@ describe('createLiveSessionController', () => {
 
     // A later snapshot carries the reveal — there's no separate one-shot event
     // any more (ADR-003, "Versioned rounds").
-    emit('syncState', {
+    emit('facilitatorSnapshot', {
       currentItem: item,
       unit: 'days',
       revealed: true,
@@ -324,7 +339,7 @@ describe('createLiveSessionController', () => {
     expect(useRoundStore.getState().liveRound?.revealed).toBe(true)
 
     // And a Retry is just a round bump on the next snapshot.
-    emit('syncState', {
+    emit('facilitatorSnapshot', {
       currentItem: item,
       unit: 'days',
       revealed: false,
@@ -338,18 +353,29 @@ describe('createLiveSessionController', () => {
     expect(useRoundStore.getState().liveRound?.round).toBe(1)
   })
 
-  it('does not record another peer’s estimate on a participant client (sendEstimate targets the facilitator only)', async () => {
-    setSessionState({
-      mode: 'live',
-      role: 'participant',
-      items: [],
-      activeItemId: null,
-    })
+  it('joins as a participant and listens only for what a participant takes', () => {
+    setSessionState({ mode: 'live', role: 'participant' })
+
     controller.api.connect('K7F9Q2')
 
-    emit('estimate', 'item-1', { participantId: 'p2', best: 2, likely: 4, worst: 8 })
+    expect(joinSessionMock.asParticipant).toHaveBeenCalledWith('K7F9Q2')
+    expect(joinSessionMock.asFacilitator).not.toHaveBeenCalled()
+    expect(fakeSession.onFacilitatorSnapshot).toHaveBeenCalledTimes(1)
+    expect(fakeSession.onEstimate).not.toHaveBeenCalled()
+    expect(fakeSession.onSnapshotRequest).not.toHaveBeenCalled()
+  })
 
-    expect(useRoundStore.getState().liveRound).toBeNull()
+  it('joins as the facilitator and takes no snapshot from anyone', () => {
+    setSessionState({ mode: 'live', role: 'facilitator' })
+
+    controller.api.connect('K7F9Q2')
+
+    expect(joinSessionMock.asFacilitator).toHaveBeenCalledWith('K7F9Q2')
+    expect(joinSessionMock.asParticipant).not.toHaveBeenCalled()
+    expect(fakeSession.onEstimate).toHaveBeenCalledTimes(1)
+    expect(fakeSession.onSnapshotRequest).toHaveBeenCalledTimes(1)
+    expect(fakeSession.onFacilitatorSnapshot).not.toHaveBeenCalled()
+    expect(fakeSession.onFacilitatorChange).not.toHaveBeenCalled()
   })
 
   it('does not re-broadcast the snapshot on peer-join (a newcomer pulls it instead)', async () => {
@@ -374,14 +400,14 @@ describe('createLiveSessionController', () => {
       activeItemId: 'i1',
       unit: 'weeks',
     })
-    fakeSession.sendSyncState.mockClear()
+    fakeSession.sendSnapshot.mockClear()
 
     emit('peerJoin', 'peer-new')
 
-    expect(fakeSession.sendSyncState).not.toHaveBeenCalled()
+    expect(fakeSession.sendSnapshot).not.toHaveBeenCalled()
   })
 
-  it('answers a requestSnapshot pull with the current facilitator snapshot', async () => {
+  it('answers a snapshot request with the current facilitator snapshot', async () => {
     controller.api.connect('K7F9Q2')
 
     setSessionState({
@@ -404,7 +430,7 @@ describe('createLiveSessionController', () => {
       unit: 'weeks',
     })
 
-    const respond = fakeSession.onRequestSnapshot.mock.calls[0]?.[0] as
+    const respond = fakeSession.onSnapshotRequest.mock.calls[0]?.[0] as
       (() => { currentItem: { id: string } | null }) | undefined
     expect(respond).toBeDefined()
     expect(respond?.()).toMatchObject({
@@ -414,7 +440,7 @@ describe('createLiveSessionController', () => {
     })
   })
 
-  it("pulls the facilitator's snapshot once a participant learns its peerId from an announce", async () => {
+  it("pulls the facilitator's snapshot once the participant session finds the facilitator", async () => {
     setSessionState({
       mode: 'live',
       role: 'participant',
@@ -435,14 +461,14 @@ describe('createLiveSessionController', () => {
     }
     fakeSession.requestSnapshot.mockResolvedValue(snapshot)
 
-    emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+    setFacilitator(true)
     await flushMicrotasks()
 
-    expect(fakeSession.requestSnapshot).toHaveBeenCalledWith('peer-fac')
+    expect(fakeSession.requestSnapshot).toHaveBeenCalledTimes(1)
     expect(useRoundStore.getState().liveRound?.item.title).toBe('Retry queue')
   })
 
-  it("does not re-pull when the facilitator's peerId is re-announced unchanged", async () => {
+  it('does not pull when the facilitator leaves', async () => {
     setSessionState({
       mode: 'live',
       role: 'participant',
@@ -451,29 +477,13 @@ describe('createLiveSessionController', () => {
     })
     controller.api.connect('K7F9Q2')
 
-    fakeSession.requestSnapshot.mockResolvedValue({
-      currentItem: null,
-      unit: 'days' as const,
-      revealed: false,
-      round: 0,
-      roster: [],
-      submissions: [],
-      finalizedItemIds: [],
-      finalResult: null,
-    })
-
-    emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+    setFacilitator(false)
     await flushMicrotasks()
-    fakeSession.requestSnapshot.mockClear()
-
-    // A different peer joining re-triggers every client's announce, including
-    // the facilitator's own — re-announcing the same peerId must not re-pull.
-    emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
 
     expect(fakeSession.requestSnapshot).not.toHaveBeenCalled()
   })
 
-  it("targets sendEstimate at the facilitator's peerId once learned", async () => {
+  it('sends an estimate through the participant session, which targets the facilitator', async () => {
     setSessionState({
       mode: 'live',
       role: 'participant',
@@ -492,7 +502,7 @@ describe('createLiveSessionController', () => {
       finalResult: null,
     })
 
-    emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+    setFacilitator(true)
     await flushMicrotasks()
 
     const estimate = createEstimate({
@@ -508,30 +518,7 @@ describe('createLiveSessionController', () => {
       'i1',
       expect.objectContaining({ participantId: 'p-self' }),
       0,
-      'peer-fac',
     )
-  })
-
-  it("never falls back to an untargeted broadcast when the facilitator's peerId isn't known yet", async () => {
-    setSessionState({
-      mode: 'live',
-      role: 'participant',
-      participantId: 'p-self',
-      myName: 'Sam Rivera',
-    })
-    controller.api.connect('K7F9Q2')
-
-    // No announce from the facilitator has arrived yet, so its peerId is unknown.
-    const estimate = createEstimate({
-      participantId: 'p-self',
-      best: 1,
-      likely: 2,
-      worst: 3,
-    })
-    if (!estimate.ok) throw new Error('test fixture invalid')
-    await controller.api.sendEstimate('i1', estimate.value, 0).catch(() => {})
-
-    expect(fakeSession.sendEstimate).not.toHaveBeenCalled()
   })
 
   it('retries a sendEstimate that times out, and delivers on the retry', async () => {
@@ -553,7 +540,7 @@ describe('createLiveSessionController', () => {
       finalizedItemIds: [],
       finalResult: null,
     })
-    emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+    setFacilitator(true)
     await flushMicrotasks()
 
     const timeoutError = Object.assign(new Error('timed out'), { kind: 'timeout' })
@@ -597,7 +584,7 @@ describe('createLiveSessionController', () => {
       finalizedItemIds: [],
       finalResult: null,
     })
-    emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+    setFacilitator(true)
     await flushMicrotasks()
 
     const disconnectedError = Object.assign(new Error('link is dead'), {
@@ -637,13 +624,13 @@ describe('createLiveSessionController', () => {
       finalizedItemIds: [],
       finalResult: null,
     })
-    emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+    setFacilitator(true)
     await flushMicrotasks()
     const mine = estimateOf('p-self')
     useRoundStore.getState().submitEstimate(mine)
     fakeSession.sendEstimate.mockClear()
 
-    emit('syncState', {
+    emit('facilitatorSnapshot', {
       currentItem: { id: 'i1', title: 'Item', description: '' },
       unit: 'days',
       revealed: false,
@@ -657,7 +644,7 @@ describe('createLiveSessionController', () => {
 
     // The locally stored, already-validated estimate goes out as-is.
     expect(fakeSession.sendEstimate).toHaveBeenCalledTimes(1)
-    expect(fakeSession.sendEstimate).toHaveBeenCalledWith('i1', mine, 0, 'peer-fac')
+    expect(fakeSession.sendEstimate).toHaveBeenCalledWith('i1', mine, 0)
   })
 
   it('does not resend when the roster already shows this participant as submitted', async () => {
@@ -678,12 +665,12 @@ describe('createLiveSessionController', () => {
       finalizedItemIds: [],
       finalResult: null,
     })
-    emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+    setFacilitator(true)
     await flushMicrotasks()
     useRoundStore.getState().submitEstimate(estimateOf('p1'))
     fakeSession.sendEstimate.mockClear()
 
-    emit('syncState', {
+    emit('facilitatorSnapshot', {
       currentItem: { id: 'i1', title: 'Item', description: '' },
       unit: 'days',
       revealed: false,
@@ -716,7 +703,7 @@ describe('createLiveSessionController', () => {
       finalizedItemIds: [],
       finalResult: null,
     })
-    emit('announce', { participantId: 'facilitator', name: 'Facilitator' }, 'peer-fac')
+    setFacilitator(true)
     await flushMicrotasks()
     useRoundStore.getState().submitEstimate(estimateOf('p1'))
     fakeSession.sendEstimate.mockClear()
@@ -734,77 +721,12 @@ describe('createLiveSessionController', () => {
       finalizedItemIds: [],
       finalResult: null,
     }
-    emit('syncState', unsubmittedSnapshot)
+    emit('facilitatorSnapshot', unsubmittedSnapshot)
     await flushMicrotasks()
-    emit('syncState', unsubmittedSnapshot)
+    emit('facilitatorSnapshot', unsubmittedSnapshot)
     await flushMicrotasks()
 
     expect(fakeSession.sendEstimate).toHaveBeenCalledTimes(1)
-  })
-
-  it('resends against the facilitator’s current peerId if it changes mid-retry', async () => {
-    vi.useFakeTimers()
-    setSessionState({
-      mode: 'live',
-      role: 'participant',
-      participantId: 'p-self',
-      myName: 'Sam Rivera',
-    })
-    controller.api.connect('K7F9Q2')
-    fakeSession.requestSnapshot.mockResolvedValue({
-      currentItem: null,
-      unit: 'days' as const,
-      revealed: false,
-      round: 0,
-      roster: [],
-      submissions: [],
-      finalizedItemIds: [],
-      finalResult: null,
-    })
-    emit(
-      'announce',
-      { participantId: 'facilitator', name: 'Facilitator' },
-      'peer-fac-old',
-    )
-    await flushMicrotasks()
-
-    const timeoutError = Object.assign(new Error('timed out'), { kind: 'timeout' })
-    fakeSession.sendEstimate.mockRejectedValueOnce(timeoutError).mockResolvedValueOnce()
-
-    const estimate = createEstimate({
-      participantId: 'p-self',
-      best: 1,
-      likely: 2,
-      worst: 3,
-    })
-    if (!estimate.ok) throw new Error('test fixture invalid')
-
-    const sendPromise = controller.api.sendEstimate('i1', estimate.value, 0)
-
-    // The facilitator reconnects mid-retry, announcing under a new peerId.
-    emit(
-      'announce',
-      { participantId: 'facilitator', name: 'Facilitator' },
-      'peer-fac-new',
-    )
-    await flushMicrotasks()
-    await vi.advanceTimersByTimeAsync(500)
-    await sendPromise
-
-    expect(fakeSession.sendEstimate).toHaveBeenNthCalledWith(
-      1,
-      'i1',
-      expect.objectContaining({ participantId: 'p-self' }),
-      0,
-      'peer-fac-old',
-    )
-    expect(fakeSession.sendEstimate).toHaveBeenNthCalledWith(
-      2,
-      'i1',
-      expect.objectContaining({ participantId: 'p-self' }),
-      0,
-      'peer-fac-new',
-    )
   })
 
   it('broadcasts revealed:true plus the frozen submissions once the facilitator reveals', async () => {
@@ -831,11 +753,11 @@ describe('createLiveSessionController', () => {
       ],
       activeItemId: 'i1',
     })
-    fakeSession.sendSyncState.mockClear()
+    fakeSession.sendSnapshot.mockClear()
 
     useRoundStore.getState().revealRound('i1')
 
-    expect(fakeSession.sendSyncState).toHaveBeenCalledWith(
+    expect(fakeSession.sendSnapshot).toHaveBeenCalledWith(
       expect.objectContaining({ revealed: true, submissions: [sub.value] }),
     )
   })
@@ -969,10 +891,11 @@ describe('createLiveSessionController', () => {
   })
 
   it('stops dispatching store updates after disconnect', async () => {
+    setSessionState({ mode: 'live', role: 'participant' })
     controller.api.connect('K7F9Q2')
     controller.api.disconnect()
 
-    emit('syncState', {
+    emit('facilitatorSnapshot', {
       currentItem: { id: 'x', title: 'late', description: '' },
       unit: 'days',
       revealed: false,
@@ -1006,11 +929,7 @@ describe('the connection diagnosis', () => {
 
     emitState({ status: 'connected', peerIds: ['peer-other'] })
     emitState({ status: 'connected', peerIds: ['peer-other', 'peer-f'] })
-    emit(
-      'announce',
-      { participantId: FACILITATOR_PARTICIPANT_ID, name: 'Fran' },
-      'peer-f',
-    )
+    setFacilitator(true)
 
     expect(statuses()).toEqual(['connecting', 'connected'])
   })

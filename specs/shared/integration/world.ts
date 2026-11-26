@@ -10,8 +10,8 @@ import type { SavedSession } from '../../../src/domain/savedSession'
 import type { SessionSnapshot } from '../../../src/domain/types'
 import type { FileDownloadApi } from '../../../src/application/ports/outbound/fileDownload'
 import type {
-  JoinSession,
-  TransportSession,
+  FacilitatorSession,
+  ParticipantSession,
 } from '../../../src/application/ports/outbound/networkTransport'
 import type { ParticipantIdentityApi } from '../../../src/application/ports/outbound/participantIdentity'
 import type {
@@ -49,16 +49,22 @@ export type SessionFileDriver = {
 }
 
 /** A session open in the page: its operations, and its `on…` callbacks, which
- *  stay in the page. Both typed from `TransportSession`. */
-export type JoinedSession = {
-  session: Remote<TransportSession>
-  listeners: Listeners<TransportSession>
+ *  stay in the page. Both typed from the role's session. */
+export type Joined<Session> = {
+  session: Remote<Session>
+  listeners: Listeners<Session>
 }
 
-/** The network adapter, driven through its port: `join` opens a session in the
- *  page and returns drivers for it. */
+/** A tab's open session, by the role it joined as. */
+export type JoinedSession =
+  | ({ role: 'facilitator' } & Joined<FacilitatorSession>)
+  | ({ role: 'participant' } & Joined<ParticipantSession>)
+
+/** The network adapter, driven through its port: each join opens a session in
+ *  the page, shaped for the role, and returns drivers for it. */
 export type NetworkDriver = {
-  join(...args: Parameters<JoinSession>): Promise<JoinedSession>
+  asFacilitator(sessionId: string): Promise<Joined<FacilitatorSession>>
+  asParticipant(sessionId: string): Promise<Joined<ParticipantSession>>
 }
 
 /** One tab of one browser: tabs of the same browser share a context (and so
@@ -100,9 +106,7 @@ export type ScenarioState = {
   /** Session codes by the name a scenario gives them ("the same", "one", …). */
   sessionCodes: Record<string, string>
   /** The open session of each tab, keyed `<browser>/<tab>`. */
-  sessions: Record<string, Remote<TransportSession>>
-  /** The `on…` callbacks of each tab's open session, keyed like `sessions`. */
-  listeners: Record<string, Listeners<TransportSession>>
+  sessions: Record<string, JoinedSession>
   /** The WebRTC attempt the last "records a WebRTC attempt" step found. */
   attempt?: { browser: string; number: number }
   /** The peer the last "records a peer" step found. */
@@ -244,8 +248,12 @@ async function moveClockForward(page: Page, ms: number): Promise<void> {
 
 function networkDriver(page: Page): NetworkDriver {
   return {
-    async join(...args) {
-      const handle = await joinInPage(page, ...args)
+    async asFacilitator(sessionId) {
+      const handle = await joinInPage(page, 'asFacilitator', sessionId)
+      return { session: remoteHandle(handle), listeners: listenersOf(handle) }
+    },
+    async asParticipant(sessionId) {
+      const handle = await joinInPage(page, 'asParticipant', sessionId)
       return { session: remoteHandle(handle), listeners: listenersOf(handle) }
     },
   }
@@ -316,7 +324,7 @@ export const test = base.extend<Fixtures>({
     await Promise.all(launched.map((owner) => owner.close()))
   },
   state: async ({}, use) => {
-    await use({ sessionCodes: {}, sessions: {}, listeners: {}, participantIds: [] })
+    await use({ sessionCodes: {}, sessions: {}, participantIds: [] })
   },
 })
 

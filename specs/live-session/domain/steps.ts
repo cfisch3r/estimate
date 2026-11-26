@@ -631,7 +631,7 @@ When('{word} takes the snapshot', (world: QuickPickleWorld, _name: string) => {
   const state = data(world)
   const snapshot = snapshotOf(state)
   state.view = adoptSnapshot(state.view ?? null, snapshot)
-  state.sessionFields = sessionFieldsFromSnapshot('participant', snapshot)
+  state.sessionFields = sessionFieldsFromSnapshot(snapshot)
 })
 
 Then(

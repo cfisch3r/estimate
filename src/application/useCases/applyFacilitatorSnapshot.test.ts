@@ -295,20 +295,9 @@ describe('applyFacilitatorSnapshot: session fields', () => {
     finalResult: null,
   }
 
-  it('lets a participant adopt the facilitator session name', () => {
-    useConnectionStore.setState({ role: 'participant' })
-
+  it("adopts the facilitator's session name", () => {
     applyFacilitatorSnapshot({ ...base, sessionName: 'Sprint 42' })
 
     expect(useSessionStore.getState().sessionName).toBe('Sprint 42')
-  })
-
-  it('never lets a received snapshot overwrite the facilitator own session name', () => {
-    useSessionStore.setState({ sessionName: 'Mine' })
-    useConnectionStore.setState({ role: 'facilitator' })
-
-    applyFacilitatorSnapshot({ ...base, sessionName: 'Echo' })
-
-    expect(useSessionStore.getState().sessionName).toBe('Mine')
   })
 })
