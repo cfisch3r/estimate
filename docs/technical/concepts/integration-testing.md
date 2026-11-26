@@ -181,12 +181,19 @@ Two drivers are partly hand-written:
   `#picker` file input with `setInputFiles`, and opens the `File` that input holds, so the
   adapter reads a real browser file. Its result type still comes from the port.
 
-**A port that returns a session.** The network port, `JoinSession`, is a function that
-returns a `TransportSession`, an object full of functions that can't cross into Node. Its
-harness entry is `{ join }`. The network driver calls it with `page.evaluateHandle`, which
-keeps the session in the page and hands Node a typed `JSHandle<TransportSession>`;
-`remoteHandle()` turns that handle into a driver whose operations are typed from
-`TransportSession`, so it follows the port like any other.
+**A port that returns a session.** The network port, `JoinSession`, returns a session
+for a role (`asFacilitator`, `asParticipant`), an object full of functions that can't
+cross into Node. Its harness entry is the port itself. The network driver calls it with
+`page.evaluateHandle`, which keeps the session in the page and hands Node a typed
+`JSHandle` to it; `remoteHandle()` turns that handle into a driver whose operations are
+typed from the role's session, so it follows the port like any other.
+
+**A session's `on…` callbacks.** A callback can't cross into Node either, so `Remote`
+leaves the `on…` operations out. `listenersOf()` drives them from the same handle:
+`record` subscribes in the page and keeps every delivery, `delivered` reads them back in
+order, and `answerWith` registers a callback that answers with a fixed value, such as the
+snapshot a facilitator gives. Its types come from the session too. The live-session steps
+record what each session receives from the moment it joins.
 
 ## Adding a port
 

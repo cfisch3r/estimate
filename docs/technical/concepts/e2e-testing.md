@@ -141,7 +141,7 @@ same-context pages would collide on `participantId`; contexts have isolated stor
 | `create-and-join` | `joinSession`, `onPeerJoin`, `sendAnnounce`/`onAnnounce` | payload validation, retry/backoff timing |
 | `submit-and-reveal` | `sendEstimate`/`onEstimate` (request/ack), reveal → `syncState` broadcast | malformed-estimate rejection, ack timeout handling |
 | `sync-state-propagation` | `syncState` broadcast (item change, unit change) | snapshot field-level tolerance/defaults |
-| `late-joiner-snapshot` | `requestSnapshot`/`onRequestSnapshot` (ADR-003 pull-on-arrival) | stale-round rejection, roster sanitization |
+| `late-joiner-snapshot` | `requestSnapshot`/`onSnapshotRequest` (ADR-003 pull-on-arrival) | stale-round rejection, roster sanitization |
 
 `accessibility.spec.ts` isn't in this table — it scans screens for WCAG violations
 (ADR-008), not wire actions, so it's out of scope for this coverage map.
