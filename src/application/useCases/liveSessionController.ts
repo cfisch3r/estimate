@@ -30,6 +30,12 @@ export interface LiveSessionController {
   dispose: () => void
 }
 
+/** Rejection for a send with no open session: a link that's gone, so the
+ *  submission shows as not delivered and the retry policy doesn't retry. */
+function noSession(): Error {
+  return Object.assign(new Error('No active session'), { kind: 'disconnected' })
+}
+
 /** Owns the single live peer session for the app and bridges its events into the
  *  session, connection and round stores, so screens only ever read connection
  *  state from `useConnectionStore` and round state from the round/session
@@ -43,11 +49,12 @@ export function createLiveSessionController(deps: {
    *  user saw (issue #229). */
   diagnostics: DiagnosticsLog
 }): LiveSessionController {
-  // The open session, and the same session under its role's type: exactly one
-  // of `facilitator` and `participant` is set while `live` is.
-  let live: LiveSession | null = null
-  let facilitator: FacilitatorSession | null = null
-  let participant: ParticipantSession | null = null
+  // The open session, under the role it joined as.
+  let open:
+    | { role: 'facilitator'; session: FacilitatorSession }
+    | { role: 'participant'; session: ParticipantSession }
+    | null = null
+  const participantSession = () => (open?.role === 'participant' ? open.session : null)
   let unsubscribe: (() => void) | null = null
 
   // The port promises never to throw.
@@ -66,10 +73,8 @@ export function createLiveSessionController(deps: {
   function teardown() {
     unsubscribe?.()
     unsubscribe = null
-    live?.leave()
-    live = null
-    facilitator = null
-    participant = null
+    open?.session.leave()
+    open = null
   }
 
   // Facilitator only: Trystero's onPeerLeave gives a peerId (a connection), not a
@@ -86,7 +91,7 @@ export function createLiveSessionController(deps: {
     const status = deriveConnectionStatus(
       role,
       trackerState.status,
-      participant?.hasFacilitator() ?? false,
+      participantSession()?.hasFacilitator() ?? false,
     )
     setConnectionStatus(status)
     setPeerCount(trackerState.peerIds.length)
@@ -126,7 +131,7 @@ export function createLiveSessionController(deps: {
     const key = snapshotChangeKey(snapshot)
     if (key === lastSnapshotKey) return
     lastSnapshotKey = key
-    facilitator?.sendSnapshot(snapshot)
+    if (open?.role === 'facilitator') open.session.sendSnapshot(snapshot)
   }
 
   // Trystero doesn't replay history to a newcomer, so every client (re-)broadcasts
@@ -134,7 +139,7 @@ export function createLiveSessionController(deps: {
   // joins, letting reveal rows show real names instead of "Teammate N".
   const announceSelf = () => {
     const announcement = announcementFor(useConnectionStore.getState())
-    if (announcement) live?.sendAnnounce(announcement)
+    if (announcement) open?.session.sendAnnounce(announcement)
   }
 
   // Both roles: the status line, and names for the reveal rows.
@@ -189,11 +194,11 @@ export function createLiveSessionController(deps: {
       syncConnectionStatus(session.getConnectionState())
       if (!present) return
       withKindDrivenRetry(() => {
-        if (participant !== session) return Promise.reject(new Error('No active session'))
+        if (participantSession() !== session) return Promise.reject(noSession())
         return session.requestSnapshot()
       })
         .then((snapshot) => {
-          if (participant === session) applyFacilitatorSnapshot(snapshot)
+          if (participantSession() === session) applyFacilitatorSnapshot(snapshot)
         })
         .catch((error) => {
           console.warn('requestSnapshot pull failed after retries:', error)
@@ -238,15 +243,15 @@ export function createLiveSessionController(deps: {
       let unsubscribers: (() => void)[]
       if (role === 'participant') {
         const session = deps.joinSession.asParticipant(sessionId)
-        live = participant = session
+        open = { role, session }
         unsubscribers = [...sharedHandlers(session), ...participantHandlers(session)]
       } else {
         const session = deps.joinSession.asFacilitator(sessionId)
-        live = facilitator = session
+        open = { role: 'facilitator', session }
         unsubscribers = [...sharedHandlers(session), ...facilitatorHandlers(session)]
       }
       record({ kind: 'session-start', sessionCode: sessionId, role })
-      syncConnectionStatus(live.getConnectionState())
+      syncConnectionStatus(open.session.getConnectionState())
       unsubscribe = () => unsubscribers.forEach((off) => off())
       broadcastFacilitatorState()
       announceSelf()
@@ -259,16 +264,21 @@ export function createLiveSessionController(deps: {
       if (lastRecordedStatus !== null) recordStatus('idle')
     },
     sendEstimate: (itemId, estimate, round) => {
-      const session = participant
       // Facilitators never submit their own estimate over the network
       // (Workspace drives that side directly).
-      if (!session) return Promise.resolve()
+      const session = participantSession()
+      if (!session) {
+        // No session open yet: only a participant has something to deliver.
+        return useConnectionStore.getState().role === 'participant'
+          ? Promise.reject(noSession())
+          : Promise.resolve()
+      }
       // The session sends to the facilitator's current peer on every attempt,
       // so a retry follows a facilitator that reconnected under a new peer,
       // and rejects as disconnected while none is known. The roster check on
       // the next snapshot, not a retry here, recovers that case.
       return withKindDrivenRetry(() => {
-        if (participant !== session) return Promise.reject(new Error('No active session'))
+        if (participantSession() !== session) return Promise.reject(noSession())
         return session.sendEstimate(itemId, estimate, round)
       })
     },

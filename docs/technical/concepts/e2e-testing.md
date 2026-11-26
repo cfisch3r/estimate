@@ -43,7 +43,7 @@ flowchart TD
 
   subgraph signalinglane["ADAPTERS (SIGNALING) LANE · src/adapters/network"]
     direction LR
-    SessionFactory["session.ts (joinSession)<br/>[Factory Function]"]
+    SessionFactory["session.ts (createJoinSession)<br/>[Factory Function]"]
     SigProd["signaling.ts<br/>[Signaling Strategy: Production]"]
     SigTest["signaling.wsRelay.ts<br/>[Signaling Strategy: Test-only]"]
     SigShared["signalingContract.ts<br/>[Shared Contract: Types & Constants]"]
@@ -84,9 +84,9 @@ flowchart TD
 ```
 
 `session.ts` resolves the top-level `await import(...)` once, at module init — not per
-`joinSession()` call — so `joinSession` itself stays synchronous. One accepted side
-effect: `signaling.ts` (the production strategy) is now its own lazily-loaded chunk,
-fetched on the first `joinSession()` call rather than bundled eagerly (see ADR-007).
+join — so joining stays synchronous. One accepted side effect: `signaling.ts` (the
+production strategy) is now its own lazily-loaded chunk, fetched on the first join rather
+than bundled eagerly (see ADR-007).
 
 ## Default (local relay) build & run flow
 
@@ -138,7 +138,7 @@ same-context pages would collide on `participantId`; contexts have isolated stor
 
 | Spec | Exercises | Not covered here (stays unit-level) |
 |---|---|---|
-| `create-and-join` | `joinSession`, `onPeerJoin`, `sendAnnounce`/`onAnnounce` | payload validation, retry/backoff timing |
+| `create-and-join` | `asFacilitator`/`asParticipant`, `onPeerJoin`, `sendAnnounce`/`onAnnounce` | payload validation, retry/backoff timing |
 | `submit-and-reveal` | `sendEstimate`/`onEstimate` (request/ack), reveal → `syncState` broadcast | malformed-estimate rejection, ack timeout handling |
 | `sync-state-propagation` | `syncState` broadcast (item change, unit change) | snapshot field-level tolerance/defaults |
 | `late-joiner-snapshot` | `requestSnapshot`/`onSnapshotRequest` (ADR-003 pull-on-arrival) | stale-round rejection, roster sanitization |

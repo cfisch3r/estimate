@@ -1,6 +1,8 @@
 import { expect } from '@playwright/test'
 import type { CandidateKind, DiagnosticEntry } from '../../../src/domain/diagnosis/types'
 import type { Estimate } from '../../../src/domain/estimate'
+import type { LiveSession } from '../../../src/application/ports/outbound/networkTransport'
+import type { Listeners } from '../../shared/integration/remote'
 import type { SessionSnapshot } from '../../../src/domain/types'
 import type {
   Tab,
@@ -483,13 +485,11 @@ function browsersOf(state: ScenarioState): string[] {
 }
 
 async function announcesOf(state: ScenarioState, browser: string) {
-  const joined = joinedOf(state, browser)
-  // Each role's listeners are their own type, so the call is made per role.
-  const delivered =
-    joined.role === 'facilitator'
-      ? await joined.listeners.delivered('onAnnounce')
-      : await joined.listeners.delivered('onAnnounce')
-  return delivered.map(([announce]) => announce.participantId)
+  // Both roles' sessions share `onAnnounce`, so either role's listeners read it.
+  const listeners: Listeners<LiveSession> = joinedOf(state, browser).listeners
+  return (await listeners.delivered('onAnnounce')).map(
+    ([announce]) => announce.participantId,
+  )
 }
 
 /** Waits until `browser` has the announce with `participantId`. */

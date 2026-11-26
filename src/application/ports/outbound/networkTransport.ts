@@ -57,9 +57,9 @@ export interface ParticipantSession extends LiveSession {
    *  announced itself (again, under a new peer), `false` when it left. */
   onFacilitatorChange(cb: (present: boolean) => void): Unsubscribe
   /** Sends this participant's estimate to the facilitator and resolves once it
-   *  acknowledges it. Rejects with a Trystero request error (`error.kind`:
-   *  `timeout` | `disconnected` | `aborted` | a generic rejection), and with
-   *  `disconnected` while no facilitator is known (ADR-003, "Acknowledged
+   *  acknowledges it. Rejects with an error whose `kind` is
+   *  `timeout`, `disconnected` or `aborted` (or none, for any other failure),
+   *  and as `disconnected` while no facilitator is known (ADR-003, "Acknowledged
    *  submissions"). */
   sendEstimate(itemId: string, estimate: Estimate, round: number): Promise<void>
   /** Pulls the facilitator's current snapshot (ADR-003, "Snapshot delivery: pull

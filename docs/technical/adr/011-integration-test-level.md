@@ -4,6 +4,13 @@
 **Date:** 2026-11-19
 **Related:** [010-spec-first-gherkin-specs.md](010-spec-first-gherkin-specs.md), [007-e2e-dual-mode-signaling.md](007-e2e-dual-mode-signaling.md), [009-architecture-style-fsd-vs-hexagonal-core.md](009-architecture-style-fsd-vs-hexagonal-core.md), [integration-testing.md](../concepts/integration-testing.md), [glossary.md](../../glossary.md)
 
+> **Update 2026-11-26:** the network port is now role-shaped: `JoinSession` is
+> `{ asFacilitator, asParticipant }`, installed in the harness as it is, and each operation
+> returns a session the driver keeps in the page as below. A session's `on…` callbacks are
+> driven by `listenersOf()` in `remote.ts`, which subscribes in the page and reads back what
+> each callback received. That replaces the journal the update below plans. Where this
+> update and the one below differ, this one is current.
+>
 > **Update 2026-11-20:** the network adapter's scenarios, the first to drive a port with
 > callbacks, refined three points of the decision below. Where this update and the text
 > below differ, this update is current.

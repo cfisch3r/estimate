@@ -61,6 +61,7 @@ describe('LiveSessionProvider', () => {
 
     await user.click(screen.getByText('connect'))
 
+    expect(joinSessionMock.asFacilitator).toHaveBeenCalledTimes(1)
     expect(joinSessionMock.asFacilitator).toHaveBeenCalledWith('K7F9Q2')
     expect(useConnectionStore.getState().connectionStatus).toBe('connecting')
   })

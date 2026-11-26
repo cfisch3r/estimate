@@ -358,6 +358,7 @@ describe('createLiveSessionController', () => {
 
     controller.api.connect('K7F9Q2')
 
+    expect(joinSessionMock.asParticipant).toHaveBeenCalledTimes(1)
     expect(joinSessionMock.asParticipant).toHaveBeenCalledWith('K7F9Q2')
     expect(joinSessionMock.asFacilitator).not.toHaveBeenCalled()
     expect(fakeSession.onFacilitatorSnapshot).toHaveBeenCalledTimes(1)
@@ -370,6 +371,7 @@ describe('createLiveSessionController', () => {
 
     controller.api.connect('K7F9Q2')
 
+    expect(joinSessionMock.asFacilitator).toHaveBeenCalledTimes(1)
     expect(joinSessionMock.asFacilitator).toHaveBeenCalledWith('K7F9Q2')
     expect(joinSessionMock.asParticipant).not.toHaveBeenCalled()
     expect(fakeSession.onEstimate).toHaveBeenCalledTimes(1)
@@ -466,6 +468,15 @@ describe('createLiveSessionController', () => {
 
     expect(fakeSession.requestSnapshot).toHaveBeenCalledTimes(1)
     expect(useRoundStore.getState().liveRound?.item.title).toBe('Retry queue')
+  })
+
+  it('rejects a participant estimate as disconnected when no session is open', async () => {
+    setSessionState({ mode: 'live', role: 'participant', participantId: 'p-self' })
+
+    await expect(
+      controller.api.sendEstimate('i1', estimateOf('p-self'), 0),
+    ).rejects.toMatchObject({ kind: 'disconnected' })
+    expect(fakeSession.sendEstimate).not.toHaveBeenCalled()
   })
 
   it('does not pull when the facilitator leaves', async () => {

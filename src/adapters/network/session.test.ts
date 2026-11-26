@@ -341,6 +341,28 @@ describe('the participant session', () => {
     )
   })
 
+  it("sends to the facilitator's new peer after it announces itself again", async () => {
+    const session = joinAsParticipant('session-abc')
+    const estimate = createEstimate({ participantId: 'a', best: 1, likely: 2, worst: 3 })
+    if (!estimate.ok) throw new Error('test fixture invalid')
+    fakeRoom.requestActionsByName.submitEstimate!.request.mockResolvedValue({ ok: true })
+    fakeRoom.requestActionsByName.requestSnapshot!.request.mockResolvedValue(snapshot)
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+
+    deliver('announce', facilitatorAnnounce, 'peer-f2')
+    await session.sendEstimate('item-1', estimate.value, 0)
+    await session.requestSnapshot()
+
+    expect(fakeRoom.requestActionsByName.submitEstimate!.request).toHaveBeenCalledWith(
+      expect.anything(),
+      { target: 'peer-f2', timeoutMs: 800 },
+    )
+    expect(fakeRoom.requestActionsByName.requestSnapshot!.request).toHaveBeenCalledWith(
+      null,
+      { target: 'peer-f2', timeoutMs: 800 },
+    )
+  })
+
   it("requests a snapshot from the facilitator's peer", async () => {
     const session = joinAsParticipant('session-abc')
     fakeRoom.requestActionsByName.requestSnapshot!.request.mockResolvedValue(snapshot)
