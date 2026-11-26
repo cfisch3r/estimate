@@ -7,6 +7,7 @@ import type { DiagnosticsLog } from '../../../src/application/ports/outbound/dia
 import type { DiagnosticEntry } from '../../../src/domain/diagnosis/types'
 import type { Result } from '../../../src/domain/estimate'
 import type { SavedSession } from '../../../src/domain/savedSession'
+import type { SessionSnapshot } from '../../../src/domain/types'
 import type { FileDownloadApi } from '../../../src/application/ports/outbound/fileDownload'
 import type {
   JoinSession,
@@ -18,8 +19,8 @@ import type {
   SessionFileApi,
   SessionFileRejection,
 } from '../../../src/application/ports/outbound/sessionFiles'
-import { joinInPage, remote, remoteHandle } from './remote'
-import type { Remote } from './remote'
+import { joinInPage, listenersOf, remote, remoteHandle } from './remote'
+import type { Listeners, Remote } from './remote'
 
 /** A file the browser actually saved, as Playwright's `download` event saw it. */
 export type SavedFile = { suggestedName: string; bytes: Buffer }
@@ -47,10 +48,17 @@ export type SessionFileDriver = {
   open(file: PickFile): Promise<Result<SavedSession, SessionFileRejection>>
 }
 
+/** A session open in the page: its operations, and its `on…` callbacks, which
+ *  stay in the page. Both typed from `TransportSession`. */
+export type JoinedSession = {
+  session: Remote<TransportSession>
+  listeners: Listeners<TransportSession>
+}
+
 /** The network adapter, driven through its port: `join` opens a session in the
- *  page and returns a driver for it, typed from `TransportSession`. */
+ *  page and returns drivers for it. */
 export type NetworkDriver = {
-  join(...args: Parameters<JoinSession>): Promise<Remote<TransportSession>>
+  join(...args: Parameters<JoinSession>): Promise<JoinedSession>
 }
 
 /** One tab of one browser: tabs of the same browser share a context (and so
@@ -93,6 +101,8 @@ export type ScenarioState = {
   sessionCodes: Record<string, string>
   /** The open session of each tab, keyed `<browser>/<tab>`. */
   sessions: Record<string, Remote<TransportSession>>
+  /** The `on…` callbacks of each tab's open session, keyed like `sessions`. */
+  listeners: Record<string, Listeners<TransportSession>>
   /** The WebRTC attempt the last "records a WebRTC attempt" step found. */
   attempt?: { browser: string; number: number }
   /** The peer the last "records a peer" step found. */
@@ -111,6 +121,10 @@ export type ScenarioState = {
   opened?: Result<SavedSession, SessionFileRejection>
   /** The participant ids handed out so far, in the order they were asked for. */
   participantIds: string[]
+  /** The participant id of the announce a "then announces" step sent last. */
+  lastAnnounce?: string
+  /** The snapshot the last "asks the facilitator" step got back. */
+  pulledSnapshot?: SessionSnapshot
 }
 
 export function requireState<K extends keyof ScenarioState>(
@@ -231,7 +245,8 @@ async function moveClockForward(page: Page, ms: number): Promise<void> {
 function networkDriver(page: Page): NetworkDriver {
   return {
     async join(...args) {
-      return remoteHandle(await joinInPage(page, ...args))
+      const handle = await joinInPage(page, ...args)
+      return { session: remoteHandle(handle), listeners: listenersOf(handle) }
     },
   }
 }
@@ -301,7 +316,7 @@ export const test = base.extend<Fixtures>({
     await Promise.all(launched.map((owner) => owner.close()))
   },
   state: async ({}, use) => {
-    await use({ sessionCodes: {}, sessions: {}, participantIds: [] })
+    await use({ sessionCodes: {}, sessions: {}, listeners: {}, participantIds: [] })
   },
 })
 

@@ -22,6 +22,83 @@ export type Remote<Port> = {
     : never
 }
 
+/** A port's `on…` operations, the ones `Remote` leaves out. */
+type Listener<Port> = {
+  [K in keyof Port]: K extends `on${string}` ? K : never
+}[keyof Port]
+
+/** What one call of an `on…` operation's callback receives. */
+type Delivery<Callback> = Callback extends (cb: (...args: infer A) => unknown) => unknown
+  ? A
+  : never
+
+/** What an `on…` operation's callback returns, such as the snapshot a
+ *  request handler answers with. */
+type Answer<Callback> = Callback extends (cb: (...args: never[]) => infer R) => unknown
+  ? R
+  : never
+
+/** Drives a port's `on…` operations from Node, where a callback can't go: the
+ *  callback stays in the page. `record` subscribes and keeps every delivery,
+ *  `delivered` reads them back in the order they came, and `answerWith`
+ *  registers a callback that answers with a fixed value. Typed from the port,
+ *  like `Remote`. */
+export type Listeners<Port> = {
+  record<K extends Listener<Port>>(operation: K): Promise<void>
+  delivered<K extends Listener<Port>>(operation: K): Promise<Delivery<Port[K]>[]>
+  answerWith<K extends Listener<Port>>(
+    operation: K,
+    value: Answer<Port[K]>,
+  ): Promise<void>
+}
+
+type DeliveriesGlobal = {
+  __deliveries?: WeakMap<object, Record<string, unknown[][]>>
+}
+
+/** The `Listeners` of an object that stays in the page, such as a session. */
+export function listenersOf<Port>(handle: JSHandle<Port>): Listeners<Port> {
+  return {
+    async record(operation) {
+      await handle.evaluate((target, name) => {
+        const page = globalThis as unknown as DeliveriesGlobal
+        page.__deliveries ??= new WeakMap()
+        const byOperation = page.__deliveries.get(target as object) ?? {}
+        page.__deliveries.set(target as object, byOperation)
+        const deliveries: unknown[][] = []
+        byOperation[name] = deliveries
+        const subscribe = (target as Record<string, (cb: unknown) => unknown>)[name]
+        if (typeof subscribe !== 'function') {
+          throw new Error(`The session has no operation ${name}`)
+        }
+        subscribe.call(target, (...args: unknown[]) => {
+          deliveries.push(args)
+        })
+      }, String(operation))
+    },
+    async delivered(operation) {
+      return handle.evaluate((target, name) => {
+        const page = globalThis as unknown as DeliveriesGlobal
+        const deliveries = page.__deliveries?.get(target as object)?.[name]
+        if (!deliveries) throw new Error(`${name} isn't being recorded`)
+        return deliveries
+      }, String(operation)) as never
+    },
+    async answerWith(operation, value) {
+      await handle.evaluate(
+        (target, [name, answer]) => {
+          const subscribe = (target as Record<string, (cb: unknown) => unknown>)[name]
+          if (typeof subscribe !== 'function') {
+            throw new Error(`The session has no operation ${name}`)
+          }
+          subscribe.call(target, () => answer)
+        },
+        [String(operation), value] as const,
+      )
+    },
+  }
+}
+
 /** Everything `window.__harness` holds, one entry per port. The harness page
  *  declares its global `satisfies Harness`, so a missing operation fails to
  *  compile on both sides. A port that is a function returning a session (the
