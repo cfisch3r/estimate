@@ -1,6 +1,6 @@
 import { isFinalized } from './item'
 import { buildRoster } from './roster'
-import type { Item, SessionRole, SessionSnapshot } from './types'
+import type { Item, SessionSnapshot } from './types'
 import type { EstimationUnit } from './estimate'
 
 interface SnapshotInput {
@@ -55,16 +55,13 @@ export function snapshotChangeKey(snapshot: SessionSnapshot): string {
   })
 }
 
-/** The session-level fields a participant takes from a snapshot. Only a
- *  participant ever receives another client's broadcast (the facilitator is the
- *  sole sender), so the name is adopted for that role only: a stray or
- *  self-received snapshot must never overwrite the facilitator's own name with an
- *  echo. Participants estimate in the facilitator's unit, not their local default. */
-export function sessionFieldsFromSnapshot(
-  role: SessionRole,
-  snapshot: SessionSnapshot,
-): { sessionName?: string; unit: EstimationUnit } {
-  return role === 'participant'
-    ? { sessionName: snapshot.sessionName, unit: snapshot.unit }
-    : { unit: snapshot.unit }
+/** The session-level fields a participant takes from the facilitator's
+ *  snapshot: its name, and its unit, so participants estimate in the
+ *  facilitator's unit, not their local default. Only a participant takes a
+ *  snapshot: the facilitator's own session never hands one on. */
+export function sessionFieldsFromSnapshot(snapshot: SessionSnapshot): {
+  sessionName: string
+  unit: EstimationUnit
+} {
+  return { sessionName: snapshot.sessionName, unit: snapshot.unit }
 }

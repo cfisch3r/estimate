@@ -18,7 +18,7 @@ const harness = {
   sessionFiles,
   diagnostics,
   participantIdentity: { getOrCreateParticipantId },
-  network: { join: createJoinSession({ diagnostics }) },
+  network: createJoinSession({ diagnostics }),
 } satisfies Harness
 
 ;(globalThis as unknown as { __harness: Harness }).__harness = harness

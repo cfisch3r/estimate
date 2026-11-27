@@ -12,18 +12,17 @@ const { joinSessionMock, fakeSession } = vi.hoisted(() => {
     getConnectionState: () => state,
     onConnectionStateChange: noopSubscribe(),
     onEstimate: noopSubscribe(),
-    onSyncState: noopSubscribe(),
     onAnnounce: noopSubscribe(),
-    onRequestSnapshot: noopSubscribe(),
+    onSnapshotRequest: noopSubscribe(),
     onPeerJoin: noopSubscribe(),
     onPeerLeave: noopSubscribe(),
-    sendEstimate: vi.fn(() => Promise.resolve()),
-    sendSyncState: vi.fn(),
+    sendSnapshot: vi.fn(),
     sendAnnounce: vi.fn(),
-    requestSnapshot: vi.fn(() => Promise.resolve()),
     leave: vi.fn(),
   }
-  return { joinSessionMock: vi.fn(() => fakeSession), fakeSession }
+  // The store's role is the facilitator's by default, so only that join is used.
+  const joinSessionMock = { asFacilitator: vi.fn(() => fakeSession) }
+  return { joinSessionMock, fakeSession }
 })
 
 vi.mock('../adapters/network/session', () => ({
@@ -42,7 +41,7 @@ function Consumer() {
 }
 
 beforeEach(() => {
-  joinSessionMock.mockClear()
+  joinSessionMock.asFacilitator.mockClear()
   fakeSession.leave.mockClear()
   useConnectionStore.setState({ connectionStatus: 'idle', peerCount: 0 })
 })
@@ -62,7 +61,8 @@ describe('LiveSessionProvider', () => {
 
     await user.click(screen.getByText('connect'))
 
-    expect(joinSessionMock).toHaveBeenCalledWith('K7F9Q2')
+    expect(joinSessionMock.asFacilitator).toHaveBeenCalledTimes(1)
+    expect(joinSessionMock.asFacilitator).toHaveBeenCalledWith('K7F9Q2')
     expect(useConnectionStore.getState().connectionStatus).toBe('connecting')
   })
 

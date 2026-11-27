@@ -25,7 +25,7 @@ flowchart TD
     direction LR
     Steps["concept steps<br/>[playwright-bdd Steps]"]
     World["world.ts (tab)<br/>[Playwright Fixture]"]
-    Remote["remote.ts (Remote, Harness,<br/>remote, remoteHandle)<br/>[Port Driver Factory]"]
+    Remote["remote.ts (Remote, Harness, remote,<br/>remoteHandle, listenersOf)<br/>[Port Driver Factory]"]
   end
 
   subgraph configlane["CONFIG LANE · repo root"]
@@ -78,7 +78,7 @@ flowchart TD
 |---|---|
 | Concept steps | Gherkin step definitions for one concept, calling port drivers only, never `page.evaluate` |
 | `world.ts` | The `tab(browser, tab, options)` fixture: one browser context per browser name, one page per tab, opened on the harness page once `window.__harness` is installed; builds the port drivers for a tab. A browser's options set its faults when its first tab opens; a tab can also move its browser's clock forward (`moveClockForward`) |
-| `remote.ts` | `Remote<Port>`, the type of a port as seen from Node (every operation async, `on…` callbacks left out); `Harness`, what `window.__harness` holds; `remote()`, the generic forwarder to a harness entry, and `remoteHandle()`, the same forwarder to an object that stays in the page |
+| `remote.ts` | `Remote<Port>`, the type of a port as seen from Node (every operation async, `on…` callbacks left out); `Harness`, what `window.__harness` holds; `remote()`, the generic forwarder to a harness entry, `remoteHandle()`, the same forwarder to an object that stays in the page, and `listenersOf()`, which drives that object's `on…` callbacks in the page |
 | `harness.ts` | Imports the real adapters, composed as `App.tsx` composes them (the network adapter records into the page's diagnostics log), and installs `window.__harness`, declared `satisfies Harness` |
 | `vite.harness.config.ts` | Serves the harness page with Vite's mode set to `e2e`, so the network adapter picks the local relay ([ADR-007](../adr/007-e2e-dual-mode-signaling.md)). Pre-bundles Trystero: found only on first load, it would make Vite re-optimise and reload the page under a running scenario |
 | `playwright.config.ts` | Starts the harness server (local mode only, never reused, `--strictPort`, so a busy port fails the run) and runs the `*-integration` projects with the harness as `baseURL` |
@@ -181,12 +181,19 @@ Two drivers are partly hand-written:
   `#picker` file input with `setInputFiles`, and opens the `File` that input holds, so the
   adapter reads a real browser file. Its result type still comes from the port.
 
-**A port that returns a session.** The network port, `JoinSession`, is a function that
-returns a `TransportSession`, an object full of functions that can't cross into Node. Its
-harness entry is `{ join }`. The network driver calls it with `page.evaluateHandle`, which
-keeps the session in the page and hands Node a typed `JSHandle<TransportSession>`;
-`remoteHandle()` turns that handle into a driver whose operations are typed from
-`TransportSession`, so it follows the port like any other.
+**A port that returns a session.** The network port, `JoinSession`, returns a session
+for a role (`asFacilitator`, `asParticipant`), an object full of functions that can't
+cross into Node. Its harness entry is the port itself. The network driver calls it with
+`page.evaluateHandle`, which keeps the session in the page and hands Node a typed
+`JSHandle` to it; `remoteHandle()` turns that handle into a driver whose operations are
+typed from the role's session, so it follows the port like any other.
+
+**A session's `on…` callbacks.** A callback can't cross into Node either, so `Remote`
+leaves the `on…` operations out. `listenersOf()` drives them from the same handle:
+`record` subscribes in the page and keeps every delivery, `delivered` reads them back in
+order, and `answerWith` registers a callback that answers with a fixed value, such as the
+snapshot a facilitator gives. Its types come from the session too. The live-session steps
+record what each session receives from the moment it joins.
 
 ## Adding a port
 
@@ -198,14 +205,13 @@ keeps the session in the page and hands Node a typed `JSHandle<TransportSession>
 3. **Driver**<br>
    Build it in `world.ts` with `remote(page, '<name>')`; its type follows from the entry.
 4. **A session-returning port**<br>
-   If the port is a function that returns an object, follow
+   If a port's operations return an object that stays in the page, follow
    [A port that returns a session](#port-drivers-follow-the-ports) above.
 5. **Callbacks**<br>
    A port's `on…` callbacks can't reach Node. Where an adapter records what it sees, steps
-   wait on that record instead: the network scenarios poll the diagnostics log with
-   `expect.poll`. The first scenario that needs a port callback itself also builds the
-   in-page journal: the harness subscribes to each callback and appends it to the journal,
-   and steps read the journal and wait on it.
+   can wait on that record: the connection-diagnostics scenarios poll the diagnostics log
+   with `expect.poll`. Otherwise drive the callbacks with `listenersOf()`, as described in
+   [A session's `on…` callbacks](#port-drivers-follow-the-ports) above.
 
 ## Adding a fault
 

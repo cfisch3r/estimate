@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest'
-import { createJoinSession, joinSession } from './session'
+import { createJoinSession, joinAsFacilitator, joinAsParticipant } from './session'
 import type { DiagnosticsLog } from '../../application/ports/outbound/diagnosticsLog'
 import type { DiagnosticEvent } from '../../domain/diagnosis/types'
 import { createEstimate } from '../../domain/estimate'
@@ -58,9 +58,41 @@ beforeEach(() => {
   fakeRoom.onPeerLeave = null
 })
 
-describe('joinSession', () => {
+const snapshot = {
+  currentItem: null,
+  sessionName: '',
+  unit: 'days' as const,
+  revealed: false,
+  round: 0,
+  roster: [],
+  submissions: [],
+  finalizedItemIds: [],
+  finalResult: null,
+}
+
+/** Delivers an inbound message on the fake room's `name` action from `peerId`. */
+function deliver(name: string, data: unknown, peerId: string) {
+  const onMessage = fakeRoom.actionsByName[name]!.onMessage as (
+    data: unknown,
+    context: { peerId: string },
+  ) => void
+  onMessage(data, { peerId })
+}
+
+/** Answers an inbound request on the fake room's `name` action from `peerId`. */
+function answer(name: string, data: unknown, peerId: string) {
+  const onRequest = fakeRoom.requestActionsByName[name]!.onRequest as (
+    data: unknown,
+    context: { peerId: string },
+  ) => unknown
+  return () => onRequest(data, { peerId })
+}
+
+const facilitatorAnnounce = { participantId: 'facilitator', name: 'Facilitator' }
+
+describe('a live session, either role', () => {
   it('joins the trystero room using the session id as the room id', () => {
-    joinSession('session-abc')
+    joinAsParticipant('session-abc')
 
     expect(joinRoomMock).toHaveBeenCalledWith(
       expect.objectContaining({ appId: expect.any(String) }),
@@ -70,7 +102,7 @@ describe('joinSession', () => {
   })
 
   it('passes an optional password through to the room config', () => {
-    joinSession('session-abc', { password: 'shh' })
+    joinAsFacilitator('session-abc', { password: 'shh' })
 
     expect(joinRoomMock).toHaveBeenCalledWith(
       expect.objectContaining({ password: 'shh' }),
@@ -80,7 +112,7 @@ describe('joinSession', () => {
   })
 
   it('reflects a peer join in getConnectionState', () => {
-    const session = joinSession('session-abc')
+    const session = joinAsParticipant('session-abc')
 
     fakeRoom.onPeerJoin?.('peer-1')
 
@@ -91,7 +123,7 @@ describe('joinSession', () => {
   })
 
   it('notifies onPeerLeave subscribers when a peer leaves', () => {
-    const session = joinSession('session-abc')
+    const session = joinAsFacilitator('session-abc')
     fakeRoom.onPeerJoin?.('peer-1')
     const cb = vi.fn()
     session.onPeerLeave(cb)
@@ -102,94 +134,30 @@ describe('joinSession', () => {
   })
 
   it('marks the connection disconnected on a join error', () => {
-    joinSession('session-abc')
+    const session = joinAsParticipant('session-abc')
     const onJoinError = joinRoomMock.mock.calls[0]?.[2].onJoinError
     if (!onJoinError) throw new Error('expected onJoinError callback')
 
-    const session = joinSession('session-other')
-    const onJoinErrorForSession = joinRoomMock.mock.calls[1]?.[2].onJoinError
-    if (!onJoinErrorForSession) throw new Error('expected onJoinError callback')
-    onJoinErrorForSession({
+    onJoinError({
       error: 'incorrect password',
       appId: 'estimate-app-v1',
-      roomId: 'session-other',
+      roomId: 'session-abc',
       peerId: 'peer-1',
     })
 
     expect(session.getConnectionState().status).toBe('disconnected')
-    expect(typeof onJoinError).toBe('function')
   })
 
   it('leave() tears down the underlying room', () => {
-    const session = joinSession('session-abc')
+    const session = joinAsFacilitator('session-abc')
 
     session.leave()
 
     expect(fakeRoom.leave).toHaveBeenCalled()
   })
 
-  it('sendEstimate delegates to the underlying submitEstimate request action, targeted at the given peer', async () => {
-    const session = joinSession('session-abc')
-    const estimate = createEstimate({ participantId: 'a', best: 1, likely: 2, worst: 3 })
-    if (!estimate.ok) throw new Error('test fixture invalid')
-    fakeRoom.requestActionsByName.submitEstimate!.request.mockResolvedValue({ ok: true })
-
-    await session.sendEstimate('item-1', estimate.value, 2, 'facilitator-peer')
-
-    expect(fakeRoom.requestActionsByName.submitEstimate!.request).toHaveBeenCalledWith(
-      { itemId: 'item-1', estimate: estimate.value, round: 2 },
-      { target: 'facilitator-peer', timeoutMs: 800 },
-    )
-  })
-
-  it('requestSnapshot delegates to the underlying requestSnapshot action', async () => {
-    const session = joinSession('session-abc')
-    const snapshot = {
-      currentItem: null,
-      sessionName: '',
-      unit: 'days' as const,
-      revealed: false,
-      round: 0,
-      roster: [],
-      submissions: [],
-      finalizedItemIds: [],
-      finalResult: null,
-    }
-    fakeRoom.requestActionsByName.requestSnapshot!.request.mockResolvedValue(snapshot)
-
-    const result = await session.requestSnapshot('peer-1')
-
-    expect(fakeRoom.requestActionsByName.requestSnapshot!.request).toHaveBeenCalledWith(
-      null,
-      { target: 'peer-1', timeoutMs: 800 },
-    )
-    expect(result).toEqual(snapshot)
-  })
-
-  it('onRequestSnapshot registers a responder on the underlying requestSnapshot action', () => {
-    const session = joinSession('session-abc')
-    const snapshot = {
-      currentItem: null,
-      sessionName: '',
-      unit: 'days' as const,
-      revealed: false,
-      round: 0,
-      roster: [],
-      submissions: [],
-      finalizedItemIds: [],
-      finalResult: null,
-    }
-    session.onRequestSnapshot(() => snapshot)
-
-    const onRequest = fakeRoom.requestActionsByName.requestSnapshot!.onRequest as (
-      data: unknown,
-      context: { peerId: string },
-    ) => unknown
-    expect(onRequest(null, { peerId: 'peer-2' })).toBe(snapshot)
-  })
-
   it('sendAnnounce delegates to the underlying announce action', () => {
-    const session = joinSession('session-abc')
+    const session = joinAsParticipant('session-abc')
 
     session.sendAnnounce({ participantId: 'p-1', name: 'Sam Rivera' })
 
@@ -200,17 +168,264 @@ describe('joinSession', () => {
   })
 
   it('onAnnounce subscribers receive validated inbound announce messages', () => {
-    const session = joinSession('session-abc')
+    const session = joinAsFacilitator('session-abc')
     const cb = vi.fn()
     session.onAnnounce(cb)
 
-    const onMessage = fakeRoom.actionsByName.announce!.onMessage as (
-      data: unknown,
-      context: { peerId: string },
-    ) => void
-    onMessage({ participantId: 'p-2', name: '  Jordan  ' }, { peerId: 'peer-2' })
+    deliver('announce', { participantId: 'p-2', name: '  Jordan  ' }, 'peer-2')
 
     expect(cb).toHaveBeenCalledWith({ participantId: 'p-2', name: 'Jordan' }, 'peer-2')
+  })
+})
+
+describe('the facilitator session', () => {
+  it('sends a snapshot through the syncState action', () => {
+    const session = joinAsFacilitator('session-abc')
+
+    session.sendSnapshot(snapshot)
+
+    expect(fakeRoom.actionsByName.syncState!.send).toHaveBeenCalledWith(snapshot)
+  })
+
+  it('answers a snapshot request through its registered responder', () => {
+    const session = joinAsFacilitator('session-abc')
+    session.onSnapshotRequest(() => snapshot)
+
+    expect(answer('requestSnapshot', null, 'peer-2')()).toBe(snapshot)
+  })
+
+  it('takes an estimate and acks it', () => {
+    const session = joinAsFacilitator('session-abc')
+    const cb = vi.fn()
+    session.onEstimate(cb)
+    const estimate = { participantId: 'p-2', best: 1, likely: 2, worst: 3 }
+
+    const ack = answer(
+      'submitEstimate',
+      { itemId: 'item-1', round: 0, estimate },
+      'peer-2',
+    )()
+
+    expect(ack).toEqual({ ok: true })
+    expect(cb).toHaveBeenCalledTimes(1)
+    expect(cb).toHaveBeenCalledWith('item-1', estimate, 'peer-2', 0)
+  })
+})
+
+describe('the participant session', () => {
+  it('has no facilitator until the facilitator announces itself', () => {
+    const session = joinAsParticipant('session-abc')
+    fakeRoom.onPeerJoin?.('peer-f')
+
+    expect(session.hasFacilitator()).toBe(false)
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+    expect(session.hasFacilitator()).toBe(true)
+  })
+
+  it("doesn't take another participant's announce for the facilitator's", () => {
+    const session = joinAsParticipant('session-abc')
+    const cb = vi.fn()
+    session.onFacilitatorSnapshot(cb)
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+
+    deliver('announce', { participantId: 'p-x', name: 'Alex' }, 'peer-x')
+    deliver('syncState', snapshot, 'peer-x')
+    deliver('syncState', { ...snapshot, round: 1 }, 'peer-f')
+
+    expect(cb).toHaveBeenCalledTimes(1)
+    expect(cb).toHaveBeenCalledWith({ ...snapshot, round: 1 })
+  })
+
+  it("takes a snapshot from the facilitator's peer", () => {
+    const session = joinAsParticipant('session-abc')
+    const cb = vi.fn()
+    session.onFacilitatorSnapshot(cb)
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+
+    deliver('syncState', snapshot, 'peer-f')
+
+    expect(cb).toHaveBeenCalledTimes(1)
+    expect(cb).toHaveBeenCalledWith(snapshot)
+  })
+
+  it('drops a snapshot from another peer', () => {
+    const session = joinAsParticipant('session-abc')
+    const cb = vi.fn()
+    session.onFacilitatorSnapshot(cb)
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+
+    deliver('syncState', snapshot, 'peer-x')
+
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it('drops a snapshot that arrives before the facilitator announced itself', () => {
+    const session = joinAsParticipant('session-abc')
+    const cb = vi.fn()
+    session.onFacilitatorSnapshot(cb)
+
+    deliver('syncState', snapshot, 'peer-f')
+
+    expect(cb).not.toHaveBeenCalled()
+  })
+
+  it("forgets the facilitator when its peer leaves, and drops that peer's snapshots", () => {
+    const session = joinAsParticipant('session-abc')
+    const snapshots = vi.fn()
+    const changes = vi.fn()
+    session.onFacilitatorSnapshot(snapshots)
+    fakeRoom.onPeerJoin?.('peer-f')
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+    session.onFacilitatorChange(changes)
+
+    fakeRoom.onPeerLeave?.('peer-f')
+    deliver('syncState', snapshot, 'peer-f')
+
+    expect(session.hasFacilitator()).toBe(false)
+    expect(changes).toHaveBeenCalledTimes(1)
+    expect(changes).toHaveBeenCalledWith(false)
+    expect(snapshots).not.toHaveBeenCalled()
+  })
+
+  it('keeps the facilitator when another peer leaves', () => {
+    const session = joinAsParticipant('session-abc')
+    fakeRoom.onPeerJoin?.('peer-f')
+    fakeRoom.onPeerJoin?.('peer-x')
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+
+    fakeRoom.onPeerLeave?.('peer-x')
+
+    expect(session.hasFacilitator()).toBe(true)
+  })
+
+  it('keeps the first facilitator while another peer claims to be it', () => {
+    const session = joinAsParticipant('session-abc')
+    const snapshots = vi.fn()
+    const changes = vi.fn()
+    session.onFacilitatorSnapshot(snapshots)
+    fakeRoom.onPeerJoin?.('peer-f')
+    fakeRoom.onPeerJoin?.('peer-x')
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+    session.onFacilitatorChange(changes)
+
+    deliver('announce', facilitatorAnnounce, 'peer-x')
+    deliver('syncState', { ...snapshot, round: 9 }, 'peer-x')
+    deliver('syncState', snapshot, 'peer-f')
+
+    expect(changes).not.toHaveBeenCalled()
+    expect(snapshots).toHaveBeenCalledTimes(1)
+    expect(snapshots).toHaveBeenCalledWith(snapshot)
+  })
+
+  it('follows a facilitator that reloads: its new peer takes over once the old one leaves', () => {
+    const session = joinAsParticipant('session-abc')
+    const snapshots = vi.fn()
+    const changes = vi.fn()
+    session.onFacilitatorSnapshot(snapshots)
+    fakeRoom.onPeerJoin?.('peer-f')
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+    session.onFacilitatorChange(changes)
+
+    // The reloaded tab announces before the old connection is reported gone.
+    fakeRoom.onPeerJoin?.('peer-f2')
+    deliver('announce', facilitatorAnnounce, 'peer-f2')
+    fakeRoom.onPeerLeave?.('peer-f')
+    deliver('syncState', snapshot, 'peer-f')
+    deliver('syncState', { ...snapshot, round: 1 }, 'peer-f2')
+
+    expect(changes.mock.calls).toEqual([[true]])
+    expect(session.hasFacilitator()).toBe(true)
+    expect(snapshots).toHaveBeenCalledTimes(1)
+    expect(snapshots).toHaveBeenCalledWith({ ...snapshot, round: 1 })
+  })
+
+  it('reports no change when the facilitator announces itself again unchanged', () => {
+    const session = joinAsParticipant('session-abc')
+    const changes = vi.fn()
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+    session.onFacilitatorChange(changes)
+
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+
+    expect(changes).not.toHaveBeenCalled()
+  })
+
+  it("sends an estimate to the facilitator's peer", async () => {
+    const session = joinAsParticipant('session-abc')
+    const estimate = createEstimate({ participantId: 'a', best: 1, likely: 2, worst: 3 })
+    if (!estimate.ok) throw new Error('test fixture invalid')
+    fakeRoom.requestActionsByName.submitEstimate!.request.mockResolvedValue({ ok: true })
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+
+    await session.sendEstimate('item-1', estimate.value, 2)
+
+    expect(fakeRoom.requestActionsByName.submitEstimate!.request).toHaveBeenCalledWith(
+      { itemId: 'item-1', estimate: estimate.value, round: 2 },
+      { target: 'peer-f', timeoutMs: 800 },
+    )
+  })
+
+  it("sends to the facilitator's new peer once its old one has left", async () => {
+    const session = joinAsParticipant('session-abc')
+    const estimate = createEstimate({ participantId: 'a', best: 1, likely: 2, worst: 3 })
+    if (!estimate.ok) throw new Error('test fixture invalid')
+    fakeRoom.requestActionsByName.submitEstimate!.request.mockResolvedValue({ ok: true })
+    fakeRoom.requestActionsByName.requestSnapshot!.request.mockResolvedValue(snapshot)
+    fakeRoom.onPeerJoin?.('peer-f')
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+
+    deliver('announce', facilitatorAnnounce, 'peer-f2')
+    fakeRoom.onPeerLeave?.('peer-f')
+    await session.sendEstimate('item-1', estimate.value, 0)
+    await session.requestSnapshot()
+
+    expect(fakeRoom.requestActionsByName.submitEstimate!.request).toHaveBeenCalledWith(
+      expect.anything(),
+      { target: 'peer-f2', timeoutMs: 800 },
+    )
+    expect(fakeRoom.requestActionsByName.requestSnapshot!.request).toHaveBeenCalledWith(
+      null,
+      { target: 'peer-f2', timeoutMs: 800 },
+    )
+  })
+
+  it("requests a snapshot from the facilitator's peer", async () => {
+    const session = joinAsParticipant('session-abc')
+    fakeRoom.requestActionsByName.requestSnapshot!.request.mockResolvedValue(snapshot)
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+
+    const result = await session.requestSnapshot()
+
+    expect(fakeRoom.requestActionsByName.requestSnapshot!.request).toHaveBeenCalledWith(
+      null,
+      { target: 'peer-f', timeoutMs: 800 },
+    )
+    expect(result).toEqual(snapshot)
+  })
+
+  it('rejects an estimate and a snapshot request as disconnected while no facilitator is known', async () => {
+    const session = joinAsParticipant('session-abc')
+    const estimate = createEstimate({ participantId: 'a', best: 1, likely: 2, worst: 3 })
+    if (!estimate.ok) throw new Error('test fixture invalid')
+
+    await expect(session.sendEstimate('item-1', estimate.value, 0)).rejects.toMatchObject(
+      {
+        kind: 'disconnected',
+      },
+    )
+    await expect(session.requestSnapshot()).rejects.toMatchObject({
+      kind: 'disconnected',
+    })
+    expect(fakeRoom.requestActionsByName.submitEstimate!.request).not.toHaveBeenCalled()
+    expect(fakeRoom.requestActionsByName.requestSnapshot!.request).not.toHaveBeenCalled()
+  })
+
+  it('refuses an estimate and a snapshot request from another peer', () => {
+    joinAsParticipant('session-abc')
+    const estimate = { participantId: 'p-2', best: 1, likely: 2, worst: 3 }
+
+    expect(answer('submitEstimate', { itemId: 'item-1', estimate }, 'peer-x')).toThrow()
+    expect(answer('requestSnapshot', null, 'peer-x')).toThrow()
   })
 })
 
@@ -228,7 +443,7 @@ function fakeDiagnostics() {
 describe('createJoinSession', () => {
   it('records peers joining and leaving by a shortened peer id', () => {
     const { events, diagnostics } = fakeDiagnostics()
-    createJoinSession({ diagnostics })('session-abc')
+    createJoinSession({ diagnostics }).asParticipant('session-abc')
 
     fakeRoom.onPeerJoin?.('abcdefghijklmnop')
     fakeRoom.onPeerLeave?.('abcdefghijklmnop')
@@ -241,7 +456,7 @@ describe('createJoinSession', () => {
 
   it("records Trystero's join error with the peer id shortened, and still disconnects", () => {
     const { events, diagnostics } = fakeDiagnostics()
-    const session = createJoinSession({ diagnostics })('session-abc')
+    const session = createJoinSession({ diagnostics }).asParticipant('session-abc')
     const onJoinError = joinRoomMock.mock.calls[0]?.[2].onJoinError
     if (!onJoinError) throw new Error('expected onJoinError callback')
 
@@ -264,7 +479,7 @@ describe('createJoinSession', () => {
 
   it('records a join error that names no peer without one', () => {
     const { events, diagnostics } = fakeDiagnostics()
-    createJoinSession({ diagnostics })('session-abc')
+    createJoinSession({ diagnostics }).asParticipant('session-abc')
     const onJoinError = joinRoomMock.mock.calls[0]?.[2].onJoinError
     if (!onJoinError) throw new Error('expected onJoinError callback')
 
@@ -283,7 +498,7 @@ describe('createJoinSession', () => {
     vi.stubGlobal('RTCPeerConnection', BrowserPeerConnection)
     try {
       const { diagnostics } = fakeDiagnostics()
-      createJoinSession({ diagnostics })('session-abc')
+      createJoinSession({ diagnostics }).asParticipant('session-abc')
 
       const polyfill = joinRoomMock.mock.calls[0]?.[0].rtcPolyfill
       expect(polyfill && new polyfill()).toBeInstanceOf(BrowserPeerConnection)
@@ -294,7 +509,7 @@ describe('createJoinSession', () => {
 
   it('records a peer that Trystero reports twice only once', () => {
     const { events, diagnostics } = fakeDiagnostics()
-    createJoinSession({ diagnostics })('session-abc')
+    createJoinSession({ diagnostics }).asParticipant('session-abc')
 
     fakeRoom.onPeerJoin?.('abcdefghijklmnop')
     fakeRoom.onPeerJoin?.('abcdefghijklmnop')
@@ -307,8 +522,8 @@ describe('createJoinSession', () => {
     try {
       const { diagnostics } = fakeDiagnostics()
       const join = createJoinSession({ diagnostics })
-      join('session-abc')
-      join('session-abc')
+      join.asFacilitator('session-abc')
+      join.asParticipant('session-abc')
 
       const [first, second] = joinRoomMock.mock.calls.map(
         ([config]) => config.rtcPolyfill,

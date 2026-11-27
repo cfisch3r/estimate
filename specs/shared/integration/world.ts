@@ -7,10 +7,11 @@ import type { DiagnosticsLog } from '../../../src/application/ports/outbound/dia
 import type { DiagnosticEntry } from '../../../src/domain/diagnosis/types'
 import type { Result } from '../../../src/domain/estimate'
 import type { SavedSession } from '../../../src/domain/savedSession'
+import type { SessionSnapshot } from '../../../src/domain/types'
 import type { FileDownloadApi } from '../../../src/application/ports/outbound/fileDownload'
 import type {
-  JoinSession,
-  TransportSession,
+  FacilitatorSession,
+  ParticipantSession,
 } from '../../../src/application/ports/outbound/networkTransport'
 import type { ParticipantIdentityApi } from '../../../src/application/ports/outbound/participantIdentity'
 import type {
@@ -18,8 +19,8 @@ import type {
   SessionFileApi,
   SessionFileRejection,
 } from '../../../src/application/ports/outbound/sessionFiles'
-import { joinInPage, remote, remoteHandle } from './remote'
-import type { Remote } from './remote'
+import { joinInPage, listenersOf, remote, remoteHandle } from './remote'
+import type { Listeners, Remote } from './remote'
 
 /** A file the browser actually saved, as Playwright's `download` event saw it. */
 export type SavedFile = { suggestedName: string; bytes: Buffer }
@@ -47,10 +48,23 @@ export type SessionFileDriver = {
   open(file: PickFile): Promise<Result<SavedSession, SessionFileRejection>>
 }
 
-/** The network adapter, driven through its port: `join` opens a session in the
- *  page and returns a driver for it, typed from `TransportSession`. */
+/** A session open in the page: its operations, and its `on…` callbacks, which
+ *  stay in the page. Both typed from the role's session. */
+export type Joined<Session> = {
+  session: Remote<Session>
+  listeners: Listeners<Session>
+}
+
+/** A tab's open session, by the role it joined as. */
+export type JoinedSession =
+  | ({ role: 'facilitator' } & Joined<FacilitatorSession>)
+  | ({ role: 'participant' } & Joined<ParticipantSession>)
+
+/** The network adapter, driven through its port: each join opens a session in
+ *  the page, shaped for the role, and returns drivers for it. */
 export type NetworkDriver = {
-  join(...args: Parameters<JoinSession>): Promise<Remote<TransportSession>>
+  asFacilitator(sessionId: string): Promise<Joined<FacilitatorSession>>
+  asParticipant(sessionId: string): Promise<Joined<ParticipantSession>>
 }
 
 /** One tab of one browser: tabs of the same browser share a context (and so
@@ -92,7 +106,7 @@ export type ScenarioState = {
   /** Session codes by the name a scenario gives them ("the same", "one", …). */
   sessionCodes: Record<string, string>
   /** The open session of each tab, keyed `<browser>/<tab>`. */
-  sessions: Record<string, Remote<TransportSession>>
+  sessions: Record<string, JoinedSession>
   /** The WebRTC attempt the last "records a WebRTC attempt" step found. */
   attempt?: { browser: string; number: number }
   /** The peer the last "records a peer" step found. */
@@ -111,6 +125,10 @@ export type ScenarioState = {
   opened?: Result<SavedSession, SessionFileRejection>
   /** The participant ids handed out so far, in the order they were asked for. */
   participantIds: string[]
+  /** The participant id of the announce a "then announces" step sent last. */
+  lastAnnounce?: string
+  /** The snapshot the last "asks the facilitator" step got back. */
+  pulledSnapshot?: SessionSnapshot
 }
 
 export function requireState<K extends keyof ScenarioState>(
@@ -230,8 +248,13 @@ async function moveClockForward(page: Page, ms: number): Promise<void> {
 
 function networkDriver(page: Page): NetworkDriver {
   return {
-    async join(...args) {
-      return remoteHandle(await joinInPage(page, ...args))
+    async asFacilitator(sessionId) {
+      const handle = await joinInPage(page, 'asFacilitator', sessionId)
+      return { session: remoteHandle(handle), listeners: listenersOf(handle) }
+    },
+    async asParticipant(sessionId) {
+      const handle = await joinInPage(page, 'asParticipant', sessionId)
+      return { session: remoteHandle(handle), listeners: listenersOf(handle) }
     },
   }
 }

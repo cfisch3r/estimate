@@ -77,7 +77,8 @@ export interface TypedActions {
   ): Unsubscribe
   onSyncState(cb: (snapshot: SessionSnapshot, peerId: string) => void): Unsubscribe
   onAnnounce(cb: (announce: ParticipantAnnounce, peerId: string) => void): Unsubscribe
-  /** Facilitator-only: answers a peer's `requestSnapshot` pull. */
+  /** Answers a peer's `requestSnapshot` pull. Without a responder, a pull is
+   *  refused. */
   onRequestSnapshot(cb: () => SessionSnapshot): Unsubscribe
 }
 
@@ -91,6 +92,7 @@ function createSubscribable<T extends unknown[]>() {
     notify(...args: T) {
       for (const listener of listeners) listener(...args)
     },
+    hasListeners: () => listeners.size > 0,
   }
 }
 
@@ -237,12 +239,25 @@ export function createTypedActions(room: ActionRoom): TypedActions {
     { kind: 'request' },
   )
 
+  // Only a facilitator's session answers a snapshot request; until one
+  // registers a responder, a request is refused, so its sender fails at once
+  // instead of waiting out the timeout.
+  const refuseSnapshotRequest = (): never => {
+    throw new Error('This peer has no snapshot to give')
+  }
+  requestSnapshotAction.onRequest = refuseSnapshotRequest
+
   const estimateSubscribable =
     createSubscribable<[string, Estimate, string, number | undefined]>()
   const syncStateSubscribable = createSubscribable<[SessionSnapshot, string]>()
   const announceSubscribable = createSubscribable<[ParticipantAnnounce, string]>()
 
   submitEstimateAction.onRequest = (data, { peerId }) => {
+    // Only a facilitator's session listens for estimates; any other refuses,
+    // so a stray estimate fails at its sender instead of being acked unread.
+    if (!estimateSubscribable.hasListeners()) {
+      throw new Error('This peer takes no estimates')
+    }
     const { itemId, payload, round } = unwrapEstimateMessage(data)
     const result = parseWireEstimate(payload)
     if (!result.ok) {
@@ -307,7 +322,7 @@ export function createTypedActions(room: ActionRoom): TypedActions {
     onRequestSnapshot: (cb) => {
       requestSnapshotAction.onRequest = () => cb()
       return () => {
-        requestSnapshotAction.onRequest = null
+        requestSnapshotAction.onRequest = refuseSnapshotRequest
       }
     },
   }
