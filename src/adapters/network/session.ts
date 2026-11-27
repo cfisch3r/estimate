@@ -112,15 +112,19 @@ function noFacilitator(): Error {
  *  that carries the facilitator's participant id, hands on only that peer's
  *  snapshots, and sends estimates and snapshot requests only to it. Never a
  *  broadcast: an estimate on every peer's wire is what targeting prevents
- *  (ADR-003, "Single owner"). The announce is the only evidence of who the
- *  facilitator is, so a peer that announces the facilitator's id takes its
- *  place, as the trust boundary in the collaboration-mode concept says. */
+ *  (ADR-003, "Single owner"). The first peer to announce the facilitator's id
+ *  stays the facilitator while it is connected; a later claimant takes over
+ *  only once every earlier one has left, as a facilitator that reloads does.
+ *  The announce is still the only evidence, so a claimant that comes first
+ *  wins, as the trust boundary in the collaboration-mode concept says. */
 export function joinAsParticipant(
   sessionId: string,
   options: JoinSessionOptions = {},
 ): ParticipantSession {
   const { actions, connection, shared } = openRoom(sessionId, options)
   let facilitatorPeerId: string | null = null
+  // Every connected peer that announced the facilitator's id, first one first.
+  const claimants: string[] = []
   const changeListeners = new Set<(present: boolean) => void>()
   const setFacilitator = (peerId: string | null) => {
     if (peerId === facilitatorPeerId) return
@@ -129,12 +133,17 @@ export function joinAsParticipant(
   }
 
   actions.onAnnounce((announce, peerId) => {
-    if (announce.participantId === FACILITATOR_PARTICIPANT_ID) setFacilitator(peerId)
+    if (announce.participantId !== FACILITATOR_PARTICIPANT_ID) return
+    if (!claimants.includes(peerId)) claimants.push(peerId)
+    setFacilitator(claimants[0] ?? null)
   })
   // Registered before anyone else can subscribe, so by the time the
   // controller's own peer-leave handler runs, the facilitator is already gone.
   connection.onPeerLeave((peerId) => {
-    if (peerId === facilitatorPeerId) setFacilitator(null)
+    const index = claimants.indexOf(peerId)
+    if (index === -1) return
+    claimants.splice(index, 1)
+    setFacilitator(claimants[0] ?? null)
   })
 
   return {

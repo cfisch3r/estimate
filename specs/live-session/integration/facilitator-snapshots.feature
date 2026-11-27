@@ -32,6 +32,16 @@ Feature: A participant takes the session's state only from the facilitator
       When browser "F" sends a snapshot of the item "Early", then announces itself as the facilitator
       Then browser "P" takes no snapshot of "Early"
 
+  Rule: A participant keeps the facilitator while it is there
+
+    Scenario: A second peer claiming to be the facilitator is ignored
+      Given browser "F" has started a session as the facilitator
+      And browser "P" has joined it as a participant
+      And browser "X" has joined it as another facilitator
+      And browser "F" has announced itself as the facilitator
+      When browser "X" announces itself as the facilitator, sends a snapshot of the item "Forged", then announces itself as a participant
+      Then browser "P" takes no snapshot of "Forged"
+
   Rule: A participant's estimate and snapshot request go to the facilitator
 
     Scenario: The facilitator gets a participant's estimate

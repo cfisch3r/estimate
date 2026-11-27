@@ -587,6 +587,16 @@ When(
 )
 
 When(
+  'browser {string} announces itself as the facilitator, sends a snapshot of the item {string}, then announces itself as a participant',
+  async ({ state }, browser: string, title: string) => {
+    const { session } = facilitatorOf(state, browser)
+    await session.sendAnnounce({ participantId: FACILITATOR, name: browser })
+    await session.sendSnapshot(snapshotOf(title))
+    await announce(state, browser, browser.toLowerCase())
+  },
+)
+
+When(
   'browser {string} sends an estimate for the item {string}',
   async ({ state }, browser: string, title: string) => {
     const session = await waitForFacilitator(state, browser)

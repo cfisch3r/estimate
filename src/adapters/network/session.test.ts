@@ -298,19 +298,43 @@ describe('the participant session', () => {
     expect(session.hasFacilitator()).toBe(true)
   })
 
-  it('follows a facilitator that announces itself again under a new peer', () => {
+  it('keeps the first facilitator while another peer claims to be it', () => {
     const session = joinAsParticipant('session-abc')
     const snapshots = vi.fn()
     const changes = vi.fn()
     session.onFacilitatorSnapshot(snapshots)
-    session.onFacilitatorChange(changes)
+    fakeRoom.onPeerJoin?.('peer-f')
+    fakeRoom.onPeerJoin?.('peer-x')
     deliver('announce', facilitatorAnnounce, 'peer-f')
+    session.onFacilitatorChange(changes)
 
+    deliver('announce', facilitatorAnnounce, 'peer-x')
+    deliver('syncState', { ...snapshot, round: 9 }, 'peer-x')
+    deliver('syncState', snapshot, 'peer-f')
+
+    expect(changes).not.toHaveBeenCalled()
+    expect(snapshots).toHaveBeenCalledTimes(1)
+    expect(snapshots).toHaveBeenCalledWith(snapshot)
+  })
+
+  it('follows a facilitator that reloads: its new peer takes over once the old one leaves', () => {
+    const session = joinAsParticipant('session-abc')
+    const snapshots = vi.fn()
+    const changes = vi.fn()
+    session.onFacilitatorSnapshot(snapshots)
+    fakeRoom.onPeerJoin?.('peer-f')
+    deliver('announce', facilitatorAnnounce, 'peer-f')
+    session.onFacilitatorChange(changes)
+
+    // The reloaded tab announces before the old connection is reported gone.
+    fakeRoom.onPeerJoin?.('peer-f2')
     deliver('announce', facilitatorAnnounce, 'peer-f2')
+    fakeRoom.onPeerLeave?.('peer-f')
     deliver('syncState', snapshot, 'peer-f')
     deliver('syncState', { ...snapshot, round: 1 }, 'peer-f2')
 
-    expect(changes.mock.calls).toEqual([[true], [true]])
+    expect(changes.mock.calls).toEqual([[true]])
+    expect(session.hasFacilitator()).toBe(true)
     expect(snapshots).toHaveBeenCalledTimes(1)
     expect(snapshots).toHaveBeenCalledWith({ ...snapshot, round: 1 })
   })
@@ -341,15 +365,17 @@ describe('the participant session', () => {
     )
   })
 
-  it("sends to the facilitator's new peer after it announces itself again", async () => {
+  it("sends to the facilitator's new peer once its old one has left", async () => {
     const session = joinAsParticipant('session-abc')
     const estimate = createEstimate({ participantId: 'a', best: 1, likely: 2, worst: 3 })
     if (!estimate.ok) throw new Error('test fixture invalid')
     fakeRoom.requestActionsByName.submitEstimate!.request.mockResolvedValue({ ok: true })
     fakeRoom.requestActionsByName.requestSnapshot!.request.mockResolvedValue(snapshot)
+    fakeRoom.onPeerJoin?.('peer-f')
     deliver('announce', facilitatorAnnounce, 'peer-f')
 
     deliver('announce', facilitatorAnnounce, 'peer-f2')
+    fakeRoom.onPeerLeave?.('peer-f')
     await session.sendEstimate('item-1', estimate.value, 0)
     await session.requestSnapshot()
 

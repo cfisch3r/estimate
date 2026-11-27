@@ -50,11 +50,13 @@ export interface FacilitatorSession extends LiveSession {
  *  facilitator, and the only snapshots it takes are the facilitator's. The
  *  facilitator is the peer that announced the facilitator's participant id. */
 export interface ParticipantSession extends LiveSession {
-  /** Whether the facilitator's peer is known: set by its announce, replaced by
-   *  a later one from another peer, cleared when that peer leaves. */
+  /** Whether the facilitator's peer is known: the first connected peer that
+   *  announced the facilitator's participant id. Another peer that announces it
+   *  takes over only once every earlier one has left. */
   hasFacilitator(): boolean
   /** Fires whenever the facilitator's peer changes: `true` when a facilitator
-   *  announced itself (again, under a new peer), `false` when it left. */
+   *  is found (again, under a new peer), `false` when it left and no other
+   *  peer claims to be it. */
   onFacilitatorChange(cb: (present: boolean) => void): Unsubscribe
   /** Sends this participant's estimate to the facilitator and resolves once it
    *  acknowledges it. Rejects with an error whose `kind` is
